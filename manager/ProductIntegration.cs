@@ -5,6 +5,7 @@ namespace NativeVideo {
   static string ProductFile(string terre){return Path.Combine(terre,"webvideo-plus.json");}
   static string State(string terre){var p=J.TryRead(ProductFile(terre));var c=J.S(p,"config");return c!=""?Path.GetDirectoryName(c):Integration.StateFor(terre);}
   static string Once(string text,string find,string replacement){if(text.IndexOf(find,StringComparison.Ordinal)<0||text.IndexOf(find,text.IndexOf(find,StringComparison.Ordinal)+find.Length,StringComparison.Ordinal)>=0)throw new IOException("Terre 接入位置不匹配，尚未更改安装："+find.Substring(0,Math.Min(45,find.Length)));return text.Replace(find,replacement);}
+  static string RegexOnceInScope(string text,string scopeStart,string scopeEnd,string pattern,string replacement){int start=text.IndexOf(scopeStart,StringComparison.Ordinal);if(start<0||text.IndexOf(scopeStart,start+scopeStart.Length,StringComparison.Ordinal)>=0)throw new IOException("Terre 接入范围不匹配，尚未更改安装："+scopeStart);int end=text.IndexOf(scopeEnd,start+scopeStart.Length,StringComparison.Ordinal);if(end<0)throw new IOException("Terre 接入范围终点不匹配，尚未更改安装："+scopeEnd);string scope=text.Substring(start,end-start);var regex=new Regex(pattern);var matches=regex.Matches(scope);if(matches.Count!=1)throw new IOException("Terre 接入位置不匹配，尚未更改安装："+pattern.Substring(0,Math.Min(45,pattern.Length)));return text.Substring(0,start)+regex.Replace(scope,replacement,1)+text.Substring(end);}
   public static string Patch(string source,string[] modules){
    if(source.Contains("function CodexVideoExport()")||source.Contains("const WebVideoPlus ="))throw new IOException("检测到未匹配记录的挂载，请先恢复 Terre 原版入口");
    source=Once(source,"return displayWidth(rt)<=MULTILINE_THRESHOLD?rt:foldToMultiline(_e,nt,tt,ot)??rt","return rt");
@@ -18,7 +19,7 @@ namespace NativeVideo {
     prefix+=File.ReadAllText(Path.Combine(Files.Root,"integration/terre-export-component.js")).Replace("__CODEX_TOOLTIP__",tip.Groups[1].Value)+"\n";
    }
    if(modules.Any(m=>m.StartsWith("timeline"))){
-    foreach(var patch in J.A(J.Read(Path.Combine(Files.Root,"timeline/patches.json"))))source=Once(source,J.S(patch,"find"),J.S(patch,"replace"));
+    foreach(var patch in J.A(J.Read(Path.Combine(Files.Root,"timeline/patches.json")))){string pattern=J.S(patch,"regex");source=pattern!=""?RegexOnceInScope(source,J.S(patch,"scopeStart"),J.S(patch,"scopeEnd"),pattern,J.S(patch,"replace")):Once(source,J.S(patch,"find"),J.S(patch,"replace"));}
     string css=File.ReadAllText(Path.Combine(Files.Root,"timeline/timeline.css"));
     string host=File.ReadAllText(Path.Combine(Files.Root,"timeline/timeline-host.js")).Replace("__WEBVIDEO_MODULES__",J.Text(modules)).Replace("__WEBVIDEO_NAVIGATOR_VIEW__",modules.Contains("timelineNavigator")?File.ReadAllText(Path.Combine(Files.Root,"timeline/navigator.js")):"null").Replace("__WEBVIDEO_SELECTOR_VIEW__",modules.Contains("timelineSelector")?File.ReadAllText(Path.Combine(Files.Root,"timeline/selector.js")):"null");
     if(modules.Contains("timelineSelector"))host+="\n"+File.ReadAllText(Path.Combine(Files.Root,"timeline/selector-launcher.js"));
