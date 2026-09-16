@@ -37,7 +37,9 @@ if($Fast){
  }finally{$taskStream.Dispose()}
 }else{
  $taskOut=Join-Path $taskRoot 'dist/webvideo-plus'
- if(-not(Test-Path $taskOut)){New-Item -ItemType Directory -Path $taskOut | Out-Null}
+ if(Test-Path $taskOut){Remove-Item -LiteralPath $taskOut -Recurse -Force}
+ if(Test-Path $taskArchive){Remove-Item -LiteralPath $taskArchive -Force}
+ New-Item -ItemType Directory -Path $taskOut | Out-Null
  Copy-Item -Path (Join-Path $taskRoot 'package/*') -Destination $taskOut -Recurse -Force
  Compress-Archive -LiteralPath $taskOut -DestinationPath $taskArchive -Force
 }
@@ -46,9 +48,10 @@ $taskGenerated=Join-Path $taskRoot 'installer/InstallerBuild.cs'
 $taskManifestHash=(Get-FileHash -LiteralPath (Join-Path $taskRoot 'package/MANIFEST.json') -Algorithm SHA256).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText($taskGenerated,('public static class InstallerBuild { public const string PayloadHash="'+$taskHash+'"; public const string ManifestHash="'+$taskManifestHash+'"; public const string PackageVersion="0.4.10"; }'))
 $taskInstaller=Join-Path $taskRoot 'dist/WebVideo+-Setup-0.4.10.2.exe'
+$taskInstallerConfig=$taskInstaller+'.config'
+if(Test-Path $taskInstallerConfig){Remove-Item -LiteralPath $taskInstallerConfig -Force}
 & $taskCompiler /nologo /target:winexe /platform:x64 /optimize+ /main:InstallerMain ('/win32manifest:'+(Join-Path $taskRoot 'native.manifest')) ('/out:'+$taskInstaller) /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll ('/resource:'+$taskArchive+',payload.zip') (Join-Path $taskRoot 'installer/Installer.cs') $taskGenerated (Join-Path $taskRoot 'manager/ModuleCatalog.cs')
 if($LASTEXITCODE -ne 0){throw 'Installer build failed'}
-Copy-Item -LiteralPath (Join-Path $taskRoot 'package/WebGAL.Video.exe.config') -Destination ($taskInstaller+'.config') -Force
 $taskHash+'  webvideo-plus.zip' | Set-Content -LiteralPath ($taskArchive+'.sha256') -Encoding ascii
 if($Fast){Write-Output 'Fast development build complete. Run a normal build before release.'}
 Get-Item -LiteralPath $taskInstaller | Select-Object Name,Length
