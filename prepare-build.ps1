@@ -24,4 +24,5 @@ try{foreach($taskEntry in $taskZip.Entries){if(-not $taskEntry.FullName.StartsWi
 New-Item -ItemType Directory -Path (Join-Path $taskOut 'browser'),(Join-Path $taskOut 'integration') -Force | Out-Null
 Copy-Item -Path (Join-Path $taskRoot 'browser/*.js') -Destination (Join-Path $taskOut 'browser') -Force
 Copy-Item -Path (Join-Path $taskRoot 'licenses/*') -Destination (Join-Path $taskOut 'licenses') -Force
-Write-Output ('Pinned runtime resources prepared from a clean package directory. Bootstrap SHA-256: '+$taskInstallerHash)
+foreach($taskDoc in @('README.md','LICENSE','LICENSES.md','NOTICE.md','CHANGELOG.md')){Copy-Item -LiteralPath (Join-Path $taskRoot $taskDoc) -Destination (Join-Path $taskOut $taskDoc) -Force}
+Write-Output ('Pinned runtime resources and project license notices prepared from a clean package directory. Bootstrap SHA-256: '+$taskInstallerHash)
