@@ -30,6 +30,12 @@ Steam 版首次安装时不再把主程序文件名固定为 `WebGAL_Terre.exe`�
 
 公开构建脚本现可直接使用已发布的 0.4.10.2 安装器作为固定运行资源 bootstrap，同时继续接受发布前维护环境使用的旧 bootstrap 哈希。
 
+### 仓库许可证
+
+发布后仓库正式补齐根许可证：除 `LICENSES.md` 中列出的第三方或独立许可材料外，WebVideo+ 原创源代码、构建脚本、项目特定实现和原创数据采用 **Mozilla Public License 2.0（MPL-2.0）**。GitHub 已识别仓库主许可证为 `MPL-2.0`。
+
+`LICENSES.md` 同时记录混合来源边界：Terre/WebGAL 上游继续按 MPL-2.0；`anogo-actions.factory.json` 中来自 Anogo 的默认动作词表继续按 AGPL-3.0；js-yaml 继续按 MIT；已归属的 `webgal-skill`/社区资料保留原有许可和署名。`v0.4.10.2` 标签创建早于许可证文件，因此标签快照本身不包含根 `LICENSE`；对 WebVideo+ 0.4.10 系列原创部分的 MPL-2.0 授权已在 `main` 的 `LICENSES.md` 中明确，后续发布标签应直接包含这些许可文件。
+
 ## 0.4.9
 
 ### AI 接入修正
