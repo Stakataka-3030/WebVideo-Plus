@@ -1,7 +1,12 @@
 param([Parameter(Mandatory=$true)][string]$InstallerPath)
 $ErrorActionPreference='Stop'
 $taskInstaller=(Resolve-Path -LiteralPath $InstallerPath).Path
-if((Get-FileHash -LiteralPath $taskInstaller -Algorithm SHA256).Hash.ToLowerInvariant() -ne '1ed9f61ab893f32c59c84a5b1a0865fea760789b1e5b71d79fd8083e7b00ed2d'){throw 'Expected the original 0.4.10.2 bootstrap installer; see BUILDING.md for the pinned hash.'}
+$taskInstallerHash=(Get-FileHash -LiteralPath $taskInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
+$taskAcceptedHashes=@(
+ 'a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378', # published v0.4.10.2 installer
+ '1ed9f61ab893f32c59c84a5b1a0865fea760789b1e5b71d79fd8083e7b00ed2d'  # legacy pre-release bootstrap
+)
+if($taskAcceptedHashes -notcontains $taskInstallerHash){throw 'Unsupported bootstrap installer. Use the published WebVideo+-Setup-0.4.10.2.exe or the legacy pinned bootstrap listed in BUILDING.md.'}
 $taskRoot=$PSScriptRoot
 $taskOut=Join-Path $taskRoot 'package'
 $taskCache=Join-Path $taskRoot '.build'
@@ -19,4 +24,4 @@ try{foreach($taskEntry in $taskZip.Entries){if(-not $taskEntry.FullName.StartsWi
 New-Item -ItemType Directory -Path (Join-Path $taskOut 'browser'),(Join-Path $taskOut 'integration') -Force | Out-Null
 Copy-Item -Path (Join-Path $taskRoot 'browser/*.js') -Destination (Join-Path $taskOut 'browser') -Force
 Copy-Item -Path (Join-Path $taskRoot 'licenses/*') -Destination (Join-Path $taskOut 'licenses') -Force
-Write-Output 'Pinned runtime resources prepared from a clean package directory. Restore ai-runtime dependencies, then run build-product.ps1.'
+Write-Output ('Pinned runtime resources prepared from a clean package directory. Bootstrap SHA-256: '+$taskInstallerHash)
