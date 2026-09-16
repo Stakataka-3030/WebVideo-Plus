@@ -1,4 +1,9 @@
-Anogo action vocabulary originates from A-kirami/anogo, src/stores/state.ts.
+Anogo action vocabulary in ../anogo-actions.factory.json originates from A-kirami/anogo, src/stores/state.ts.
 https://github.com/A-kirami/anogo
-Upstream license: AGPL-3.0; included license applies to the copied default action vocabulary. Import adapter code is independently implemented.
+Upstream license: AGPL-3.0. The included LICENSE-Anogo-AGPL-3.0.txt applies to the copied/adapted default action vocabulary.
+
+WebVideo+'s Anogo import adapter code is independently implemented and is licensed under the repository's MPL-2.0 license. The root MPL-2.0 license does not relicense the Anogo-derived vocabulary.
+
+See ../LICENSES.md for the repository-wide license map.
+
 js-yaml 4.1.1 is used under its MIT license, included as LICENSE-js-yaml.txt.
