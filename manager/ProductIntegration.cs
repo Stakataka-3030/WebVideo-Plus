@@ -68,7 +68,13 @@ namespace NativeVideo {
     if(!exactBaseline)Console.WriteLine("前端哈希与已知 Terre 4.6.4 基线不同；正在使用结构锚点兼容性校验。");
     try{source=Patch(source,modules);}catch(IOException e){if(!exactBaseline)throw new IOException("前端与已知 Terre 4.6.4 基线不同，且结构锚点校验未通过；未更改文件。"+e.Message);throw;}
    }
-   string exeName=J.S(product,"exeName",J.S(life,"exeName","WebGAL_Terre.exe")),exe=Files.Under(terre,exeName),originalName=J.S(life,"originalName",Path.GetFileNameWithoutExtension(exeName)+".video-original.exe"),original=Files.Under(terre,originalName);
+   string exeName=J.S(product,"exeName",J.S(life,"exeName",""));
+   if(exeName==""){
+    foreach(var name in new[]{"WebGAL_Terre.exe","WebGAL Terre.exe"})if(File.Exists(Path.Combine(terre,name))){exeName=name;break;}
+    if(exeName==""){var matches=Directory.GetFiles(terre,"*.exe").Where(f=>Regex.Replace(Path.GetFileNameWithoutExtension(f),@"[\s_-]+","").Equals("WebGALTerre",StringComparison.OrdinalIgnoreCase)).ToArray();if(matches.Length==1)exeName=Path.GetFileName(matches[0]);}
+    if(exeName=="")throw new IOException("未找到 Terre 主程序（支持 WebGAL_Terre.exe / WebGAL Terre.exe）");
+   }
+   string exe=Files.Under(terre,exeName),originalName=J.S(life,"originalName",Path.GetFileNameWithoutExtension(exeName)+".video-original.exe"),original=Files.Under(terre,originalName);
    bool wrapped=File.Exists(wrapperFile);
    if(wrapped&&(life==null||!File.Exists(original)||Files.Hash(original)!=J.S(life,"originalHash")||Files.Hash(exe)!=J.S(life,"wrapperHash")))throw new IOException("Terre 启动程序或备份已变化，未覆盖");
    if(!wrapped&&File.Exists(original))throw new IOException("发现来源不明的原程序备份，请先核对启动程序");
