@@ -5,6 +5,7 @@ if((Get-FileHash -LiteralPath $taskInstaller -Algorithm SHA256).Hash.ToLowerInva
 $taskRoot=$PSScriptRoot
 $taskOut=Join-Path $taskRoot 'package'
 $taskCache=Join-Path $taskRoot '.build'
+foreach($taskPath in @($taskOut,$taskCache)){if(Test-Path $taskPath){Remove-Item -LiteralPath $taskPath -Recurse -Force}}
 New-Item -ItemType Directory -Path $taskOut,$taskCache -Force | Out-Null
 $taskAssembly=[Reflection.Assembly]::LoadFile($taskInstaller)
 $taskStream=$taskAssembly.GetManifestResourceStream('payload.zip')
@@ -18,4 +19,4 @@ try{foreach($taskEntry in $taskZip.Entries){if(-not $taskEntry.FullName.StartsWi
 New-Item -ItemType Directory -Path (Join-Path $taskOut 'browser'),(Join-Path $taskOut 'integration') -Force | Out-Null
 Copy-Item -Path (Join-Path $taskRoot 'browser/*.js') -Destination (Join-Path $taskOut 'browser') -Force
 Copy-Item -Path (Join-Path $taskRoot 'licenses/*') -Destination (Join-Path $taskOut 'licenses') -Force
-Write-Output 'Pinned runtime resources prepared. Restore ai-runtime dependencies, then run build-product.ps1.'
+Write-Output 'Pinned runtime resources prepared from a clean package directory. Restore ai-runtime dependencies, then run build-product.ps1.'
