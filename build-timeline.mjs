@@ -4,17 +4,18 @@ import {fileURLToPath} from 'node:url';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 await import('./build-navigation-metadata.mjs');
-const sceneUpdateRegex='[A-Za-z_$][A-Za-z0-9_$]*\\([A-Za-z_$][A-Za-z0-9_$]*\\),eventBus\\.emit\\("editor:update-scene",\\{scene:[A-Za-z_$][A-Za-z0-9_$]*\\}\\)';
+const id='[A-Za-z_$][A-Za-z0-9_$]*';
+const graphicalScope={scopeStart:'function GraphicalEditor(',scopeEnd:'jsxRuntimeExports.jsx(EditorSideBar,{})'};
+const textScope={scopeStart:'脚本编辑器挂载',scopeEnd:'function JsonResourceDisplay('};
 const patches=[
-  {find:'function GraphicalEditor(_e){const[d,g]=',replace:'function GraphicalEditor(_e){const wvpLoaded=reactExports.useRef(false);const[d,g]='},
-  {scopeStart:'function GraphicalEditor(_e){',scopeEnd:'jsxRuntimeExports.jsx(EditorSideBar,{})',regex:sceneUpdateRegex,replace:'wvpLoaded.current=true,$&'},
+  {...graphicalScope,regex:`function GraphicalEditor\\((?<props>${id})\\)\\{const\\[(?<data>${id}),(?<setData>${id})\\]=`,replace:'function GraphicalEditor(${props}){const wvpLoaded=reactExports.useRef(false);const[${data},${setData}]='},
+  {...graphicalScope,regex:`(?<update>${id})\\((?<sentences>${id})\\),eventBus\\.emit\\("editor:update-scene",\\{scene:(?<text>${id})\\}\\)(?=\\};${id}\\.get\\()`,replace:'${update}(${sentences}),wvpLoaded.current=true,eventBus.emit("editor:update-scene",{scene:${text}})'},
   {find:'jsxRuntimeExports.jsx(EditorSideBar,{}),jsxRuntimeExports.jsx(MainArea,{})]',replace:'jsxRuntimeExports.jsx(EditorSideBar,{}),jsxRuntimeExports.jsx(MainArea,{}),jsxRuntimeExports.jsx(WebVideoTimelineHost,{})]'},
-  {find:'it.current=ct,ot(ct,dt),ct.onDidChangeCursorPosition',replace:'it.current=ct,WebVideoPlus.attachMonaco(ct,_e.targetPath,()=>rt.flush()),ot(ct,dt),ct.onDidChangeCursorPosition'},
-  {find:'tt.value=!0;const gt=editorLineHolder.getScenePosition(_e.targetPath);',replace:'tt.value=!0;WebVideoPlus.monacoReady(ct);const gt=editorLineHolder.getScenePosition(_e.targetPath);'},
-  {find:'Rt=Nt.getVirtualItems();reactExports.useEffect(()=>{const Ot=editorLineHolder.getSceneLine(_e.targetPath)',replace:'Rt=Nt.getVirtualItems();reactExports.useEffect(()=>WebVideoPlus.attachGraphical(_e.targetPath,lt,dt,Nt,wvpLoaded.current,text=>rt(splitToArray(text).map(st))),[_e.targetPath,lt,dt,Nt,wvpLoaded.current]);reactExports.useEffect(()=>{const Ot=editorLineHolder.getSceneLine(_e.targetPath)'}
+  {...textScope,regex:`(?=[\\s\\S]*?reactExports\\.useEffect\\(\\(\\)=>\\(\\)=>(?<flush>${id})\\.flush\\(\\),\\[\\k<flush>\\]\\)[\\s\\S]*?editorLineHolder\\.getScenePosition\\((?<props>${id})\\.targetPath\\))(?<ref>${id})\\.current=(?<editor>${id}),(?<configure>${id})\\(\\k<editor>,(?<monaco>${id})\\),\\k<editor>\\.onDidChangeCursorPosition`,replace:'${ref}.current=${editor},WebVideoPlus.attachMonaco(${editor},${props}.targetPath,()=>${flush}.flush()),${configure}(${editor},${monaco}),${editor}.onDidChangeCursorPosition'},
+  {...textScope,regex:`(?<ready>${id})\\.value=!0;const (?<position>${id})=editorLineHolder\\.getScenePosition\\((?<props>${id})\\.targetPath\\);`,replace:'${ready}.value=!0;WebVideoPlus.monacoReady(${props}.targetPath);const ${position}=editorLineHolder.getScenePosition(${props}.targetPath);'},
+  {...graphicalScope,regex:`(?=[\\s\\S]*?,(?<update>${id})=reactExports\\.useCallback\\((?<newItems>${id})=>\\{${id}\\.current=\\k<newItems>,${id}\\(\\k<newItems>\\)\\},\\[\\]\\))(?=[\\s\\S]*?,(?<factory>${id})=reactExports\\.useCallback\\((?<content>${id})=>\\(\\{id:createId\\(\\),content:\\k<content>,show:!0\\}\\),\\[\\]\\))(?=[\\s\\S]*?const (?<text>${id})=reactExports\\.useMemo\\(\\(\\)=>mergeToString\\()(?=[\\s\\S]*?,(?<rows>${id})=reactExports\\.useMemo\\(\\(\\)=>${id}\\.sentenceList\\.filter\\()(?<prefix>function GraphicalEditor\\([\\s\\S]*?)(?<items>${id})=(?<virtualizer>${id})\\.getVirtualItems\\(\\);reactExports\\.useEffect\\(\\(\\)=>\\{const (?<line>${id})=editorLineHolder\\.getSceneLine\\((?<props>${id})\\.targetPath\\)`,replace:'${prefix}${items}=${virtualizer}.getVirtualItems();reactExports.useEffect(()=>WebVideoPlus.attachGraphical(${props}.targetPath,${text},${rows},${virtualizer},wvpLoaded.current,text=>${update}(splitToArray(text).map(${factory}))),[${props}.targetPath,${text},${rows},${virtualizer},wvpLoaded.current]);reactExports.useEffect(()=>{const ${line}=editorLineHolder.getSceneLine(${props}.targetPath)'}
 ];
 const base=read('baseline/terre-4.6.4.js');
-if(base.split('rt(ln),eventBus.emit("editor:update-scene",{scene:Kt})').length!==2)throw Error('Known Terre 4.6.4 scene-update anchor changed');
 for(const p of patches){
   if(p.find){if(base.split(p.find).length!==2)throw Error('Timeline anchor must be unique: '+p.find);continue;}
   const start=base.indexOf(p.scopeStart),end=start<0?-1:base.indexOf(p.scopeEnd,start+p.scopeStart.length);
@@ -45,7 +46,7 @@ const menuPatches=[
 ];
 function configEntry(id){const start=base.indexOf('gt(i18n._({id:"'+id+'"})');if(start<0)throw Error('Config entry missing: '+id);let depth=0,quote='',escape=false;for(let i=start+2;i<base.length;i++){const c=base[i];if(escape){escape=false;continue;}if(quote){if(c==='\\')escape=true;else if(c===quote)quote='';continue;}if(c==='"'||c==="'"||c==='`'){quote=c;continue;}if(c==='(')depth++;else if(c===')'&&--depth===0)return base.slice(start,i+1);}throw Error('Config entry unclosed');}
 for(const id of ['QFGCRR','GUjz+8','iLuKDS']){const entry=configEntry(id);menuPatches.push({find:entry,replace:'(_e==="quick"?null:'+entry+')'});}
-for(const patch of menuPatches)if(base.split(patch.find).length!==2)throw Error('Menu patch anchor not unique: '+patch.find.slice(0,80));
+for(const patch of menuPatches)if(base.split(patch.find).length!==2)throw Error('Menu patch anchor must be unique: '+patch.find.slice(0,80));
 fs.writeFileSync(path.join(root,'package/product-ui/menu-patches.json'),JSON.stringify(menuPatches,null,2));
 
 fs.writeFileSync(path.join(root,'package/product-ui/character-map-patches.json'),JSON.stringify(mapPatches,null,2));
