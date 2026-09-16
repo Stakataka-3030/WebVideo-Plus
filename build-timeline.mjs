@@ -6,7 +6,7 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 await import('./build-navigation-metadata.mjs');
 const patches=[
   {find:'function GraphicalEditor(_e){const[d,g]=',replace:'function GraphicalEditor(_e){const wvpLoaded=reactExports.useRef(false);const[d,g]='},
-  {find:'rt(ln),eventBus.emit("editor:update-scene",{scene:Kt})',replace:'wvpLoaded.current=true,rt(ln),eventBus.emit("editor:update-scene",{scene:Kt})'},
+  {find:'eventBus.emit("editor:update-scene",{scene:',replace:'wvpLoaded.current=true,eventBus.emit("editor:update-scene",{scene:'},
   {find:'jsxRuntimeExports.jsx(EditorSideBar,{}),jsxRuntimeExports.jsx(MainArea,{})]',replace:'jsxRuntimeExports.jsx(EditorSideBar,{}),jsxRuntimeExports.jsx(MainArea,{}),jsxRuntimeExports.jsx(WebVideoTimelineHost,{})]'},
   {find:'it.current=ct,ot(ct,dt),ct.onDidChangeCursorPosition',replace:'it.current=ct,WebVideoPlus.attachMonaco(ct,_e.targetPath,()=>rt.flush()),ot(ct,dt),ct.onDidChangeCursorPosition'},
   {find:'tt.value=!0;const gt=editorLineHolder.getScenePosition(_e.targetPath);',replace:'tt.value=!0;WebVideoPlus.monacoReady(ct);const gt=editorLineHolder.getScenePosition(_e.targetPath);'},
