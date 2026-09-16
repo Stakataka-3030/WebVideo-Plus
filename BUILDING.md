@@ -5,7 +5,7 @@
 ## 初次准备
 
 1. 使用Windows PowerShell 5.1或PowerShell 7，安装Node.js 22.20.0或兼容版本。
-2. 从Release下载 `bootstrap-installer-0.4.10.2.exe`。它仅作为固定版本的WebView2 SDK和WebGAL导出运行资源来源，不会在构建时启动安装程序。
+2. 准备固定的 `bootstrap-installer-0.4.10.2.exe`。它仅作为固定版本的WebView2 SDK和WebGAL导出运行资源来源，不会在构建时启动安装程序。
 3. 在仓库目录执行：
 
 ```powershell
@@ -20,7 +20,11 @@ Pop-Location
 
 固定bootstrap安装器SHA-256：`1ed9f61ab893f32c59c84a5b1a0865fea760789b1e5b71d79fd8083e7b00ed2d`。
 
+`prepare-build.ps1` 会先清空并重建 `package/` 与 `.build/`，避免旧构建文件残留。之后再执行 `npm ci`，不要在安装依赖后重复运行 `prepare-build.ps1`。
+
 输出位于 `dist/`。`package/`、`dist/`、`.build/`和node_modules都不提交。脚本不依赖维护者的个人目录；Node位置由当前PATH解析。
+
+面向最终用户的Release只需要 `dist/WebVideo+-Setup-0.4.10.2.exe`。安装器不依赖同名 `.exe.config` sidecar；构建脚本也不会再生成该文件。`webvideo-plus.zip`及其SHA-256文件是安装器构建中间产物，可用于内部核对，不要求随Release发布。
 
 ## 开发快速构建
 
@@ -34,13 +38,13 @@ Pop-Location
 
 快速模式不再先复制整个 `package/` 到 `dist/webvideo-plus/` 后使用 `Compress-Archive` 高压缩，而是直接从 `package/` 生成带 `webvideo-plus/` 根目录的开发 payload，并使用无压缩 ZIP（运行环境不支持时回退为 Fastest）。因此生成的安装器可能明显更大，但适合反复做本机兼容性测试。
 
-快速模式不会刷新解包形式的 `dist/webvideo-plus/` 目录。正式发布前必须再执行一次不带 `-Fast` 的：
+快速模式不会刷新解包形式的 `dist/webvideo-plus/` 目录。正式发布前应重新运行一次 `prepare-build.ps1`、恢复 `ai-runtime` 依赖，然后执行不带 `-Fast` 的：
 
 ```powershell
 .\build-product.ps1
 ```
 
-以正式构建产物为准。
+普通构建会清空并重建 `dist/webvideo-plus/`，以正式构建产物为准。
 
 ## 当前边界
 
