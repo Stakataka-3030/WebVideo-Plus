@@ -1,0 +1,4 @@
+Anogo action vocabulary originates from A-kirami/anogo, src/stores/state.ts.
+https://github.com/A-kirami/anogo
+Upstream license: AGPL-3.0; included license applies to the copied default action vocabulary. Import adapter code is independently implemented.
+js-yaml 4.1.1 is used under its MIT license, included as LICENSE-js-yaml.txt.

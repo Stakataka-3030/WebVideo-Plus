@@ -1,0 +1,54 @@
+/* Resolve dialogue preparation by explicit ID or the last directive at its position. */
+function webVideoExpressionPreparation(model,native){
+ const positions=['center','left','right','left13','right13','left14','right14'],states=new Map(),byPosition=new Map(),rows=[];let previous=null,speaker='',needsConfiguration=false,firstProblemLine=null,needsIdConversion=false;
+ if(!model)return {rows,needsConfiguration,firstProblemLine,needsIdConversion};
+ const rawByLine=new Map((native.parse(model.source).sentenceList||[]).filter(s=>!s.isLineBreakHolder).map(s=>[s.startLine,s]));
+ for(const row of model.statements){const a=row.args,raw=rawByLine.get(row.startLine-1);if(row.command==='comment')continue;
+  if(row.command==='changeFigure'){
+   const explicit=typeof a.id==='string'||typeof a.id==='number'?String(a.id):'',fallback=positions.find(p=>a[p]===true),id=explicit||'fig-'+(fallback||'center'),gone=!row.content||row.content==='none'||a.clear===true,position=fallback||(gone&&explicit?states.get(id)?.position:null)||'center',record={row,position,id,explicit:!!explicit,gone};
+   byPosition.set(position,record);if(gone){if(explicit)states.delete(id);else for(const [key,value]of states)if(value.position===position)states.delete(key);}else states.set(id,record);
+  }
+  if(row.command==='say'){
+   if(a.speaker!==undefined&&a.speaker!==null)speaker=String(a.speaker);if(raw?.commandRaw===''||a.clear===true)speaker='';
+   const originalId=typeof a.figureId==='string'||typeof a.figureId==='number'?String(a.figureId):'',narration=!speaker,hasId=!!originalId.trim(),explicitPositions=positions.filter(p=>a[p]===true),usesPosition=!hasId&&a.id!==true&&explicitPositions.length===1,position=explicitPositions[0],target=usesPosition?byPosition.get(position):states.get(originalId);
+   const alive=target&&!target.gone&&states.get(target.id)===target&&(!position||target.position===position),missingTemplateId=!narration&&usesPosition&&alive&&!target.explicit,id=usesPosition&&target?target.id:originalId;
+   const valid=alive&&explicitPositions.length<=1&&(hasId||usesPosition&&target.explicit),eligible=!narration&&!!valid,convertToId=eligible&&usesPosition;
+   if(missingTemplateId)needsIdConversion=true;
+   const intended=hasId||a.id===true||positions.some(p=>a[p]!==undefined&&a[p]!==false);
+   if(!narration&&intended&&!valid&&!missingTemplateId){needsConfiguration=true;if(firstProblemLine===null)firstProblemLine=row.startLine;}
+   const alreadyPrepared=eligible&&previous?.id===target.row.id;
+   rows.push({row,speaker,narration,id,eligible,convertToId,missingTemplateId,template:eligible?target.row:null,alreadyPrepared,reason:narration?'旁白':missingTemplateId?'推荐优先一键id补全':!intended?'画外音':!valid?'请先配置角色登场和离场':convertToId?'勾选此项会将此项修改为按id执行':''});
+  }
+  previous=row;
+ }
+ return {rows,needsConfiguration,firstProblemLine,needsIdConversion};
+}
+function webVideoExpressionPlan(model,analysis,selected,native,ignoreExisting=false){
+ const positions=['center','left','right','left13','right13','left14','right14'],eol=model.source.includes('\r\n')?'\r\n':'\n',patches=[];let inserted=0,converted=0;
+ for(const item of analysis.rows){if(!selected.has(item.row.id)||!item.eligible)continue;let prefix='';if(ignoreExisting||!item.alreadyPrepared){const text=native.write(item.template,{args:{next:true}});if(/[\r\n]/.test(text))throw Error('生成的切换立绘必须完整保留在一行内。');prefix=text+eol;inserted++;}
+  if(item.convertToId){const args={id:true,figureId:item.id};for(const p of positions)args[p]=false;let dialogue=native.write(item.row,{args});if(/\n$/.test(item.row.source))dialogue+=eol;patches.push({startOffset:item.row.startOffset,endOffset:item.row.endOffset,before:item.row.source,after:prefix+dialogue,line:item.row.startLine,reviewRelative:prefix?0:undefined});converted++;}else if(prefix)patches.push({startOffset:item.row.startOffset,endOffset:item.row.startOffset,before:'',after:prefix,line:item.row.startLine,reviewRelative:0});
+ }
+ let after=model.source;for(const p of [...patches].reverse())after=after.slice(0,p.startOffset)+p.after+after.slice(p.endOffset);native.parse(after);let delta=0;const reviewOffsets=[];for(const p of patches){if(p.reviewRelative!==undefined)reviewOffsets.push(p.startOffset+delta+p.reviewRelative);delta+=p.after.length-(p.endOffset-p.startOffset);}return {path:model.path,before:model.source,after,patches,reviewOffsets,changed:patches.length,inserted,converted,operation:{type:'expressionPrep'}};
+}
+function WebVideoExpressionPreparationPanel(){
+ const R=reactExports,h=R.createElement,P=WebVideoProject,model=WebVideoPlus.state().model,analysis=R.useMemo(()=>webVideoExpressionPreparation(model,P),[model?.path,model?.source]);
+ const [selected,setSelected]=R.useState(new Set()),[ignoreExisting,setIgnoreExisting]=R.useState(false),[busy,setBusy]=R.useState(false),[message,setMessage]=R.useState(''),list=R.useRef(null),anchor=R.useRef(null),drag=R.useRef(null),frame=R.useRef(null),latest=R.useRef(null);
+ latest.current={analysis,selected,busy};
+ const stop=()=>{drag.current=null;if(frame.current!==null)cancelAnimationFrame(frame.current);frame.current=null;};
+ R.useEffect(()=>{setSelected(new Set());if(!latest.current?.busy)setMessage('');anchor.current=null;stop();},[model?.path,model?.source]);
+ R.useEffect(()=>{window.addEventListener('pointerup',stop);window.addEventListener('pointercancel',stop);window.addEventListener('blur',stop);return()=>{stop();window.removeEventListener('pointerup',stop);window.removeEventListener('pointercancel',stop);window.removeEventListener('blur',stop);};},[]);
+ function range(from,to,base=new Set()){const ids=new Set(base),items=latest.current.analysis.rows;for(let i=Math.min(from,to);i<=Math.max(from,to);i++)if(items[i]?.eligible)ids.add(items[i].row.id);return ids;}
+ function choose(index,event){const data=latest.current,item=data.analysis.rows[index];if(data.busy||!item.eligible)return;const additive=event.ctrlKey||event.metaKey;
+  if(event.shiftKey&&anchor.current!==null)setSelected(range(anchor.current,index,additive?data.selected:new Set()));else if(additive){const next=new Set(data.selected);next.has(item.row.id)?next.delete(item.row.id):next.add(item.row.id);setSelected(next);anchor.current=index;}else{setSelected(new Set([item.row.id]));anchor.current=index;}
+ }
+ function tick(){const d=drag.current,element=list.current;if(!d||!element)return;if(!d.moved){frame.current=requestAnimationFrame(tick);return;}const box=element.getBoundingClientRect(),margin=28;if(d.y<box.top+margin)element.scrollTop-=12;else if(d.y>box.bottom-margin)element.scrollTop+=12;
+  const target=document.elementFromPoint(Math.max(box.left+1,Math.min(box.right-1,d.x)),Math.max(box.top+1,Math.min(box.bottom-1,d.y)))?.closest('[data-expression-row]');
+  if(target&&element.contains(target)){const index=Number(target.dataset.expressionRow);if(index!==d.last){d.last=index;setSelected(range(d.anchor,index,d.base));}}
+  frame.current=requestAnimationFrame(tick);
+ }
+ function down(index,event){if(event.button!==0||busy||!analysis.rows[index].eligible)return;event.preventDefault();stop();const base=new Set(selected),from=event.shiftKey&&anchor.current!==null?anchor.current:index;choose(index,event);drag.current={anchor:from,last:index,base:event.ctrlKey||event.metaKey?base:new Set(),x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY,moved:false};list.current?.setPointerCapture(event.pointerId);frame.current=requestAnimationFrame(tick);}
+ async function apply(){if(busy)return;stop();setBusy(true);try{if(!model||WebVideoPlus.state().model?.path!==model.path||WebVideoPlus.state().model?.source!==model.source)throw Error('剧本已变化，请重新选择。');const plan=webVideoExpressionPlan(model,analysis,selected,{parse:P.parse,write:P.writer},ignoreExisting);if(!plan.changed){setMessage('选中的对话前已有对应的切换立绘，无需重复添加。');return;}await P.commit(plan,'预位表情调整');setSelected(new Set());setMessage('已追加 '+plan.inserted+' 条切换立绘'+(plan.converted?'，并将 '+plan.converted+' 行对话改为按id执行':'')+'；原文已自动备份。');}catch(e){setMessage(e.message);}finally{setBusy(false);}}
+ const eligible=analysis.rows.filter(item=>item.eligible),allSelected=eligible.length>0&&eligible.every(item=>selected.has(item.row.id));
+ return h('div',{className:'wvp-expression-panel'},analysis.needsConfiguration&&h('p',{className:'wvp-expression-warning',role:'alert'},'请先配置好所有角色登场和离场，本工具不会自动管理登场和离场。首次出现位置：第 '+analysis.firstProblemLine+' 行。'),h('label',{className:'wvp-expression-ignore'},h('input',{type:'checkbox',checked:ignoreExisting,disabled:busy,onChange:e=>setIgnoreExisting(e.target.checked)}),'强制追加表情'),ignoreExisting&&h('p',{className:'wvp-expression-warning',role:'alert'},'危险操作：这将无差别的为所有选中语句额外追加一句切换立绘'),h('div',{className:'wvp-expression-actions'},h('button',{type:'button',disabled:busy||!eligible.length,onClick:()=>setSelected(allSelected?new Set():new Set(eligible.map(item=>item.row.id)))},allSelected?'取消全选':'全选'),h('button',{type:'button',disabled:busy||!eligible.length,onClick:()=>setSelected(new Set(eligible.filter(item=>!selected.has(item.row.id)).map(item=>item.row.id)))},'反选'),h('span',null,'已选择 '+selected.size+' 行')),h('div',{ref:list,className:'wvp-expression-list',role:'listbox','aria-label':'选择需要预位表情的对话','aria-multiselectable':true,onPointerMove:e=>{if(drag.current){drag.current.x=e.clientX;drag.current.y=e.clientY;if(Math.hypot(e.clientX-drag.current.startX,e.clientY-drag.current.startY)>3)drag.current.moved=true;}},onPointerUp:stop,onPointerCancel:stop,onLostPointerCapture:stop},...analysis.rows.map((item,index)=>h('div',{key:item.row.id,'data-expression-row':index,className:'wvp-expression-row'+(!item.eligible?' disabled':'')+(selected.has(item.row.id)?' selected':''),role:'option','aria-selected':selected.has(item.row.id),'aria-disabled':!item.eligible,tabIndex:item.eligible?0:-1,title:item.reason?item.reason+'：'+item.row.content:item.row.content,onPointerDown:e=>down(index,e),onKeyDown:e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();choose(index,e);}}},h('span',{className:'wvp-expression-check','aria-hidden':true},selected.has(item.row.id)?'✓':''),h('span',{className:'wvp-expression-line'},item.row.startLine),h('span',{className:'wvp-expression-text'},h('strong',null,(item.speaker||'旁白')+'：'),item.row.content.replace(/\|/g,' / ')),item.reason&&h('span',{className:'wvp-expression-reason'+(item.convertToId?' conversion':'')},item.reason)))),!analysis.rows.length&&h('p',null,'当前剧本没有普通对话。'),message&&h('p',{role:'status',className:'wvp-expression-message'},message),h('footer',null,h('span',null,'拖动连续选择 · Ctrl 多选 · Shift 选择头尾'),h('button',{type:'button',className:'primary',disabled:busy||!selected.size,onClick:apply},busy?'处理中…':'确认')));
+}
+WebVideoTools.register('expressionPrep','预位表情调整',WebVideoExpressionPreparationPanel);
