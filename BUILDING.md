@@ -22,11 +22,31 @@ Pop-Location
 
 输出位于 `dist/`。`package/`、`dist/`、`.build/`和node_modules都不提交。脚本不依赖维护者的个人目录；Node位置由当前PATH解析。
 
+## 开发快速构建
+
+兼容性调试时可使用：
+
+```powershell
+.\build-product.ps1 -Fast
+```
+
+`-Fast` 仍会重新编译当前 C# 内核、管理器、时间线挂载资源与安装器，但会优先复用已经放入 `package/ai-runtime/node_modules` 的固定 AI 依赖；提示词、worker、provider 目录、Node 可执行文件等轻量内容仍会刷新。如果还没有可复用的依赖，会自动执行一次完整复制。
+
+快速模式不再先复制整个 `package/` 到 `dist/webvideo-plus/` 后使用 `Compress-Archive` 高压缩，而是直接从 `package/` 生成带 `webvideo-plus/` 根目录的开发 payload，并使用无压缩 ZIP（运行环境不支持时回退为 Fastest）。因此生成的安装器可能明显更大，但适合反复做本机兼容性测试。
+
+快速模式不会刷新解包形式的 `dist/webvideo-plus/` 目录。正式发布前必须再执行一次不带 `-Fast` 的：
+
+```powershell
+.\build-product.ps1
+```
+
+以正式构建产物为准。
+
 ## 当前边界
 
 这是一份整理后的现有工程，而不是重新编写的独立编辑器。首次构建仍依赖固定bootstrap中的WebGAL运行快照和WebView2二进制资源；没有宣称从源码重建全部第三方引擎和SDK。C#内核、管理器、安装器及浏览器扩展从本仓库源码构建，process-guard也由源码编译。
 
-精确补丁使用baseline/terre-4.6.4.js，与Terre 4.6.4对应。更新上游时需要重新核对补丁锚点，不能只修改版本号。
+精确补丁使用baseline/terre-4.6.4.js，与Terre 4.6.4对应。更新上游时需要重新核对补丁锚点，不能只修改版本号。对于前端被重新打包但挂载语义未变化的 Terre 4.6.4 变体，部分锚点允许在限定结构范围内使用正则匹配；仍要求目标唯一，避免把兼容性放宽成无条件写入。
 
 安装器的AI勾选框位于主界面，标记Beta，并有API Key提示。AI运行环境随包离线提供。仅启用时部署运行目录。
 
