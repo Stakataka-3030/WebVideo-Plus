@@ -2,7 +2,7 @@
 
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [来源与许可](NOTICE.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
 **当前产品版本：0.4.10；安装器修订：0.4.10.2。**
 
@@ -74,6 +74,14 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于 `%LOCALAPPDATA%/WebVideoPl
 
 为保证 Terre 4.6.4 的补丁锚点可复现，仓库包含 `baseline/terre-4.6.4.js` 和 `baseline/local-baseline.json`。前者是固定 Terre 4.6.4 发布 bundle；后者保留建立基线时的校验元数据，其中 `baseHash` 会被当前构建脚本写入 `supportedOriginalBundleSha256`。`local-baseline.json` 中的旧 `kernel` 字段和旧文件哈希属于历史验证信息，不代表当前 WebVideo+ 内核版本；当前构建使用 `0.3.14-internal`。
 
+## 许可证
+
+除 [`LICENSES.md`](LICENSES.md) 另有说明的第三方或独立许可材料外，**WebVideo+ 的原创源代码、构建脚本、项目特定实现和原创数据采用 Mozilla Public License 2.0（MPL-2.0）**，完整文本见 [`LICENSE`](LICENSE)。
+
+仓库是混合来源项目，因此根许可证不会覆盖或替换其他权利人的既有条款。主要例外包括：Terre/WebGAL 上游代码仍按 MPL-2.0；`anogo-actions.factory.json` 中来自 Anogo 的默认动作词表继续按 AGPL-3.0；`js-yaml` 继续按 MIT；来自 `webgal-skill` 或其他公开/社区资料的已归属内容保留原有许可与署名。具体到路径和材料的映射见 [`LICENSES.md`](LICENSES.md)、[`NOTICE.md`](NOTICE.md) 和 [`licenses/THIRD-PARTY.md`](licenses/THIRD-PARTY.md)。
+
+MPL-2.0 是文件级 copyleft：修改并分发受 MPL 覆盖的文件时，需要继续提供这些文件的源代码和 MPL 权利；它不会自动要求与 WebVideo+ 组合的所有独立文件或更大作品都采用 MPL。
+
 ## 开源项目引用与致谢
 
 WebVideo+ 建立在多个开源项目、公开技术资料和社区贡献之上。以下分类区分“当前运行/构建依赖”“可选集成”和“研究参考”，避免把参考关系误写成直接捆绑关系。
@@ -85,7 +93,7 @@ WebVideo+ 建立在多个开源项目、公开技术资料和社区贡献之上�
 | [OpenWebGAL/WebGAL_Terre](https://github.com/OpenWebGAL/WebGAL_Terre) | 编辑器基座；复用图形/文本编辑、素材管理、语句组件和预览通信。当前补丁基线为 4.6.4。 |
 | [OpenWebGAL/WebGAL](https://github.com/OpenWebGAL/WebGAL) | 播放引擎、语句解析和导出运行资源的上游。 |
 | [OpenWebGAL/WebGAL_Doc](https://github.com/OpenWebGAL/WebGAL_Doc) | WebGAL 语法、引擎和编辑器开发资料。 |
-| [microsoft/WebView2Samples](https://github.com/MicrosoftEdge/WebView2Samples) / [WebView2Feedback](https://github.com/MicrosoftEdge/WebView2Feedback) | WebView2 嵌入和原生宿主参考；当前导出核心使用微软 WebView2 SDK。 |
+| [MicrosoftEdge/WebView2Samples](https://github.com/MicrosoftEdge/WebView2Samples) / [WebView2Feedback](https://github.com/MicrosoftEdge/WebView2Feedback) | WebView2 嵌入和原生宿主参考；当前导出核心使用微软 WebView2 SDK。 |
 | [FFmpeg/FFmpeg](https://github.com/FFmpeg/FFmpeg) | 视频编码、媒体探测与音频混合。 |
 | [nodejs/node](https://github.com/nodejs/node) | 可选 AI 运行环境和构建工具。 |
 | [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) | 可选 AI 模块的模型服务、流式协议和多提供商适配基础；当前固定 0.1.5-rc.1。 |
@@ -115,4 +123,4 @@ React、Fluent UI、IconPark、TanStack Virtual、Zustand、Monaco Editor、Pixi
 
 也感谢提供滤镜资料、表格、基础角色映射，以及持续进行标准 Terre、MyGO 分发版和 Steam 版兼容性测试并逐项反馈问题的贡献者。
 
-Live2D 模型、角色图像、背景、音乐、配音等素材权利仍归各自权利人，本安装包不因此取得或转授这些素材的权利。更完整的第三方来源与许可说明见 [NOTICE.md](NOTICE.md) 和 [licenses/THIRD-PARTY.md](licenses/THIRD-PARTY.md)。
+Live2D 模型、角色图像、背景、音乐、配音等素材权利仍归各自权利人，本安装包不因此取得或转授这些素材的权利。更完整的第三方来源与许可说明见 [NOTICE.md](NOTICE.md)、[LICENSES.md](LICENSES.md) 和 [licenses/THIRD-PARTY.md](licenses/THIRD-PARTY.md)。
