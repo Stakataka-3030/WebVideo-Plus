@@ -1,7 +1,7 @@
 using System;using System.IO;using System.IO.Compression;using System.Linq;using System.Collections.Generic;using System.Text.RegularExpressions;using System.Threading.Tasks;using System.Diagnostics;
 namespace NativeVideo {
  public static class ProductIntegration {
-  const string ProductVersion="0.4.10",KernelVersion="0.3.14-internal";
+  const string ProductVersion="0.4.10",KernelVersion="0.3.14-internal",TerreBaselineHash="3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133";
   static string ProductFile(string terre){return Path.Combine(terre,"webvideo-plus.json");}
   static string State(string terre){var p=J.TryRead(ProductFile(terre));var c=J.S(p,"config");return c!=""?Path.GetDirectoryName(c):Integration.StateFor(terre);}
   static string Once(string text,string find,string replacement){if(text.IndexOf(find,StringComparison.Ordinal)<0||text.IndexOf(find,text.IndexOf(find,StringComparison.Ordinal)+find.Length,StringComparison.Ordinal)>=0)throw new IOException("Terre 接入位置不匹配，尚未更改安装："+find.Substring(0,Math.Min(45,find.Length)));return text.Replace(find,replacement);}
@@ -63,8 +63,11 @@ namespace NativeVideo {
    string html=Files.Utf8.GetString(originalEntry),source=null,bundleName=null;
    foreach(Match m in Regex.Matches(html,"(?:src|href)=[\"']([^\"']+\\.js)[\"']")){string file;try{file=Files.Under(Path.Combine(terre,"public"),m.Groups[1].Value.TrimStart('.','/'));}catch{continue;}if(File.Exists(file)){var candidate=File.ReadAllText(file);if(candidate.Contains("function AddSentenceTab(){")){source=candidate;bundleName=Path.GetFileName(file);break;}}}
    if(source==null)throw new IOException("无法识别 Terre 前端");
-   if(modules.Length>0&&Files.HashText(source)!="3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133")throw new IOException("此安装包适配本机基线 Terre 4.6.4，前端校验不匹配；未更改文件");
-   if(modules.Length>0)source=Patch(source,modules);
+   if(modules.Length>0){
+    string sourceHash=Files.HashText(source);bool exactBaseline=sourceHash==TerreBaselineHash;
+    if(!exactBaseline)Console.WriteLine("前端哈希与已知 Terre 4.6.4 基线不同；正在使用结构锚点兼容性校验。");
+    try{source=Patch(source,modules);}catch(IOException e){if(!exactBaseline)throw new IOException("前端与已知 Terre 4.6.4 基线不同，且结构锚点校验未通过；未更改文件。"+e.Message);throw;}
+   }
    string exeName=J.S(product,"exeName",J.S(life,"exeName","WebGAL_Terre.exe")),exe=Files.Under(terre,exeName),originalName=J.S(life,"originalName",Path.GetFileNameWithoutExtension(exeName)+".video-original.exe"),original=Files.Under(terre,originalName);
    bool wrapped=File.Exists(wrapperFile);
    if(wrapped&&(life==null||!File.Exists(original)||Files.Hash(original)!=J.S(life,"originalHash")||Files.Hash(exe)!=J.S(life,"wrapperHash")))throw new IOException("Terre 启动程序或备份已变化，未覆盖");
@@ -104,4 +107,3 @@ namespace NativeVideo {
   }
  }
 }
-
