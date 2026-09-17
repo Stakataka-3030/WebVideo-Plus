@@ -1,10 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';import {fileURLToPath} from 'node:url';
 const root=path.dirname(fileURLToPath(import.meta.url));
+const versions=JSON.parse(fs.readFileSync(path.join(root,'version.json'),'utf8')),productVersion=versions.productVersion,installerVersion=versions.installerVersion,kernelVersion=versions.kernelVersion;
+if(!productVersion||!installerVersion||!kernelVersion)throw Error('version.json is missing required version fields');
 let s=fs.readFileSync(path.join(root,'installer/Installer.base.cs'),'utf8').replaceAll('\r\n','\n');
 function replace(a,b){if(!s.includes(a))throw Error('Missing installer anchor '+a);s=s.replace(a,b);}
 function between(a,b,t){let i=s.indexOf(a),j=s.indexOf(b,i+a.length);if(i<0||j<0)throw Error(a);s=s.slice(0,i)+t+s.slice(j);}
-s=s.replaceAll('WebGAL Video Exporter Setup','WebVideo+ Setup').replaceAll('WebGAL Video Exporter','WebVideo+').replaceAll('0.3.1.0','0.4.11.0').replaceAll('"webgal-native-exporter"','"webvideo-plus"');
+s=s.replaceAll('WebGAL Video Exporter Setup','WebVideo+ Setup').replaceAll('WebGAL Video Exporter','WebVideo+').replaceAll('0.3.1.0',installerVersion).replaceAll('"webgal-native-exporter"','"webvideo-plus"');
 replace('  return payload;',`  string manifestFile=Path.Combine(payload,"MANIFEST.json");if(!File.Exists(manifestFile)||Hash(manifestFile)!=InstallerBuild.ManifestHash)throw new Exception("安装文件清单校验失败，请重新获取安装包。");
   if(new FileInfo(manifestFile).Length>32L*1024*1024)throw new Exception("安装文件清单超过支持范围。");var inventory=new JavaScriptSerializer{MaxJsonLength=32*1024*1024,RecursionLimit=256}.Deserialize<Dictionary<string,object>>(File.ReadAllText(manifestFile));
   foreach(var item in (System.Collections.IEnumerable)inventory["files"]){var record=(Dictionary<string,object>)item;string relative=(string)record["path"],file=Path.GetFullPath(Path.Combine(payload,relative.Replace('/',Path.DirectorySeparatorChar)));if(!file.StartsWith(Path.GetFullPath(payload)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)||!File.Exists(file)||new FileInfo(file).Length!=Convert.ToInt64(record["bytes"])||Hash(file)!=(string)record["sha256"])throw new Exception("安装缓存校验失败："+relative+"。请移除安装器缓存后重试。");}
@@ -39,7 +41,7 @@ replace('  start=new CheckBox',`  foreach(Control field in advanced.Controls)fie
   start=new CheckBox`);
 replace('c.Top+=advancedToggle.Checked?128:-128','c.Top+=advancedToggle.Checked?208:-208');
 replace('advancedToggle.Checked?568:440','advancedToggle.Checked?648:440');
-replace('【内部版本 0.3.1 · C# / WebView2】','WebVideo+ 0.4.11 · 导出内核 0.4.11');
+replace('【内部版本 0.3.1 · C# / WebView2】','WebVideo+ '+productVersion+' · 导出内核 '+kernelVersion);
 between(' void RefreshInstallation(', '\n void SetBusy(', ` string[] SelectedModules(){var modules=new List<string>();if(navigatorModule.Checked)modules.Add("timelineNavigator");if(selectorModule.Checked)modules.Add("timelineSelector");if(exporterModule.Checked)modules.Add("exporter");return modules.ToArray();}
  void RefreshInstallation(bool showMessage){var current=InstallationState.Read(terre.Text,InstallerBuild.PackageVersion);install.Visible=true;install.Enabled=!busy&&current.ValidTerre&&current.UpdateAvailable;install.Text=current.Mounted?"应用更改":"检测并安装";remove.Visible=current.Mounted;remove.Enabled=!busy&&current.Mounted;headline.Text=current.Mounted?"管理 WebVideo+":"安装 WebVideo+";Text=current.Mounted?"WebVideo+ · 管理":"WebVideo+ · 安装";start.Text="完成后启动 Terre";start.Visible=advancedToggle.Visible=true;cancel.Left=432;
   if(loadedModulesPath!=terre.Text){loadedModulesPath=terre.Text;var modules=new[]{"timelineNavigator","timelineSelector","exporter"};try{var marker=Path.Combine(terre.Text,"webvideo-plus.json");if(File.Exists(marker)){var data=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(marker));modules=((System.Collections.IEnumerable)data["modules"]).Cast<object>().Select(Convert.ToString).ToArray();}}catch{}navigatorModule.Checked=modules.Contains("timelineNavigator");selectorModule.Checked=modules.Contains("timelineSelector");exporterModule.Checked=modules.Contains("exporter");}
@@ -71,8 +73,6 @@ between(' string[] SelectedModules(){',' void RefreshInstallation(',` string[] S
 replace('var modules=new[]{"timelineNavigator","timelineSelector","exporter"};try{','var modules=ModuleCatalog.Advanced;try{');
 replace('modules=((System.Collections.IEnumerable)data["modules"]).Cast<object>().Select(Convert.ToString).ToArray();','modules=ModuleCatalog.Normalize(((System.Collections.IEnumerable)data[data.ContainsKey("requestedModules")?"requestedModules":"modules"]).Cast<object>().Select(Convert.ToString));if(InstallationState.CompareVersions(Convert.ToString(data["version"]),"0.2.0")<0)modules=modules.Concat(ModuleCatalog.Selectable.Skip(3)).Distinct().ToArray();if(InstallationState.CompareVersions(Convert.ToString(data["version"]),"0.2.1")<0)modules=modules.Concat(new[]{"compactGameTools"}).Distinct().ToArray();');
 replace('navigatorModule.Checked=modules.Contains("timelineNavigator");selectorModule.Checked=modules.Contains("timelineSelector");exporterModule.Checked=modules.Contains("exporter");','syncModules=true;foreach(var id in ModuleCatalog.Advanced)moduleBoxes[id].CheckState=modules.Contains(id)?CheckState.Checked:CheckState.Unchecked;aiModule.Checked=modules.Contains("generativeAI");syncModules=false;ReconcileModules();');
-s=s.replaceAll('导出内核 0.4.11','导出内核 0.3.15-internal');
-
 s=s.replace('void SetBusy(bool value){','void SetBusy(bool value){if(aiModule!=null)aiModule.Enabled=!value;');
 fs.writeFileSync(path.join(root,'installer/Installer.cs'),s);
 console.log('WebVideo+ installer source generated.');
