@@ -15,7 +15,7 @@ namespace NativeVideo {
     chosen.Add(best);minGroup=best+1;
    }
    var cuts=new List<KeyValuePair<int,int>>{new KeyValuePair<int,int>(0,0)};cuts.AddRange(chosen.Select(group=>new KeyValuePair<int,int>(groups[group],group)));
-   return cuts.Select((c,i)=>J.O("index",i,"startFrame",c.Key,"endFrame",i+1<cuts.Count?cuts[i+1].Key:total,"replayFrame",i==0?0:groups[Math.Max(0,c.Value-1)])).ToArray();
+   return cuts.Select((c,i)=>J.O("index",i,"startFrame",c.Key,"endFrame",i+1<cuts.Count?cuts[i+1].Key:total,"replayFrame",i==0||c.Value<=0?0:groups[c.Value-1])).ToArray();
   }
  }
  public sealed class ProgressAccumulator {
