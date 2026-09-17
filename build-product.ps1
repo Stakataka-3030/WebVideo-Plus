@@ -1,6 +1,10 @@
 param([switch]$Fast)
 $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
+$taskVersions=Get-Content -LiteralPath (Join-Path $taskRoot 'version.json') -Raw | ConvertFrom-Json
+$taskProductVersion=[string]$taskVersions.productVersion
+$taskInstallerVersion=[string]$taskVersions.installerVersion
+if([string]::IsNullOrWhiteSpace($taskProductVersion)-or[string]::IsNullOrWhiteSpace($taskInstallerVersion)){throw 'version.json is missing productVersion or installerVersion'}
 New-Item -ItemType Directory -Path (Join-Path $taskRoot 'dist') -Force | Out-Null
 & (Join-Path $taskRoot 'build.ps1')
 if($LASTEXITCODE -ne 0){throw 'Export kernel build failed'}
@@ -46,8 +50,8 @@ if($Fast){
 $taskHash=(Get-FileHash -LiteralPath $taskArchive -Algorithm SHA256).Hash.ToLowerInvariant()
 $taskGenerated=Join-Path $taskRoot 'installer/InstallerBuild.cs'
 $taskManifestHash=(Get-FileHash -LiteralPath (Join-Path $taskRoot 'package/MANIFEST.json') -Algorithm SHA256).Hash.ToLowerInvariant()
-[IO.File]::WriteAllText($taskGenerated,('public static class InstallerBuild { public const string PayloadHash="'+$taskHash+'"; public const string ManifestHash="'+$taskManifestHash+'"; public const string PackageVersion="0.4.11"; }'))
-$taskInstaller=Join-Path $taskRoot 'dist/WebVideo+-Setup-0.4.11.0.exe'
+[IO.File]::WriteAllText($taskGenerated,('public static class InstallerBuild { public const string PayloadHash="'+$taskHash+'"; public const string ManifestHash="'+$taskManifestHash+'"; public const string PackageVersion="'+$taskProductVersion+'"; }'))
+$taskInstaller=Join-Path $taskRoot ('dist/WebVideo+-Setup-'+$taskInstallerVersion+'.exe')
 $taskInstallerConfig=$taskInstaller+'.config'
 if(Test-Path $taskInstallerConfig){Remove-Item -LiteralPath $taskInstallerConfig -Force}
 & $taskCompiler /nologo /target:winexe /platform:x64 /optimize+ /main:InstallerMain ('/win32manifest:'+(Join-Path $taskRoot 'native.manifest')) ('/out:'+$taskInstaller) /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll ('/resource:'+$taskArchive+',payload.zip') (Join-Path $taskRoot 'installer/Installer.cs') $taskGenerated (Join-Path $taskRoot 'manager/ModuleCatalog.cs')
