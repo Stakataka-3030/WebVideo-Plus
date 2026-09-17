@@ -8,16 +8,13 @@ namespace NativeVideo {
    var events=J.A(J.Get(plan,"events")).Where(e=>J.N(e,"line")>0&&!J.S(e,"command").StartsWith("__")).ToList();var groups=new List<int>();int previous=-1;
    for(int i=0;i<events.Count;i++){var e=events[i];if(J.S(e,"command")!="say"||Regex.IsMatch(J.S(e,"script"),@"^\s*:\s*;\s*$"))continue;int frame=(int)Math.Ceiling(J.N(events[previous+1],"atMs")*fps/1000);if(frame>0&&frame<total&&(groups.Count==0||groups.Last()!=frame))groups.Add(frame);previous=i;}
    if(workers<=1||groups.Count==0)return new[]{J.O("index",0,"startFrame",0,"endFrame",total,"replayFrame",0)};
-   var cuts=new List<KeyValuePair<int,int>>{new KeyValuePair<int,int>(0,0)};int previousGroup=-1;
-   for(int part=1;part<workers;part++){
-    int target=(int)((long)part*total/workers);int best=-1;long bestDistance=long.MaxValue;
-    for(int group=previousGroup+1;group<groups.Count;group++){
-     int frame=groups[group];if(frame<=cuts.Last().Key)continue;
-     long distance=Math.Abs((long)frame-target);if(distance<bestDistance){best=group;bestDistance=distance;continue;}if(frame>target&&best>=0)break;
-    }
-    if(best<0)break;int remainingCuts=workers-part-1,remainingGroups=groups.Count-best-1;if(remainingGroups<remainingCuts)break;
-    cuts.Add(new KeyValuePair<int,int>(groups[best],best));previousGroup=best;
+   int targetParts=Math.Min(workers,groups.Count+1);var chosen=new List<int>();int minGroup=0;
+   for(int part=1;part<targetParts;part++){
+    int target=(int)((long)part*total/targetParts);int maxGroup=groups.Count-(targetParts-part);int best=minGroup;long bestDistance=Math.Abs((long)groups[best]-target);
+    for(int group=minGroup+1;group<=maxGroup;group++){long distance=Math.Abs((long)groups[group]-target);if(distance<bestDistance){best=group;bestDistance=distance;}else if(groups[group]>target)break;}
+    chosen.Add(best);minGroup=best+1;
    }
+   var cuts=new List<KeyValuePair<int,int>>{new KeyValuePair<int,int>(0,0)};cuts.AddRange(chosen.Select(group=>new KeyValuePair<int,int>(groups[group],group)));
    return cuts.Select((c,i)=>J.O("index",i,"startFrame",c.Key,"endFrame",i+1<cuts.Count?cuts[i+1].Key:total,"replayFrame",i==0?0:groups[Math.Max(0,c.Value-1)])).ToArray();
   }
  }
