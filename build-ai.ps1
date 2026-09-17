@@ -1,6 +1,9 @@
 param([switch]$ReuseDependencies)
 $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
+$taskVersions=Get-Content -LiteralPath (Join-Path $taskRoot 'version.json') -Raw | ConvertFrom-Json
+$taskProductVersion=[string]$taskVersions.productVersion
+if([string]::IsNullOrWhiteSpace($taskProductVersion)){throw 'version.json is missing productVersion'}
 $taskSource=Join-Path $taskRoot 'ai-runtime'
 $taskDest=Join-Path $taskRoot 'package/ai-runtime'
 $taskSourceModules=Join-Path $taskSource 'node_modules'
@@ -14,11 +17,14 @@ if($taskCanReuse){
  if(Test-Path $taskDestModules){Remove-Item -LiteralPath $taskDestModules -Recurse -Force}
  Copy-Item -LiteralPath $taskSourceModules -Destination $taskDest -Recurse -Force
 }
-foreach($taskFile in @('worker.mjs','novel-prompt.txt','stage-prompt.txt','package.json','package-lock.json')){Copy-Item -LiteralPath (Join-Path $taskSource $taskFile) -Destination $taskDest -Force}
+foreach($taskFile in @('worker.mjs','novel-prompt.txt','stage-prompt.txt','package-lock.json')){Copy-Item -LiteralPath (Join-Path $taskSource $taskFile) -Destination $taskDest -Force}
+$taskPackage=Get-Content -LiteralPath (Join-Path $taskSource 'package.json') -Raw | ConvertFrom-Json
+$taskPackage.version=$taskProductVersion
+[IO.File]::WriteAllText((Join-Path $taskDest 'package.json'),($taskPackage|ConvertTo-Json -Depth 100),[Text.UTF8Encoding]::new($false))
 $taskNode=(Get-Command node -ErrorAction Stop).Source
 Copy-Item -LiteralPath $taskNode -Destination (Join-Path $taskDest 'node.exe') -Force
 $taskNodeLicense=Join-Path (Split-Path $taskNode -Parent) 'LICENSE'
 if(Test-Path $taskNodeLicense){Copy-Item -LiteralPath $taskNodeLicense -Destination (Join-Path $taskDest 'LICENSE-Node.txt') -Force}
 Copy-Item -LiteralPath (Join-Path $taskRoot 'ai-providers.factory.json') -Destination (Join-Path $taskDest 'providers.json') -Force
 $taskCore=[IO.File]::ReadAllText((Join-Path $taskRoot 'browser/novel-core.js'))+[Environment]::NewLine+'export { WebVideoNovel };';[IO.File]::WriteAllText((Join-Path $taskDest 'novel-core.mjs'),$taskCore)
-Write-Output 'Packaged optional DSH provider runtime'
+Write-Output 'Packaged optional DSH provider runtime for WebVideo+ '+$taskProductVersion
