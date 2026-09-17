@@ -1,7 +1,8 @@
 using System;using System.IO;using System.IO.Compression;using System.Linq;using System.Collections.Generic;using System.Text.RegularExpressions;using System.Threading.Tasks;using System.Diagnostics;
 namespace NativeVideo {
  public static class ProductIntegration {
-  const string ProductVersion="0.4.10",KernelVersion="0.3.14-internal",TerreBaselineHash="3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133";
+  const string TerreBaselineHash="3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133";
+  static string ProductVersion{get{return VersionInfo.Product;}}static string KernelVersion{get{return VersionInfo.Kernel;}}
   static string ProductFile(string terre){return Path.Combine(terre,"webvideo-plus.json");}
   static string State(string terre){var p=J.TryRead(ProductFile(terre));var c=J.S(p,"config");return c!=""?Path.GetDirectoryName(c):Integration.StateFor(terre);}
   static string Once(string text,string find,string replacement){if(text.IndexOf(find,StringComparison.Ordinal)<0||text.IndexOf(find,text.IndexOf(find,StringComparison.Ordinal)+find.Length,StringComparison.Ordinal)>=0)throw new IOException("Terre 接入位置不匹配，尚未更改安装："+find.Substring(0,Math.Min(45,find.Length)));return text.Replace(find,replacement);}
