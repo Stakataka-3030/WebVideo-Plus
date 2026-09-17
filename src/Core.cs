@@ -16,6 +16,11 @@ namespace NativeVideo {
   public static void Write(string file,object value){Files.Atomic(file,Text(value));}
   public static string Num(double value){return value.ToString("0.###############",CultureInfo.InvariantCulture);}
  }
+ public static class VersionInfo {
+  static object Manifest(){var data=J.TryRead(Path.Combine(Files.Root,"MANIFEST.json"));if(data==null)throw new IOException("WebVideo+ 版本清单缺失，请重新构建或重新安装组件。");return data;}
+  public static string Product{get{var value=J.S(Manifest(),"version");if(value=="")throw new IOException("WebVideo+ 产品版本缺失，请重新构建或重新安装组件。");return value;}}
+  public static string Kernel{get{var value=J.S(Manifest(),"kernelVersion");if(value=="")throw new IOException("WebVideo+ 内核版本缺失，请重新构建或重新安装组件。");return value;}}
+ }
  public static class Files {
   public static readonly Encoding Utf8=new UTF8Encoding(false);
   public static string Root=AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
