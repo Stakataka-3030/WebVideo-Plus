@@ -5,7 +5,7 @@ import { Context } from '@deepseek-ai/cordis';
 import LlmRuntime, { createUserMessage, APP_IDENTITY } from '@deepseek-ai/dsh-llm';
 import * as LlmPiAi from '@deepseek-ai/dsh-llm-pi-ai';
 const input=JSON.parse(await new Promise((resolve,reject)=>{let text='';process.stdin.setEncoding('utf8');process.stdin.on('data',chunk=>{text+=chunk;if(text.length>24000000)reject(Error('INPUT_TOO_LARGE'));});process.stdin.on('end',()=>resolve(text));}));
-const version=JSON.parse(fs.readFileSync(new URL('./package.json',import.meta.url),'utf8').replace(/^\uFEFF/,'')).version;
+const runtimeVersion=JSON.parse(fs.readFileSync(new URL('./package.json',import.meta.url),'utf8').replace(/^\uFEFF/,'')).version;let version=runtimeVersion;try{const manifest=JSON.parse(fs.readFileSync(new URL('../MANIFEST.json',import.meta.url),'utf8').replace(/^\uFEFF/,''));if(typeof manifest?.version==='string'&&manifest.version)version=manifest.version;}catch{}
 APP_IDENTITY.product='webvideo-plus';APP_IDENTITY.version=version;
 const sessionId=/^[a-f0-9-]{36}$/i.test(input.sessionId||'')?input.sessionId:randomUUID();
 const nativeFetch=globalThis.fetch;
