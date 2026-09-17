@@ -1,11 +1,13 @@
 # 构建与发布
 
-当前产品 0.4.10，安装器修订 0.4.10.2。开发于 Windows，使用系统 .NET Framework C# 编译器及 Node 22.20.0。
+当前源码产品版本 **0.4.11**，下一安装器修订 **0.4.11.0**，内核 **0.3.15-internal**；当前最新公开 Release 仍为 **0.4.10.2**。开发于 Windows，使用系统 .NET Framework C# 编译器及 Node 22.20.0。
+
+产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`manifest.mjs`、`build-product.ps1`、`configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
 ## 初次准备
 
 1. 使用 Windows PowerShell 5.1 或 PowerShell 7，安装 Node.js 22.20.0 或兼容版本。
-2. 从 GitHub Release 下载已发布的 `WebVideo+-Setup-0.4.10.2.exe`。构建脚本只从其中抽取固定版本的 WebView2 SDK、WebGAL 导出运行资源和许可文件，不会启动安装程序。
+2. 从 GitHub Release 下载当前已发布的 `WebVideo+-Setup-0.4.10.2.exe`。构建脚本只从其中抽取固定版本的 WebView2 SDK、WebGAL 导出运行资源和许可文件，不会启动安装程序。
 3. 在仓库目录执行：
 
 ```powershell
@@ -34,7 +36,7 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 
 输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules` 都不提交。脚本不依赖维护者个人目录；Node 位置由当前 PATH 解析。
 
-面向最终用户的 Release 只需要 `dist/WebVideo+-Setup-0.4.10.2.exe`。安装器不依赖同名 `.exe.config` sidecar；`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
+按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-0.4.11.0.exe`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
 
 ## 开发快速构建
 
