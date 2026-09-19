@@ -1,6 +1,6 @@
 # 构建与发布
 
-当前分支产品版本 **0.5.1**，安装器内部版本 **0.5.1.0**，导出内核 **0.5.1**；当前最新公开 Release 仍为 **0.4.10.2**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。
+当前分支产品版本 **0.5.2**，安装器内部版本 **0.5.2.0**，导出内核 **0.5.2**；当前最新公开 Release 仍为 **0.4.10.2**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`manifest.mjs`、`build-product.ps1`、`configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
@@ -36,7 +36,7 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 
 输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules` 都不提交。脚本不依赖维护者个人目录；Node 位置由当前 PATH 解析。
 
-按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-0.5.1.exe`；Win32 安装器内部文件版本使用数字形式 `0.5.1.0`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
+按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-0.5.2.exe`；Win32 安装器内部文件版本使用数字形式 `0.5.2.0`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
 
 ## 开发快速构建
 
@@ -60,9 +60,9 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 
 ## GPU Raw 导出与性能诊断
 
-0.5.1 的正常导出使用 output-size Pixi renderer、WebView2 SharedBuffer raw RGBA 与 ffmpeg 编码。GUI 会实测 NVENC 是否可用：可用时默认选择 NVENC，否则默认选择 x264rgb；“传统/兼容模式”仅在用户手动选择时使用。升级自 0.5.0 实验构建时，旧的管线偏好会执行一次迁移并重新走自动选择，之后继续保留用户手动选择。
+0.5.2 的正常导出使用 output-size Pixi renderer、WebView2 SharedBuffer raw RGBA 与 ffmpeg 编码。GUI 会实测 NVENC 是否可用：可用时默认选择 NVENC，否则默认选择 x264rgb；“传统/兼容模式”仅在用户手动选择时使用。升级自 0.5.0 实验构建时，旧的管线偏好会执行一次迁移并重新走自动选择，之后继续保留用户手动选择。
 
-原始帧路径使用 WebView2 SharedBuffer：宿主创建一块 `width × height × 4` 的共享内存并以 ReadWrite 方式发送给页面，页面在每次 Pixi render 后直接执行 `gl.readPixels(..., RGBA, UNSIGNED_BYTE, sharedUint8Array)`。下面的 benchmark 跳过 JPEG 和 FFmpeg，只测 WebGL→CPU shared memory 的逐帧吞吐：
+原始帧路径继续使用 WebView2 SharedBuffer，但正式 GPU raw 导出在 WebGL2 可用时会优先启用 3-slot PBO ring：当前帧先通过 `gl.readPixels(..., offset)` 排入 `PIXEL_PACK_BUFFER`，插入 fence 后继续推进后续帧；旧 PBO 就绪后再用 `getBufferSubData` 写入 SharedBuffer。初始化会实测 SharedBuffer 作为 `getBufferSubData` 目标是否可用，不支持时自动回退同步 `gl.readPixels(..., sharedUint8Array)`。下面的 benchmark 仍可用于测量基础 WebGL→CPU shared memory 吞吐：
 
 ```powershell
 .\WebGAL.Video.exe export --project "D:\Games\Project" --scene start.txt --out "D:\Temp\gpu-readback.json" --width 1920 --height 1080 --fps 60 --workers 4 --gpu high --gpu-readback-benchmark 300

@@ -7,7 +7,7 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
    const normalize=src=>decodeURIComponent(new URL(src,location.href).pathname),mediaTimers=new WeakMap(),pause=HTMLMediaElement.prototype.pause;
    HTMLMediaElement.prototype.play=function(){pause.call(this);const d=policy.durations[normalize(this.currentSrc||this.src)];if(d&&!this.loop&&this.id!=='bgm'){clearTimeout(mediaTimers.get(this));mediaTimers.set(this,setTimeout(()=>this.dispatchEvent(new Event('ended')),d));}return Promise.resolve();};
    HTMLMediaElement.prototype.pause=function(){clearTimeout(mediaTimers.get(this));return pause.call(this);};
-   const yieldQueue=[],yieldChannel=new MessageChannel();yieldChannel.port1.onmessage=()=>yieldQueue.shift()?.();const yieldTask=()=>new Promise(resolve=>{yieldQueue.push(resolve);yieldChannel.port2.postMessage(0);});const events=[],elastic=[],controlEvents=[];let origin=null,lastCommand='',lastParams={},lastLine=0,done=false,finishedAt=0,manualTimer=null;
+   const yieldQueue=[],yieldChannel=new MessageChannel();yieldChannel.port1.onmessage=()=>yieldQueue.shift()?.();const yieldTask=()=>new Promise(resolve=>{yieldQueue.push(resolve);yieldChannel.port2.postMessage(0);});const planStepMs=100,domWorkload=[];const sampleDom=()=>{if(typeof globalThis.__gpuDomCaptureNeeded!=='function')return;const capture=globalThis.__gpuDomCaptureNeeded();if(!capture)return;const state=globalThis.__gpuDomState,reason=state?.dirtyReason||'mutation',units=reason==='animation'||reason==='video'?Math.max(1,Math.round(planStepMs*(Number(policy.fps)||60)/1000)):1;domWorkload.push({atMs:origin===null?0:performance.now()-origin,reason,units});if(state)state.dirty=false;};const events=[],elastic=[],controlEvents=[];let origin=null,lastCommand='',lastParams={},lastLine=0,done=false,finishedAt=0,manualTimer=null;
    globalThis.__nativeScheduleAuto=(fn,delay)=>{const startMs=performance.now()-origin,line=lastLine,eligible=lastCommand==='say'&&!lastParams.notend;return setTimeout(()=>{if(eligible)elastic.push({startMs,endMs:performance.now()-origin,line});fn();},delay);};
    const recordTextSettle=()=>{if(origin!==null&&!done)controlEvents.push({atMs:performance.now()-origin,kind:'text-settle',line:lastLine});};core.events.textSettle.on(recordTextSettle);
    const finish=()=>{done=true;finishedAt=performance.now();w.nativeStopAuto();};
@@ -19,13 +19,13 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
    }
    document.querySelector('.html-body__title-enter')?.style.setProperty('display','none');
    __probeCommands['preview.command.set-component-visibility']({showStarter:false,isShowLogo:false,showTitle:false,showControls:false,controlsVisibility:false,isEnterGame:true});
-   __probeCommands['preview.command.run-scene-content']({sceneContent:script});
+   if(typeof globalThis.__gpuDomInstall==='function')globalThis.__gpuDomInstall();__probeCommands['preview.command.run-scene-content']({sceneContent:script});
    await __reportNativePlan({phase:'initializing',checkpoint:'scene-started'});
    let poll;
    if(policy.mode==='auto')w.nativeAuto();
    else poll=setInterval(()=>{if(origin===null||done||manualTimer||pc.performList.some(p=>p.blockingAuto()||p.blockingNext()))return;const delay=lastCommand==='say'&&!lastParams.notend?policy.holdMs:0,begin=performance.now()-origin;manualTimer=setTimeout(()=>{manualTimer=null;if(delay>0)elastic.push({startMs:begin,endMs:performance.now()-origin,line:lastLine});w.nativeNext();},delay);},10);
-   let steps=0;const maxSteps=108000;while(!done&&steps++<maxSteps){globalThis.__nativePlanProgress={phase:'advancing',line:lastLine+1,totalLines:core.sceneManager.sceneData.currentScene.sentenceList.length,videoSeconds:origin===null?0:(performance.now()-origin)/1000,events:events.length};await clock.runFor(100);await yieldTask();await __exportWaitForStageAssets();if(steps%50===0)await __reportNativePlan({...__nativePlanProgress,phase:'planning-progress',performs:pc.performList.map(p=>({name:p.performName,duration:p.duration,hold:p.isHoldOn}))});}
+   let steps=0;const maxSteps=108000;while(!done&&steps++<maxSteps){globalThis.__nativePlanProgress={phase:'advancing',line:lastLine+1,totalLines:core.sceneManager.sceneData.currentScene.sentenceList.length,videoSeconds:origin===null?0:(performance.now()-origin)/1000,events:events.length};await clock.runFor(planStepMs);await yieldTask();await __exportWaitForStageAssets();sampleDom();if(steps%50===0)await __reportNativePlan({...__nativePlanProgress,phase:'planning-progress',performs:pc.performList.map(p=>({name:p.performName,duration:p.duration,hold:p.isHoldOn}))});}
    core.events.textSettle.off(recordTextSettle);clearInterval(poll);clearTimeout(manualTimer);w.nativeStopAuto();yieldChannel.port1.close();yieldChannel.port2.close();
    if(!done)throw new Error('播放时序规划超时，场景可能含等待交互的指令');
-   return {events,elastic,controlEvents,durationMs:origin===null?0:finishedAt-origin,options:w.store.getState().userData.optionData};
+   return {events,elastic,controlEvents,domWorkload,durationMs:origin===null?0:finishedAt-origin,options:w.store.getState().userData.optionData};
   };
