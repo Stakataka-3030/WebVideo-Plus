@@ -104,3 +104,5 @@ DOM GPU 合成继续拆层：将默认 TextBox 根容器约 0.7 秒的 opacity s
 新增实验性完整 GPU raw 导出：`--gpu-raw-export x264rgb|nvenc` 将正常 JobRunner 的每个分片从 JPEG CapturePreviewAsync 路径切换为 output-size Pixi + DOM 三层 GPU 合成 + SharedBuffer raw RGBA + ffmpeg 编码，同时保留原有多 worker 分段、fast restore、音频混合、最终 concat、retry/cache 与 count-frames 校验。缓存签名现包含 raw pipeline/codec/DOM 模式。默认导出仍保持旧 JPEG 路径，待完整场景验证后再考虑切换默认。
 
 完整 GPU raw JobRunner 增加并行扩展统计：输出实际渲染墙钟时间、聚合 FPS、实时倍速、各 part 渲染秒数之和、实测并行度与并行效率；每个 part 也记录自身输出 FPS/实时倍速。新增 `compare-gpu-scaling.ps1`，用于直接比较 1/4/8/16 worker 完整导出结果并计算相对首个 run 的 speedup。
+
+Terre 导出 GUI 新增“视频渲染管线”选项：兼容 JPEG→H.264、GPU Raw x264rgb、GPU Raw NVENC（NVIDIA）。默认保持兼容模式；并行数继续由用户在 1–32 范围内自行选择，不根据单一开发机写死甜点位。QueueService 会把持久化的 GUI raw 模式映射到正常 JobRunner GPU raw 参数，任务历史中也显示所选 codec。
