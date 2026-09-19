@@ -64,6 +64,14 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 
 第一阶段故意仍以现有 HWND 为捕获源，用于验证 WGC 的真实性能和逐帧可观测性；只有这一步通过后，才会把 WebView2 改成 CompositionController / CreateFromVisual 的正式离屏 GPU 路径。
 
+为避免完整导出等待，实验分支还提供 capture-only benchmark。它复用同一套 Planner、WebView2、剧情推进和资源加载，但跳过 `CapturePreviewAsync`、JPEG、FFmpeg 和成片合并。每个 worker 独立运行相同的短帧区间，适合观察并发 WGC 吞吐和 compositor 丢帧：
+
+```powershell
+.\WebGAL.Video.exe export --project "D:\Games\Project" --scene start.txt --out "D:\Temp\gpu-benchmark.json" --width 1920 --height 1080 --fps 60 --workers 4 --gpu high --gpu-benchmark 300
+```
+
+MyGO 工程继续附加已有的 `--engine mygo --mygo-root "..." ` 参数。benchmark JSON 会记录每个 worker 的 WebGL GPU、WGC adapter、是否成功匹配同一 DXGI adapter、capture FPS、唯一 marker FPS、重复/跳过/倒退 marker 和各初始化阶段耗时。
+
 ## 当前边界
 
 这是一份整理后的现有工程，而不是重新编写的独立编辑器。首次构建仍从固定安装器中抽取 WebGAL 运行快照和 WebView2 二进制资源；没有宣称从源码重建全部第三方引擎和 SDK。C# 内核、管理器、安装器、process-guard、launcher 及浏览器扩展均从本仓库源码构建。
