@@ -12,7 +12,9 @@
 
 实验分支构建新增 Visual Studio 2022 C++ Build Tools 与 Windows SDK 依赖；后续是否切换到 CompositionController → CreateFromVisual → GPU 编码，将以本轮真实工程测得的捕获吞吐和逐帧可靠性决定。
 
-根据首轮 RTX 4060 / 1080p60 实测，现有 JPEG `CapturePreviewAsync` 占单 worker 渲染时间约九成。新增 `--gpu-benchmark N` capture-only 模式，不再为了测 WGC 而完整编码视频；同时用 WebView2 的 ANGLE renderer 字符串匹配 DXGI adapter，优先让 WGC D3D11 device 与 WebView 使用同一 GPU。benchmark 帧编号改为直接绘制在 WebView DOM 内，避免 WinForms sibling overlay 未进入 WGC surface 的问题。
+根据首轮 RTX 4060 / 1080p60 实测，现有 JPEG `CapturePreviewAsync` 占单 worker 渲染时间约九成。新增 `--gpu-benchmark N` capture-only 模式，不再为了测 WGC 而完整编码视频；同时用 WebView2 的 ANGLE renderer 字符串匹配 DXGI adapter，优先让 WGC D3D11 device 与 WebView 使用同一 GPU。第二轮 8 worker 实测确认 WGC 与 WebView 均可稳定落在 RTX 4060，但屏外 HWND 的 WGC 到帧率只有约 6–7 fps。
+
+benchmark 帧编号现直接写入 Pixi 最终 WebGL framebuffer，与画面共享同一 GPU surface；另新增 `--gpu-benchmark-visible true` 单窗口可见模式，用于和屏外 HWND 做 DWM/compositor 节流对照。
 
 ## 0.4.11 / 安装器修订 0.4.11.0
 
