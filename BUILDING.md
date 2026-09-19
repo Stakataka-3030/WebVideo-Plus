@@ -88,7 +88,7 @@ WGC 仅用于 compositor 行为诊断。真正的原始帧候选使用 WebView2 
 
 结果包含每个 worker 的 `readbackSeconds`、`readbackFps`、`combinedFps`、`frameBytes` 和 `readbackGigabytesPerSecond`；完成后还会由宿主通过 `CoreWebView2SharedBuffer.OpenStream()` 读取一小段样本并记录 checksum，用来确认脚本写入与宿主读取确实落在同一共享缓冲区。
 
-WebGAL/Pixi 的原生舞台 framebuffer 是 2560×1440；这不是 Windows DPI 缩放。benchmark 支持 `--gpu-readback-mode direct|scale`：`direct` 直接 readPixels 原生 framebuffer，`scale` 则先在 WebGL2 内用 `blitFramebuffer(..., LINEAR)` 缩到请求输出尺寸再 readPixels。实测 RTX 4060 上 direct 明显更快，因此默认使用 direct，scale 仅保留为对照。结果中的 `sourceFrameBytes` 表示原生 1440p RGBA 数据量，`frameBytes` 表示本轮实际写入 SharedBuffer 的数据量。
+WebGAL/Pixi 的原生舞台 framebuffer 是 2560×1440；这不是 Windows DPI 缩放。benchmark 支持 `--gpu-readback-mode direct|scale|renderer`：`direct` 直接 readPixels 原生 framebuffer；`scale` 先在 WebGL2 内用 `blitFramebuffer(..., LINEAR)` 缩到请求输出尺寸再 readPixels；`renderer` 则把 Pixi renderer 直接 resize 到请求输出尺寸，同时按 WebGAL 2560×1440 逻辑舞台比例缩放 `app.stage`，再直接 readPixels。RTX 4060 实测 direct 比 scale 明显更快，renderer 用于验证是否能在不改变舞台坐标语义的前提下消除多余 1440p backing buffer。结果中的 `nativeDrawingBufferWidth/Height` 是模式切换前的原生 framebuffer，`drawingBufferWidth/Height` 是实际 readback framebuffer。
 
 加 `--gpu-readback-host-copy true` 后，宿主会在每帧 readPixels 完成后通过 `CoreWebView2SharedBuffer.OpenStream()` 将整帧读入复用的 C# byte[]，用来测量正式接 ffmpeg/native encoder 前不可避免的 SharedBuffer→host 消费成本。结果会额外记录 `hostCopySeconds`、`hostCopyFps`、`hostCopyGigabytesPerSecond` 和 `hostBytes`。
 
