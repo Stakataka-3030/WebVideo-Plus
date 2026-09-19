@@ -138,3 +138,13 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 ```
 
 脚本会以第一个 JSON 为基线输出 SpeedupVsFirst，并兼容旧的单 worker JSON（缺少新聚合字段时从 renderParts 回退计算）。
+
+### Terre GUI 中的 GPU raw 选项
+
+导出面板“高级设置”现提供“视频渲染管线”下拉框，默认仍为兼容模式，不按开发机自动选择并行数或编码器：
+
+- **兼容模式（JPEG → H.264）**：保持既有 CapturePreviewAsync 路径。
+- **GPU Raw · x264rgb**：使用 output-size Pixi + DOM 三层 GPU 合成 + SharedBuffer RGBA，再以 libx264rgb CRF0 编码；画质优先但文件体积大。
+- **GPU Raw · NVENC（NVIDIA）**：同一 raw 帧管线，后端使用 h264_nvenc CQ19；需要可用的 NVIDIA NVENC。
+
+并行数仍由用户在 GUI 中选择，支持 1–32 的整数及快捷值。项目不会依据开发机实测写死 8 worker 等“最佳值”；不同 CPU、GPU、显存、内存带宽和磁盘环境应由用户自行选择。GUI 的 `gpuRawMode` 会持久化到 settings，并由 QueueService 映射为 JobRunner 的 `gpuRawExport/gpuRawCodec/gpuRawDom` 请求字段。任务列表会显示当前 GPU Raw codec，便于区分历史任务。
