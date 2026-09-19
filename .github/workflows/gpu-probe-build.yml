@@ -1,0 +1,22 @@
+name: GPU probe build
+
+on:
+  push:
+    branches:
+      - exp/gpu-encode-pipeline
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download pinned bootstrap installer
+        shell: pwsh
+        run: Invoke-WebRequest -Uri "https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v0.4.10.2/WebVideo%2B-Setup-0.4.10.2.exe" -OutFile bootstrap-installer.exe
+      - name: Prepare pinned runtime
+        shell: pwsh
+        run: .\prepare-build.ps1 -InstallerPath .\bootstrap-installer.exe
+      - name: Build GPU probe and native kernel
+        shell: pwsh
+        run: .\build.ps1
