@@ -102,3 +102,5 @@ DOM GPU 合成继续拆层：将默认 TextBox 根容器约 0.7 秒的 opacity s
 修复 GPU DOM 三层缓存的两个 correctness 问题：逐字文字在 WebGAL 结算时会从 `.Textelement_start` 切换到 settled class，旧实现因此在 refresh 后把 final text 层误判为空；现为文字节点添加稳定的 `data-gpu-text-char` 标记，class 变化后仍保持身份。另修复 textbox 捕获层 selector specificity 被 `#root *` 压制的问题，提升到 `#root [data-gpu-textbox-root]`，恢复对话框背景、姓名和头像等静态内容。
 
 新增实验性完整 GPU raw 导出：`--gpu-raw-export x264rgb|nvenc` 将正常 JobRunner 的每个分片从 JPEG CapturePreviewAsync 路径切换为 output-size Pixi + DOM 三层 GPU 合成 + SharedBuffer raw RGBA + ffmpeg 编码，同时保留原有多 worker 分段、fast restore、音频混合、最终 concat、retry/cache 与 count-frames 校验。缓存签名现包含 raw pipeline/codec/DOM 模式。默认导出仍保持旧 JPEG 路径，待完整场景验证后再考虑切换默认。
+
+完整 GPU raw JobRunner 增加并行扩展统计：输出实际渲染墙钟时间、聚合 FPS、实时倍速、各 part 渲染秒数之和、实测并行度与并行效率；每个 part 也记录自身输出 FPS/实时倍速。新增 `compare-gpu-scaling.ps1`，用于直接比较 1/4/8/16 worker 完整导出结果并计算相对首个 run 的 speedup。
