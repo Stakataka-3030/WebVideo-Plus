@@ -80,6 +80,14 @@ MyGO 工程继续附加已有的 `--engine mygo --mygo-root "..." ` 参数。ben
 
 benchmark marker 直接写入 WebGL 最终 framebuffer 左上角的 64×8 像素区域，与 Pixi 画面共享同一 GPU surface，仅在 benchmark 模式启用且不会生成成片。
 
+WGC 仅用于 compositor 行为诊断。真正的原始帧候选使用 WebView2 SharedBuffer：宿主创建一块 `width × height × 4` 的共享内存并以 ReadWrite 方式发送给页面，页面在每次 Pixi render 后直接执行 `gl.readPixels(..., RGBA, UNSIGNED_BYTE, sharedUint8Array)`。下面的 benchmark 跳过 WGC、JPEG 和 FFmpeg，只测 WebGL→CPU shared memory 的逐帧吞吐：
+
+```powershell
+.\WebGAL.Video.exe export --project "D:\Games\Project" --scene start.txt --out "D:\Temp\gpu-readback.json" --width 1920 --height 1080 --fps 60 --workers 4 --gpu high --gpu-readback-benchmark 300
+```
+
+结果包含每个 worker 的 `readbackSeconds`、`readbackFps`、`combinedFps`、`frameBytes` 和 `readbackGigabytesPerSecond`；完成后还会由宿主通过 `CoreWebView2SharedBuffer.OpenStream()` 读取一小段样本并记录 checksum，用来确认脚本写入与宿主读取确实落在同一共享缓冲区。
+
 ## 当前边界
 
 这是一份整理后的现有工程，而不是重新编写的独立编辑器。首次构建仍从固定安装器中抽取 WebGAL 运行快照和 WebView2 二进制资源；没有宣称从源码重建全部第三方引擎和 SDK。C# 内核、管理器、安装器、process-guard、launcher 及浏览器扩展均从本仓库源码构建。
