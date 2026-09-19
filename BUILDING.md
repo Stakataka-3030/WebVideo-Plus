@@ -102,6 +102,8 @@ WebGAL/Pixi 的原生舞台 framebuffer 是 2560×1440；这不是 Windows DPI �
 
 RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB transfer；NVENC 路线也显式执行 PC→TV range 和 BT.709 matrix 转换。每次编码还会在 part 目录生成 `reference-first-frame.png`，它来自编码前同一张 raw RGBA 帧并仅做 vflip + RGB24，用来区分“raw readback 本身颜色不对”和“视频编码/播放器色彩解释不对”。result JSON 会记录 WebGL `premultipliedAlpha`、`drawingBufferColorSpace` 等上下文信息，并通过 ffprobe 回报输出的 `pix_fmt/color_range/color_space/color_transfer/color_primaries`。
 
+加 `--gpu-encode-dom true` 后，实验编码会把 DOM/UI 作为缓存层合入 Pixi framebuffer，而不是每帧 CapturePreview：页面通过 MutationObserver、可见 CSS animation 和可见 video currentTime 判断 DOM 是否需要刷新；仅在 dirty 时暂时隐藏 `#pixiCanvas`，通过 CDP `Page.captureScreenshot` + transparent default background 获取 DOM-only PNG，再把该 PNG 上传为 app.stage 最顶层 Pixi texture。DOM 不变的帧直接复用 texture。结果记录 `domCaptureCount/domCaptureSeconds/domUploadSeconds/domOverlayBytes`，并保存第一张 `dom-overlay-first.png` 便于检查透明度、缩放和位置。
+
 ## 当前边界
 
 这是一份整理后的现有工程，而不是重新编写的独立编辑器。首次构建仍从固定安装器中抽取 WebGAL 运行快照和 WebView2 二进制资源；没有宣称从源码重建全部第三方引擎和 SDK。C# 内核、管理器、安装器、process-guard、launcher 及浏览器扩展均从本仓库源码构建。
