@@ -126,3 +126,15 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 ```
 
 可选 `x264rgb`（RGB CRF0 无损视频基线）或 `nvenc`（H.264 NVENC CQ19 快速路线）；DOM 三层合成默认开启，可用 `--gpu-raw-dom false` 仅作舞台层诊断。该模式仍复用正常 Planner、分片、replayFrame 恢复、音频混合、concat 合并、完整 count-frames 校验和 retry/cache 机制；分片缓存签名会包含 raw pipeline、codec 与 DOM 开关，避免误复用旧 JPEG 分片。当前最终音频仍沿用既有 AAC 192k，因此 `x264rgb` 目前只代表视频无损，尚不是“全媒体无损”成片。
+
+### GPU raw 并行扩展指标
+
+正常 JobRunner 结果现在额外记录 `renderWallSeconds`、`aggregateFps`、`realtimeFactor`、`sumPartRenderSeconds`、`sequentialEquivalentFps`、`parallelismFactor` 与 `parallelEfficiency`。其中 `parallelismFactor = sum(part.renderSeconds) / renderWallSeconds`，表示本次任务实际获得的并行度；`parallelEfficiency = parallelismFactor / effectiveWorkers`，可直接观察 4/8/16 worker 的资源竞争损失。每个 `renderParts[]` 也会记录自身 `outputFps` 与 `realtimeFactor`。
+
+仓库根目录提供 `compare-gpu-scaling.ps1`，可把多次完整导出的 JSON 一次汇总。例如：
+
+```powershell
+.\compare-gpu-scaling.ps1 D:\Temp\gpu-full-x264rgb.json D:\Temp\gpu-full-x264rgb-4w.json D:\Temp\gpu-full-x264rgb-8w.json D:\Temp\gpu-full-x264rgb-16w.json
+```
+
+脚本会以第一个 JSON 为基线输出 SpeedupVsFirst，并兼容旧的单 worker JSON（缺少新聚合字段时从 renderParts 回退计算）。
