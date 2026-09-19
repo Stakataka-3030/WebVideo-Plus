@@ -1,12 +1,12 @@
 # 构建与发布
 
-当前分支产品版本 **0.5.0**，安装器内部版本 **0.5.0.0**，导出内核 **0.5.0**；当前最新公开 Release 仍为 **0.4.10.2**。开发于 Windows，使用系统 .NET Framework C# 编译器、Node 22.20.0，以及 GPU 捕获 PoC 所需的 Visual Studio 2022 C++ Build Tools。
+当前分支产品版本 **0.5.1**，安装器内部版本 **0.5.1.0**，导出内核 **0.5.1**；当前最新公开 Release 仍为 **0.4.10.2**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`manifest.mjs`、`build-product.ps1`、`configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
 ## 初次准备
 
-1. 使用 Windows PowerShell 5.1 或 PowerShell 7，安装 Node.js 22.20.0 或兼容版本。GPU 捕获 PoC 还需要 Visual Studio 2022 Build Tools 的 **Desktop development with C++** 工作负载以及 Windows 10/11 SDK（含 C++/WinRT 头文件）。
+1. 使用 Windows PowerShell 5.1 或 PowerShell 7，安装 Node.js 22.20.0 或兼容版本。
 2. 从 GitHub Release 下载当前已发布的 `WebVideo+-Setup-0.4.10.2.exe`。构建脚本从其中抽取固定的 WebGAL/WebView2 运行资源和既有许可文件，不会启动安装程序。该旧安装器不包含编译期 managed WebView2 SDK，因此 `prepare-build.ps1` 另行固定下载 Microsoft.Web.WebView2 `1.0.4191.47`，并保留其许可文本；不会解析 latest。
 3. 在仓库目录执行：
 
@@ -36,7 +36,7 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 
 输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules` 都不提交。脚本不依赖维护者个人目录；Node 位置由当前 PATH 解析。
 
-按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-0.5.0.exe`；Win32 安装器内部文件版本使用数字形式 `0.5.0.0`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
+按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-0.5.1.exe`；Win32 安装器内部文件版本使用数字形式 `0.5.1.0`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
 
 ## 开发快速构建
 
@@ -58,29 +58,11 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 
 普通构建会清空并重建 `dist/webvideo-plus/`，以正式构建产物为准。
 
-## GPU 捕获 PoC
+## GPU Raw 导出与性能诊断
 
-0.5.0 会额外构建 `gpu-capture-probe.exe`。在导出面板高级设置中启用“GPU 捕获实验诊断”后，探针通过 Windows.Graphics.Capture 抓取 BrowserHost 的 D3D11 surface，并读取窗口顶层的帧编号 marker；该诊断与实际成片渲染管线相互独立。GUI 默认会实测 NVENC 是否可用：可用时选择 NVENC，否则选择 x264rgb；“传统/兼容模式”仅在用户手动选择时使用。每个分片的 `result.json` 会写入 `gpuCaptureProbe`，用于判断捕获吞吐、重复帧、跳帧和 compositor 节拍。
+0.5.1 的正常导出使用 output-size Pixi renderer、WebView2 SharedBuffer raw RGBA 与 ffmpeg 编码。GUI 会实测 NVENC 是否可用：可用时默认选择 NVENC，否则默认选择 x264rgb；“传统/兼容模式”仅在用户手动选择时使用。升级自 0.5.0 实验构建时，旧的管线偏好会执行一次迁移并重新走自动选择，之后继续保留用户手动选择。
 
-第一阶段故意仍以现有 HWND 为捕获源，用于验证 WGC 的真实性能和逐帧可观测性；只有这一步通过后，才会把 WebView2 改成 CompositionController / CreateFromVisual 的正式离屏 GPU 路径。
-
-为避免完整导出等待，实验分支还提供 capture-only benchmark。它复用同一套 Planner、WebView2、剧情推进和资源加载，但跳过 `CapturePreviewAsync`、JPEG、FFmpeg 和成片合并。每个 worker 独立运行相同的短帧区间，适合观察并发 WGC 吞吐和 compositor 丢帧：
-
-```powershell
-.\WebGAL.Video.exe export --project "D:\Games\Project" --scene start.txt --out "D:\Temp\gpu-benchmark.json" --width 1920 --height 1080 --fps 60 --workers 4 --gpu high --gpu-benchmark 300
-```
-
-MyGO 工程继续附加已有的 `--engine mygo --mygo-root "..." ` 参数。benchmark JSON 会记录每个 worker 的 WebGL GPU、WGC adapter、是否成功匹配同一 DXGI adapter、capture FPS、唯一 marker FPS、重复/跳过/倒退 marker 和各初始化阶段耗时。
-
-为判断屏外窗口是否触发 DWM 节流，可用同一场景再跑一次可见窗口对照；该模式要求单 worker：
-
-```powershell
-.\WebGAL.Video.exe export --project "D:\Games\Project" --scene start.txt --out "D:\Temp\gpu-visible.json" --width 1920 --height 1080 --fps 60 --workers 1 --gpu high --gpu-benchmark 300 --gpu-benchmark-visible true
-```
-
-benchmark marker 直接写入 WebGL 最终 framebuffer 左上角的 64×8 像素区域，与 Pixi 画面共享同一 GPU surface，仅在 benchmark 模式启用且不会生成成片。
-
-WGC 仅用于 compositor 行为诊断。真正的原始帧候选使用 WebView2 SharedBuffer：宿主创建一块 `width × height × 4` 的共享内存并以 ReadWrite 方式发送给页面，页面在每次 Pixi render 后直接执行 `gl.readPixels(..., RGBA, UNSIGNED_BYTE, sharedUint8Array)`。下面的 benchmark 跳过 WGC、JPEG 和 FFmpeg，只测 WebGL→CPU shared memory 的逐帧吞吐：
+原始帧路径使用 WebView2 SharedBuffer：宿主创建一块 `width × height × 4` 的共享内存并以 ReadWrite 方式发送给页面，页面在每次 Pixi render 后直接执行 `gl.readPixels(..., RGBA, UNSIGNED_BYTE, sharedUint8Array)`。下面的 benchmark 跳过 JPEG 和 FFmpeg，只测 WebGL→CPU shared memory 的逐帧吞吐：
 
 ```powershell
 .\WebGAL.Video.exe export --project "D:\Games\Project" --scene start.txt --out "D:\Temp\gpu-readback.json" --width 1920 --height 1080 --fps 60 --workers 4 --gpu high --gpu-readback-benchmark 300

@@ -4,7 +4,7 @@
 
 [下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前开发版本：0.5.0（安装器内部版本 0.5.0.0，导出内核 0.5.0）；当前最新已发布版本仍为 0.4.10 / 0.4.10.2。**
+**当前开发版本：0.5.1（安装器内部版本 0.5.1.0，导出内核 0.5.1）；当前最新已发布版本仍为 0.4.10 / 0.4.10.2。**
 
 最新发布文件：`WebVideo+-Setup-0.4.10.2.exe`
 
@@ -72,7 +72,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于 `%LOCALAPPDATA%/WebVideoPl
 - 手动预制效果：`%LOCALAPPDATA%/WebVideoPlus/preset-effects/effects.json`
 - Anogo 动作对应表：`%LOCALAPPDATA%/WebVideoPlus/anogo-actions/actions.json`
 
-为保证 Terre 4.6.4 的补丁锚点可复现，仓库包含 `baseline/terre-4.6.4.js` 和 `baseline/local-baseline.json`。前者是固定 Terre 4.6.4 发布 bundle；后者保留建立基线时的校验元数据，其中 `baseHash` 会被当前构建脚本写入 `supportedOriginalBundleSha256`。`local-baseline.json` 中的旧 `kernel` 字段和旧文件哈希属于历史验证信息，不代表当前 WebVideo+ 内核版本；当前构建使用 `0.3.15-internal`。
+为保证 Terre 4.6.4 的补丁锚点可复现，仓库包含 `baseline/terre-4.6.4.js` 和 `baseline/local-baseline.json`。前者是固定 Terre 4.6.4 发布 bundle；后者保留建立基线时的校验元数据，其中 `baseHash` 会被当前构建脚本写入 `supportedOriginalBundleSha256`。`local-baseline.json` 中的旧 `kernel` 字段和旧文件哈希属于历史验证信息，不代表当前 WebVideo+ 内核版本；当前构建使用 `0.5.1`。
 
 ## 许可证
 
