@@ -6,7 +6,7 @@
 
 - **OpenWebGAL / WebGAL Terre 4.6.4**：WebVideo+ 的编辑器基座。仓库中的 `baseline/terre-4.6.4.js` 用于精确挂载定位；相关 MPL-2.0 文本保存在本目录。
 - **OpenWebGAL / WebGAL 4.6.4**：播放引擎和导出运行资源的上游。构建时从固定安装器中抽取对应运行快照，而不是在本仓库内重新构建完整 WebGAL。
-- **Microsoft WebView2**：C# 原生导出与嵌入浏览器运行环境。构建所需 SDK/loader 二进制从固定安装器中抽取，许可文件随包保留。
+- **Microsoft WebView2**：C# 原生导出与嵌入浏览器运行环境。运行资源继续来自固定的 0.4.10.2 bootstrap；当前源码构建缺失的 managed SDK/loader 固定使用 Microsoft.Web.WebView2 1.0.4191.47 NuGet 包补齐，不解析 latest，并随包保留相应许可文本。
 - **FFmpeg / ffprobe**：视频编码、媒体探测和音频混合。安装器在缺少可用版本时按固定版本获取；FFmpeg 适用其自身许可。
 - **Node.js**：仅用于可选 AI 运行环境及构建工具。启用 AI 模块时随其运行目录提供固定 Node 可执行文件。
 - **DeepSeek Harness / DSH 0.1.5-rc.1** 与 **@earendil-works/pi-ai 0.85.1**：可选 AI 模块的多提供商、流式协议和模型目录基础。版本由 `ai-runtime/package-lock.json` 固定。
