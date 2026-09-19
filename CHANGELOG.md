@@ -90,3 +90,5 @@ OpenCode Go 请求使用真实 WebVideo+ 客户端标识与当前配置会话 ID
 
 排除所有角色目录中的 `.mtn_exp` 辅助模型入口。角色表补充正文角色和昵称，并已按维护决定清除重复 ID，当前共 137 行。
 修复 x264rgb 色彩诊断版启动失败：`-colorspace gbr` 会被 libx264rgb 私有选项解析器拒绝，导致 ffmpeg 提前退出并在宿主侧表现为 broken pipe。现改用 `-x264-params fullrange=on:colorprim=bt709:transfer=iec61966-2-1`，同时保留 RGB 自动 GBR matrix；raw pipe 写入失败时会直接附带 ffmpeg stderr。
+
+新增 GPU DOM/UI 缓存合成 PoC：`--gpu-encode-dom true` 使用 MutationObserver + 可见动画/视频状态检测 dirty，仅在 DOM 视觉变化时隐藏 Pixi canvas 并通过 CDP 截透明 DOM-only PNG，再把 overlay 缓存为 Pixi 顶层 texture；后续 raw readback 因此仍然只读取一张完整 framebuffer。结果记录 DOM capture/upload 次数与耗时，并保留首张 overlay PNG 便于检查 alpha 和定位。
