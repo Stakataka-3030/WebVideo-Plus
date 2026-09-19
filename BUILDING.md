@@ -117,9 +117,9 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 
 对话框整体淡入进一步走 GPU：WebGAL 默认 TextBox 根容器使用约 0.7s 的 opacity `showSoftly` 动画，60fps 下本身就会造成约 42 次 DOM refresh。DOM 缓存现拆成 base / textbox / text 三层：base 不含 TextBox；textbox 捕获对话框、姓名、头像等静态内容并强制根 opacity=1；text 仅捕获逐字文字最终态。运行时 Pixi 每帧读取真实 TextBox 根节点 computed opacity，直接设置 textbox GPU container alpha，并继续用逐字 alpha mask 控制 text 层。因此默认 TextBox 整体淡入和逐字淡入都不再触发截图。若自定义主题给 TextBox 根节点使用 transform/filter 等非 opacity 动画，仍保留 DOM refresh fallback 以优先保证正确性。
 
-### 实验性完整 GPU raw 导出
+### 完整 GPU raw 导出
 
-在 benchmark 路径验证 Pixi output-size renderer、SharedBuffer、DOM 三层 GPU 合成和 raw encoder 后，正常 JobRunner 现可通过 CLI 显式切换整条视频分片渲染管线，而不改变默认 JPEG 导出：
+在 benchmark 路径验证 Pixi output-size renderer、SharedBuffer、DOM 三层 GPU 合成和 raw encoder 后，正常 JobRunner 已接入整条 GPU raw 视频分片渲染管线。CLI 默认使用 `auto`：实测 NVENC 可用则选择 NVENC，否则选择 x264rgb；如需旧路径可显式指定 `--gpu-raw-export traditional`：
 
 ```powershell
 .\WebGAL.Video.exe export --project "D:\Games\Project" --scene start.txt --out "D:\Temp\gpu-full.mp4" --width 1920 --height 1080 --fps 60 --workers 1 --gpu high --gpu-raw-export x264rgb
@@ -141,9 +141,9 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 
 ### Terre GUI 中的 GPU raw 选项
 
-导出面板“高级设置”现提供“视频渲染管线”下拉框，默认仍为兼容模式，不按开发机自动选择并行数或编码器：
+导出面板“高级设置”提供“视频渲染管线”下拉框。默认会实测 NVENC 是否可用：可用时选择 NVENC，否则选择 x264rgb；传统/兼容模式仅在用户手动选择时使用：
 
-- **兼容模式（JPEG → H.264）**：保持既有 CapturePreviewAsync 路径。
+- **传统/兼容模式**：保持既有 CapturePreviewAsync JPEG → H.264 路径，用于 GPU raw 渲染出现兼容问题时回退。
 - **GPU Raw · x264rgb**：使用 output-size Pixi + DOM 三层 GPU 合成 + SharedBuffer RGBA，再以 libx264rgb CRF0 编码；画质优先但文件体积大。
 - **GPU Raw · NVENC（NVIDIA）**：同一 raw 帧管线，后端使用 h264_nvenc CQ19；需要可用的 NVIDIA NVENC。
 
