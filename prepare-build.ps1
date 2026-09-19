@@ -21,6 +21,14 @@ try{$taskStream.CopyTo($taskFile)}finally{$taskFile.Dispose();$taskStream.Dispos
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $taskZip=[IO.Compression.ZipFile]::OpenRead($taskArchive)
 try{foreach($taskEntry in $taskZip.Entries){if(-not $taskEntry.FullName.StartsWith('webvideo-plus/')){continue};$taskRelative=$taskEntry.FullName.Substring('webvideo-plus/'.Length);if(-not($taskRelative -match '^(runtime/|bin/|licenses/|component\.json$|WebGAL\.Video\.exe\.config$|Microsoft\.Web\.WebView2\.[^/]+\.dll$|WebView2Loader\.dll$)')){continue};if(-not $taskEntry.Name){continue};$taskTarget=[IO.Path]::GetFullPath((Join-Path $taskOut $taskRelative));if(-not $taskTarget.StartsWith([IO.Path]::GetFullPath($taskOut)+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Invalid archive path'};New-Item -ItemType Directory -Path (Split-Path $taskTarget -Parent) -Force | Out-Null;[IO.Compression.ZipFileExtensions]::ExtractToFile($taskEntry,$taskTarget,$true)}}finally{$taskZip.Dispose()}
+foreach($taskName in @('Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll')){
+ $taskTarget=Join-Path $taskOut $taskName
+ if(-not(Test-Path $taskTarget)){
+  $taskCandidate=Get-ChildItem -LiteralPath $taskOut -Recurse -File -Filter $taskName | Select-Object -First 1
+  if($null -ne $taskCandidate){Copy-Item -LiteralPath $taskCandidate.FullName -Destination $taskTarget -Force}
+ }
+ if(-not(Test-Path $taskTarget)){throw ('Bootstrap payload does not contain required WebView2 SDK assembly: '+$taskName)}
+}
 New-Item -ItemType Directory -Path (Join-Path $taskOut 'browser'),(Join-Path $taskOut 'integration') -Force | Out-Null
 Copy-Item -Path (Join-Path $taskRoot 'browser/*.js') -Destination (Join-Path $taskOut 'browser') -Force
 Copy-Item -Path (Join-Path $taskRoot 'licenses/*') -Destination (Join-Path $taskOut 'licenses') -Force
