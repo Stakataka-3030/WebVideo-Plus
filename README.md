@@ -2,19 +2,11 @@
 
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [0.5.3 发行说明](RELEASE_NOTES_0.5.3.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前开发版本：0.5.1（安装器内部版本 0.5.1.0，导出内核 0.5.1）；当前最新已发布版本仍为 0.4.10 / 0.4.10.2。**
+**当前源码版本：0.5.3（安装器内部版本 0.5.3.0，导出内核 0.5.3）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
 
-最新发布文件：`WebVideo+-Setup-0.4.10.2.exe`
-
-SHA-256：
-
-```text
-a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
-```
-
-0.4.10.2 已完成标准 Terre、MyGO 分发版和 Steam 版的本机安装/卸载回归。当前适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
+当前适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
 
 ## 主要功能
 
@@ -27,6 +19,20 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 - **导入 Anogo 故事**：接收粘贴文本及 JSON/YAML 文件，转换后追加故事；动作导入默认关闭，待核对项由作者检查。
 - **检查与标记 / 备份与恢复**：提供制作提醒、待核对标签、历史备份与确认回滚；打开游戏和整十分钟自动备份分别保留最新一份。
 - **游戏工具收纳**：可将场景分支、鉴赏和游戏控制等入口集中到“游戏工具”。
+
+## 视频导出（0.5.x）
+
+0.5.x 的默认导出已经从逐帧 JPEG CapturePreview 切换到 GPU Raw 管线：Pixi 按输出尺寸渲染，DOM/UI 通过三层缓存合入最终 framebuffer，再以 WebView2 SharedBuffer 把 RGBA 帧送入 FFmpeg。
+
+导出面板提供三种模式：
+
+- **NVENC**：支持 NVIDIA NVENC 的机器优先自动选择；速度最快、画质较高，但当前 H.264 CQ19 配置不是无损。
+- **x264rgb**：RGB 视频无损，普遍可用于浏览器、Bilibili 上传和 Premiere 等工作流；文件较大，部分 Windows 自带播放器可能兼容性较差。
+- **传统/兼容模式**：保留旧 JPEG → H.264 路径，用于 GPU Raw 出现兼容问题时回退。
+
+并行数支持 1–32，但更多进程不一定更快。Planner 会按剧情安全点和 DOM workload 估算分配分片，且分片数不会超过有效 worker 数，避免额外 WebView2 冷启动。**1080p 是常规推荐档，1440p 适合需要更高输出分辨率的场景；4K 每帧像素量约为 1080p 的 4 倍，建议 2–4 worker。若原始背景、立绘或 Live2D 贴图本身不是 4K，通常不会获得更多真实细节。**
+
+更完整的 0.4.10.2 → 0.5.3 变化见 [0.5.3 发行说明](RELEASE_NOTES_0.5.3.md)。
 
 ## 两轮基础舞台
 
@@ -52,7 +58,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于 `%LOCALAPPDATA%/WebVideoPl
 
 ## 安装与模块管理
 
-1. 从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 下载 `WebVideo+-Setup-0.4.10.2.exe`。
+1. 从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 下载最新的 `WebVideo+-Setup-*.exe`。
 2. 运行安装器并选择已有 **Terre 4.6.4** 安装目录。
 3. 默认安装常用模块；在高级选项中可单独增删功能。灰选项目表示其他已选模块所需依赖。
 4. 完成后照常启动 Terre。
@@ -72,7 +78,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于 `%LOCALAPPDATA%/WebVideoPl
 - 手动预制效果：`%LOCALAPPDATA%/WebVideoPlus/preset-effects/effects.json`
 - Anogo 动作对应表：`%LOCALAPPDATA%/WebVideoPlus/anogo-actions/actions.json`
 
-为保证 Terre 4.6.4 的补丁锚点可复现，仓库包含 `baseline/terre-4.6.4.js` 和 `baseline/local-baseline.json`。前者是固定 Terre 4.6.4 发布 bundle；后者保留建立基线时的校验元数据，其中 `baseHash` 会被当前构建脚本写入 `supportedOriginalBundleSha256`。`local-baseline.json` 中的旧 `kernel` 字段和旧文件哈希属于历史验证信息，不代表当前 WebVideo+ 内核版本；当前构建使用 `0.5.1`。
+为保证 Terre 4.6.4 的补丁锚点可复现，仓库包含 `baseline/terre-4.6.4.js` 和 `baseline/local-baseline.json`。前者是固定 Terre 4.6.4 发布 bundle；后者保留建立基线时的校验元数据，其中 `baseHash` 会被当前构建脚本写入 `supportedOriginalBundleSha256`。`local-baseline.json` 中的旧 `kernel` 字段和旧文件哈希属于历史验证信息，不代表当前 WebVideo+ 内核版本；当前构建使用 `0.5.3`。
 
 ## 许可证
 
@@ -113,7 +119,7 @@ WebVideo+ 建立在多个开源项目、公开技术资料和社区贡献之上�
 | --- | --- |
 | [xxSak1xx/webgal-skill](https://github.com/xxSak1xx/webgal-skill) | 最初的工作流、助手提示词和高级演出特效资料的重要来源；当前工具不是其 MCP 写入链的直接封装。 |
 | [floatDreamWithSong/webgal-tools](https://github.com/floatDreamWithSong/webgal-tools) | 早期资产扫描与场景读写方案研究；当前发布包不依赖其 MCP 服务。 |
-| [microsoft/playwright](https://github.com/microsoft/playwright) / [electron/electron](https://github.com/electron/electron) | 早期浏览器自动化、捕获与导出原型研究。当前 0.4.10.2 导出核心使用 C# + WebView2，不捆绑 Playwright 或 Electron 运行时。 |
+| [microsoft/playwright](https://github.com/microsoft/playwright) / [electron/electron](https://github.com/electron/electron) | 早期浏览器自动化、捕获与导出原型研究。当前导出核心使用 C# + WebView2，不捆绑 Playwright 或 Electron 运行时。 |
 
 React、Fluent UI、IconPark、TanStack Virtual、Zustand、Monaco Editor、PixiJS、pixi-filters、Popmotion、Redux Toolkit、localForage 以及 Live2D 显示库等主要通过 Terre/WebGAL 上游继承。WebVideo+ 会调用其现有接口，但不因此把这些项目改成 WebVideo+ 自有代码或统一许可。更完整的传递依赖以 Terre/WebGAL 4.6.4 的包清单与许可文件为准。
 

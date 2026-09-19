@@ -2,6 +2,8 @@
 
 ## 0.5.3 / 安装器内部版本 0.5.3.0
 
+完整发行说明：[RELEASE_NOTES_0.5.3.md](RELEASE_NOTES_0.5.3.md)
+
 **4K 导出提示与稳定 readback。** 保留 0.5.2 的 DOM workload 成本切点优化，但撤回未观察到可见收益的 PBO ring 正式路径，GPU raw 导出恢复直接 `gl.readPixels(..., sharedUint8Array)` → SharedBuffer → host → ffmpeg。移除 PBO 专用结果字段，继续保留 readback / host copy / pipe 等稳定性能统计。
 
 导出界面在选择 2160p（4K）时显式提示：4K 像素量约为 1080p 的 4 倍，预期导出速度明显下降，过高并行数可能进一步恶化性能，建议 2–4 worker；若原始素材本身不是 4K，通常不会获得更多实际细节，常规成片优先推荐 1080p 或 1440p。
