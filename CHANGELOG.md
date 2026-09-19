@@ -101,10 +101,10 @@ DOM GPU 合成继续拆层：将默认 TextBox 根容器约 0.7 秒的 opacity s
 
 修复 GPU DOM 三层缓存的两个 correctness 问题：逐字文字在 WebGAL 结算时会从 `.Textelement_start` 切换到 settled class，旧实现因此在 refresh 后把 final text 层误判为空；现为文字节点添加稳定的 `data-gpu-text-char` 标记，class 变化后仍保持身份。另修复 textbox 捕获层 selector specificity 被 `#root *` 压制的问题，提升到 `#root [data-gpu-textbox-root]`，恢复对话框背景、姓名和头像等静态内容。
 
-新增实验性完整 GPU raw 导出：`--gpu-raw-export x264rgb|nvenc` 将正常 JobRunner 的每个分片从 JPEG CapturePreviewAsync 路径切换为 output-size Pixi + DOM 三层 GPU 合成 + SharedBuffer raw RGBA + ffmpeg 编码，同时保留原有多 worker 分段、fast restore、音频混合、最终 concat、retry/cache 与 count-frames 校验。缓存签名现包含 raw pipeline/codec/DOM 模式。默认导出仍保持旧 JPEG 路径，待完整场景验证后再考虑切换默认。
+完整 GPU raw 导出已接入正常 JobRunner：每个分片可使用 output-size Pixi + DOM 三层 GPU 合成 + SharedBuffer raw RGBA + ffmpeg 编码，同时保留原有多 worker 分段、fast restore、音频混合、最终 concat、retry/cache 与 count-frames 校验。默认模式改为硬件感知自动选择：NVENC 实际可用时默认 NVENC，否则默认 x264rgb；旧 JPEG CapturePreview 路径保留为“传统/兼容模式”。缓存签名包含 raw pipeline/codec/DOM 模式。
 
 完整 GPU raw JobRunner 增加并行扩展统计：输出实际渲染墙钟时间、聚合 FPS、实时倍速、各 part 渲染秒数之和、实测并行度与并行效率；每个 part 也记录自身输出 FPS/实时倍速。新增 `compare-gpu-scaling.ps1`，用于直接比较 1/4/8/16 worker 完整导出结果并计算相对首个 run 的 speedup。
 
-Terre 导出 GUI 新增“视频渲染管线”选项：兼容 JPEG→H.264、GPU Raw x264rgb、GPU Raw NVENC（NVIDIA）。默认保持兼容模式；并行数继续由用户在 1–32 范围内自行选择，不根据单一开发机写死甜点位。QueueService 会把持久化的 GUI raw 模式映射到正常 JobRunner GPU raw 参数，任务历史中也显示所选 codec。
+Terre 导出 GUI 提供“视频渲染管线”选项：x264rgb、NVENC、传统/兼容模式。NVENC 实际可用时默认 NVENC，否则默认 x264rgb；传统/兼容模式不默认选中。并行数继续由用户在 1–32 范围内自行选择，不根据单一开发机写死甜点位。问号提示说明 x264rgb 的普遍兼容性、NVENC 的 NVIDIA 限制，以及传统模式作为渲染问题回退路径。
 
 修复构建元数据版本漂移：staged product.json/component.json 现在统一读取 version.json，不再被 build-timeline/build-feature-assets 覆盖成旧 0.4.x/0.3.x 常量。
