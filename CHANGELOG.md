@@ -100,3 +100,5 @@ DOM/UI PoC 继续优化：确认 WebGAL 逐字显示主要由 `.Textelement_star
 DOM GPU 合成继续拆层：将默认 TextBox 根容器约 0.7 秒的 opacity showSoftly 动画也从 DOM screenshot 中剥离。缓存现为 base/textbox/text 三层；Pixi 每帧用真实 TextBox computed opacity 控制整个对话框 GPU container alpha，同时逐字文字继续使用 alpha mask。这样默认对话框淡入不再产生约 40 余次截图；非 opacity 的自定义 TextBox 动画仍走正确性优先的 DOM refresh fallback。
 
 修复 GPU DOM 三层缓存的两个 correctness 问题：逐字文字在 WebGAL 结算时会从 `.Textelement_start` 切换到 settled class，旧实现因此在 refresh 后把 final text 层误判为空；现为文字节点添加稳定的 `data-gpu-text-char` 标记，class 变化后仍保持身份。另修复 textbox 捕获层 selector specificity 被 `#root *` 压制的问题，提升到 `#root [data-gpu-textbox-root]`，恢复对话框背景、姓名和头像等静态内容。
+
+新增实验性完整 GPU raw 导出：`--gpu-raw-export x264rgb|nvenc` 将正常 JobRunner 的每个分片从 JPEG CapturePreviewAsync 路径切换为 output-size Pixi + DOM 三层 GPU 合成 + SharedBuffer raw RGBA + ffmpeg 编码，同时保留原有多 worker 分段、fast restore、音频混合、最终 concat、retry/cache 与 count-frames 校验。缓存签名现包含 raw pipeline/codec/DOM 模式。默认导出仍保持旧 JPEG 路径，待完整场景验证后再考虑切换默认。
