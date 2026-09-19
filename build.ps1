@@ -2,6 +2,9 @@ $ErrorActionPreference = 'Stop'
 $taskRoot = $PSScriptRoot
 $taskOut = Join-Path $taskRoot 'package'
 $taskCompiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+$taskBrowser=Join-Path $taskOut 'browser'
+New-Item -ItemType Directory -Path $taskBrowser -Force | Out-Null
+Copy-Item -Path (Join-Path $taskRoot 'browser/*.js') -Destination $taskBrowser -Force
 $taskSources = Get-ChildItem -LiteralPath (Join-Path $taskRoot 'src') -Filter '*.cs' | ForEach-Object { $_.FullName }
 & (Join-Path $taskRoot 'build-gpu-probe.ps1') -OutputDir $taskOut
 if ($LASTEXITCODE -ne 0) { throw 'GPU capture probe build failed' }
