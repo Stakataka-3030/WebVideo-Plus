@@ -113,3 +113,4 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 安装器的 AI 勾选框位于主界面，标记 Beta，并有 API Key 提示。AI 运行环境随包离线提供，仅启用时部署。
 
 源码可复现当前 WebVideo+ 自有部分的构建；由固定安装器抽取的第三方二进制仍按其各自来源与许可处理。完整来源和许可说明见 `NOTICE.md` 与 `licenses/THIRD-PARTY.md`。
+逐字文字动画优化：WebGAL 会预先把整句文字节点放入 DOM，并通过 `.Textelement_start` 上的约 1s opacity 动画和逐字 animation-delay 实现淡入。DOM GPU PoC 因此在真正 DOM refresh 时同时缓存两张 overlay（动态文字隐藏的 static UI、动态文字强制最终态的 final UI），随后用 Pixi RenderTexture alpha mask 按每个文字元素的实时 computed opacity 在 GPU 上逐帧还原淡入；这类文字动画不再触发 CDP screenshot。结果中的 `domRefreshCount` 是 DOM 内容/非文字动画触发的重新 rasterize 次数，`domCaptureCount` 是实际 screenshot 次数（每次 refresh 当前为两张），`domAnimationSeconds` 是 GPU mask 更新耗时。
