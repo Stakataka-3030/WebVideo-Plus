@@ -16,6 +16,8 @@
 
 benchmark 帧编号现直接写入 Pixi 最终 WebGL framebuffer，与画面共享同一 GPU surface；另新增 `--gpu-benchmark-visible true` 单窗口可见模式，用于和屏外 HWND 做 DWM/compositor 节流对照。
 
+可见/屏外对照确认 WGC 到帧率与窗口可见性几乎无关，compositor 路线不适合作为离线逐帧帧源。因此新增 `--gpu-readback-benchmark N`：通过 WebView2 SharedBuffer 把宿主共享内存直接暴露为页面 ArrayBuffer，每帧用 `gl.readPixels` 写入共享内存，单独测量 raw RGBA readback 的 fps、带宽以及与逻辑渲染合并后的吞吐；该路径完全绕过 JPEG、FFmpeg 与 Windows.Graphics.Capture。
+
 ## 0.4.11 / 安装器修订 0.4.11.0
 
 **待发布。** 当前主分支产品版本为 `0.4.11`，导出内核为 `0.3.16-internal`；下一次正式构建将生成 `WebVideo+-Setup-0.4.11.0.exe`。
