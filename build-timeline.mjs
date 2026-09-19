@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 const root=path.dirname(fileURLToPath(import.meta.url));
+const versions=JSON.parse(fs.readFileSync(path.join(root,'version.json'),'utf8'));
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 await import('./build-navigation-metadata.mjs');
 const id='[A-Za-z_$][A-Za-z0-9_$]*';
@@ -67,5 +68,5 @@ const launcherStart=host.indexOf('function WebVideoSelectionButton(){');if(launc
 fs.writeFileSync(path.join(root,'package/timeline/selector-launcher.js'),host.slice(launcherStart));
 fs.writeFileSync(path.join(root,'package/timeline/timeline-host.js'),read('browser/selection-controls.js')+'\n'+read('browser/navigation-view.js')+'\n'+host.slice(0,launcherStart));
 fs.writeFileSync(path.join(root,'package/timeline/patches.json'),JSON.stringify(patches,null,2));
-fs.writeFileSync(path.join(root,'package/product.json'),JSON.stringify({name:'WebVideo+',version:'0.4.10',kernelVersion:'0.3.14-internal',terreVersion:'4.6.4',modules:{timelineNavigator:{dependencies:['timelineCore'],files:['timeline/navigator.js']},timelineSelector:{dependencies:['timelineCore'],files:['timeline/selector.js','timeline/selector-launcher.js']},exporter:{dependencies:['exportKernel','WebView2','FFmpeg']}},supportedOriginalBundleSha256:JSON.parse(read('baseline/local-baseline.json')).baseHash},null,2));
+fs.writeFileSync(path.join(root,'package/product.json'),JSON.stringify({name:'WebVideo+',version:versions.productVersion,kernelVersion:versions.kernelVersion,terreVersion:'4.6.4',modules:{timelineNavigator:{dependencies:['timelineCore'],files:['timeline/navigator.js']},timelineSelector:{dependencies:['timelineCore'],files:['timeline/selector.js','timeline/selector-launcher.js']},exporter:{dependencies:['exportKernel','WebView2','FFmpeg']}},supportedOriginalBundleSha256:JSON.parse(read('baseline/local-baseline.json')).baseHash},null,2));
 console.log('Timeline assets and exact Terre integration anchors verified.');
