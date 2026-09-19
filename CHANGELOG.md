@@ -106,3 +106,5 @@ DOM GPU 合成继续拆层：将默认 TextBox 根容器约 0.7 秒的 opacity s
 完整 GPU raw JobRunner 增加并行扩展统计：输出实际渲染墙钟时间、聚合 FPS、实时倍速、各 part 渲染秒数之和、实测并行度与并行效率；每个 part 也记录自身输出 FPS/实时倍速。新增 `compare-gpu-scaling.ps1`，用于直接比较 1/4/8/16 worker 完整导出结果并计算相对首个 run 的 speedup。
 
 Terre 导出 GUI 新增“视频渲染管线”选项：兼容 JPEG→H.264、GPU Raw x264rgb、GPU Raw NVENC（NVIDIA）。默认保持兼容模式；并行数继续由用户在 1–32 范围内自行选择，不根据单一开发机写死甜点位。QueueService 会把持久化的 GUI raw 模式映射到正常 JobRunner GPU raw 参数，任务历史中也显示所选 codec。
+
+修复构建元数据版本漂移：staged product.json/component.json 现在统一读取 version.json，不再被 build-timeline/build-feature-assets 覆盖成旧 0.4.x/0.3.x 常量。
