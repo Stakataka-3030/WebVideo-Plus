@@ -7,7 +7,7 @@ $source=Join-Path $taskRoot 'gpu/GpuCaptureProbe.cpp'
 $output=Join-Path $OutputDir 'gpu-capture-probe.exe'
 $direct=Get-Command cl.exe -ErrorAction SilentlyContinue
 if($direct){
- & $direct.Source /nologo /std:c++17 /EHsc /O2 /MT /utf-8 /DUNICODE /D_UNICODE /DWIN32_LEAN_AND_MEAN $source ('/Fe:'+$output) /link d3d11.lib dxgi.lib windowsapp.lib user32.lib
+ & $direct.Source /nologo /std:c++20 /EHsc /O2 /MT /utf-8 /DUNICODE /D_UNICODE /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS $source ('/Fe:'+$output) /link d3d11.lib dxgi.lib windowsapp.lib user32.lib
  if($LASTEXITCODE -ne 0){throw 'GPU capture probe build failed'}
 }else{
  $pf86=[Environment]::GetFolderPath('ProgramFilesX86')
@@ -22,7 +22,7 @@ if($direct){
   @"
 @echo off
 call "$vcvars" >nul
-cl.exe /nologo /std:c++17 /EHsc /O2 /MT /utf-8 /DUNICODE /D_UNICODE /DWIN32_LEAN_AND_MEAN "$source" /Fe:"$output" /link d3d11.lib dxgi.lib windowsapp.lib user32.lib
+cl.exe /nologo /std:c++20 /EHsc /O2 /MT /utf-8 /DUNICODE /D_UNICODE /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS "$source" /Fe:"$output" /link d3d11.lib dxgi.lib windowsapp.lib user32.lib
 "@ | Set-Content -LiteralPath $cmd -Encoding ascii
   & cmd.exe /d /c $cmd
   if($LASTEXITCODE -ne 0){throw 'GPU capture probe build failed. Ensure the Windows SDK C++/WinRT headers are installed.'}
