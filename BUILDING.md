@@ -1,12 +1,12 @@
 # 构建与发布
 
-当前源码产品版本 **0.4.11**，下一安装器修订 **0.4.11.0**，内核 **0.3.15-internal**；当前最新公开 Release 仍为 **0.4.10.2**。开发于 Windows，使用系统 .NET Framework C# 编译器及 Node 22.20.0。
+当前实验分支产品版本 **0.5.0-rc1**，安装器内部版本 **0.5.0.1**，导出内核 **0.4.0-rc1-internal**；当前最新公开 Release 仍为 **0.4.10.2**。开发于 Windows，使用系统 .NET Framework C# 编译器、Node 22.20.0，以及 GPU 捕获 PoC 所需的 Visual Studio 2022 C++ Build Tools。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`manifest.mjs`、`build-product.ps1`、`configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
 ## 初次准备
 
-1. 使用 Windows PowerShell 5.1 或 PowerShell 7，安装 Node.js 22.20.0 或兼容版本。
+1. 使用 Windows PowerShell 5.1 或 PowerShell 7，安装 Node.js 22.20.0 或兼容版本。GPU 捕获 PoC 还需要 Visual Studio 2022 Build Tools 的 **Desktop development with C++** 工作负载以及 Windows 10/11 SDK（含 C++/WinRT 头文件）。
 2. 从 GitHub Release 下载当前已发布的 `WebVideo+-Setup-0.4.10.2.exe`。构建脚本只从其中抽取固定版本的 WebView2 SDK、WebGAL 导出运行资源和许可文件，不会启动安装程序。
 3. 在仓库目录执行：
 
@@ -36,7 +36,7 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 
 输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules` 都不提交。脚本不依赖维护者个人目录；Node 位置由当前 PATH 解析。
 
-按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-0.4.11.0.exe`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
+按当前 `version.json`，预发布构建产物为 `dist/WebVideo+-Setup-0.5.0-rc1.exe`；Win32 安装器内部文件版本使用数字形式 `0.5.0.1`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
 
 ## 开发快速构建
 
@@ -57,6 +57,12 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 ```
 
 普通构建会清空并重建 `dist/webvideo-plus/`，以正式构建产物为准。
+
+## GPU 捕获 PoC
+
+0.5.0-rc1 的实验导出器会额外构建 `gpu-capture-probe.exe`。在导出面板高级设置中启用“GPU 捕获实验诊断”后，正常成片仍沿用现有 JPEG → H.264 编码，同时探针通过 Windows.Graphics.Capture 抓取 BrowserHost 的 D3D11 surface，并读取窗口顶层的帧编号 marker。每个分片的 `result.json` 会写入 `gpuCaptureProbe`，用于判断捕获吞吐、重复帧、跳帧和 compositor 节拍。探针失败只记录 `gpuCaptureProbeError`，不会改变正常成片路径。
+
+第一阶段故意仍以现有 HWND 为捕获源，用于验证 WGC 的真实性能和逐帧可观测性；只有这一步通过后，才会把 WebView2 改成 CompositionController / CreateFromVisual 的正式离屏 GPU 路径。
 
 ## 当前边界
 
