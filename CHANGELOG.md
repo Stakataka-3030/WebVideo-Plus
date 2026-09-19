@@ -96,3 +96,5 @@ OpenCode Go 请求使用真实 WebVideo+ 客户端标识与当前配置会话 ID
 DOM/UI PoC 继续优化：确认 WebGAL 逐字显示主要由 `.Textelement_start` 的 opacity 动画和逐字 delay 驱动。现将这类动画从 DOM dirty 判定中剥离；DOM refresh 时缓存 static/final 两张 overlay，之后通过 Pixi GPU alpha mask 按浏览器实时 computed opacity 还原每字淡入，避免为同一句文字每帧重新截图。诊断继续使用 frame 100，并新增 domRefreshCount/domAnimationSeconds/textEntries 等指标。
 
 修复 DOM static/final 捕获会重置逐字文字动画的问题：此前诊断样式对 `.Textelement_start` 临时设置 `animation:none`，在其他 UI/回想动画频繁触发 DOM refresh 时会反复销毁并重建文字 CSS animation，表现为首句逐字淡入启动过晚或无法播完。现在捕获只通过 visibility/opacity 隔离 static/final 层，不再修改 animation 属性，因此浏览器文字动画时间轴保持连续。
+
+DOM GPU 合成继续拆层：将默认 TextBox 根容器约 0.7 秒的 opacity showSoftly 动画也从 DOM screenshot 中剥离。缓存现为 base/textbox/text 三层；Pixi 每帧用真实 TextBox computed opacity 控制整个对话框 GPU container alpha，同时逐字文字继续使用 alpha mask。这样默认对话框淡入不再产生约 40 余次截图；非 opacity 的自定义 TextBox 动画仍走正确性优先的 DOM refresh fallback。
