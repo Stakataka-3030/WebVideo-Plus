@@ -12,6 +12,8 @@
 
 实验分支构建新增 Visual Studio 2022 C++ Build Tools 与 Windows SDK 依赖；后续是否切换到 CompositionController → CreateFromVisual → GPU 编码，将以本轮真实工程测得的捕获吞吐和逐帧可靠性决定。
 
+根据首轮 RTX 4060 / 1080p60 实测，现有 JPEG `CapturePreviewAsync` 占单 worker 渲染时间约九成。新增 `--gpu-benchmark N` capture-only 模式，不再为了测 WGC 而完整编码视频；同时用 WebView2 的 ANGLE renderer 字符串匹配 DXGI adapter，优先让 WGC D3D11 device 与 WebView 使用同一 GPU。benchmark 帧编号改为直接绘制在 WebView DOM 内，避免 WinForms sibling overlay 未进入 WGC surface 的问题。
+
 ## 0.4.11 / 安装器修订 0.4.11.0
 
 **待发布。** 当前主分支产品版本为 `0.4.11`，导出内核为 `0.3.16-internal`；下一次正式构建将生成 `WebVideo+-Setup-0.4.11.0.exe`。
