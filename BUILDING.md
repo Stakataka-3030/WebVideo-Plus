@@ -7,7 +7,7 @@
 ## 初次准备
 
 1. 使用 Windows PowerShell 5.1 或 PowerShell 7，安装 Node.js 22.20.0 或兼容版本。GPU 捕获 PoC 还需要 Visual Studio 2022 Build Tools 的 **Desktop development with C++** 工作负载以及 Windows 10/11 SDK（含 C++/WinRT 头文件）。
-2. 从 GitHub Release 下载当前已发布的 `WebVideo+-Setup-0.4.10.2.exe`。构建脚本只从其中抽取固定版本的 WebView2 SDK、WebGAL 导出运行资源和许可文件，不会启动安装程序。
+2. 从 GitHub Release 下载当前已发布的 `WebVideo+-Setup-0.4.10.2.exe`。构建脚本从其中抽取固定的 WebGAL/WebView2 运行资源和既有许可文件，不会启动安装程序。该旧安装器不包含编译期 managed WebView2 SDK，因此 `prepare-build.ps1` 另行固定下载 Microsoft.Web.WebView2 `1.0.4191.47`，并保留其许可文本；不会解析 latest。
 3. 在仓库目录执行：
 
 ```powershell
