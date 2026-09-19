@@ -92,6 +92,14 @@ WebGAL/Pixi 的原生舞台 framebuffer 是 2560×1440；这不是 Windows DPI �
 
 加 `--gpu-readback-host-copy true` 后，宿主会在每帧 readPixels 完成后通过 `CoreWebView2SharedBuffer.OpenStream()` 将整帧读入复用的 C# byte[]，用来测量正式接 ffmpeg/native encoder 前不可避免的 SharedBuffer→host 消费成本。结果会额外记录 `hostCopySeconds`、`hostCopyFps`、`hostCopyGigabytesPerSecond` 和 `hostBytes`。
 
+端到端 raw 编码 benchmark 使用：
+
+```powershell
+.\WebGAL.Video.exe export --project "D:\Games\Project" --scene start.txt --out "D:\Temp\gpu-encode.json" --width 1920 --height 1080 --fps 60 --workers 1 --gpu high --gpu-encode-benchmark 300 --gpu-encode-codec x264rgb
+```
+
+`x264rgb` 使用 `libx264rgb -preset ultrafast -crf 0`，作为不经过 YUV 4:2:0 的 RGB 无损基线；`nvenc` 使用 `h264_nvenc` 的 P1/VBR/CQ19 配置，作为 RTX 硬件编码速度路线。两者都固定使用 output-size Pixi renderer + SharedBuffer raw RGBA，并在 ffmpeg 输入端执行 `vflip` 纠正 WebGL readPixels 的垂直方向。
+
 ## 当前边界
 
 这是一份整理后的现有工程，而不是重新编写的独立编辑器。首次构建仍从固定安装器中抽取 WebGAL 运行快照和 WebView2 二进制资源；没有宣称从源码重建全部第三方引擎和 SDK。C# 内核、管理器、安装器、process-guard、launcher 及浏览器扩展均从本仓库源码构建。
