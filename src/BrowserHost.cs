@@ -24,15 +24,15 @@ namespace NativeVideo {
   }
   public async Task ReleaseGpuReadbackBuffer(){try{await Eval("if(globalThis.__gpuSharedArrayBuffer){chrome.webview.releaseBuffer(globalThis.__gpuSharedArrayBuffer);globalThis.__gpuSharedArrayBuffer=null;globalThis.__gpuSharedBytes=null;globalThis.__gpuSharedReady=false;}");}catch{}}
   public async Task<string> CaptureDomOverlayPngBase64(){
-   await Eval("__gpuDomBeginCapture()");
+   await Eval("__gpuDomBeginCapture()");string data="";Exception failure=null;
    try{
     await View.CoreWebView2.CallDevToolsProtocolMethodAsync("Emulation.setDefaultBackgroundColorOverride",J.Text(J.O("color",J.O("r",0,"g",0,"b",0,"a",0))));
     var response=await Timeout(View.CoreWebView2.CallDevToolsProtocolMethodAsync("Page.captureScreenshot",J.Text(J.O("format","png","fromSurface",true,"captureBeyondViewport",false,"optimizeForSpeed",true))),30000,"DOM overlay capture");
-    return J.S(J.Parse(response),"data");
-   }finally{
-    try{await View.CoreWebView2.CallDevToolsProtocolMethodAsync("Emulation.setDefaultBackgroundColorOverride","{}");}catch{}
-    try{await Eval("__gpuDomEndCapture()");}catch{}
-   }
+    data=J.S(J.Parse(response),"data");
+   }catch(Exception e){failure=e;}
+   try{await View.CoreWebView2.CallDevToolsProtocolMethodAsync("Emulation.setDefaultBackgroundColorOverride","{}");}catch{}
+   try{await Eval("__gpuDomEndCapture()");}catch{}
+   if(failure!=null)throw failure;return data;
   }
   public async Task<byte[]> CaptureFrame(string format="jpeg"){using(var stream=new MemoryStream()){await View.CoreWebView2.CapturePreviewAsync(format=="png"?CoreWebView2CapturePreviewImageFormat.Png:CoreWebView2CapturePreviewImageFormat.Jpeg,stream);return stream.ToArray();}}
   public static async Task<T> Timeout<T>(Task<T> task,int ms,string what){if(await Task.WhenAny(task,Task.Delay(ms))!=task)throw new TimeoutException(what+"超时");return await task;}
