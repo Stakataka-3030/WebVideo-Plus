@@ -18,7 +18,7 @@ benchmark 帧编号现直接写入 Pixi 最终 WebGL framebuffer，与画面共�
 
 可见/屏外对照确认 WGC 到帧率与窗口可见性几乎无关，compositor 路线不适合作为离线逐帧帧源。因此新增 `--gpu-readback-benchmark N`：通过 WebView2 SharedBuffer 把宿主共享内存直接暴露为页面 ArrayBuffer，每帧用 `gl.readPixels` 写入共享内存，单独测量 raw RGBA readback 的 fps、带宽以及与逻辑渲染合并后的吞吐；该路径完全绕过 JPEG、FFmpeg 与 Windows.Graphics.Capture。
 
-单 worker 实测进一步确认 WebGAL/Pixi 原生 framebuffer 为固定 2560×1440 舞台，而导出视口可为 1920×1080。SharedBuffer benchmark 现保留原生舞台渲染，并在 WebGL2 内用 framebuffer blit 将 2560×1440 GPU 缩放到请求输出尺寸后再 readPixels，只搬运最终输出尺寸的 RGBA 数据，避免改变 WebGAL 的舞台坐标语义。
+单 worker 实测进一步确认 WebGAL/Pixi 原生 framebuffer 为固定 2560×1440 舞台，而导出视口可为 1920×1080。对比发现 WebGL2 framebuffer blit 到 1920×1080 后再 readPixels 反而比直接读取 2560×1440 默认 backbuffer 更慢，因此 SharedBuffer benchmark 默认回到 direct 原生 readback，并保留 `--gpu-readback-mode scale` 作为诊断对照。新增 `--gpu-readback-host-copy true`，逐帧将完整 SharedBuffer 通过 OpenStream 读入宿主复用缓冲区，以测量正式编码管线中的 host 消费成本。
 
 ## 0.4.11 / 安装器修订 0.4.11.0
 
