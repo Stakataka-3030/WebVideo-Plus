@@ -148,3 +148,5 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 - **GPU Raw · NVENC（NVIDIA）**：同一 raw 帧管线，后端使用 h264_nvenc CQ19；需要可用的 NVIDIA NVENC。
 
 并行数仍由用户在 GUI 中选择，支持 1–32 的整数及快捷值。项目不会依据开发机实测写死 8 worker 等“最佳值”；不同 CPU、GPU、显存、内存带宽和磁盘环境应由用户自行选择。GUI 的 `gpuRawMode` 会持久化到 settings，并由 QueueService 映射为 JobRunner 的 `gpuRawExport/gpuRawCodec/gpuRawDom` 请求字段。任务列表会显示当前 GPU Raw codec，便于区分历史任务。
+
+构建链版本同步：`build-timeline.mjs` 与 `build-feature-assets.mjs` 不再把 staged `product.json` / `component.json` 写回旧的 0.4.x / 0.3.x 常量，统一从根目录 `version.json` 读取 productVersion/kernelVersion。这样安装包内 MANIFEST、product.json、component.json 和运行时版本元数据保持同源。
