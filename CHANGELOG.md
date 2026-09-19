@@ -89,3 +89,4 @@ OpenCode Go 请求使用真实 WebVideo+ 客户端标识与当前配置会话 ID
 修复本机角色别名表的字典类型读取错误，避免已有角色文件夹被误判为零立绘。
 
 排除所有角色目录中的 `.mtn_exp` 辅助模型入口。角色表补充正文角色和昵称，并已按维护决定清除重复 ID，当前共 137 行。
+修复 x264rgb 色彩诊断版启动失败：`-colorspace gbr` 会被 libx264rgb 私有选项解析器拒绝，导致 ffmpeg 提前退出并在宿主侧表现为 broken pipe。现改用 `-x264-params fullrange=on:colorprim=bt709:transfer=iec61966-2-1`，同时保留 RGB 自动 GBR matrix；raw pipe 写入失败时会直接附带 ffmpeg stderr。
