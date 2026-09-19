@@ -94,3 +94,5 @@ OpenCode Go 请求使用真实 WebVideo+ 客户端标识与当前配置会话 ID
 新增 GPU DOM/UI 缓存合成 PoC：`--gpu-encode-dom true` 使用 MutationObserver + 可见动画/视频状态检测 dirty，仅在 DOM 视觉变化时隐藏 Pixi canvas 并通过 CDP 截透明 DOM-only PNG，再把 overlay 缓存为 Pixi 顶层 texture；后续 raw readback 因此仍然只读取一张完整 framebuffer。结果记录 DOM capture/upload 次数与耗时，并保留首张 overlay PNG 便于检查 alpha 和定位。
 
 DOM/UI PoC 继续优化：确认 WebGAL 逐字显示主要由 `.Textelement_start` 的 opacity 动画和逐字 delay 驱动。现将这类动画从 DOM dirty 判定中剥离；DOM refresh 时缓存 static/final 两张 overlay，之后通过 Pixi GPU alpha mask 按浏览器实时 computed opacity 还原每字淡入，避免为同一句文字每帧重新截图。诊断继续使用 frame 100，并新增 domRefreshCount/domAnimationSeconds/textEntries 等指标。
+
+修复 DOM static/final 捕获会重置逐字文字动画的问题：此前诊断样式对 `.Textelement_start` 临时设置 `animation:none`，在其他 UI/回想动画频繁触发 DOM refresh 时会反复销毁并重建文字 CSS animation，表现为首句逐字淡入启动过晚或无法播完。现在捕获只通过 visibility/opacity 隔离 static/final 层，不再修改 animation 属性，因此浏览器文字动画时间轴保持连续。
