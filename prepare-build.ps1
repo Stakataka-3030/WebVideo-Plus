@@ -21,13 +21,22 @@ try{$taskStream.CopyTo($taskFile)}finally{$taskFile.Dispose();$taskStream.Dispos
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $taskZip=[IO.Compression.ZipFile]::OpenRead($taskArchive)
 try{foreach($taskEntry in $taskZip.Entries){if(-not $taskEntry.FullName.StartsWith('webvideo-plus/')){continue};$taskRelative=$taskEntry.FullName.Substring('webvideo-plus/'.Length);if(-not($taskRelative -match '^(runtime/|bin/|licenses/|component\.json$|WebGAL\.Video\.exe\.config$|Microsoft\.Web\.WebView2\.[^/]+\.dll$|WebView2Loader\.dll$)')){continue};if(-not $taskEntry.Name){continue};$taskTarget=[IO.Path]::GetFullPath((Join-Path $taskOut $taskRelative));if(-not $taskTarget.StartsWith([IO.Path]::GetFullPath($taskOut)+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Invalid archive path'};New-Item -ItemType Directory -Path (Split-Path $taskTarget -Parent) -Force | Out-Null;[IO.Compression.ZipFileExtensions]::ExtractToFile($taskEntry,$taskTarget,$true)}}finally{$taskZip.Dispose()}
-foreach($taskName in @('Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll')){
- $taskTarget=Join-Path $taskOut $taskName
- if(-not(Test-Path $taskTarget)){
-  $taskCandidate=Get-ChildItem -LiteralPath $taskOut -Recurse -File -Filter $taskName | Select-Object -First 1
-  if($null -ne $taskCandidate){Copy-Item -LiteralPath $taskCandidate.FullName -Destination $taskTarget -Force}
+$taskWebView2Version='1.0.4191.47'
+$taskWebView2Names=@('Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll')
+$taskMissingWebView2=$taskWebView2Names | Where-Object {-not(Test-Path (Join-Path $taskOut $_))}
+if($taskMissingWebView2.Count -gt 0){
+ $taskWebView2Package=Join-Path $taskCache ('microsoft.web.webview2.'+$taskWebView2Version+'.nupkg')
+ $taskWebView2Root=Join-Path $taskCache ('microsoft.web.webview2.'+$taskWebView2Version)
+ Invoke-WebRequest -UseBasicParsing -Uri ('https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/'+$taskWebView2Version+'/microsoft.web.webview2.'+$taskWebView2Version+'.nupkg') -OutFile $taskWebView2Package
+ [IO.Compression.ZipFile]::ExtractToDirectory($taskWebView2Package,$taskWebView2Root)
+ foreach($taskName in $taskWebView2Names){
+  $taskCandidate=Join-Path $taskWebView2Root ('lib/net462/'+$taskName)
+  if(-not(Test-Path $taskCandidate)){$taskCandidate=(Get-ChildItem -LiteralPath $taskWebView2Root -Recurse -File -Filter $taskName | Select-Object -First 1).FullName}
+  if([string]::IsNullOrWhiteSpace($taskCandidate)-or-not(Test-Path $taskCandidate)){throw ('Pinned WebView2 SDK does not contain required assembly: '+$taskName)}
+  Copy-Item -LiteralPath $taskCandidate -Destination (Join-Path $taskOut $taskName) -Force
  }
- if(-not(Test-Path $taskTarget)){throw ('Bootstrap payload does not contain required WebView2 SDK assembly: '+$taskName)}
+ $taskLoader=Get-ChildItem -LiteralPath $taskWebView2Root -Recurse -File -Filter 'WebView2Loader.dll' | Where-Object {$_.FullName -match '[\\/]x64[\\/]'} | Select-Object -First 1
+ if($null -ne $taskLoader){Copy-Item -LiteralPath $taskLoader.FullName -Destination (Join-Path $taskOut 'WebView2Loader.dll') -Force}
 }
 New-Item -ItemType Directory -Path (Join-Path $taskOut 'browser'),(Join-Path $taskOut 'integration') -Force | Out-Null
 Copy-Item -Path (Join-Path $taskRoot 'browser/*.js') -Destination (Join-Path $taskOut 'browser') -Force
