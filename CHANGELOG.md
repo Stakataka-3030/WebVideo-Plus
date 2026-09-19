@@ -1,5 +1,17 @@
 # 版本记录
 
+## 0.5.0-rc1 / 安装器内部版本 0.5.0.1
+
+**GPU 导出实验候选。** 产品版本为 `0.5.0-rc1`，导出内核为 `0.4.0-rc1-internal`。预发布安装器构建名为 `WebVideo+-Setup-0.5.0-rc1.exe`。
+
+### GPU 捕获 PoC
+
+新增独立的 Windows Graphics Capture / D3D11 探针 `gpu-capture-probe.exe`。导出面板可开启“GPU 捕获实验诊断”；当前成片仍按原 JPEG → H.264 路径生成，探针仅在后台捕获同一 BrowserHost，统计实际 capture FPS、唯一逻辑帧、重复帧、跳帧、回退帧、SystemRelativeTime 间隔、捕获尺寸和 D3D11 adapter。
+
+为避免诊断 marker 污染正常视频，帧编号条由 WinForms 作为 WebView2 的同级顶层控件绘制；Windows Graphics Capture 可以看到它，而 `CoreWebView2.CapturePreviewAsync` 只捕获 WebView2 内容。探针不可用或失败时只写入诊断错误，不改变正常导出结果。
+
+实验分支构建新增 Visual Studio 2022 C++ Build Tools 与 Windows SDK 依赖；后续是否切换到 CompositionController → CreateFromVisual → GPU 编码，将以本轮真实工程测得的捕获吞吐和逐帧可靠性决定。
+
 ## 0.4.11 / 安装器修订 0.4.11.0
 
 **待发布。** 当前主分支产品版本为 `0.4.11`，导出内核为 `0.3.16-internal`；下一次正式构建将生成 `WebVideo+-Setup-0.4.11.0.exe`。
