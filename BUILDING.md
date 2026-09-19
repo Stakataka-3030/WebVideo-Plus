@@ -98,7 +98,7 @@ WebGAL/Pixi 的原生舞台 framebuffer 是 2560×1440；这不是 Windows DPI �
 .\WebGAL.Video.exe export --project "D:\Games\Project" --scene start.txt --out "D:\Temp\gpu-encode.json" --width 1920 --height 1080 --fps 60 --workers 1 --gpu high --gpu-encode-benchmark 300 --gpu-encode-codec x264rgb
 ```
 
-`x264rgb` 使用 `libx264rgb -preset ultrafast -crf 0`，作为不经过 YUV 4:2:0 的 RGB 无损基线；`nvenc` 使用 `h264_nvenc` 的 P1/VBR/CQ19 配置，作为 RTX 硬件编码速度路线。两者都固定使用 output-size Pixi renderer + SharedBuffer raw RGBA，并在 ffmpeg 输入端执行 `vflip` 纠正 WebGL readPixels 的垂直方向。
+`x264rgb` 使用 `libx264rgb -preset ultrafast -crf 0`，作为不经过 YUV 4:2:0 的 RGB 无损基线；RGB VUI 通过 `-x264-params fullrange=on:colorprim=bt709:transfer=iec61966-2-1` 写入，避免直接传 `-colorspace gbr` 触发 libx264rgb 参数解析错误；`nvenc` 使用 `h264_nvenc` 的 P1/VBR/CQ19 配置，作为 RTX 硬件编码速度路线。两者都固定使用 output-size Pixi renderer + SharedBuffer raw RGBA，并在 ffmpeg 输入端执行 `vflip` 纠正 WebGL readPixels 的垂直方向。
 
 RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB transfer；NVENC 路线也显式执行 PC→TV range 和 BT.709 matrix 转换。每次编码还会在 part 目录生成 `reference-first-frame.png`，它来自编码前同一张 raw RGBA 帧并仅做 vflip + RGB24，用来区分“raw readback 本身颜色不对”和“视频编码/播放器色彩解释不对”。result JSON 会记录 WebGL `premultipliedAlpha`、`drawingBufferColorSpace` 等上下文信息，并通过 ffprobe 回报输出的 `pix_fmt/color_range/color_space/color_transfer/color_primaries`。
 
