@@ -3,8 +3,8 @@ namespace NativeVideo {
  public sealed class GpuCaptureProbeSession:IDisposable {
   Process process;Task<string> errorTask;bool stopped;public object Ready{get;private set;}public object Result{get;private set;}
   GpuCaptureProbeSession(Process p,Task<string> error){process=p;errorTask=error;}
-  public static async Task<GpuCaptureProbeSession> Start(IntPtr hwnd){
-   var p=Commands.Start(Path.Combine(Files.Root,"gpu-capture-probe.exe"),new[]{"--hwnd",unchecked((ulong)hwnd.ToInt64()).ToString()},true,true);p.StandardInput.AutoFlush=true;var error=p.StandardError.ReadToEndAsync();var session=new GpuCaptureProbeSession(p,error);
+  public static async Task<GpuCaptureProbeSession> Start(IntPtr hwnd,string adapterHint=""){
+   var args=new System.Collections.Generic.List<string>{"--hwnd",unchecked((ulong)hwnd.ToInt64()).ToString()};if(!string.IsNullOrWhiteSpace(adapterHint))args.AddRange(new[]{"--adapter-hint",adapterHint});var p=Commands.Start(Path.Combine(Files.Root,"gpu-capture-probe.exe"),args,true,true);p.StandardInput.AutoFlush=true;var error=p.StandardError.ReadToEndAsync();var session=new GpuCaptureProbeSession(p,error);
    try{var line=await BrowserHost.Timeout(p.StandardOutput.ReadLineAsync(),10000,"GPU 捕获探针启动");if(line==null||!line.StartsWith("READY "))throw new IOException("GPU 捕获探针没有返回 READY"+(p.HasExited?"："+await error:""));session.Ready=J.Parse(line.Substring(6));return session;}catch{session.Dispose();throw;}
   }
   public async Task Stop(){
