@@ -23,8 +23,8 @@ namespace NativeVideo {
    var buffer=environment.CreateSharedBuffer((ulong)byteLength);View.CoreWebView2.PostSharedBufferToScript(buffer,CoreWebView2SharedBufferAccess.ReadWrite,J.Text(J.O("kind","gpu-readback","bytes",byteLength)));await Wait("globalThis.__gpuSharedReady===true&&globalThis.__gpuSharedBytes?.byteLength==="+byteLength,10000);return buffer;
   }
   public async Task ReleaseGpuReadbackBuffer(){try{await Eval("if(globalThis.__gpuSharedArrayBuffer){chrome.webview.releaseBuffer(globalThis.__gpuSharedArrayBuffer);globalThis.__gpuSharedArrayBuffer=null;globalThis.__gpuSharedBytes=null;globalThis.__gpuSharedReady=false;}");}catch{}}
-  public async Task<string> CaptureDomOverlayPngBase64(){
-   await Eval("__gpuDomBeginCapture()");string data="";Exception failure=null;
+  public async Task<string> CaptureDomOverlayPngBase64(string mode="normal"){
+   await Eval("__gpuDomBeginCapture("+J.Text(mode)+")");string data="";Exception failure=null;
    try{
     await View.CoreWebView2.CallDevToolsProtocolMethodAsync("Emulation.setDefaultBackgroundColorOverride",J.Text(J.O("color",J.O("r",0,"g",0,"b",0,"a",0))));
     var response=await Timeout(View.CoreWebView2.CallDevToolsProtocolMethodAsync("Page.captureScreenshot",J.Text(J.O("format","png","fromSurface",true,"captureBeyondViewport",false,"optimizeForSpeed",true))),30000,"DOM overlay capture");
