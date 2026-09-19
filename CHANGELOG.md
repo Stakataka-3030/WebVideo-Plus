@@ -1,5 +1,11 @@
 # 版本记录
 
+## 0.5.2 / 安装器内部版本 0.5.2.0
+
+**4K 导出调度与回读优化。** 保持分片数量不超过有效 worker 数，不增加 WebView2 冷启动；Planner 复用既有时序预演采集 DOM workload，SegmentPlan 按“基础帧成本 + DOM refresh 估算成本”选择最近的安全对白切点，减少 DOM-heavy 分片造成的长尾。
+
+GPU raw 正式管线在 WebGL2 可用时默认尝试 3-slot PBO ring：`readPixels` 先进入 `PIXEL_PACK_BUFFER`，通过 fence 延迟回收，再用 `getBufferSubData` 写入既有 WebView2 SharedBuffer，从而允许 GPU 渲染、GPU readback 与宿主/FFmpeg 消费发生流水重叠。初始化会先探测 SharedBuffer 作为 `getBufferSubData` 目标的兼容性；不支持时自动回退原同步 SharedBuffer `readPixels`。结果 JSON 新增 readback mode、enqueue/drain/wait 分阶段计时。
+
 ## 0.5.1 / 安装器内部版本 0.5.1.0
 
 **GPU 导出清理版本。** 产品版本、安装器和导出内核统一推进到 `0.5.1`。
