@@ -88,7 +88,9 @@ WGC 仅用于 compositor 行为诊断。真正的原始帧候选使用 WebView2 
 
 结果包含每个 worker 的 `readbackSeconds`、`readbackFps`、`combinedFps`、`frameBytes` 和 `readbackGigabytesPerSecond`；完成后还会由宿主通过 `CoreWebView2SharedBuffer.OpenStream()` 读取一小段样本并记录 checksum，用来确认脚本写入与宿主读取确实落在同一共享缓冲区。
 
-WebGAL/Pixi 的原生舞台 framebuffer 是 2560×1440；这不是 Windows DPI 缩放。若导出请求为 1920×1080，benchmark 不修改 Pixi 舞台尺寸，而是在 WebGL2 内创建 1920×1080 RGBA8 framebuffer，并用 `blitFramebuffer(..., LINEAR)` 从原生舞台 GPU 缩放后再 readPixels。结果中的 `sourceFrameBytes` 表示原生 1440p RGBA 数据量，`frameBytes` 表示真正搬到 SharedBuffer 的输出 RGBA 数据量，`readbackPlan.mode` 应为 `webgl2-blit`。
+WebGAL/Pixi 的原生舞台 framebuffer 是 2560×1440；这不是 Windows DPI 缩放。benchmark 支持 `--gpu-readback-mode direct|scale`：`direct` 直接 readPixels 原生 framebuffer，`scale` 则先在 WebGL2 内用 `blitFramebuffer(..., LINEAR)` 缩到请求输出尺寸再 readPixels。实测 RTX 4060 上 direct 明显更快，因此默认使用 direct，scale 仅保留为对照。结果中的 `sourceFrameBytes` 表示原生 1440p RGBA 数据量，`frameBytes` 表示本轮实际写入 SharedBuffer 的数据量。
+
+加 `--gpu-readback-host-copy true` 后，宿主会在每帧 readPixels 完成后通过 `CoreWebView2SharedBuffer.OpenStream()` 将整帧读入复用的 C# byte[]，用来测量正式接 ffmpeg/native encoder 前不可避免的 SharedBuffer→host 消费成本。结果会额外记录 `hostCopySeconds`、`hostCopyFps`、`hostCopyGigabytesPerSecond` 和 `hostBytes`。
 
 ## 当前边界
 
