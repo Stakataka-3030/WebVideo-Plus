@@ -116,3 +116,13 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 逐字文字动画优化：WebGAL 会预先把整句文字节点放入 DOM，并通过 `.Textelement_start` 上的约 1s opacity 动画和逐字 animation-delay 实现淡入。DOM GPU PoC 因此在真正 DOM refresh 时同时缓存两张 overlay（动态文字隐藏的 static UI、动态文字强制最终态的 final UI），随后用 Pixi RenderTexture alpha mask 按每个文字元素的实时 computed opacity 在 GPU 上逐帧还原淡入；这类文字动画不再触发 CDP screenshot。结果中的 `domRefreshCount` 是 DOM 内容/非文字动画触发的重新 rasterize 次数，`domCaptureCount` 是实际 screenshot 次数（每次 refresh 当前为两张），`domAnimationSeconds` 是 GPU mask 更新耗时。
 
 对话框整体淡入进一步走 GPU：WebGAL 默认 TextBox 根容器使用约 0.7s 的 opacity `showSoftly` 动画，60fps 下本身就会造成约 42 次 DOM refresh。DOM 缓存现拆成 base / textbox / text 三层：base 不含 TextBox；textbox 捕获对话框、姓名、头像等静态内容并强制根 opacity=1；text 仅捕获逐字文字最终态。运行时 Pixi 每帧读取真实 TextBox 根节点 computed opacity，直接设置 textbox GPU container alpha，并继续用逐字 alpha mask 控制 text 层。因此默认 TextBox 整体淡入和逐字淡入都不再触发截图。若自定义主题给 TextBox 根节点使用 transform/filter 等非 opacity 动画，仍保留 DOM refresh fallback 以优先保证正确性。
+
+### 实验性完整 GPU raw 导出
+
+在 benchmark 路径验证 Pixi output-size renderer、SharedBuffer、DOM 三层 GPU 合成和 raw encoder 后，正常 JobRunner 现可通过 CLI 显式切换整条视频分片渲染管线，而不改变默认 JPEG 导出：
+
+```powershell
+.\WebGAL.Video.exe export --project "D:\Games\Project" --scene start.txt --out "D:\Temp\gpu-full.mp4" --width 1920 --height 1080 --fps 60 --workers 1 --gpu high --gpu-raw-export x264rgb
+```
+
+可选 `x264rgb`（RGB CRF0 无损视频基线）或 `nvenc`（H.264 NVENC CQ19 快速路线）；DOM 三层合成默认开启，可用 `--gpu-raw-dom false` 仅作舞台层诊断。该模式仍复用正常 Planner、分片、replayFrame 恢复、音频混合、concat 合并、完整 count-frames 校验和 retry/cache 机制；分片缓存签名会包含 raw pipeline、codec 与 DOM 开关，避免误复用旧 JPEG 分片。当前最终音频仍沿用既有 AAC 192k，因此 `x264rgb` 目前只代表视频无损，尚不是“全媒体无损”成片。
