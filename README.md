@@ -4,7 +4,7 @@
 
 [下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前源码产品版本：0.4.11；下一安装器修订：0.4.11.0；当前最新已发布版本仍为 0.4.10 / 0.4.10.2。**
+**当前 GPU 实验分支版本：0.5.0-rc1（安装器内部版本 0.5.0.1）；当前最新已发布版本仍为 0.4.10 / 0.4.10.2。**
 
 最新发布文件：`WebVideo+-Setup-0.4.10.2.exe`
 
