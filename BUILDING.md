@@ -88,6 +88,8 @@ WGC 仅用于 compositor 行为诊断。真正的原始帧候选使用 WebView2 
 
 结果包含每个 worker 的 `readbackSeconds`、`readbackFps`、`combinedFps`、`frameBytes` 和 `readbackGigabytesPerSecond`；完成后还会由宿主通过 `CoreWebView2SharedBuffer.OpenStream()` 读取一小段样本并记录 checksum，用来确认脚本写入与宿主读取确实落在同一共享缓冲区。
 
+WebGAL/Pixi 的原生舞台 framebuffer 是 2560×1440；这不是 Windows DPI 缩放。若导出请求为 1920×1080，benchmark 不修改 Pixi 舞台尺寸，而是在 WebGL2 内创建 1920×1080 RGBA8 framebuffer，并用 `blitFramebuffer(..., LINEAR)` 从原生舞台 GPU 缩放后再 readPixels。结果中的 `sourceFrameBytes` 表示原生 1440p RGBA 数据量，`frameBytes` 表示真正搬到 SharedBuffer 的输出 RGBA 数据量，`readbackPlan.mode` 应为 `webgl2-blit`。
+
 ## 当前边界
 
 这是一份整理后的现有工程，而不是重新编写的独立编辑器。首次构建仍从固定安装器中抽取 WebGAL 运行快照和 WebView2 二进制资源；没有宣称从源码重建全部第三方引擎和 SDK。C# 内核、管理器、安装器、process-guard、launcher 及浏览器扩展均从本仓库源码构建。
