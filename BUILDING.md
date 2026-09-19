@@ -72,6 +72,14 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 
 MyGO 工程继续附加已有的 `--engine mygo --mygo-root "..." ` 参数。benchmark JSON 会记录每个 worker 的 WebGL GPU、WGC adapter、是否成功匹配同一 DXGI adapter、capture FPS、唯一 marker FPS、重复/跳过/倒退 marker 和各初始化阶段耗时。
 
+为判断屏外窗口是否触发 DWM 节流，可用同一场景再跑一次可见窗口对照；该模式要求单 worker：
+
+```powershell
+.\WebGAL.Video.exe export --project "D:\Games\Project" --scene start.txt --out "D:\Temp\gpu-visible.json" --width 1920 --height 1080 --fps 60 --workers 1 --gpu high --gpu-benchmark 300 --gpu-benchmark-visible true
+```
+
+benchmark marker 直接写入 WebGL 最终 framebuffer 左上角的 64×8 像素区域，与 Pixi 画面共享同一 GPU surface，仅在 benchmark 模式启用且不会生成成片。
+
 ## 当前边界
 
 这是一份整理后的现有工程，而不是重新编写的独立编辑器。首次构建仍从固定安装器中抽取 WebGAL 运行快照和 WebView2 二进制资源；没有宣称从源码重建全部第三方引擎和 SDK。C# 内核、管理器、安装器、process-guard、launcher 及浏览器扩展均从本仓库源码构建。
