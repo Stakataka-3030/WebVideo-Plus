@@ -4,7 +4,6 @@ namespace NativeVideo {
   public static Dictionary<string,object>[] Create(object plan,int total,int fps,int workers){
    if(total<=0)return new Dictionary<string,object>[0];
    workers=Math.Max(1,Math.Min(workers,total));
-   if(total<=60*fps)return Enumerable.Range(0,workers).Select(i=>J.O("index",i,"startFrame",(int)((long)i*total/workers),"endFrame",(int)((long)(i+1)*total/workers),"replayFrame",0)).ToArray();
    var events=J.A(J.Get(plan,"events")).Where(e=>J.N(e,"line")>0&&!J.S(e,"command").StartsWith("__")).ToList();var groups=new List<int>();int previous=-1;
    for(int i=0;i<events.Count;i++){var e=events[i];if(J.S(e,"command")!="say"||Regex.IsMatch(J.S(e,"script"),@"^\s*:\s*;\s*$"))continue;int frame=(int)Math.Ceiling(J.N(events[previous+1],"atMs")*fps/1000);if(frame>0&&frame<total&&(groups.Count==0||groups.Last()!=frame))groups.Add(frame);previous=i;}
    if(workers<=1||groups.Count==0)return new[]{J.O("index",0,"startFrame",0,"endFrame",total,"replayFrame",0)};
