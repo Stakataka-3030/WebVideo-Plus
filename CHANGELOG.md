@@ -98,3 +98,5 @@ DOM/UI PoC 继续优化：确认 WebGAL 逐字显示主要由 `.Textelement_star
 修复 DOM static/final 捕获会重置逐字文字动画的问题：此前诊断样式对 `.Textelement_start` 临时设置 `animation:none`，在其他 UI/回想动画频繁触发 DOM refresh 时会反复销毁并重建文字 CSS animation，表现为首句逐字淡入启动过晚或无法播完。现在捕获只通过 visibility/opacity 隔离 static/final 层，不再修改 animation 属性，因此浏览器文字动画时间轴保持连续。
 
 DOM GPU 合成继续拆层：将默认 TextBox 根容器约 0.7 秒的 opacity showSoftly 动画也从 DOM screenshot 中剥离。缓存现为 base/textbox/text 三层；Pixi 每帧用真实 TextBox computed opacity 控制整个对话框 GPU container alpha，同时逐字文字继续使用 alpha mask。这样默认对话框淡入不再产生约 40 余次截图；非 opacity 的自定义 TextBox 动画仍走正确性优先的 DOM refresh fallback。
+
+修复 GPU DOM 三层缓存的两个 correctness 问题：逐字文字在 WebGAL 结算时会从 `.Textelement_start` 切换到 settled class，旧实现因此在 refresh 后把 final text 层误判为空；现为文字节点添加稳定的 `data-gpu-text-char` 标记，class 变化后仍保持身份。另修复 textbox 捕获层 selector specificity 被 `#root *` 压制的问题，提升到 `#root [data-gpu-textbox-root]`，恢复对话框背景、姓名和头像等静态内容。
