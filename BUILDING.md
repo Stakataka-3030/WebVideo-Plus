@@ -100,6 +100,8 @@ WebGAL/Pixi 的原生舞台 framebuffer 是 2560×1440；这不是 Windows DPI �
 
 `x264rgb` 使用 `libx264rgb -preset ultrafast -crf 0`，作为不经过 YUV 4:2:0 的 RGB 无损基线；`nvenc` 使用 `h264_nvenc` 的 P1/VBR/CQ19 配置，作为 RTX 硬件编码速度路线。两者都固定使用 output-size Pixi renderer + SharedBuffer raw RGBA，并在 ffmpeg 输入端执行 `vflip` 纠正 WebGL readPixels 的垂直方向。
 
+RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB transfer；NVENC 路线也显式执行 PC→TV range 和 BT.709 matrix 转换。每次编码还会在 part 目录生成 `reference-first-frame.png`，它来自编码前同一张 raw RGBA 帧并仅做 vflip + RGB24，用来区分“raw readback 本身颜色不对”和“视频编码/播放器色彩解释不对”。result JSON 会记录 WebGL `premultipliedAlpha`、`drawingBufferColorSpace` 等上下文信息，并通过 ffprobe 回报输出的 `pix_fmt/color_range/color_space/color_transfer/color_primaries`。
+
 ## 当前边界
 
 这是一份整理后的现有工程，而不是重新编写的独立编辑器。首次构建仍从固定安装器中抽取 WebGAL 运行快照和 WebView2 二进制资源；没有宣称从源码重建全部第三方引擎和 SDK。C# 内核、管理器、安装器、process-guard、launcher 及浏览器扩展均从本仓库源码构建。
