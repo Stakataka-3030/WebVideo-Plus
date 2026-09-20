@@ -21,14 +21,15 @@ namespace NativeVideo {
    }
    return J.O("script",string.Join("\n",lines),"ignoredLines",ignored);
   }
-  public static Dictionary<string,object> Bounds(object timing,object range,int fps){
-   double duration=J.N(timing,"durationSeconds"),scopeStart=J.N(J.Get(timing,"storyTimeline"),"currentStartSeconds",0),scopeEnd=J.N(J.Get(timing,"storyTimeline"),"currentEndSeconds",duration);int full=(int)Math.Round(duration*fps),scopeFirst=(int)Math.Ceiling(scopeStart*fps-1e-7);
-   if(range==null){scopeFirst=Math.Max(0,Math.Min(scopeFirst,full));return J.O("startFrame",scopeFirst,"endFrame",full,"totalFrames",full-scopeFirst,"startSeconds",scopeFirst/(double)fps,"durationSeconds",(full-scopeFirst)/(double)fps);}
+  public static Dictionary<string,object> Bounds(object timing,object range,int fps){return Bounds(timing,range,fps,"full");}
+  public static Dictionary<string,object> Bounds(object timing,object range,int fps,string storyScope){
+   double duration=J.N(timing,"durationSeconds"),scopeStart=J.N(J.Get(timing,"storyTimeline"),"currentStartSeconds",0),scopeEnd=J.N(J.Get(timing,"storyTimeline"),"currentEndSeconds",duration);int full=(int)Math.Round(duration*fps),scopeFirst=(int)Math.Ceiling(scopeStart*fps-1e-7),scopeLast=(int)Math.Ceiling(scopeEnd*fps-1e-7);
+   if(range==null){int first=0,last=full;if(storyScope=="fromScene")first=scopeFirst;else if(storyScope=="sceneOnly"){first=scopeFirst;last=scopeLast;}else if(storyScope!="full")throw new ArgumentException("导出故事范围无效");first=Math.Max(0,Math.Min(first,full));last=Math.Max(first,Math.Min(last,full));if(last<=first)throw new ArgumentException("所选故事范围没有可导出的时长");return J.O("startFrame",first,"endFrame",last,"totalFrames",last-first,"startSeconds",first/(double)fps,"durationSeconds",(last-first)/(double)fps,"storyScope",storyScope);}
    var times=J.A(J.Get(timing,"lineTimes"));int begin=(int)J.N(range,"startLine")-1,end=(int)J.N(range,"endLine");double? startMs=null,endMs=null;
    for(int i=begin;i<Math.Min(end,times.Count);i++)if(times[i]!=null){startMs=Convert.ToDouble(times[i]);break;}
    for(int i=end;i<times.Count;i++)if(times[i]!=null){endMs=Convert.ToDouble(times[i]);break;}
-   if(startMs==null)throw new ArgumentException("所选范围没有实际执行的语句");int first=(int)Math.Ceiling(startMs.Value*fps/1000-1e-7),scopeLast=(int)Math.Ceiling(scopeEnd*fps-1e-7),last=endMs.HasValue?(int)Math.Ceiling(endMs.Value*fps/1000-1e-7):scopeLast;last=Math.Min(Math.Max(last,first),full);
-   if(last<=first)throw new ArgumentException("所选范围没有可导出的时长，请包含对白或等待语句");return J.O("startFrame",first,"endFrame",last,"totalFrames",last-first,"startSeconds",first/(double)fps,"durationSeconds",(last-first)/(double)fps);
+   if(startMs==null)throw new ArgumentException("所选范围没有实际执行的语句");int rangeFirst=(int)Math.Ceiling(startMs.Value*fps/1000-1e-7),rangeLast=endMs.HasValue?(int)Math.Ceiling(endMs.Value*fps/1000-1e-7):scopeLast;rangeLast=Math.Min(Math.Max(rangeLast,rangeFirst),full);
+   if(rangeLast<=rangeFirst)throw new ArgumentException("所选范围没有可导出的时长，请包含对白或等待语句");return J.O("startFrame",rangeFirst,"endFrame",rangeLast,"totalFrames",rangeLast-rangeFirst,"startSeconds",rangeFirst/(double)fps,"durationSeconds",(rangeLast-rangeFirst)/(double)fps,"storyScope","range");
   }
   public static Dictionary<string,object>[] Segments(object plan,object bounds,int fps,int workers){
    int start=(int)J.N(bounds,"startFrame"),end=(int)J.N(bounds,"endFrame");var ranges=SegmentPlan.Create(plan,end,fps,workers).Where(r=>J.N(r,"endFrame")>start&&J.N(r,"startFrame")<end).ToArray();
