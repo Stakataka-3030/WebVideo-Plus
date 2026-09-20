@@ -36,6 +36,7 @@ namespace NativeVideo {
    return ranges;
   }
   static double Number(object track,string key,double fallback,double min,double max){double n=fallback;if(J.D(track).ContainsKey(key)&&!double.TryParse(Convert.ToString(J.Get(track,key),System.Globalization.CultureInfo.InvariantCulture),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out n))throw new ArgumentException("音乐参数必须为数字："+key);if(double.IsNaN(n)||double.IsInfinity(n)||n<min||n>max)throw new ArgumentException("音乐参数无效："+key);return n;}
+  public static Task<object> SnapshotMusic(string project,string jobDir,bool enabled,string legacyScene){return SnapshotMusic(project,jobDir,enabled);}
   public static async Task<object> SnapshotMusic(string project,string jobDir,bool enabled){
    if(!enabled)return null;string file=Path.Combine(project,"video-project.json");if(!File.Exists(file))return null;var data=J.Read(file);if(!J.B(data,"enabled",false))return null;int version=(int)J.N(data,"schemaVersion",1);if(version!=1&&version!=2)throw new ArgumentException("成片音乐文件版本不受支持");
    var result=new List<object>();var occupied=new Dictionary<string,List<Tuple<double,double>>>(StringComparer.OrdinalIgnoreCase);var tracks=J.A(J.Get(data,"tracks"));if(tracks.Count>64)throw new ArgumentException("成片音乐时间线最多包含 64 个片段");
