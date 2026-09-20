@@ -67,7 +67,7 @@ public class SetupEngine {
   Directory.CreateDirectory(Path.GetDirectoryName(destination));if(File.Exists(destination)&&Hash(destination)==hash){Report("使用已校验的下载缓存",100);return;}
   string partial=destination+".part";Exception last=null;ServicePointManager.SecurityProtocol=SecurityProtocolType.Tls12;
   for(int attempt=0;attempt<urls.Length*2;attempt++){Check();try{
-   string url=urls[Math.Min(attempt/2,urls.Length-1)];long offset=File.Exists(partial)?new FileInfo(partial).Length:0;var req=(HttpWebRequest)WebRequest.Create(url);req.Timeout=30000;req.ReadWriteTimeout=30000;req.UserAgent="WebGAL-Video-Setup/0.3.0";if(offset>0)req.AddRange(offset);
+   string url=urls[Math.Min(attempt/2,urls.Length-1)];long offset=File.Exists(partial)?new FileInfo(partial).Length:0;var req=(HttpWebRequest)WebRequest.Create(url);req.Timeout=30000;req.ReadWriteTimeout=30000;req.UserAgent="WebVideoPlus-Setup/"+Assembly.GetExecutingAssembly().GetName().Version.ToString();if(offset>0)req.AddRange(offset);
    using(var response=(HttpWebResponse)req.GetResponse()){
     if(response.StatusCode!=HttpStatusCode.PartialContent)offset=0;else if(!String.Equals((response.Headers["Content-Range"]??"").Split('-')[0],"bytes "+offset,StringComparison.Ordinal))throw new Exception("下载续传位置不匹配");
     long total=response.ContentLength>0?offset+response.ContentLength:0,received=offset;var clock=Stopwatch.StartNew();long lastTick=-1000;
@@ -115,19 +115,19 @@ public class InstallationState {
 public class SetupForm:Form {
  TextBox terre,games,output,url;Label status,elapsed,headline;ProgressBar progress;Button install,cancel,remove;Panel advanced;CheckBox advancedToggle,start;SetupEngine engine;RuntimePlan plan;bool busy;DateTime phaseStart;string phase="";
  public SetupForm(){
-  Text="WebGAL 视频导出 · 安装";ClientSize=new Size(700,540);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",10);BackColor=Color.FromArgb(248,249,251);AutoScaleMode=AutoScaleMode.Dpi;
+  Text="WebGAL 视频导出 · 安装";ClientSize=new Size(700,540);FormBorderStyle=FormBorderStyle.Sizable;MaximizeBox=false;MinimumSize=new Size(740,500);AutoScroll=true;StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",10);BackColor=Color.FromArgb(248,249,251);AutoScaleMode=AutoScaleMode.Dpi;
   headline=new Label{Text="安装视频导出工具",Font=new Font(Font.FontFamily,19,FontStyle.Bold),Location=new Point(28,24),Size=new Size(640,42)};Controls.Add(headline);
   Controls.Add(new Label{Text="选择已有的 Terre，安装器会检测并帮助补齐运行环境。",Location=new Point(30,76),Size=new Size(640,28),ForeColor=Color.DimGray});
   terre=Field(this,"Terre 安装目录",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGal_Terre"),120,true);
   advancedToggle=new CheckBox{Text="高级选项",Location=new Point(30,169),Size=new Size(200,28)};Controls.Add(advancedToggle);advanced=new Panel{Location=new Point(0,202),Size=new Size(690,128),Visible=false};Controls.Add(advanced);
   games=Field(advanced,"游戏目录",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".webgal_terre/games"),0,true);output=Field(advanced,"成片保存目录",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),"WebGAL Exports"),42,true);url=Field(advanced,"Terre 本机地址","http://localhost:3001",84,false);
   start=new CheckBox{Text="安装完成后启动 Terre",Checked=true,Location=new Point(30,339),Size=new Size(330,28)};Controls.Add(start);
-  status=new Label{Text="就绪。缺少依赖时会先征得您的同意。",Location=new Point(30,378),Size=new Size(640,44)};Controls.Add(status);progress=new ProgressBar{Location=new Point(30,426),Size=new Size(640,9)};Controls.Add(progress);elapsed=new Label{Location=new Point(30,442),Size=new Size(640,25),ForeColor=Color.DimGray};Controls.Add(elapsed);
-  var logs=new Button{Text="打开日志",Location=new Point(30,481),Size=new Size(100,34)};logs.Click+=(s,e)=>{try{if(!File.Exists(engine.LogFile))File.WriteAllText(engine.LogFile,"暂无安装日志。");Process.Start("notepad.exe",SetupEngine.Quote(engine.LogFile));}catch(Exception x){MessageBox.Show(this,x.Message);}};Controls.Add(logs);
-  remove=new Button{Text="卸载挂载",Location=new Point(142,481),Size=new Size(105,34)};Controls.Add(remove);remove.Click+=async(s,e)=>await Uninstall();
-  cancel=new Button{Text="关闭",Location=new Point(432,481),Size=new Size(100,34)};cancel.Click+=(s,e)=>{if(busy){engine.Canceled=true;cancel.Enabled=false;status.Text="正在取消，请稍候…";}else Close();};Controls.Add(cancel);
-  install=new Button{Text="检测并安装",Location=new Point(548,481),Size=new Size(122,34),BackColor=Color.FromArgb(28,102,207),ForeColor=Color.White,FlatStyle=FlatStyle.Flat};Controls.Add(install);install.Click+=async(s,e)=>await Install();
-  var lower=Controls.Cast<Control>().Where(c=>c.Top>=339).ToArray();foreach(var c in lower)c.Top-=128;ClientSize=new Size(700,440);advancedToggle.CheckedChanged+=(s,e)=>{advanced.Visible=advancedToggle.Checked;foreach(var c in lower)c.Top+=advancedToggle.Checked?128:-128;ClientSize=new Size(700,advancedToggle.Checked?568:440);};
+  status=new Label{Text="就绪。缺少依赖时会先征得您的同意。",Location=new Point(30,378),Size=new Size(640,60)};Controls.Add(status);progress=new ProgressBar{Location=new Point(30,442),Size=new Size(640,9)};Controls.Add(progress);elapsed=new Label{Location=new Point(30,458),Size=new Size(640,25),ForeColor=Color.DimGray};Controls.Add(elapsed);
+  var logs=new Button{Text="打开日志",Location=new Point(30,497),Size=new Size(100,34)};logs.Click+=(s,e)=>{try{if(!File.Exists(engine.LogFile))File.WriteAllText(engine.LogFile,"暂无安装日志。");Process.Start("notepad.exe",SetupEngine.Quote(engine.LogFile));}catch(Exception x){MessageBox.Show(this,x.Message);}};Controls.Add(logs);
+  remove=new Button{Text="卸载挂载",Location=new Point(142,497),Size=new Size(105,34)};Controls.Add(remove);remove.Click+=async(s,e)=>await Uninstall();
+  cancel=new Button{Text="关闭",Location=new Point(432,497),Size=new Size(100,34)};cancel.Click+=(s,e)=>{if(busy){engine.Canceled=true;cancel.Enabled=false;status.Text="正在取消，请稍候…";}else Close();};Controls.Add(cancel);
+  install=new Button{Text="检测并安装",Location=new Point(548,497),Size=new Size(122,34),BackColor=Color.FromArgb(28,102,207),ForeColor=Color.White,FlatStyle=FlatStyle.Flat};Controls.Add(install);install.Click+=async(s,e)=>await Install();
+  var lower=Controls.Cast<Control>().Where(c=>c.Top>=339).ToArray();foreach(var c in lower)c.Top-=128;ClientSize=new Size(700,460);advancedToggle.CheckedChanged+=(s,e)=>{advanced.Visible=advancedToggle.Checked;foreach(var c in lower)c.Top+=advancedToggle.Checked?128:-128;ClientSize=new Size(700,advancedToggle.Checked?568:440);};
   foreach(Control c in Controls)if(c.Top>=76)c.Top+=28;
   Controls.Add(new Label{Text="【内部版本 0.3.1 · C# / WebView2】",Location=new Point(30,72),Size=new Size(640,26),ForeColor=Color.FromArgb(150,75,20)});
   engine=new SetupEngine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGALVideoExporter"),Report);
