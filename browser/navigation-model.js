@@ -71,10 +71,11 @@
    if(!previous||previous.args.next!==true)group++;
    const row={id:`${start}:${end}`,command,startLine:start+1,endLine:end+1,startOffset:offsets[start],endOffset:offsets[end+1],source:source.slice(offsets[start],offsets[end+1]),content,args,sectionId:section,kind:'technical',speaker:'',title:content,annotations:[],parts:[],groupId:group,parentId:null,attachment:null,main:false,special:false,target:null};
    statements.push(row);previous=row;
-   row.ignoredInTiming=controls.has(command)||args.userForward===true||own(args,'when');if(row.ignoredInTiming){if(firstManualLine===null)firstManualLine=row.startLine;continue;}
+   const singleChoice=root.WebVideoTimelineCore.singleChooseInfo(row);row.convertibleSingleChoose=singleChoice.convertible;row.ignoredInTiming=controls.has(command)||args.userForward===true||own(args,'when');if(row.ignoredInTiming){if(firstManualLine===null)firstManualLine=row.startLine;if(!row.convertibleSingleChoose)continue;}
    if(command==='bgm'&&firstBgmLine===null)firstBgmLine=row.startLine;
-   if(hidden.has(command))continue;
-   if(command==='comment'){const marker=content.match(/(?:TODO|FIXME|待办|待修|完成|标记)[：:\s]*(.*)/i);if(marker)pending.push({text:marker[0],line:row.startLine});continue;}
+   if(hidden.has(command)&&!row.convertibleSingleChoose)continue;
+   if(row.convertibleSingleChoose){row.kind='event';row.main=true;row.special=true;row.title='单选分支 · '+singleChoice.text;row.parts=[part('单选分支',[singleChoice.text,'原跳转：'+singleChoice.target])];row.annotations.push('可转为单行提示');}
+   else if(command==='comment'){const marker=content.match(/(?:TODO|FIXME|待办|待修|完成|标记)[：:\s]*(.*)/i);if(marker)pending.push({text:marker[0],line:row.startLine});continue;}
    if(command==='say'){
     if(args.speaker!==undefined&&args.speaker!==null)speaker=String(args.speaker);if(sentence.commandRaw===''||args.clear===true)speaker='';
     row.kind='dialogue';row.main=true;row.speaker=speaker;row.narration=!speaker;if(!row.narration){const source=speakerSource(args);row.speakerSource=source.label;row.speakerSourceType=source.type;row.invalidSpeakerSource=source.invalid;}row.displaySpeaker=speaker||'旁白';row.title=content.replace(/\|/g,' / ');row.target=String(args.figureId??'')||(positions.find(p=>args[p]===true)?'fig-'+positions.find(p=>args[p]===true):null);row.parts=[part(row.title)];const activeFigure=row.target?figures.get(row.target):figures.size===1?[...figures.values()][0]:null;if(activeFigure?.motion)row.annotations.push('动 '+activeFigure.motion);if(activeFigure?.expression)row.annotations.push('表 '+activeFigure.expression);
