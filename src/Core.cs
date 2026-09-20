@@ -38,6 +38,22 @@ namespace NativeVideo {
   public static void CopyTree(string source,string target,Action<string,long> copied=null){if(!Directory.Exists(source))return;if(Within(source,target,true))throw new IOException("副本目录必须位于源目录之外");Directory.CreateDirectory(target);foreach(var d in Directory.GetDirectories(source)){if((File.GetAttributes(d)&FileAttributes.ReparsePoint)!=0)throw new IOException("素材目录不能包含目录链接："+d);CopyTree(d,Path.Combine(target,Path.GetFileName(d)),copied);}foreach(var f in Directory.GetFiles(source)){CopyFile(f,Path.Combine(target,Path.GetFileName(f)));if(copied!=null)copied(f,new FileInfo(f).Length);}}
   public static void DeleteTree(string allowedRoot,string target){target=Full(target);if(!Within(allowedRoot,target))throw new IOException("拒绝删除指定根目录以外的路径");if(Directory.Exists(target)){if((File.GetAttributes(target)&FileAttributes.ReparsePoint)!=0){Directory.Delete(target);return;}foreach(var d in Directory.GetDirectories(target))DeleteTree(allowedRoot,d);foreach(var f in Directory.GetFiles(target))File.Delete(f);Directory.Delete(target);}}
  }
+ public static class WorkCache {
+  public static void CleanupBrowserProfile(string parent){string profile=Path.Combine(parent,"profile");try{if(Directory.Exists(profile))Files.DeleteTree(parent,profile);}catch{}}
+  public static void CleanupCompleted(object request){
+   string work=J.S(request,"jobDir"),record=J.S(request,"recordDir",work);if(string.IsNullOrWhiteSpace(work)||!Directory.Exists(work))return;
+   if(!Files.Full(work).Equals(Files.Full(record),StringComparison.OrdinalIgnoreCase)){
+    string root=J.S(request,"cacheRoot");if(!string.IsNullOrWhiteSpace(root)&&Files.Within(root,work)){Files.DeleteTree(root,work);return;}
+    throw new IOException("工作缓存目录不在记录的缓存根目录内，未自动删除："+work);
+   }
+   foreach(var name in new[]{"parts","planning","music-snapshot"}){string path=Path.Combine(work,name);if(Directory.Exists(path))Files.DeleteTree(work,path);}
+   foreach(var name in new[]{"audio.wav","concat.txt","mix.log"}){string path=Path.Combine(work,name);if(File.Exists(path))File.Delete(path);}
+  }
+  public static void DeleteAll(object request,string recordRoot,string recordDir){
+   string work=J.S(request,"jobDir",recordDir);if(!string.IsNullOrWhiteSpace(work)&&Directory.Exists(work)&&!Files.Full(work).Equals(Files.Full(recordDir),StringComparison.OrdinalIgnoreCase)){string root=J.S(request,"cacheRoot");if(string.IsNullOrWhiteSpace(root)||!Files.Within(root,work))throw new IOException("拒绝删除未验证的工作缓存目录："+work);Files.DeleteTree(root,work);}
+   if(Directory.Exists(recordDir))Files.DeleteTree(recordRoot,recordDir);
+  }
+ }
  public sealed class CommandResult {public int Code;public string Text,Error;public byte[] Bytes;}
  public static class Commands {
   public static string RuntimePath="";
@@ -51,15 +67,40 @@ namespace NativeVideo {
  }
  public static class GpuEncoding {
   public const string UnavailableMarker="[ENCODER_UNAVAILABLE]";
-  public static bool IsCompatibilityError(string message){return new[]{"required nvenc API version","minimum required Nvidia driver","Cannot load nvcuda","Cannot load nvEncodeAPI","No NVENC capable devices","Unknown encoder"}.Any(x=>(message??"").IndexOf(x,StringComparison.OrdinalIgnoreCase)>=0);}
-  public static IOException EncoderError(string message){return new IOException((IsCompatibilityError(message)?UnavailableMarker+" 当前 NVIDIA 驱动或硬件无法使用此编码器，请选择其他编码模式，或安装兼容的驱动与编码组件。\n":"")+message);}
-  public static async Task<string> CheckRequest(object request){if(J.B(request,"analysisOnly")||!J.B(request,"gpuRawExport")||J.S(request,"gpuRawCodec")!="nvenc")return null;var settings=J.Get(request,"settings");try{await Commands.Run("ffmpeg",new[]{"-v","error","-f","lavfi","-i","color=c=black:s="+J.S(settings,"width")+"x"+J.S(settings,"height")+":r="+J.S(settings,"fps"),"-frames:v","1","-c:v","h264_nvenc","-preset","p1","-tune","hq","-rc","vbr","-cq","19","-b:v","0","-pix_fmt","yuv420p","-f","null","-"},null,15000);return null;}catch(Exception error){if(IsCompatibilityError(error.Message))return error.Message;throw new InvalidOperationException("[ENCODER_PREFLIGHT_FAILED]"+" NVIDIA 硬件编码预检失败，已在生成帧前停止。请选择其他编码模式，或检查驱动与编码组件兼容性。\n"+error.Message,error);}}
-  static readonly object gate=new object();static bool? nvenc;
-  public static async Task<bool> NvencAvailable(){lock(gate)if(nvenc.HasValue)return nvenc.Value;bool available=false;try{await Commands.Run("ffmpeg",new[]{"-v","error","-f","lavfi","-i","color=c=black:s=64x64:r=1","-frames:v","1","-c:v","h264_nvenc","-f","null","-"},null,15000);available=true;}catch{}lock(gate){if(!nvenc.HasValue)nvenc=available;return nvenc.Value;}}
-  public static async Task<string> Resolve(string mode){mode=(mode??"").ToLowerInvariant();if(mode=="traditional"||mode=="x264rgb"||mode=="nvenc")return mode;return await NvencAvailable()?"nvenc":"x264rgb";}
+  static readonly string[] Hardware=new[]{"nvenc","amf","qsv"};static readonly object gate=new object();static readonly Dictionary<string,bool> availability=new Dictionary<string,bool>(StringComparer.OrdinalIgnoreCase);
+  public static bool IsHardware(string codec){return Hardware.Contains((codec??"").ToLowerInvariant());}
+  public static string NormalizeMode(string mode){mode=(mode??"").Trim().ToLowerInvariant();if(mode==""||mode=="auto"||mode=="off")return "recommended";if(mode=="x264rgb")return "lossless";if(mode=="nvenc"||mode=="amf"||mode=="qsv"||mode=="x264")return "quality";if(new[]{"recommended","quality","lossless","traditional"}.Contains(mode))return mode;throw new ArgumentException("视频编码模式无效："+mode);}
+  public static int Quality(string mode){return NormalizeMode(mode)=="quality"?18:21;}
+  public static string Filter(string codec){codec=(codec??"").ToLowerInvariant();if(codec=="x264rgb")return "vflip,format=rgb24";return "vflip,scale=in_range=pc:out_range=tv:out_color_matrix=bt709,format="+(codec=="x264"?"yuv420p":"nv12");}
+  public static void AddEncoderArgs(List<string> args,string codec,string mode){
+   codec=(codec??"").ToLowerInvariant();mode=NormalizeMode(mode);int q=Quality(mode);
+   if(codec=="x264rgb"){args.AddRange(new[]{"-c:v","libx264rgb","-preset","ultrafast","-crf","0","-pix_fmt","rgb24","-color_range","pc","-x264-params","fullrange=on:colorprim=bt709:transfer=iec61966-2-1","-threads","2"});return;}
+   if(codec=="nvenc")args.AddRange(new[]{"-c:v","h264_nvenc","-preset",mode=="quality"?"p5":"p4","-tune","hq","-rc","vbr","-cq",q.ToString(CultureInfo.InvariantCulture),"-b:v","0"});
+   else if(codec=="amf")args.AddRange(new[]{"-c:v","h264_amf","-quality",mode=="quality"?"quality":"balanced","-rc","cqp","-qp_i",q.ToString(CultureInfo.InvariantCulture),"-qp_p",q.ToString(CultureInfo.InvariantCulture),"-qp_b",Math.Min(51,q+2).ToString(CultureInfo.InvariantCulture)});
+   else if(codec=="qsv")args.AddRange(new[]{"-c:v","h264_qsv","-preset",mode=="quality"?"medium":"veryfast","-global_quality",q.ToString(CultureInfo.InvariantCulture)});
+   else if(codec=="x264")args.AddRange(new[]{"-c:v","libx264","-preset",mode=="quality"?"fast":"veryfast","-crf",q.ToString(CultureInfo.InvariantCulture),"-threads","2"});
+   else throw new ArgumentException("不支持的视频编码器："+codec);
+   args.AddRange(new[]{"-pix_fmt","yuv420p","-color_range","tv","-colorspace","bt709","-color_primaries","bt709","-color_trc","iec61966-2-1"});
+  }
+  static async Task Probe(string codec,string mode,int width,int height,int fps){
+   var args=new List<string>{"-v","error","-f","lavfi","-i","color=c=black:s="+width+"x"+height+":r="+fps,"-frames:v","1","-vf",codec=="x264rgb"?"format=rgb24":codec=="x264"?"format=yuv420p":"format=nv12"};AddEncoderArgs(args,codec,mode);args.AddRange(new[]{"-f","null","-"});await Commands.Run("ffmpeg",args,null,15000);
+  }
+  public static async Task<bool> Available(string codec){codec=(codec??"").ToLowerInvariant();lock(gate){bool cached;if(availability.TryGetValue(codec,out cached))return cached;}bool ok=false;try{await Probe(codec,codec=="x264rgb"?"lossless":"recommended",64,64,30);ok=true;}catch{}lock(gate)availability[codec]=ok;return ok;}
+  public static async Task<string> ResolveCodec(string mode,string preferred=""){
+   mode=NormalizeMode(mode);if(mode=="traditional")return "";if(mode=="lossless")return "x264rgb";
+   preferred=(preferred??"").ToLowerInvariant();if(preferred!=""){if(!new[]{"nvenc","amf","qsv","x264"}.Contains(preferred))throw new ArgumentException("指定编码器无效："+preferred);if(await Available(preferred))return preferred;return "x264";}
+   foreach(var codec in Hardware)if(await Available(codec))return codec;return "x264";
+  }
+  public static bool IsCompatibilityError(string message){return new[]{"required nvenc API version","minimum required Nvidia driver","Cannot load nvcuda","Cannot load nvEncodeAPI","No NVENC capable devices","Unknown encoder","AMF failed","CreateComponent","MFX_ERR","unsupported device","device creation failed","no device available"}.Any(x=>(message??"").IndexOf(x,StringComparison.OrdinalIgnoreCase)>=0);}
+  public static IOException EncoderError(string codec,string message){return new IOException((IsHardware(codec)?UnavailableMarker+" 当前硬件编码器 "+codec+" 无法继续，WebVideo+ 将尝试回退到 CPU H.264。\n":"")+message);}
+  public static async Task<string> CheckRequest(object request){
+   if(J.B(request,"analysisOnly")||!J.B(request,"gpuRawExport"))return null;string codec=J.S(request,"gpuRawCodec"),mode=J.S(request,"gpuRawMode",J.S(J.Get(request,"settings"),"gpuRawMode","recommended"));if(!IsHardware(codec))return null;var settings=J.Get(request,"settings");
+   try{await Probe(codec,mode,(int)J.N(settings,"width",1920),(int)J.N(settings,"height",1080),(int)J.N(settings,"fps",30));return null;}catch(Exception error){return error.Message;}
+  }
+  public static Task<string> Resolve(string mode){return Task.FromResult(NormalizeMode(mode));}
  }
  public static class Settings {
-  public static Dictionary<string,object> Validate(object supplied){var d=J.O("width",1920,"height",1080,"fps",30,"mode","auto","bgmBaseMode","auto","workers",4,"textSpeed",50,"autoSpeed",50,"holdSeconds",1,"gpu","auto","engine","webgal","gpuRawMode","auto","gpuRawPreferenceVersion",1,"gpuRawDom",true);foreach(var k in d.Keys.ToArray())if(J.Get(supplied,k)!=null)d[k]=J.Get(supplied,k);if(!new[]{"webgal","mygo"}.Contains(J.S(d,"engine")))throw new ArgumentException("导出引擎无效");int w=(int)J.N(d,"width"),h=(int)J.N(d,"height");if(!new[]{"1280x720","1920x1080","2560x1440","3840x2160"}.Contains(w+"x"+h)||!new[]{30d,60d}.Contains(J.N(d,"fps")))throw new ArgumentException("分辨率或帧率无效");double workers=J.N(d,"workers");if(workers<1||workers>32||workers!=Math.Truncate(workers))throw new ArgumentException("并行数需要填写 1–32 的整数");if(!new[]{"auto","manual","bgm"}.Contains(J.S(d,"mode"))||!new[]{"auto","manual"}.Contains(J.S(d,"bgmBaseMode"))||!new[]{"auto","high","low"}.Contains(J.S(d,"gpu"))||!new[]{"auto","off","traditional","x264rgb","nvenc"}.Contains(J.S(d,"gpuRawMode")))throw new ArgumentException("导出模式、GPU 或编码管线选项无效");if(J.S(d,"gpuRawMode")=="off")d["gpuRawMode"]="auto";foreach(var key in new[]{"textSpeed","autoSpeed"})if(J.N(d,key)<-500||J.N(d,key)>100)throw new ArgumentException("播放速度需要在 -500–100 之间，推荐 0–100");if(J.N(d,"holdSeconds")<0||J.N(d,"holdSeconds")>60)throw new ArgumentException("等待时长无效");return d;}
+  public static Dictionary<string,object> Validate(object supplied){var d=J.O("width",1920,"height",1080,"fps",30,"mode","auto","bgmBaseMode","auto","workers",4,"textSpeed",50,"autoSpeed",50,"holdSeconds",1,"gpu","auto","engine","webgal","gpuRawMode","recommended","gpuRawPreferenceVersion",2,"gpuRawDom",true);foreach(var k in d.Keys.ToArray())if(J.Get(supplied,k)!=null)d[k]=J.Get(supplied,k);if(!new[]{"webgal","mygo"}.Contains(J.S(d,"engine")))throw new ArgumentException("导出引擎无效");int w=(int)J.N(d,"width"),h=(int)J.N(d,"height");if(!new[]{"1280x720","1920x1080","2560x1440","3840x2160"}.Contains(w+"x"+h)||!new[]{30d,60d}.Contains(J.N(d,"fps")))throw new ArgumentException("分辨率或帧率无效");double workers=J.N(d,"workers");if(workers<1||workers>32||workers!=Math.Truncate(workers))throw new ArgumentException("并行数需要填写 1–32 的整数");if(!new[]{"auto","manual","bgm"}.Contains(J.S(d,"mode"))||!new[]{"auto","manual"}.Contains(J.S(d,"bgmBaseMode"))||!new[]{"auto","high","low"}.Contains(J.S(d,"gpu"))||!new[]{"auto","off","recommended","quality","lossless","traditional","x264rgb","nvenc","amf","qsv","x264"}.Contains(J.S(d,"gpuRawMode")))throw new ArgumentException("导出模式、GPU 或编码管线选项无效");d["gpuRawMode"]=GpuEncoding.NormalizeMode(J.S(d,"gpuRawMode"));foreach(var key in new[]{"textSpeed","autoSpeed"})if(J.N(d,key)<-500||J.N(d,key)>100)throw new ArgumentException("播放速度需要在 -500–100 之间，推荐 0–100");if(J.N(d,"holdSeconds")<0||J.N(d,"holdSeconds")>60)throw new ArgumentException("等待时长无效");return d;}
  }
  public static partial class App {public static readonly object LogLock=new object();}
 }
