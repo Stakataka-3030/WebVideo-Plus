@@ -11,7 +11,7 @@ const WebVideoRuntime=(()=>{
   return null;
  }
  function peekGameSettings(game=context.game){try{const frame=frameFor(game),options=frame&&storeFor(frame)?.getState()?.userData?.optionData;if(!options)return null;const textSpeed=Number(options.textSpeed),autoSpeed=Number(options.autoSpeed);if(![textSpeed,autoSpeed].every(n=>Number.isFinite(n)&&n>=-500&&n<=100))return null;return {textSpeed,autoSpeed};}catch{return null;}}
- function singleLineHintDuration(row){if(row?.command!=='choose'||Number(row.args?.defaultChoose)!==1||row.args?.next===true)return 0;const ms=Number(row.args?.wvpHint);if(!Number.isFinite(ms)||ms<100||ms>60000)return 0;const options=String(row.content||'').split(/(?<!\\)\|/);if(options.length!==1)return 0;const nodes=options[0].split(/(?<!\\):/);return nodes.length>1&&/^__wvp_hint_[A-Za-z0-9_]+$/.test(nodes[1].trim())?ms:0;}
+ function singleLineHintDuration(row){const shared=window.WebVideoTimelineCore?.singleChooseInfo?.(row);if(shared)return shared.isHint?shared.duration:0;if(row?.command!=='choose'||Number(row.args?.defaultChoose)!==1||row.args?.next===true)return 0;const options=String(row.content||'').split(/(?<!\\)\|/);if(options.length!==1)return 0;const nodes=options[0].split(/(?<!\\):/);if(nodes.length!==2||!/^__wvp_hint_[A-Za-z0-9_]+$/.test(nodes[1].trim()))return 0;const fromArgs=Number(row.args?.wvpHint),match=String(row.source||'').match(/(?:^|\\s)-wvpHint=([0-9]+(?:\\.[0-9]+)?)(?=\\s|;|$)/),fromSource=match?Number(match[1]):NaN,ms=Number.isFinite(fromArgs)?fromArgs:fromSource;return Number.isFinite(ms)&&ms>=100&&ms<=60000?ms:1800;}
  function singleChooseItem(frame){const main=frame?.contentDocument?.getElementById('chooseContainer')?.firstElementChild;if(!main||main.children.length!==1)return null;const outer=main.firstElementChild;if(!outer||outer.children.length!==1)return null;return outer.firstElementChild;}
  async function waitPreviewSettled(ticket,before,path,minSentenceId){const scene=String(path||'').replace(/\\/g,'/').split('/game/scene/').pop();for(let i=0;i<100;i++){if(ticket!==navigation)return false;const current=EditorPreviewClient.getLastStageSnapshot?.();if(current&&current!==before&&String(current.sceneName||'').replace(/\\/g,'/').endsWith(scene)&&Number(current.sentenceId)>=minSentenceId)return true;await sleep(50);}return false;}
  async function dismissSingleLineHint(ticket,frame,duration){let item=null;for(let i=0;i<40;i++){if(ticket!==navigation||frameFor(context.game)!==frame)return;item=singleChooseItem(frame);if(item)break;await sleep(25);}if(!item)return;await sleep(duration);if(ticket!==navigation||frameFor(context.game)!==frame)return;if(singleChooseItem(frame)===item)item.click();}
@@ -43,11 +43,12 @@ const WebVideoSingleLineHint=(()=>{
  const splitNodes=value=>String(value||'').split(/(?<!\\):/);
  function analyze(row){
   if(!row||row.command!=='choose')return {isHint:false,convertible:false,reason:'not-choose'};
-  const args=row.args||{},options=splitOptions(row.content),nodes=splitNodes(options[0]||''),text=(nodes[0]||'').trim(),target=(nodes[1]||'').trim(),duration=Number(args.wvpHint);
-  const isHint=options.length===1&&nodes.length===2&&reserved.test(target)&&Number(args.defaultChoose)===1&&!args.next&&Number.isFinite(duration)&&duration>=100&&duration<=60000;
-  if(isHint)return {isHint:true,convertible:false,text,target,duration};
-  const unsafeArgs=Object.keys(args).filter(key=>key!=='defaultChoose');
-  const convertible=args.wvpHint===undefined&&options.length===1&&nodes.length===2&&!String(options[0]).includes('->')&&!!text&&!!target&&unsafeArgs.length===0;
+  const shared=window.WebVideoTimelineCore?.singleChooseInfo?.(row);if(shared)return {...shared,reason:shared.isHint?'single-line-hint':shared.convertible?'single-choice':'unsafe'};
+  const args=row.args||{},options=splitOptions(row.content),nodes=splitNodes(options[0]||''),text=(nodes[0]||'').trim(),target=(nodes[1]||'').trim(),fromArgs=Number(args.wvpHint),match=String(row.source||'').match(/(?:^|\\s)-wvpHint=([0-9]+(?:\\.[0-9]+)?)(?=\\s|;|$)/),fromSource=match?Number(match[1]):NaN,rawDuration=Number.isFinite(fromArgs)?fromArgs:fromSource,duration=Number.isFinite(rawDuration)&&rawDuration>=100&&rawDuration<=60000?rawDuration:1800;
+  const isHint=options.length===1&&nodes.length===2&&reserved.test(target)&&Number(args.defaultChoose)===1&&!args.next;
+  if(isHint)return {isHint:true,convertible:false,text,target,duration,reason:'single-line-hint'};
+  const hasHintArg=args.wvpHint!==undefined||/(?:^|\\s)-wvpHint(?:=|\\s|;|$)/.test(String(row.source||'')),unsafeArgs=Object.keys(args).filter(key=>key!=='defaultChoose'&&key!=='wvpHint');
+  const convertible=!hasHintArg&&options.length===1&&nodes.length===2&&!String(options[0]).includes('->')&&!!text&&!!target&&unsafeArgs.length===0;
   return {isHint:false,convertible,text,target,duration:1800,reason:convertible?'single-choice':'unsafe',unsafeArgs};
  }
  function id(){return '__wvp_hint_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}
@@ -80,8 +81,8 @@ const WebVideoSingleLineHint=(()=>{
 window.WebVideoSingleLineHint=WebVideoSingleLineHint;
 let WebVideoChooseHintOriginal=null;
 function webVideoChooseHintState(sentence){
- const args=sentence?.args||[],hintArg=args.find(a=>a.key==='wvpHint'),defaultArg=args.find(a=>a.key==='defaultChoose'),content=String(sentence?.content||''),options=content.split(/(?<!\\)\|/),nodes=(options[0]||'').split(/(?<!\\):/),target=nodes[1]?.trim()||'',duration=Number(hintArg?.value);
- return {requested:!!hintArg,duration:Number.isFinite(duration)&&duration>=100&&duration<=60000?duration:1800,defaultChoose:Number(defaultArg?.value),optionCount:options.length,reservedTarget:/^__wvp_hint_[A-Za-z0-9_]+$/.test(target)};
+ const args=sentence?.args||[],hintArg=args.find(a=>a.key==='wvpHint'),defaultArg=args.find(a=>a.key==='defaultChoose'),nextArg=args.find(a=>a.key==='next'),content=String(sentence?.content||''),options=content.split(/(?<!\\)\|/),nodes=(options[0]||'').split(/(?<!\\):/),target=nodes[1]?.trim()||'',duration=Number(hintArg?.value),defaultChoose=Number(defaultArg?.value),reservedTarget=/^__wvp_hint_[A-Za-z0-9_]+$/.test(target),requested=!!hintArg||(options.length===1&&nodes.length===2&&reservedTarget&&defaultChoose===1&&nextArg?.value!==true);
+ return {requested,duration:Number.isFinite(duration)&&duration>=100&&duration<=60000?duration:1800,defaultChoose,optionCount:options.length,reservedTarget};
 }
 function webVideoSubmitChooseArgs(sentence,updates){
  const args=new Map((sentence?.args||[]).map(arg=>[arg.key,arg.value]));for(const update of updates){if(update.value===''||update.value===false)args.delete(update.key);else args.set(update.key,update.value);}
