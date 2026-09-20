@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';import {fileURLToPath} from 'node:url';
 const root=path.dirname(fileURLToPath(import.meta.url));
+const internalAt=process.argv.indexOf('--internal-version'),internalVersion=internalAt>=0?process.argv[internalAt+1]:'';if(internalAt>=0&&!internalVersion)throw Error('--internal-version requires a value');
 const versions=JSON.parse(fs.readFileSync(path.join(root,'version.json'),'utf8')),productVersion=versions.productVersion,installerVersion=versions.installerVersion,kernelVersion=versions.kernelVersion;
 if(!productVersion||!installerVersion||!kernelVersion)throw Error('version.json is missing required version fields');
 let s=fs.readFileSync(path.join(root,'installer/Installer.base.cs'),'utf8').replaceAll('\r\n','\n');
@@ -41,7 +42,7 @@ replace('  start=new CheckBox',`  foreach(Control field in advanced.Controls)fie
   start=new CheckBox`);
 replace('c.Top+=advancedToggle.Checked?128:-128','c.Top+=advancedToggle.Checked?208:-208');
 replace('advancedToggle.Checked?568:440','advancedToggle.Checked?648:440');
-replace('【内部版本 0.3.1 · C# / WebView2】','WebVideo+ '+productVersion+' · 导出内核 '+kernelVersion);
+replace('【内部版本 0.3.1 · C# / WebView2】','WebVideo+ '+(internalVersion?'内部 '+internalVersion+' · 正式 '+productVersion:productVersion)+' · 导出内核 '+kernelVersion);
 between(' void RefreshInstallation(', '\n void SetBusy(', ` string[] SelectedModules(){var modules=new List<string>();if(navigatorModule.Checked)modules.Add("timelineNavigator");if(selectorModule.Checked)modules.Add("timelineSelector");if(exporterModule.Checked)modules.Add("exporter");return modules.ToArray();}
  void RefreshInstallation(bool showMessage){var current=InstallationState.Read(terre.Text,InstallerBuild.PackageVersion);install.Visible=true;install.Enabled=!busy&&current.ValidTerre&&current.UpdateAvailable;install.Text=current.Mounted?(String.IsNullOrWhiteSpace(current.Version)||InstallationState.CompareVersions(InstallerBuild.PackageVersion,current.Version)>0?"更新":"应用更改"):"检测并安装";remove.Visible=current.Mounted;remove.Enabled=!busy&&current.Mounted;headline.Text=current.Mounted?"管理 WebVideo+":"安装 WebVideo+";Text=current.Mounted?"WebVideo+ · 管理":"WebVideo+ · 安装";start.Text="完成后启动 Terre";start.Visible=advancedToggle.Visible=true;cancel.Left=432;
   if(loadedModulesPath!=terre.Text){loadedModulesPath=terre.Text;var modules=new[]{"timelineNavigator","timelineSelector","exporter"};try{var marker=Path.Combine(terre.Text,"webvideo-plus.json");if(File.Exists(marker)){var data=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(marker));modules=((System.Collections.IEnumerable)data["modules"]).Cast<object>().Select(Convert.ToString).ToArray();}}catch{}navigatorModule.Checked=modules.Contains("timelineNavigator");selectorModule.Checked=modules.Contains("timelineSelector");exporterModule.Checked=modules.Contains("exporter");}
