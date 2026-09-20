@@ -50,7 +50,7 @@ namespace NativeVideo {
   public static void AddMusic(object plan,object request,object timing){
    var music=J.Get(request,"musicTimeline");if(music==null)return;var audio=J.A(J.Get(plan,"audio"));if(J.B(music,"replaceGameBgm"))audio=audio.Where(a=>J.S(a,"kind")!="bgm"||J.S(a,"origin")=="playlist").ToList();
    var offsets=new Dictionary<string,double>(StringComparer.OrdinalIgnoreCase);foreach(var item in J.A(J.Get(J.Get(timing,"storyTimeline"),"scenes")))offsets[J.S(item,"scene")]=J.N(item,"startSeconds");
-   foreach(var t in J.A(J.Get(music,"tracks"))){string legacy=J.S(t,"legacyScene");double baseStart=0;if(legacy!=""&&!offsets.TryGetValue(legacy,out baseStart))throw new ArgumentException("旧音乐配置所属场景不在当前静态故事时间线中："+legacy);double start=(baseStart+J.N(t,"startSeconds"))*1000,length=J.N(t,"durationSeconds")*1000;audio.Add(J.O("kind","video-music","path",J.S(t,"file"),"atMs",start,"endMs",start+length,"sourceOffsetMs",J.N(t,"offsetSeconds")*1000,"volume",J.N(t,"volume")/100,"fadeMs",J.N(t,"fadeInSeconds")*1000,"fadeOutMs",J.N(t,"fadeOutSeconds")*1000,"loop",J.B(t,"loop")));}
+   foreach(var t in J.A(J.Get(music,"tracks"))){string legacy=J.S(t,"legacyScene");double baseStart=0;if(legacy!=""&&!offsets.TryGetValue(legacy,out baseStart))continue;double start=(baseStart+J.N(t,"startSeconds"))*1000,length=J.N(t,"durationSeconds")*1000;audio.Add(J.O("kind","video-music","path",J.S(t,"file"),"atMs",start,"endMs",start+length,"sourceOffsetMs",J.N(t,"offsetSeconds")*1000,"volume",J.N(t,"volume")/100,"fadeMs",J.N(t,"fadeInSeconds")*1000,"fadeOutMs",J.N(t,"fadeOutSeconds")*1000,"loop",J.B(t,"loop")));}
    J.D(plan)["audio"]=audio;
   }
  }
