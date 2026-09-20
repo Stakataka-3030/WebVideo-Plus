@@ -51,7 +51,7 @@ $taskHash=(Get-FileHash -LiteralPath $taskArchive -Algorithm SHA256).Hash.ToLowe
 $taskGenerated=Join-Path $taskRoot 'installer/InstallerBuild.cs'
 $taskManifestHash=(Get-FileHash -LiteralPath (Join-Path $taskRoot 'package/MANIFEST.json') -Algorithm SHA256).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText($taskGenerated,('public static class InstallerBuild { public const string PayloadHash="'+$taskHash+'"; public const string ManifestHash="'+$taskManifestHash+'"; public const string PackageVersion="'+$taskProductVersion+'"; }'))
-$taskInstallerLabel=if($taskProductVersion.Contains('-')){$taskProductVersion}else{$taskInstallerVersion}
+$taskInstallerLabel=$taskProductVersion
 $taskInstaller=Join-Path $taskRoot ('dist/WebVideo+-Setup-'+$taskInstallerLabel+'.exe')
 $taskInstallerConfig=$taskInstaller+'.config'
 if(Test-Path $taskInstallerConfig){Remove-Item -LiteralPath $taskInstallerConfig -Force}
