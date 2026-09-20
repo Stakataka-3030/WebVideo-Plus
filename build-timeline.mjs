@@ -36,7 +36,7 @@ const mapStart=base.indexOf('gt(i18n._({id:"YjDE9d"})'),mapEnd=base.indexOf(',gt
 const oldAppreciation=base.slice(mapStart,mapEnd),mapPatches=[{find:oldAppreciation,replace:'(_e==="appreciation"?'+oldAppreciation+':gt("角色 ID",jsxRuntimeExports.jsx(WebVideoCharacterMapButton,{})))'},{find:'const gt=(pt,mt,vt=!1)=>_e==="quick"?',replace:'const gt=(pt,mt,vt=!1)=>(_e==="appreciation"&&pt!==i18n._({id:"YjDE9d"}))?null:_e==="quick"?'}];
 for(const patch of mapPatches)if(base.split(patch.find).length!==2)throw Error('Character mapping menu anchor not unique');
 fs.mkdirSync(path.join(root,'package/product-ui'),{recursive:true});
-for(const patch of gamePatches)patch.scope=patch.find.includes('onChoose:Tt')||patch.find.startsWith('children:')||patch.find.startsWith('function AddSentenceDialog(')?'presets':'compact';
+for(const patch of gamePatches)patch.scope=patch.find.includes('onChoose:Tt')||patch.find.startsWith('children:')||patch.find.startsWith('function AddSentenceDialog(')||patch.replace.includes('WebVideoSingleLineHintTopbarButton')?'presets':'compact';
 fs.writeFileSync(path.join(root,'package/product-ui/game-patches.json'),JSON.stringify(gamePatches,null,2));
 const menuPatches=[
  {find:'jsxRuntimeExports.jsx(Tab,{value:"help",children:i18n._({id:"tBIZt9"})}),',replace:''},
