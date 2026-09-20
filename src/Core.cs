@@ -89,7 +89,7 @@ namespace NativeVideo {
   public static async Task<string> ResolveCodec(string mode,string preferred=""){
    mode=NormalizeMode(mode);if(mode=="traditional")return "";if(mode=="lossless")return "x264rgb";
    preferred=(preferred??"").ToLowerInvariant();if(preferred!=""){if(!new[]{"nvenc","amf","qsv","x264"}.Contains(preferred))throw new ArgumentException("指定编码器无效："+preferred);if(await Available(preferred))return preferred;return "x264";}
-   foreach(var codec in Hardware)if(await Available(codec))return codec;return "x264";
+   var probes=Hardware.Select(codec=>Available(codec)).ToArray();var available=await Task.WhenAll(probes);for(int i=0;i<Hardware.Length;i++)if(available[i])return Hardware[i];return "x264";
   }
   public static bool IsCompatibilityError(string message){return new[]{"required nvenc API version","minimum required Nvidia driver","Cannot load nvcuda","Cannot load nvEncodeAPI","No NVENC capable devices","Unknown encoder","AMF failed","CreateComponent","MFX_ERR","unsupported device","device creation failed","no device available"}.Any(x=>(message??"").IndexOf(x,StringComparison.OrdinalIgnoreCase)>=0);}
   public static IOException EncoderError(string codec,string message){return new IOException((IsHardware(codec)?UnavailableMarker+" 当前硬件编码器 "+codec+" 无法继续，WebVideo+ 将尝试回退到 CPU H.264。\n":"")+message);}
