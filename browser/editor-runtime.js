@@ -66,7 +66,7 @@ const WebVideoSingleLineHint=(()=>{
  }
  async function applyPlan(plan,label){
   const live=window.WebVideoPlus?.state().model;if(!live||live.path!==plan.path||live.source!==plan.before)throw Error('剧本已变化，请重新执行转换。');
-  if(window.WebVideoProject?.commit)return await window.WebVideoProject.commit(plan,label);
+  if(window.WebVideoProject?.commit&&window.WebVideoProject.state?.().scope)return await window.WebVideoProject.commit(plan,label);
   await window.WebVideoPlus.flushEditor?.();const latest=window.WebVideoPlus?.state().model;if(!latest||latest.path!==plan.path||latest.source!==plan.before)throw Error('剧本已变化，请重新执行转换。');
   await api.manageGameControllerEditTextFile({textFile:plan.after,path:plan.path});window.WebVideoPlus.replaceBuffer(plan.path,plan.after);if(typeof eventBus!=='undefined')eventBus.emit('editor:update-scene',{scene:plan.after});return {changed:plan.changed};
  }
