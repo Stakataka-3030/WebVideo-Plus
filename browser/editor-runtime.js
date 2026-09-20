@@ -98,7 +98,7 @@ const WebVideoSingleLineHint=(()=>{
 window.WebVideoSingleLineHint=WebVideoSingleLineHint;
 let WebVideoChooseHintOriginal=null;
 function webVideoChooseHintState(sentence){
- const args=sentence?.args||[],hintArg=args.find(a=>a.key==='wvpHint'),defaultArg=args.find(a=>a.key==='defaultChoose'),nextArg=args.find(a=>a.key==='next'),content=String(sentence?.content||''),options=content.split(/(?<!\\)\|/),nodes=(options[0]||'').split(/(?<!\\):/),text=(nodes[0]||'').replace(/\\([:|\\])/g,'$1').trim(),target=nodes[1]?.trim()||'',duration=Number(hintArg?.value),defaultChoose=Number(defaultArg?.value),reservedTarget=/^__wvp_hint_[A-Za-z0-9_]+$/.test(target),requested=!!hintArg||(options.length===1&&nodes.length===2&&reservedTarget&&defaultChoose===1&&nextArg?.value!==true);
+ const args=sentence?.args||[],hintArg=args.find(a=>a.key==='wvpHint'),defaultArg=args.find(a=>a.key==='defaultChoose'),nextArg=args.find(a=>a.key==='next'),content=String(sentence?.content||''),options=content.split(/(?<!\\)\|/),nodes=(options[0]||'').split(/(?<!\\):/),text=(nodes[0]||'').replace(/\\([:|;\\])/g,'$1').trim(),target=nodes[1]?.trim()||'',duration=Number(hintArg?.value),defaultChoose=Number(defaultArg?.value),reservedTarget=/^__wvp_hint_[A-Za-z0-9_]+$/.test(target),requested=!!hintArg||(options.length===1&&nodes.length===2&&reservedTarget&&defaultChoose===1&&nextArg?.value!==true);
  return {requested,duration:Number.isFinite(duration)&&duration>=100&&duration<=60000?duration:1800,defaultChoose,optionCount:options.length,reservedTarget,text,target,paired:sentence?.__wvpHintPair===true,broken:sentence?.__wvpHintBroken===true};
 }
 function webVideoSubmitChooseArgs(sentence,updates){
