@@ -113,7 +113,7 @@ public class InstallationState {
  }catch{state.UpdateAvailable=false;state.Message=state.Mounted?"已检测到挂载，但安装记录或版本无法读取；请查看安装目录。":"无法读取所选目录，请重新选择。";}return state;}
 }
 public class SetupForm:Form {
- TextBox terre,games,output,url;Label status,elapsed,headline;ProgressBar progress;Button install,cancel,remove;Panel advanced;CheckBox advancedToggle,start;SetupEngine engine;RuntimePlan plan;bool busy;DateTime phaseStart;string phase="";
+ TextBox terre,games,output,url;Label status,elapsed,headline;ProgressBar progress;Button install,cancel,remove,findTerre;Panel advanced;CheckBox advancedToggle,start;SetupEngine engine;RuntimePlan plan;bool busy,locatingTerre;DateTime phaseStart;string phase="";
  public SetupForm(){
   Text="WebGAL 视频导出 · 安装";ClientSize=new Size(700,540);FormBorderStyle=FormBorderStyle.Sizable;MaximizeBox=false;MinimumSize=new Size(740,500);AutoScroll=true;StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",10);BackColor=Color.FromArgb(248,249,251);AutoScaleMode=AutoScaleMode.Dpi;
   headline=new Label{Text="安装视频导出工具",Font=new Font(Font.FontFamily,19,FontStyle.Bold),Location=new Point(28,24),Size=new Size(640,42)};Controls.Add(headline);
@@ -132,10 +132,94 @@ public class SetupForm:Form {
   Controls.Add(new Label{Text="【内部版本 0.3.1 · C# / WebView2】",Location=new Point(30,72),Size=new Size(640,26),ForeColor=Color.FromArgb(150,75,20)});
   engine=new SetupEngine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGALVideoExporter"),Report);
   try{var f=Path.Combine(engine.Root,"last-install.json");if(File.Exists(f)){var recent=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(f));terre.Text=(string)recent["terreDir"];games.Text=(string)recent["gamesRoot"];output.Text=(string)recent["outputDir"];url.Text=(string)recent["terreUrl"];}}catch{}
-  var detection=new System.Windows.Forms.Timer{Interval=300};detection.Tick+=(s,e)=>{detection.Stop();if(!busy)RefreshInstallation(true);};terre.TextChanged+=(s,e)=>{detection.Stop();detection.Start();};Shown+=(s,e)=>RefreshInstallation(true);FormClosed+=(s,e)=>detection.Dispose();
+  var detection=new System.Windows.Forms.Timer{Interval=300};detection.Tick+=(s,e)=>{detection.Stop();if(!busy&&!locatingTerre)RefreshInstallation(true);};terre.TextChanged+=(s,e)=>{detection.Stop();detection.Start();};Shown+=async(s,e)=>await AutoFindTerre(true);FormClosed+=(s,e)=>detection.Dispose();
   var timer=new System.Windows.Forms.Timer{Interval=1000};timer.Tick+=(s,e)=>{if(busy)elapsed.Text="本步骤已用 "+(DateTime.Now-phaseStart).ToString(@"mm\:ss");};timer.Start();FormClosed+=(s,e)=>timer.Dispose();FormClosing+=(s,e)=>{if(busy){e.Cancel=true;engine.Canceled=true;status.Text="正在取消，请等待后台步骤结束。";}};
  }
- TextBox Field(Control parent,string name,string value,int top,bool browse){parent.Controls.Add(new Label{Text=name,Location=new Point(30,top+4),Size=new Size(137,26)});var box=new TextBox{Text=value,Location=new Point(170,top),Size=new Size(browse?410:500,29)};parent.Controls.Add(box);if(browse){var b=new Button{Text="浏览…",Location=new Point(590,top-1),Size=new Size(80,30)};parent.Controls.Add(b);b.Click+=(s,e)=>{using(var d=new FolderBrowserDialog{Description=name,SelectedPath=box.Text})if(d.ShowDialog(this)==DialogResult.OK)box.Text=d.SelectedPath;};}return box;}
+ TextBox Field(Control parent,string name,string value,int top,bool browse){
+  parent.Controls.Add(new Label{Text=name,Location=new Point(30,top+4),Size=new Size(137,26)});
+  bool terreField=Object.ReferenceEquals(parent,this)&&name=="Terre 安装目录";
+  var box=new TextBox{Text=value,Location=new Point(170,top),Size=new Size(browse?(terreField?315:410):500,29)};parent.Controls.Add(box);
+  if(browse){
+   if(terreField){findTerre=new Button{Text="自动查找",Location=new Point(495,top-1),Size=new Size(85,30)};parent.Controls.Add(findTerre);findTerre.Click+=async(s,e)=>await AutoFindTerre(true);}
+   var b=new Button{Text=terreField?"选择…":"浏览…",Location=new Point(590,top-1),Size=new Size(80,30)};parent.Controls.Add(b);
+   b.Click+=(s,e)=>{if(terreField){var selected=SelectTerreManually(this);if(selected!=null)box.Text=selected;}else using(var d=new FolderBrowserDialog{Description=name,SelectedPath=box.Text})if(d.ShowDialog(this)==DialogResult.OK)box.Text=d.SelectedPath;};
+  }
+  return box;
+ }
+ static readonly string[] TerreExeNames={"WebGAL_Terre.exe","WebGAL Terre.exe"};
+ static bool IsTerreExeName(string file){return System.Text.RegularExpressions.Regex.Replace(Path.GetFileNameWithoutExtension(file)??"",@"[\s_-]+","").Equals("WebGALTerre",StringComparison.OrdinalIgnoreCase);}
+ static string ValidTerreRoot(string directory){try{
+  if(String.IsNullOrWhiteSpace(directory))return null;directory=Path.GetFullPath(directory.Trim().Trim('"'));if(!Directory.Exists(directory)||!File.Exists(Path.Combine(directory,"public","index.html")))return null;
+  if(TerreExeNames.Any(name=>File.Exists(Path.Combine(directory,name))))return directory;
+  foreach(var exe in Directory.GetFiles(directory,"*.exe",SearchOption.TopDirectoryOnly))if(IsTerreExeName(exe))return directory;
+ }catch{}return null;}
+ static string ShortcutTarget(string link){object shell=null,shortcut=null;try{
+  var type=Type.GetTypeFromProgID("WScript.Shell");if(type==null)return null;shell=Activator.CreateInstance(type);shortcut=type.InvokeMember("CreateShortcut",BindingFlags.InvokeMethod,null,shell,new object[]{link});
+  return Convert.ToString(shortcut.GetType().InvokeMember("TargetPath",BindingFlags.GetProperty,null,shortcut,null));
+ }catch{return null;}finally{try{if(shortcut!=null&&System.Runtime.InteropServices.Marshal.IsComObject(shortcut))System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shortcut);}catch{}try{if(shell!=null&&System.Runtime.InteropServices.Marshal.IsComObject(shell))System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell);}catch{}}}
+ static string ResolveTerreSelection(string selected){try{
+  if(String.IsNullOrWhiteSpace(selected))return null;if(Directory.Exists(selected))return ValidTerreRoot(selected);if(!File.Exists(selected))return null;
+  if(Path.GetExtension(selected).Equals(".lnk",StringComparison.OrdinalIgnoreCase)){var target=ShortcutTarget(selected);return String.IsNullOrWhiteSpace(target)?null:ResolveTerreSelection(target);}
+  if(Path.GetExtension(selected).Equals(".exe",StringComparison.OrdinalIgnoreCase)&&IsTerreExeName(selected))return ValidTerreRoot(Path.GetDirectoryName(Path.GetFullPath(selected)));
+ }catch{}return null;}
+ static IEnumerable<string> WalkDirectories(string root,int maxDepth,int cap){
+  if(String.IsNullOrWhiteSpace(root)||!Directory.Exists(root))yield break;var queue=new Queue<Tuple<string,int>>();var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);queue.Enqueue(Tuple.Create(Path.GetFullPath(root),0));int visited=0;
+  while(queue.Count>0&&visited<cap){var item=queue.Dequeue();if(!seen.Add(item.Item1))continue;visited++;yield return item.Item1;if(item.Item2>=maxDepth)continue;string[] children;try{children=Directory.GetDirectories(item.Item1);}catch{continue;}
+   foreach(var child in children){try{if((File.GetAttributes(child)&FileAttributes.ReparsePoint)!=0)continue;}catch{continue;}queue.Enqueue(Tuple.Create(child,item.Item2+1));}
+  }
+ }
+ static IEnumerable<string> FindShortcuts(string root,int maxDepth){foreach(var dir in WalkDirectories(root,maxDepth,2500)){string[] files;try{files=Directory.GetFiles(dir,"*.lnk",SearchOption.TopDirectoryOnly);}catch{continue;}foreach(var file in files)yield return file;}}
+ static string[] DiscoverTerre(string preferred){
+  var found=new List<string>();Action<string> add=value=>{var root=ResolveTerreSelection(value);if(root!=null&&!found.Contains(root,StringComparer.OrdinalIgnoreCase))found.Add(root);};
+  add(preferred);if(found.Count>0)return found.ToArray();
+  string local=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);foreach(var known in new[]{Path.Combine(local,"WebGal_Terre"),Path.Combine(local,"Programs","WebGAL Terre"),Path.Combine(local,"Programs","WebGAL_Terre")})add(known);if(found.Count>0)return found.ToArray();
+  var shortcutRoots=new[]{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory),Environment.GetFolderPath(Environment.SpecialFolder.StartMenu),Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu),Environment.GetFolderPath(Environment.SpecialFolder.Programs),Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms)}.Where(x=>!String.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase);
+  foreach(var root in shortcutRoots)foreach(var link in FindShortcuts(root,root.IndexOf("Start Menu",StringComparison.OrdinalIgnoreCase)>=0?5:2)){var target=ShortcutTarget(link);if(!String.IsNullOrWhiteSpace(target)&&IsTerreExeName(target))add(target);if(found.Count>=8)break;}
+  if(found.Count>0)return found.ToArray();
+  string user=Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),programFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),programFilesX86=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+  var roots=new[]{Tuple.Create(Path.Combine(local,"Programs"),3),Tuple.Create(local,2),Tuple.Create(programFiles,3),Tuple.Create(programFilesX86,3),Tuple.Create(Path.Combine(user,"Desktop"),2),Tuple.Create(Path.Combine(user,"Downloads"),2),Tuple.Create(user,1)};
+  foreach(var scan in roots){foreach(var dir in WalkDirectories(scan.Item1,scan.Item2,1800)){foreach(var name in TerreExeNames){var exe=Path.Combine(dir,name);if(File.Exists(exe))add(exe);}if(found.Count>=8)break;}if(found.Count>=8)break;}
+  return found.ToArray();
+ }
+ string ChooseTerreCandidate(string[] candidates){
+  if(candidates==null||candidates.Length==0)return null;if(candidates.Length==1)return candidates[0];string selected=null;
+  using(var f=new Form{Text="选择 WebGAL Terre",ClientSize=new Size(620,300),FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,StartPosition=FormStartPosition.CenterParent,Font=Font,BackColor=BackColor}){
+   f.Controls.Add(new Label{Text="检测到多个 WebGAL Terre，请选择要安装 WebVideo+ 的实例：",Location=new Point(24,22),Size=new Size(570,30)});
+   var list=new ListBox{Location=new Point(24,58),Size=new Size(570,160)};list.Items.AddRange(candidates.Cast<object>().ToArray());list.SelectedIndex=0;f.Controls.Add(list);
+   var cancelButton=new Button{Text="取消",Location=new Point(24,242),Size=new Size(90,34),DialogResult=DialogResult.Cancel};f.Controls.Add(cancelButton);
+   var useButton=new Button{Text="使用此路径",Location=new Point(474,242),Size=new Size(120,34)};f.Controls.Add(useButton);useButton.Click+=(sender,args)=>{if(list.SelectedItem!=null){selected=Convert.ToString(list.SelectedItem);f.DialogResult=DialogResult.OK;f.Close();}};
+   f.CancelButton=cancelButton;f.AcceptButton=useButton;f.ShowDialog(this);
+  }return selected;
+ }
+ string SelectTerreManually(IWin32Window owner){string selected=null;
+  using(var f=new Form{Text="手动选择 WebGAL Terre",ClientSize=new Size(560,250),FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,StartPosition=FormStartPosition.CenterParent,Font=Font,BackColor=BackColor}){
+   f.Controls.Add(new Label{Text="您可以选择 Terre 安装文件夹、WebGAL_Terre.exe 本身，或指向它的快捷方式。",Location=new Point(24,22),Size=new Size(510,48)});
+   Action<string> accept=value=>{var root=ResolveTerreSelection(value);if(root==null){MessageBox.Show(f,"所选项目不是有效的 WebGAL Terre。请确认其中包含 Terre 主程序和 public/index.html。","无法识别 Terre",MessageBoxButtons.OK,MessageBoxIcon.Warning);return;}selected=root;f.DialogResult=DialogResult.OK;f.Close();};
+   var folder=new Button{Text="选择 Terre 文件夹",Location=new Point(24,92),Size=new Size(155,42)};folder.Click+=(sender,args)=>{using(var d=new FolderBrowserDialog{Description="选择 WebGAL Terre 安装文件夹",SelectedPath=terre.Text})if(d.ShowDialog(f)==DialogResult.OK)accept(d.SelectedPath);};f.Controls.Add(folder);
+   var exe=new Button{Text="选择 EXE",Location=new Point(202,92),Size=new Size(155,42)};exe.Click+=(sender,args)=>{using(var d=new OpenFileDialog{Title="选择 WebGAL Terre 主程序",Filter="WebGAL Terre|WebGAL_Terre.exe;WebGAL Terre.exe|可执行文件|*.exe|所有文件|*.*",CheckFileExists=true})if(d.ShowDialog(f)==DialogResult.OK)accept(d.FileName);};f.Controls.Add(exe);
+   var shortcut=new Button{Text="选择快捷方式",Location=new Point(380,92),Size=new Size(155,42)};shortcut.Click+=(sender,args)=>{using(var d=new OpenFileDialog{Title="选择 WebGAL Terre 快捷方式",Filter="快捷方式|*.lnk|所有文件|*.*",CheckFileExists=true})if(d.ShowDialog(f)==DialogResult.OK)accept(d.FileName);};f.Controls.Add(shortcut);
+   var cancelButton=new Button{Text="取消",Location=new Point(24,190),Size=new Size(90,34),DialogResult=DialogResult.Cancel};f.Controls.Add(cancelButton);f.CancelButton=cancelButton;f.ShowDialog(owner);
+  }return selected;
+ }
+ string PromptMissingTerre(){
+  string selected=null;using(var f=new Form{Text="未找到 WebGAL Terre",ClientSize=new Size(560,215),FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,StartPosition=FormStartPosition.CenterParent,Font=Font,BackColor=BackColor}){
+   f.Controls.Add(new Label{Text="未能自动扫描到您的 WebGAL Terre 安装路径，请您确认已安装 Terre 并手动选择。",Location=new Point(24,28),Size=new Size(510,70)});
+   var cancelButton=new Button{Text="取消",Location=new Point(24,155),Size=new Size(90,34),DialogResult=DialogResult.Cancel};f.Controls.Add(cancelButton);
+   var manual=new Button{Text="手动选择",Location=new Point(426,155),Size=new Size(110,34)};f.Controls.Add(manual);manual.Click+=(sender,args)=>{var root=SelectTerreManually(f);if(root!=null){selected=root;f.DialogResult=DialogResult.OK;f.Close();}};
+   f.CancelButton=cancelButton;f.AcceptButton=manual;f.ShowDialog(this);
+  }return selected;
+ }
+ async Task AutoFindTerre(bool promptWhenMissing){
+  if(busy||locatingTerre)return;locatingTerre=true;if(findTerre!=null)findTerre.Enabled=false;status.Text="正在自动查找 WebGAL Terre…";
+  try{
+   string preferred=terre.Text;var candidates=await Task.Run(()=>DiscoverTerre(preferred));string selected=ChooseTerreCandidate(candidates);
+   if(selected==null&&candidates.Length==0&&promptWhenMissing)selected=PromptMissingTerre();
+   if(selected!=null){terre.Text=selected;RefreshInstallation(false);status.Text="已找到 WebGAL Terre："+selected;}
+   else if(candidates.Length==0)status.Text="未找到 WebGAL Terre。请确认已安装 Terre，或点击“选择…”手动指定。";
+   else status.Text="未选择 Terre。可以点击“自动查找”重新扫描，或点击“选择…”手动指定。";
+  }finally{locatingTerre=false;if(findTerre!=null)findTerre.Enabled=true;}
+ }
+
  void Report(SetupProgress p){if(IsDisposed)return;BeginInvoke((Action)(()=>{status.Text=p.Message;if(!p.Message.StartsWith("正在下载")&&phase!=p.Message){phase=p.Message;phaseStart=DateTime.Now;}progress.Style=p.Percent<0?ProgressBarStyle.Marquee:ProgressBarStyle.Continuous;if(p.Percent>=0)progress.Value=Math.Min(100,Math.Max(0,p.Percent));}));}
  void RefreshInstallation(bool showMessage){var current=InstallationState.Read(terre.Text,InstallerBuild.PackageVersion);install.Visible=!current.Mounted||current.UpdateAvailable;install.Enabled=!busy&&current.ValidTerre&&install.Visible;install.Text=current.Mounted?"更新":"检测并安装";remove.Visible=current.Mounted;remove.Enabled=!busy&&current.Mounted;headline.Text=current.Mounted?"管理视频导出工具":"安装视频导出工具";Text=current.Mounted?"WebGAL 视频导出 · 管理":"WebGAL 视频导出 · 安装";start.Text=current.Mounted?"更新完成后启动 Terre":"安装完成后启动 Terre";start.Visible=advancedToggle.Visible=install.Visible;if(!install.Visible)advancedToggle.Checked=false;cancel.Left=install.Visible?432:570;if(showMessage)status.Text=current.Message;}
  void SetBusy(bool value){busy=value;install.Enabled=remove.Enabled=terre.Enabled=advanced.Enabled=advancedToggle.Enabled=start.Enabled=!value;cancel.Enabled=true;cancel.Text=value?"取消":"关闭";if(value){engine.Canceled=false;phaseStart=DateTime.Now;}else{progress.Style=ProgressBarStyle.Continuous;elapsed.Text="";RefreshInstallation(false);}}
