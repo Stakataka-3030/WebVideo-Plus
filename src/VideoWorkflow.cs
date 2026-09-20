@@ -15,7 +15,7 @@ namespace NativeVideo {
    var sentences=J.A(J.Get(parsed,"sentenceList"));for(int index=0;index<sentences.Count;index++){
     var sentence=sentences[index];if(J.B(sentence,"isLineBreakHolder"))continue;
     string command=J.N(sentence,"command",-1)==0?"say":J.S(sentence,"commandRaw");var args=new Dictionary<string,object>();foreach(var arg in J.A(J.Get(sentence,"args")))args[J.S(arg,"key")]=J.Get(arg,"value");
-    if(!controls.Contains(command)&&!J.B(args,"userForward")&&!args.ContainsKey("when"))continue;
+    if((!controls.Contains(command)||ProjectAssets.SingleLineHint(command,sentence,args))&&!J.B(args,"userForward")&&!args.ContainsKey("when"))continue;
     int first=(int)J.N(sentence,"startLine",index),last=(int)J.N(sentence,"endLine",first);if(first<0||last<first||last>=lines.Length)throw new ArgumentException("时间分析语句边界无效");
     for(int line=first;line<=last;line++){lines[line]="; WebVideo+ timeline skips interactive/control logic";ignored.Add(line+1);}
    }
