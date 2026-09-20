@@ -70,7 +70,7 @@ namespace NativeVideo {
   }
   static double? Number(object value){if(value==null)return null;double n;return double.TryParse(Convert.ToString(value,System.Globalization.CultureInfo.InvariantCulture),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out n)?(double?)n:null;}
   public static void AttachTimeline(object timing,object chain,string currentScene){
-   var lineTimes=J.A(J.Get(timing,"lineTimes")),origins=J.A(J.Get(chain,"originMap")),sceneMeta=J.A(J.Get(chain,"scenes"));var rows=new Dictionary<string,object[]>(StringComparer.OrdinalIgnoreCase);
+   var lineTimes=J.A(J.Get(timing,"lineTimes"));var origins=J.A(J.Get(chain,"originMap"));var sceneMeta=J.A(J.Get(chain,"scenes"));var rows=new Dictionary<string,object[]>(StringComparer.OrdinalIgnoreCase);
    foreach(var scene in sceneMeta)rows[J.S(scene,"scene")]=new object[Math.Max(0,(int)J.N(scene,"lines"))];
    int count=Math.Min(lineTimes.Count,origins.Count);for(int i=0;i<count;i++){var origin=origins[i];object[] target;if(!rows.TryGetValue(J.S(origin,"scene"),out target))continue;int line=(int)J.N(origin,"line")-1;if(line>=0&&line<target.Length)target[line]=lineTimes[i];}
    double duration=J.N(timing,"durationSeconds"),durationMs=duration*1000;var starts=new double[sceneMeta.Count];for(int i=0;i<starts.Length;i++)starts[i]=double.NaN;
