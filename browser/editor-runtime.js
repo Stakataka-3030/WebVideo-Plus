@@ -37,7 +37,34 @@ const WebVideoRuntime=(()=>{
  return {setContext(value){context=value;},peekGameSettings,readGameSettings,writeGameSettings,syncPreview,cancelNavigation(){navigation++;},storeFor};
 })();
 window.WebVideoRuntime=WebVideoRuntime;
+let WebVideoChooseHintOriginal=null;
+function webVideoChooseHintState(sentence){
+ const args=sentence?.args||[],hintArg=args.find(a=>a.key==='wvpHint'),defaultArg=args.find(a=>a.key==='defaultChoose'),content=String(sentence?.content||''),options=content.split(/(?<!\\)\|/),nodes=(options[0]||'').split(/(?<!\\):/),target=nodes[1]?.trim()||'',duration=Number(hintArg?.value);
+ return {requested:!!hintArg,duration:Number.isFinite(duration)&&duration>=100&&duration<=60000?duration:1800,defaultChoose:Number(defaultArg?.value),optionCount:options.length,reservedTarget:/^__wvp_hint_[A-Za-z0-9_]+$/.test(target)};
+}
+function webVideoSubmitChooseArgs(sentence,updates){
+ const args=new Map((sentence?.args||[]).map(arg=>[arg.key,arg.value]));for(const update of updates){if(update.value===''||update.value===false)args.delete(update.key);else args.set(update.key,update.value);}
+ const argText=[...args].map(([key,value])=>value===true?' -'+key:' -'+key+'='+value).join(''),head=sentence.commandRaw===undefined?String(sentence.content||''):String(sentence.commandRaw)+':'+String(sentence.content||''),comment=String(sentence.inlineComment||'').trim();
+ return head+argText+(comment?'; '+comment:';');
+}
+function WebVideoChooseHintEditor(props){
+ const R=reactExports,h=R.createElement,root=R.useRef(null),state=webVideoChooseHintState(props.sentence),valid=state.requested&&state.optionCount===1&&state.reservedTarget&&state.defaultChoose===1,canEnable=state.optionCount===1&&state.reservedTarget,lockTip='请先关闭“单行提示”再添加选项。添加多个选项会变成交互分支，并阻断 Video+ 自动导出。';
+ R.useEffect(()=>{const host=root.current;if(!host)return;const buttons=[...host.querySelectorAll('button')],add=buttons.find(button=>button.getAttribute('aria-label')==='添加语句'||button.title==='添加语句')||buttons[buttons.length-1];if(add){add.disabled=state.requested;add.setAttribute('aria-disabled',state.requested?'true':'false');add.title=state.requested?lockTip:'';const row=add.parentElement;if(row){row.title=state.requested?lockTip:'';row.style.cursor=state.requested?'not-allowed':'';}}const defaults=[...host.querySelectorAll('input[type="checkbox"]')].filter(input=>input.dataset.wvpHintToggle!=='1');for(const input of defaults){const lockDefault=valid;input.disabled=lockDefault;const holder=input.closest('label')||input.parentElement;if(holder)holder.title=lockDefault?'单行提示固定使用第一个选项作为快速预览默认项；关闭“单行提示”后可修改。':'';}},[state.requested,state.optionCount,state.reservedTarget,state.defaultChoose,valid,props.sentence?.content]);
+ const toggle=event=>{const on=event.currentTarget.checked;if(on&&!canEnable)return;const updates=[{key:'wvpHint',value:on?state.duration:''}];if(on)updates.push({key:'defaultChoose',value:1});props.onSubmit(webVideoSubmitChooseArgs(props.sentence,updates));};
+ let message,title='';
+ if(state.requested&&!valid){message='当前“单行提示”配置无效，会阻断 Video+ 导出。请保持一个选项和默认选项，或关闭此开关。';title=message;}
+ else if(state.requested){message='单行提示开启：仅允许一个选项，约 '+(state.duration/1000).toFixed(state.duration%1000?1:0)+' 秒后自动继续，可用于 Video+ 导出。';}
+ else if(!canEnable){message=state.optionCount!==1?'普通多选项分支会阻断 Video+ 自动导出；删到一个选项后才能使用单行提示。':'此分支不是由 Video+ 单行提示创建；普通分支会阻断 Video+ 自动导出。';title=message;}
+ else message='关闭状态是普通 WebGAL 分支，会阻断 Video+ 自动导出；开启后将作为非交互单行提示自动继续。';
+ const control=h('div',{style:{display:'flex',flexDirection:'column',gap:'5px',padding:'8px 0'},title},h('label',{style:{display:'flex',alignItems:'center',gap:'8px',width:'fit-content',cursor:!state.requested&&!canEnable?'not-allowed':'pointer'}},h('input',{type:'checkbox','data-wvp-hint-toggle':'1',checked:state.requested,disabled:!state.requested&&!canEnable,onChange:toggle}),'单行提示（Video+）'),h('small',{style:{lineHeight:1.5,opacity:state.requested&&!valid?1:.72,color:state.requested&&!valid?'var(--colorPaletteRedForeground1,#b10e1c)':'inherit'}},message));
+ return h('div',{ref:root},h(WebVideoChooseHintOriginal,{...props,extraOptions:h(R.Fragment,null,props.extraOptions,control)}));
+}
+function installWebVideoChooseHintEditor(){
+ if(WebVideoChooseHintOriginal||typeof sentenceEditorConfig==='undefined'||typeof commandType==='undefined')return !!WebVideoChooseHintOriginal;
+ const config=sentenceEditorConfig.find(item=>item.type===commandType.choose);if(!config||typeof config.component!=='function')return false;WebVideoChooseHintOriginal=config.component;config.component=WebVideoChooseHintEditor;return true;
+}
 function WebVideoRuntimeHost(){
+ installWebVideoChooseHintEditor();
  const game=useEditorStore.use.subPage(),showSidebar=useGameEditorContext(s=>s.updateIsShowSidebar),showPreview=useEditorStore.use.updateIsShowPreview();
  reactExports.useEffect(()=>{window.WebVideoFilterLibrary?.load();window.WebVideoPresetLibrary?.load();const focus=()=>window.WebVideoFilterLibrary?.load();window.addEventListener('focus',focus);return()=>window.removeEventListener('focus',focus);},[]);
  useWebVideoAutomaticBackups(game);
