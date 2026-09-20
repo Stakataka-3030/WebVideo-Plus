@@ -68,7 +68,7 @@ const WebVideoSingleLineHint=(()=>{
   const live=window.WebVideoPlus?.state().model;if(!live||live.path!==plan.path||live.source!==plan.before)throw Error('剧本已变化，请重新执行转换。');
   if(window.WebVideoProject?.commit)return await window.WebVideoProject.commit(plan,label);
   await window.WebVideoPlus.flushEditor?.();const latest=window.WebVideoPlus?.state().model;if(!latest||latest.path!==plan.path||latest.source!==plan.before)throw Error('剧本已变化，请重新执行转换。');
-  await api.manageGameControllerEditTextFile({textFile:plan.after,path:plan.path});window.WebVideoPlus.replaceBuffer(plan.path,plan.after);eventBus?.emit?.('editor:update-scene',{scene:plan.after});return {changed:plan.changed};
+  await api.manageGameControllerEditTextFile({textFile:plan.after,path:plan.path});window.WebVideoPlus.replaceBuffer(plan.path,plan.after);if(typeof eventBus!=='undefined')eventBus.emit('editor:update-scene',{scene:plan.after});return {changed:plan.changed};
  }
  async function convertRows(rows,{confirm=true,duration=1800,label='转为单行提示'}={}){
   const model=window.WebVideoPlus?.state().model,plan=buildPlan(model,rows,duration);if(confirm&&!window.confirm('将 '+plan.changed+' 个单选分支转为单行提示？\n\n原选项的跳转目标会被取消，改为显示约 '+(duration/1000)+' 秒后继续下一句。'))return {changed:0,canceled:true};
