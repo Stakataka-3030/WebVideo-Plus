@@ -80,7 +80,7 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 
 0.5.4 的正常导出继续使用 output-size Pixi renderer、WebView2 SharedBuffer raw RGBA 与 ffmpeg 编码，但把“画质档”和“具体编码器”分开。默认“推荐 / 录屏级”会并行实测 NVENC、AMD AMF、Intel Quick Sync，按 NVENC → AMF → QSV 的优先级选择可用硬件编码器；都不可用时使用 CPU x264。高质量档使用相同编码器但提高质量；无损母版才使用 x264rgb CRF 0；“传统/兼容模式”保留旧 JPEG CapturePreview 路径。硬件编码器在任务开始前会按目标分辨率预检，运行时失败也会保持原画质档回退 CPU x264。升级自旧偏好格式时会迁移到新的推荐档（传统兼容模式继续保留）。
 
-工作缓存从状态目录中拆出：`stateDir/jobs/<id>` 只保留 request/status/log/结果等轻量记录，`config.workDir/<id>` 保存 planning、parts、audio.wav、音乐快照和渲染期 WebView2 profile。默认 `workDir` 为当前成片目录下的 `.webvideo-cache`，导出面板可修改并持久化到 `config.json`。成功任务在校验并落盘后删除重型工作目录；失败/取消保留以支持 retry。规划和每个 part 的 WebView2 profile 无论成功失败都在对应进程结束后清理。
+工作缓存从状态目录中拆出：`stateDir/jobs/<id>` 只保留 request/status/log/结果等轻量记录，`config.workDir/<id>` 保存 planning、parts、audio.wav、音乐快照和渲染期 WebView2 profile。默认 `workDir` 为当前成片目录下的 `.webvideo-cache`，导出面板可修改并持久化到 `config.json`。成功任务在校验并落盘后删除重型工作目录；失败/取消保留以支持 retry。规划和每个 part 的 WebView2 profile 无论成功失败都在对应进程结束后清理。 面板上传的临时 BGM 在建任务时复制到 `workDir/<id>/imported-music`，全局 `stateDir/media` 只作为当前服务会话的上传暂存；服务启动/退出会清理未被旧未完成任务引用的副本。
 
 原始帧路径使用 WebView2 SharedBuffer：宿主创建 `width × height × 4` 共享内存并以 ReadWrite 方式发送给页面，页面在每次 Pixi render 后直接执行 `gl.readPixels(..., RGBA, UNSIGNED_BYTE, sharedUint8Array)`。0.5.2 曾试验 3-slot PBO ring，但完整 1080p/4K 导出未观察到可见收益，因此 0.5.3 正式路径恢复 direct readback。下面的 benchmark 可继续用于测量基础 WebGL→CPU shared memory 吞吐：
 
