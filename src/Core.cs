@@ -40,6 +40,10 @@ namespace NativeVideo {
  }
  public static class WorkCache {
   public static void CleanupBrowserProfile(string parent){string profile=Path.Combine(parent,"profile");try{if(Directory.Exists(profile))Files.DeleteTree(parent,profile);}catch{}}
+  public static void CleanupProfiles(object request){
+   string work=J.S(request,"jobDir");if(string.IsNullOrWhiteSpace(work)||!Directory.Exists(work))return;
+   CleanupBrowserProfile(Path.Combine(work,"planning"));string parts=Path.Combine(work,"parts");if(Directory.Exists(parts))foreach(var part in Directory.GetDirectories(parts))CleanupBrowserProfile(part);
+  }
   public static void CleanupCompleted(object request){
    string work=J.S(request,"jobDir"),record=J.S(request,"recordDir",work);if(string.IsNullOrWhiteSpace(work)||!Directory.Exists(work))return;
    if(!Files.Full(work).Equals(Files.Full(record),StringComparison.OrdinalIgnoreCase)){
