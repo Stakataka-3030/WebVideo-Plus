@@ -77,7 +77,8 @@
    if(singleChoice.isHint){const seconds=singleChoice.duration/1000;row.kind='event';row.main=true;row.special=true;row.title='单行提示 · '+singleChoice.text;row.parts=[part('单行提示',[singleChoice.text,'持续：'+(Number.isInteger(seconds)?seconds:seconds.toFixed(1))+' 秒'])];row.annotations.push('自动继续');}
    else if(row.convertibleSingleChoose){row.kind='event';row.main=true;row.special=true;row.title='单选分支 · '+singleChoice.text;row.parts=[part('单选分支',[singleChoice.text,'原跳转：'+singleChoice.target])];row.annotations.push('可转为单行提示');}
    else if(command==='comment'){const marker=content.match(/(?:TODO|FIXME|待办|待修|完成|标记)[：:\s]*(.*)/i);if(marker)pending.push({text:marker[0],line:row.startLine});continue;}
-   if(command==='say'){
+   if(singleChoice.isHint||row.convertibleSingleChoose){}
+   else if(command==='say'){
     if(args.speaker!==undefined&&args.speaker!==null)speaker=String(args.speaker);if(sentence.commandRaw===''||args.clear===true)speaker='';
     row.kind='dialogue';row.main=true;row.speaker=speaker;row.narration=!speaker;if(!row.narration){const source=speakerSource(args);row.speakerSource=source.label;row.speakerSourceType=source.type;row.invalidSpeakerSource=source.invalid;}row.displaySpeaker=speaker||'旁白';row.title=content.replace(/\|/g,' / ');row.target=String(args.figureId??'')||(positions.find(p=>args[p]===true)?'fig-'+positions.find(p=>args[p]===true):null);row.parts=[part(row.title)];const activeFigure=row.target?figures.get(row.target):figures.size===1?[...figures.values()][0]:null;if(activeFigure?.motion)row.annotations.push('动 '+activeFigure.motion);if(activeFigure?.expression)row.annotations.push('表 '+activeFigure.expression);
    }else if(command==='changeBg'){
