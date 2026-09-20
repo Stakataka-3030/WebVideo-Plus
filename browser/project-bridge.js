@@ -2,7 +2,7 @@
 const WebVideoProject=((terreApi)=>{
  const C=window.WebVideoProjectCore,listeners=new Set();let scope=null,project=C.metadata(),music={schemaVersion:2,enabled:false,players:1,tracks:[]},loadError='',busy=false,loading=false,localQueue=Promise.resolve();
  const nativeSaves=new Map(),nativeEdit=terreApi.assetsControllerEditTextFile;
- terreApi.assetsControllerEditTextFile=function(body,...rest){const promise=nativeEdit.call(this,body,...rest),path=body?.path;if(path&&promise?.then){const set=nativeSaves.get(path)||new Set();nativeSaves.set(path,set);set.add(promise);promise.then(()=>set.delete(promise),()=>set.delete(promise));}return promise;};
+ terreApi.assetsControllerEditTextFile=function(body,...rest){const promise=nativeEdit.call(this,body,...rest),path=body?.path;if(path&&promise?.then){const set=nativeSaves.get(path)||new Set();nativeSaves.set(path,set);set.add(promise);if(path.includes('/game/scene/'))window.WebVideoValidatedStoryTimings?.clear();promise.then(()=>set.delete(promise),()=>set.delete(promise));}return promise;};
  const changed=()=>{listeners.forEach(fn=>fn());window.WebVideoPlus?.changed();};
  const url=path=>'/'+path.split('/').map(encodeURIComponent).join('/')+'?wvp='+Date.now();
  async function read(path,missing=null){const r=await fetch(url(path),{cache:'no-store'});if(r.status===404)return missing;if(!r.ok)throw Error('读取失败：'+path);return r.text();}
