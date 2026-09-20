@@ -4,7 +4,7 @@
 
 [下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [0.5.3 发行说明](RELEASE_NOTES_0.5.3.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前源码版本：1.0.0（首个正式发布版；安装器内部版本 1.0.0.0，导出内核 0.5.3）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
+**当前源码版本：1.0.1（开发中；安装器内部版本 1.0.1.0，导出内核 0.5.3）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
 
 当前适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
 
