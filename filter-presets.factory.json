@@ -254,6 +254,72 @@
       ]
     },
     {
+      "id": "contrib-cream-warm-light",
+      "name": "奶油暖光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 241,
+          "colorGreen": 220,
+          "colorBlue": 197,
+          "bloom": 0.25,
+          "bloomBrightness": 0.83,
+          "bloomBlur": 10,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 80,
+          "bevelSoftness": 1,
+          "bevelGreen": 241,
+          "bevelBlue": 210
+        }
+      ],
+      "category": "日常与自然光"
+    },
+    {
+      "id": "contrib-soft-warm-white",
+      "name": "暖白柔光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 232,
+          "colorGreen": 216,
+          "colorBlue": 205,
+          "bloom": 0.25,
+          "bloomBrightness": 0.83,
+          "bloomBlur": 10,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 80,
+          "bevelSoftness": 1,
+          "bevelGreen": 241,
+          "bevelBlue": 215
+        }
+      ],
+      "category": "日常与自然光"
+    },
+    {
+      "id": "contrib-soft-green-daylight",
+      "name": "柔绿日光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 184,
+          "colorGreen": 209,
+          "colorBlue": 195,
+          "bloom": 0.2,
+          "bloomBlur": 20,
+          "bloomThreshold": 0.5,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 150,
+          "bevelSoftness": 1,
+          "bevelGreen": 240,
+          "bevelBlue": 188
+        }
+      ],
+      "category": "日常与自然光"
+    },
+    {
       "id": "sr-03",
       "name": "黄昏 · 方案 1",
       "appliesTo": "both",
@@ -716,6 +782,49 @@
       ]
     },
     {
+      "id": "contrib-warm-brown-glow",
+      "name": "暖棕余晖",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 214,
+          "colorGreen": 180,
+          "colorBlue": 155,
+          "bloom": 0.2,
+          "bloomBlur": 10,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 90,
+          "bevelSoftness": 1,
+          "bevelGreen": 240,
+          "bevelBlue": 207
+        }
+      ],
+      "category": "暖色与黄昏"
+    },
+    {
+      "id": "contrib-amber-warm-light",
+      "name": "琥珀暖光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 242,
+          "colorGreen": 214,
+          "colorBlue": 178,
+          "bloom": 0.25,
+          "bloomBrightness": 0.83,
+          "bloomBlur": 10,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 80,
+          "bevelSoftness": 1,
+          "bevelGreen": 241,
+          "bevelBlue": 210
+        }
+      ],
+      "category": "暖色与黄昏"
+    },
+    {
       "id": "sr-01",
       "name": "夜晚柔光",
       "appliesTo": "both",
@@ -912,6 +1021,26 @@
       "source": "原特效库 #49"
     },
     {
+      "id": "contrib-muted-twilight-blue",
+      "name": "暮蓝冷调",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 126,
+          "colorGreen": 145,
+          "colorBlue": 178,
+          "bloom": 0.2,
+          "bloomBlur": 10,
+          "bevel": 0.75,
+          "bevelThickness": 30,
+          "bevelSoftness": 1,
+          "bevelGreen": 213,
+          "bevelBlue": 138
+        }
+      ],
+      "category": "冷色与夜景"
+    },
+    {
       "id": "sr-08",
       "name": "暗处",
       "appliesTo": "both",
@@ -1091,6 +1220,72 @@
         }
       ],
       "source": "原特效库 补充1"
+    },
+    {
+      "id": "contrib-dark-brown-highlight",
+      "name": "暗棕点光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 111,
+          "colorGreen": 89,
+          "colorBlue": 77,
+          "bloom": 0.25,
+          "bloomBrightness": 1.75,
+          "bloomBlur": 10,
+          "bevel": 0.5,
+          "bevelThickness": 30,
+          "bevelRotation": 80,
+          "bevelSoftness": 1,
+          "bevelGreen": 215,
+          "bevelBlue": 154
+        }
+      ],
+      "category": "暗处与低照"
+    },
+    {
+      "id": "contrib-dark-warm-interior",
+      "name": "暗暖室内光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 139,
+          "colorGreen": 118,
+          "colorBlue": 111,
+          "bloom": 0.5,
+          "bloomBrightness": 1.1,
+          "bloomBlur": 1.25,
+          "bloomThreshold": 0.06,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 90,
+          "bevelSoftness": 1,
+          "bevelGreen": 212,
+          "bevelBlue": 147
+        }
+      ],
+      "category": "暗处与低照"
+    },
+    {
+      "id": "contrib-dark-warm-bloom",
+      "name": "暗暖泛光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 139,
+          "colorGreen": 118,
+          "colorBlue": 111,
+          "bloom": 1,
+          "bloomBrightness": 0.8,
+          "bloomBlur": 0.5,
+          "bevel": 0.5,
+          "bevelThickness": 32,
+          "bevelSoftness": 1,
+          "bevelGreen": 212,
+          "bevelBlue": 147
+        }
+      ],
+      "category": "暗处与低照"
     },
     {
       "id": "template-a30",
@@ -1609,228 +1804,6 @@
         }
       ],
       "source": "原特效库 #178"
-    },
-    {
-      "id": "scene-festival-711",
-      "name": "711",
-      "aliases": [
-        "祭典之后 711"
-      ],
-      "appliesTo": "both",
-      "category": "场景预设 · 祭典之后",
-      "effects": [
-        {
-          "colorRed": 214,
-          "colorGreen": 180,
-          "colorBlue": 155,
-          "bloom": 0.2,
-          "bloomBlur": 10,
-          "bevel": 1,
-          "bevelThickness": 30,
-          "bevelRotation": 90,
-          "bevelSoftness": 1,
-          "bevelGreen": 240,
-          "bevelBlue": 207
-        }
-      ]
-    },
-    {
-      "id": "scene-fate-ring-corridor",
-      "name": "ring走廊",
-      "aliases": [
-        "命定之河 ring走廊"
-      ],
-      "appliesTo": "both",
-      "category": "场景预设 · 命定之河",
-      "effects": [
-        {
-          "colorRed": 241,
-          "colorGreen": 220,
-          "colorBlue": 197,
-          "bloom": 0.25,
-          "bloomBrightness": 0.83,
-          "bloomBlur": 10,
-          "bevel": 1,
-          "bevelThickness": 30,
-          "bevelRotation": 80,
-          "bevelSoftness": 1,
-          "bevelGreen": 241,
-          "bevelBlue": 210
-        }
-      ]
-    },
-    {
-      "id": "scene-fate-mutsumi-basement",
-      "name": "睦家地下室",
-      "aliases": [
-        "命定之河 睦家地下室"
-      ],
-      "appliesTo": "both",
-      "category": "场景预设 · 命定之河",
-      "effects": [
-        {
-          "colorRed": 111,
-          "colorGreen": 89,
-          "colorBlue": 77,
-          "bloom": 0.25,
-          "bloomBrightness": 1.75,
-          "bloomBlur": 10,
-          "bevel": 0.5,
-          "bevelThickness": 30,
-          "bevelRotation": 80,
-          "bevelSoftness": 1,
-          "bevelGreen": 215,
-          "bevelBlue": 154
-        }
-      ]
-    },
-    {
-      "id": "scene-fate-ring-lounge",
-      "name": "ring休息室",
-      "aliases": [
-        "命定之河 ring休息室"
-      ],
-      "appliesTo": "both",
-      "category": "场景预设 · 命定之河",
-      "effects": [
-        {
-          "colorRed": 242,
-          "colorGreen": 214,
-          "colorBlue": 178,
-          "bloom": 0.25,
-          "bloomBrightness": 0.83,
-          "bloomBlur": 10,
-          "bevel": 1,
-          "bevelThickness": 30,
-          "bevelRotation": 80,
-          "bevelSoftness": 1,
-          "bevelGreen": 241,
-          "bevelBlue": 210
-        }
-      ]
-    },
-    {
-      "id": "scene-fate-hospital",
-      "name": "医院",
-      "aliases": [
-        "命定之河 医院"
-      ],
-      "appliesTo": "both",
-      "category": "场景预设 · 命定之河",
-      "effects": [
-        {
-          "colorRed": 232,
-          "colorGreen": 216,
-          "colorBlue": 205,
-          "bloom": 0.25,
-          "bloomBrightness": 0.83,
-          "bloomBlur": 10,
-          "bevel": 1,
-          "bevelThickness": 30,
-          "bevelRotation": 80,
-          "bevelSoftness": 1,
-          "bevelGreen": 241,
-          "bevelBlue": 215
-        }
-      ]
-    },
-    {
-      "id": "scene-fate-amusement-park",
-      "name": "游乐园",
-      "aliases": [
-        "命定之河 游乐园"
-      ],
-      "appliesTo": "both",
-      "category": "场景预设 · 命定之河",
-      "effects": [
-        {
-          "colorRed": 126,
-          "colorGreen": 145,
-          "colorBlue": 178,
-          "bloom": 0.2,
-          "bloomBlur": 10,
-          "bevel": 0.75,
-          "bevelThickness": 30,
-          "bevelSoftness": 1,
-          "bevelGreen": 213,
-          "bevelBlue": 138
-        }
-      ]
-    },
-    {
-      "id": "scene-cohabit-banyan",
-      "name": "榕树",
-      "aliases": [
-        "同居请求 榕树"
-      ],
-      "appliesTo": "both",
-      "category": "场景预设 · 同居请求",
-      "effects": [
-        {
-          "colorRed": 184,
-          "colorGreen": 209,
-          "colorBlue": 195,
-          "bloom": 0.2,
-          "bloomBlur": 20,
-          "bloomThreshold": 0.5,
-          "bevel": 1,
-          "bevelThickness": 30,
-          "bevelRotation": 150,
-          "bevelSoftness": 1,
-          "bevelGreen": 240,
-          "bevelBlue": 188
-        }
-      ]
-    },
-    {
-      "id": "scene-cohabit-taki-room",
-      "name": "立希房间",
-      "aliases": [
-        "同居请求 立希房间"
-      ],
-      "appliesTo": "both",
-      "category": "场景预设 · 同居请求",
-      "effects": [
-        {
-          "colorRed": 139,
-          "colorGreen": 118,
-          "colorBlue": 111,
-          "bloom": 0.5,
-          "bloomBrightness": 1.1,
-          "bloomBlur": 1.25,
-          "bloomThreshold": 0.06,
-          "bevel": 1,
-          "bevelThickness": 30,
-          "bevelRotation": 90,
-          "bevelSoftness": 1,
-          "bevelGreen": 212,
-          "bevelBlue": 147
-        }
-      ]
-    },
-    {
-      "id": "scene-cohabit-maki-room",
-      "name": "真希房间",
-      "aliases": [
-        "同居请求 真希房间"
-      ],
-      "appliesTo": "both",
-      "category": "场景预设 · 同居请求",
-      "effects": [
-        {
-          "colorRed": 139,
-          "colorGreen": 118,
-          "colorBlue": 111,
-          "bloom": 1,
-          "bloomBrightness": 0.8,
-          "bloomBlur": 0.5,
-          "bevel": 0.5,
-          "bevelThickness": 32,
-          "bevelSoftness": 1,
-          "bevelGreen": 212,
-          "bevelBlue": 147
-        }
-      ]
     }
   ]
 }

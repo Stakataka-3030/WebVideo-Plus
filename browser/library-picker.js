@@ -1,5 +1,5 @@
 function WebVideoLibraryPicker({value,onChange,entries,disabled=false,label='选择',placeholder='请选择'}){
- const R=reactExports,h=R.createElement,ref=R.useRef(null),[query,setQuery]=R.useState(''),q=query.trim().toLowerCase(),filterOrder=['日常与自然光','暖色与黄昏','冷色与夜景','暗处与低照','柔光与高光','风格化与失真','场景预设 · 祭典之后','场景预设 · 命定之河','场景预设 · 同居请求','手动添加'],filterLibrary=entries.some(item=>filterOrder.includes(item.category));
+ const R=reactExports,h=R.createElement,ref=R.useRef(null),[query,setQuery]=R.useState(''),q=query.trim().toLowerCase(),filterOrder=['日常与自然光','暖色与黄昏','冷色与夜景','暗处与低照','柔光与高光','风格化与失真','手动添加'],filterLibrary=entries.some(item=>filterOrder.includes(item.category));
  const visible=q?entries.filter(item=>[item.name,item.category,...(item.aliases||[])].some(value=>String(value||'').toLowerCase().includes(q))):entries,groups=new Map();for(const item of visible){const category=item.category||'';if(!groups.has(category))groups.set(category,[]);groups.get(category).push(item);}
  const ordered=[...groups];if(filterLibrary){const rank=new Map(filterOrder.map((name,index)=>[name,index]));ordered.sort((a,b)=>a[0]===''?-1:b[0]===''?1:(rank.get(a[0])??999)-(rank.get(b[0])??999));}
  const choose=item=>{if(disabled)return;onChange(item.value);setQuery('');ref.current?.removeAttribute('open');};
