@@ -113,35 +113,34 @@ public class InstallationState {
  }catch{state.UpdateAvailable=false;state.Message=state.Mounted?"已检测到挂载，但安装记录或版本无法读取；请查看安装目录。":"无法读取所选目录，请重新选择。";}return state;}
 }
 public class SetupForm:Form {
- TextBox terre,games,output,url;Label status,elapsed,headline;ProgressBar progress;Button install,cancel,remove,findTerre;Panel advanced;CheckBox advancedToggle,start;SetupEngine engine;RuntimePlan plan;bool busy,locatingTerre;DateTime phaseStart;string phase="";
+ TextBox terre,games,output,url;Label status,elapsed,headline;ProgressBar progress;Button install,cancel,remove,findTerre,selectTerre;Panel advanced;CheckBox advancedToggle,start;SetupEngine engine;RuntimePlan plan;bool busy,locatingTerre;DateTime phaseStart;string phase="";
  public SetupForm(){
-  Text="WebGAL 视频导出 · 安装";ClientSize=new Size(700,540);FormBorderStyle=FormBorderStyle.Sizable;MaximizeBox=false;MinimumSize=new Size(740,500);AutoScroll=true;StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",10);BackColor=Color.FromArgb(248,249,251);AutoScaleMode=AutoScaleMode.Dpi;
-  headline=new Label{Text="安装视频导出工具",Font=new Font(Font.FontFamily,19,FontStyle.Bold),Location=new Point(28,24),Size=new Size(640,42)};Controls.Add(headline);
-  Controls.Add(new Label{Text="选择已有的 Terre，安装器会检测并帮助补齐运行环境。",Location=new Point(30,76),Size=new Size(640,28),ForeColor=Color.DimGray});
-  terre=Field(this,"Terre 安装目录",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGal_Terre"),120,true);
-  advancedToggle=new CheckBox{Text="高级选项",Location=new Point(30,169),Size=new Size(200,28)};Controls.Add(advancedToggle);advanced=new Panel{Location=new Point(0,202),Size=new Size(690,128),Visible=false};Controls.Add(advanced);
+  Text="WebGAL 视频导出 · 安装";ClientSize=new Size(780,510);FormBorderStyle=FormBorderStyle.Sizable;MaximizeBox=false;MinimumSize=new Size(820,550);AutoScroll=true;StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",10);BackColor=Color.FromArgb(248,249,251);AutoScaleMode=AutoScaleMode.Dpi;
+  headline=new Label{Text="安装视频导出工具",Font=new Font(Font.FontFamily,19,FontStyle.Bold),Location=new Point(28,24),Size=new Size(720,42)};Controls.Add(headline);
+  Controls.Add(new Label{Text="选择已有的 Terre，安装器会检测并帮助补齐运行环境。",Location=new Point(30,104),Size=new Size(720,28),ForeColor=Color.DimGray});
+  terre=Field(this,"Terre 安装目录",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGal_Terre"),138,true);
+  advancedToggle=new CheckBox{Text="高级选项",Location=new Point(30,218),AutoSize=true};Controls.Add(advancedToggle);advanced=new Panel{Location=new Point(0,248),Size=new Size(770,128),Visible=false};Controls.Add(advanced);
   games=Field(advanced,"游戏目录",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".webgal_terre/games"),0,true);output=Field(advanced,"成片保存目录",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),"WebGAL Exports"),42,true);url=Field(advanced,"Terre 本机地址","http://localhost:3001",84,false);
-  start=new CheckBox{Text="安装完成后启动 Terre",Checked=true,Location=new Point(30,339),Size=new Size(330,28)};Controls.Add(start);
-  status=new Label{Text="就绪。缺少依赖时会先征得您的同意。",Location=new Point(30,378),Size=new Size(640,60)};Controls.Add(status);progress=new ProgressBar{Location=new Point(30,442),Size=new Size(640,9)};Controls.Add(progress);elapsed=new Label{Location=new Point(30,458),Size=new Size(640,25),ForeColor=Color.DimGray};Controls.Add(elapsed);
-  var logs=new Button{Text="打开日志",Location=new Point(30,497),Size=new Size(100,34)};logs.Click+=(s,e)=>{try{if(!File.Exists(engine.LogFile))File.WriteAllText(engine.LogFile,"暂无安装日志。");Process.Start("notepad.exe",SetupEngine.Quote(engine.LogFile));}catch(Exception x){MessageBox.Show(this,x.Message);}};Controls.Add(logs);
-  remove=new Button{Text="卸载挂载",Location=new Point(142,497),Size=new Size(105,34)};Controls.Add(remove);remove.Click+=async(s,e)=>await Uninstall();
-  cancel=new Button{Text="关闭",Location=new Point(432,497),Size=new Size(100,34)};cancel.Click+=(s,e)=>{if(busy){engine.Canceled=true;cancel.Enabled=false;status.Text="正在取消，请稍候…";}else Close();};Controls.Add(cancel);
-  install=new Button{Text="检测并安装",Location=new Point(548,497),Size=new Size(122,34),BackColor=Color.FromArgb(28,102,207),ForeColor=Color.White,FlatStyle=FlatStyle.Flat};Controls.Add(install);install.Click+=async(s,e)=>await Install();
-  var lower=Controls.Cast<Control>().Where(c=>c.Top>=339).ToArray();foreach(var c in lower)c.Top-=128;ClientSize=new Size(700,460);advancedToggle.CheckedChanged+=(s,e)=>{advanced.Visible=advancedToggle.Checked;foreach(var c in lower)c.Top+=advancedToggle.Checked?128:-128;ClientSize=new Size(700,advancedToggle.Checked?568:440);};
-  foreach(Control c in Controls)if(c.Top>=76)c.Top+=28;
-  Controls.Add(new Label{Text="【内部版本 0.3.1 · C# / WebView2】",Location=new Point(30,72),Size=new Size(640,26),ForeColor=Color.FromArgb(150,75,20)});
+  start=new CheckBox{Text="安装完成后启动 Terre",Checked=true,Location=new Point(30,300),AutoSize=true};Controls.Add(start);
+  status=new Label{Text="就绪。缺少依赖时会先征得您的同意。",Location=new Point(30,338),Size=new Size(720,60)};Controls.Add(status);progress=new ProgressBar{Location=new Point(30,404),Size=new Size(720,9)};Controls.Add(progress);elapsed=new Label{Location=new Point(30,420),Size=new Size(720,25),ForeColor=Color.DimGray};Controls.Add(elapsed);
+  var logs=new Button{Text="打开日志",Location=new Point(30,458),Size=new Size(100,34)};logs.Click+=(s,e)=>{try{if(!File.Exists(engine.LogFile))File.WriteAllText(engine.LogFile,"暂无安装日志。");Process.Start("notepad.exe",SetupEngine.Quote(engine.LogFile));}catch(Exception x){MessageBox.Show(this,x.Message);}};Controls.Add(logs);
+  remove=new Button{Text="卸载 WebVideo+",Location=new Point(142,458),Size=new Size(140,34)};Controls.Add(remove);remove.Click+=async(s,e)=>await Uninstall();
+  cancel=new Button{Text="取消",Location=new Point(532,458),Size=new Size(100,34),Visible=false};cancel.Click+=(s,e)=>{if(busy){engine.Canceled=true;cancel.Enabled=false;status.Text="正在取消，请稍候…";}};Controls.Add(cancel);
+  install=new Button{Text="检测并安装",Location=new Point(642,458),Size=new Size(108,34),BackColor=Color.FromArgb(28,102,207),ForeColor=Color.White,FlatStyle=FlatStyle.Flat};Controls.Add(install);install.Click+=async(s,e)=>await Install();
+  var lower=Controls.Cast<Control>().Where(c=>c!=advanced&&c.Top>=248).ToArray();ClientSize=new Size(780,510);advancedToggle.CheckedChanged+=(s,e)=>{advanced.Visible=advancedToggle.Checked;int delta=advanced.Height*(advancedToggle.Checked?1:-1);foreach(var c in lower)c.Top+=delta;ClientSize=new Size(780,510+(advancedToggle.Checked?advanced.Height:0));};
+  Controls.Add(new Label{Text="【内部版本 0.3.1 · C# / WebView2】",Location=new Point(30,72),Size=new Size(720,26),ForeColor=Color.FromArgb(150,75,20)});
   engine=new SetupEngine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGALVideoExporter"),Report);
   try{var f=Path.Combine(engine.Root,"last-install.json");if(File.Exists(f)){var recent=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(f));terre.Text=(string)recent["terreDir"];games.Text=(string)recent["gamesRoot"];output.Text=(string)recent["outputDir"];url.Text=(string)recent["terreUrl"];}}catch{}
   var detection=new System.Windows.Forms.Timer{Interval=300};detection.Tick+=(s,e)=>{detection.Stop();if(!busy&&!locatingTerre)RefreshInstallation(true);};terre.TextChanged+=(s,e)=>{detection.Stop();detection.Start();};Shown+=async(s,e)=>await AutoFindTerre(true);FormClosed+=(s,e)=>detection.Dispose();
   var timer=new System.Windows.Forms.Timer{Interval=1000};timer.Tick+=(s,e)=>{if(busy)elapsed.Text="本步骤已用 "+(DateTime.Now-phaseStart).ToString(@"mm\:ss");};timer.Start();FormClosed+=(s,e)=>timer.Dispose();FormClosing+=(s,e)=>{if(busy){e.Cancel=true;engine.Canceled=true;status.Text="正在取消，请等待后台步骤结束。";}};
  }
  TextBox Field(Control parent,string name,string value,int top,bool browse){
-  parent.Controls.Add(new Label{Text=name,Location=new Point(30,top+4),Size=new Size(137,26)});
   bool terreField=Object.ReferenceEquals(parent,this)&&name=="Terre 安装目录";
-  var box=new TextBox{Text=value,Location=new Point(170,top),Size=new Size(browse?(terreField?315:410):500,29)};parent.Controls.Add(box);
+  parent.Controls.Add(new Label{Text=name,Location=new Point(30,top+4),AutoSize=true});
+  var box=new TextBox{Text=value,Location=terreField?new Point(30,top+34):new Point(170,top),Size=terreField?new Size(510,29):new Size(browse?470:580,29)};parent.Controls.Add(box);
   if(browse){
-   if(terreField){findTerre=new Button{Text="自动查找",Location=new Point(495,top-1),Size=new Size(85,30)};parent.Controls.Add(findTerre);findTerre.Click+=async(s,e)=>await AutoFindTerre(true);}
-   var b=new Button{Text=terreField?"选择…":"浏览…",Location=new Point(590,top-1),Size=new Size(80,30)};parent.Controls.Add(b);
+   if(terreField){findTerre=new Button{Text="自动查找",Location=new Point(550,top+33),Size=new Size(100,30)};parent.Controls.Add(findTerre);findTerre.Click+=async(s,e)=>await AutoFindTerre(true);}
+   var b=new Button{Text=terreField?"选择…":"浏览…",Location=terreField?new Point(660,top+33):new Point(650,top-1),Size=terreField?new Size(90,30):new Size(90,30)};parent.Controls.Add(b);if(terreField)selectTerre=b;
    b.Click+=(s,e)=>{if(terreField){var selected=SelectTerreManually(this);if(selected!=null)box.Text=selected;}else using(var d=new FolderBrowserDialog{Description=name,SelectedPath=box.Text})if(d.ShowDialog(this)==DialogResult.OK)box.Text=d.SelectedPath;};
   }
   return box;
@@ -222,7 +221,7 @@ public class SetupForm:Form {
 
  void Report(SetupProgress p){if(IsDisposed)return;BeginInvoke((Action)(()=>{status.Text=p.Message;if(!p.Message.StartsWith("正在下载")&&phase!=p.Message){phase=p.Message;phaseStart=DateTime.Now;}progress.Style=p.Percent<0?ProgressBarStyle.Marquee:ProgressBarStyle.Continuous;if(p.Percent>=0)progress.Value=Math.Min(100,Math.Max(0,p.Percent));}));}
  void RefreshInstallation(bool showMessage){var current=InstallationState.Read(terre.Text,InstallerBuild.PackageVersion);install.Visible=!current.Mounted||current.UpdateAvailable;install.Enabled=!busy&&current.ValidTerre&&install.Visible;install.Text=current.Mounted?"更新":"检测并安装";remove.Visible=current.Mounted;remove.Enabled=!busy&&current.Mounted;headline.Text=current.Mounted?"管理视频导出工具":"安装视频导出工具";Text=current.Mounted?"WebGAL 视频导出 · 管理":"WebGAL 视频导出 · 安装";start.Text=current.Mounted?"更新完成后启动 Terre":"安装完成后启动 Terre";start.Visible=advancedToggle.Visible=install.Visible;if(!install.Visible)advancedToggle.Checked=false;cancel.Left=install.Visible?432:570;if(showMessage)status.Text=current.Message;}
- void SetBusy(bool value){busy=value;install.Enabled=remove.Enabled=terre.Enabled=advanced.Enabled=advancedToggle.Enabled=start.Enabled=!value;cancel.Enabled=true;cancel.Text=value?"取消":"关闭";if(value){engine.Canceled=false;phaseStart=DateTime.Now;}else{progress.Style=ProgressBarStyle.Continuous;elapsed.Text="";RefreshInstallation(false);}}
+ void SetBusy(bool value){busy=value;install.Enabled=remove.Enabled=terre.Enabled=advanced.Enabled=advancedToggle.Enabled=start.Enabled=!value;if(findTerre!=null)findTerre.Enabled=!value;if(selectTerre!=null)selectTerre.Enabled=!value;cancel.Visible=value;cancel.Enabled=true;cancel.Text="取消";if(value){engine.Canceled=false;phaseStart=DateTime.Now;}else{progress.Style=ProgressBarStyle.Continuous;elapsed.Text="";RefreshInstallation(false);}}
  async Task Install(){
   var mounted=InstallationState.Read(terre.Text,InstallerBuild.PackageVersion);if(mounted.Mounted&&!mounted.UpdateAvailable){RefreshInstallation(true);return;}bool updating=mounted.Mounted;
   if(!File.Exists(Path.Combine(terre.Text,"public/index.html"))){MessageBox.Show(this,"没有找到 Terre 的 public/index.html，请选择 Terre 安装目录。","请核对路径");return;}

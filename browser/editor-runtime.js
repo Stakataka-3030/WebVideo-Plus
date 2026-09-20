@@ -37,6 +37,47 @@ const WebVideoRuntime=(()=>{
  return {setContext(value){context=value;},peekGameSettings,readGameSettings,writeGameSettings,syncPreview,cancelNavigation(){navigation++;},storeFor};
 })();
 window.WebVideoRuntime=WebVideoRuntime;
+const WebVideoSingleLineHint=(()=>{
+ const reserved=/^__wvp_hint_[A-Za-z0-9_]+$/;
+ const splitOptions=value=>String(value||'').split(/(?<!\\)\|/);
+ const splitNodes=value=>String(value||'').split(/(?<!\\):/);
+ function analyze(row){
+  if(!row||row.command!=='choose')return {isHint:false,convertible:false,reason:'not-choose'};
+  const args=row.args||{},options=splitOptions(row.content),nodes=splitNodes(options[0]||''),text=(nodes[0]||'').trim(),target=(nodes[1]||'').trim(),duration=Number(args.wvpHint);
+  const isHint=options.length===1&&nodes.length===2&&reserved.test(target)&&Number(args.defaultChoose)===1&&!args.next&&Number.isFinite(duration)&&duration>=100&&duration<=60000;
+  if(isHint)return {isHint:true,convertible:false,text,target,duration};
+  const unsafeArgs=Object.keys(args).filter(key=>key!=='defaultChoose');
+  const convertible=args.wvpHint===undefined&&options.length===1&&nodes.length===2&&!String(options[0]).includes('->')&&!!text&&!!target&&unsafeArgs.length===0;
+  return {isHint:false,convertible,text,target,duration:1800,reason:convertible?'single-choice':'unsafe',unsafeArgs};
+ }
+ function id(){return '__wvp_hint_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}
+ function createText(text='时间 / 地点',duration=1800){const target=id();return 'choose:'+text+':'+target+' -defaultChoose=1 -wvpHint='+duration+';\nlabel:'+target+';';}
+ function buildPlan(model,rows,duration=1800){
+  if(!model||!Array.isArray(rows)||!rows.length)throw Error('没有可转换的单选分支。');
+  const current=new Map(model.statements.map(row=>[row.id,row])),patches=[];
+  for(const requested of rows){const row=current.get(requested.id)||current.get(String(requested.startLine-1)+':'+String(requested.endLine-1));if(!row)continue;const info=analyze(row);if(!info.convertible)continue;
+   const parsed=parseScene(row.source).sentenceList.find(sentence=>!sentence.isLineBreakHolder);if(!parsed)continue;
+   const target=id(),hint=combineSubmitString(parsed.commandRaw||'choose',info.text+':'+target,parsed.args,[{key:'defaultChoose',value:1},{key:'wvpHint',value:duration}],parsed.inlineComment||''),replacement=hint+'\nlabel:'+target+';'+(/\n$/.test(row.source)?'\n':'');
+   patches.push({startOffset:row.startOffset,endOffset:row.endOffset,before:model.source.slice(row.startOffset,row.endOffset),after:replacement,line:row.startLine,oldTarget:info.target});
+  }
+  if(!patches.length)throw Error('没有可安全转换的单选分支。');
+  patches.sort((a,b)=>a.startOffset-b.startOffset);let after=model.source;for(const patch of [...patches].reverse())after=after.slice(0,patch.startOffset)+patch.after+after.slice(patch.endOffset);parseScene(after);
+  return {schemaVersion:1,path:model.path,before:model.source,after,operation:{type:'singleLineHint'},patches,warnings:[],changed:patches.length};
+ }
+ async function applyPlan(plan,label){
+  const live=window.WebVideoPlus?.state().model;if(!live||live.path!==plan.path||live.source!==plan.before)throw Error('剧本已变化，请重新执行转换。');
+  if(window.WebVideoProject?.commit&&window.WebVideoProject.state?.().scope)return await window.WebVideoProject.commit(plan,label);
+  await window.WebVideoPlus.flushEditor?.();const latest=window.WebVideoPlus?.state().model;if(!latest||latest.path!==plan.path||latest.source!==plan.before)throw Error('剧本已变化，请重新执行转换。');
+  await api.manageGameControllerEditTextFile({textFile:plan.after,path:plan.path});window.WebVideoPlus.replaceBuffer(plan.path,plan.after);if(typeof eventBus!=='undefined')eventBus.emit('editor:update-scene',{scene:plan.after});return {changed:plan.changed};
+ }
+ async function convertRows(rows,{confirm=true,duration=1800,label='转为单行提示'}={}){
+  const model=window.WebVideoPlus?.state().model,plan=buildPlan(model,rows,duration);if(confirm&&!window.confirm('将 '+plan.changed+' 个单选分支转为单行提示？\n\n原选项的跳转目标会被取消，改为显示约 '+(duration/1000)+' 秒后继续下一句。'))return {changed:0,canceled:true};
+  return await applyPlan(plan,label);
+ }
+ function convertibleRows(model=window.WebVideoPlus?.state().model){return model?.statements?.filter(row=>analyze(row).convertible)||[];}
+ return {analyze,createText,buildPlan,convertRows,convertibleRows};
+})();
+window.WebVideoSingleLineHint=WebVideoSingleLineHint;
 let WebVideoChooseHintOriginal=null;
 function webVideoChooseHintState(sentence){
  const args=sentence?.args||[],hintArg=args.find(a=>a.key==='wvpHint'),defaultArg=args.find(a=>a.key==='defaultChoose'),content=String(sentence?.content||''),options=content.split(/(?<!\\)\|/),nodes=(options[0]||'').split(/(?<!\\):/),target=nodes[1]?.trim()||'',duration=Number(hintArg?.value);
@@ -48,13 +89,14 @@ function webVideoSubmitChooseArgs(sentence,updates){
  return head+argText+(comment?'; '+comment:';');
 }
 function WebVideoChooseHintEditor(props){
- const R=reactExports,h=R.createElement,root=R.useRef(null),state=webVideoChooseHintState(props.sentence),valid=state.requested&&state.optionCount===1&&state.reservedTarget&&state.defaultChoose===1,canEnable=state.optionCount===1&&state.reservedTarget,lockTip='请先关闭“单行提示”再添加选项。添加多个选项会变成交互分支，并阻断 Video+ 自动导出。';
+ const R=reactExports,h=R.createElement,root=R.useRef(null),state=webVideoChooseHintState(props.sentence),liveModel=window.WebVideoPlus?.state().model,liveRow=liveModel?.statements?.find(row=>row.startLine===Number(props.sentence?.startLine)+1&&row.command==='choose'),convertible=!!liveRow&&window.WebVideoSingleLineHint.analyze(liveRow).convertible,valid=state.requested&&state.optionCount===1&&state.reservedTarget&&state.defaultChoose===1,canEnable=state.optionCount===1&&(state.reservedTarget||convertible),lockTip='请先关闭“单行提示”再添加选项。添加多个选项会变成交互分支，并阻断 Video+ 自动导出。';
  R.useEffect(()=>{const host=root.current;if(!host)return;const buttons=[...host.querySelectorAll('button')],add=buttons.find(button=>button.getAttribute('aria-label')==='添加语句'||button.title==='添加语句')||buttons[buttons.length-1];if(add){add.disabled=state.requested;add.setAttribute('aria-disabled',state.requested?'true':'false');add.title=state.requested?lockTip:'';const row=add.parentElement;if(row){row.title=state.requested?lockTip:'';row.style.cursor=state.requested?'not-allowed':'';}}const defaults=[...host.querySelectorAll('input[type="checkbox"]')].filter(input=>input.dataset.wvpHintToggle!=='1');for(const input of defaults){const lockDefault=valid;input.disabled=lockDefault;const holder=input.closest('label')||input.parentElement;if(holder)holder.title=lockDefault?'单行提示固定使用第一个选项作为快速预览默认项；关闭“单行提示”后可修改。':'';}},[state.requested,state.optionCount,state.reservedTarget,state.defaultChoose,valid,props.sentence?.content]);
- const toggle=event=>{const on=event.currentTarget.checked;if(on&&!canEnable)return;const updates=[{key:'wvpHint',value:on?state.duration:''}];if(on)updates.push({key:'defaultChoose',value:1});props.onSubmit(webVideoSubmitChooseArgs(props.sentence,updates));};
+ const toggle=async event=>{const on=event.currentTarget.checked;if(on&&convertible){try{await window.WebVideoSingleLineHint.convertRows([liveRow]);}catch(error){window.alert(error.message||String(error));}return;}if(on&&!canEnable)return;const updates=[{key:'wvpHint',value:on?state.duration:''},{key:'defaultChoose',value:on?1:''}];props.onSubmit(webVideoSubmitChooseArgs(props.sentence,updates));};
  let message,title='';
  if(state.requested&&!valid){message='当前“单行提示”配置无效，会阻断 Video+ 导出。请保持一个选项和默认选项，或关闭此开关。';title=message;}
  else if(state.requested){message='单行提示开启：仅允许一个选项，约 '+(state.duration/1000).toFixed(state.duration%1000?1:0)+' 秒后自动继续，可用于 Video+ 导出。';}
- else if(!canEnable){message=state.optionCount!==1?'普通多选项分支会阻断 Video+ 自动导出；删到一个选项后才能使用单行提示。':'此分支不是由 Video+ 单行提示创建；普通分支会阻断 Video+ 自动导出。';title=message;}
+ else if(!canEnable){message=state.optionCount!==1?'普通多选项分支会阻断 Video+ 自动导出；删到一个选项后才能使用单行提示。':'此分支含有额外控制条件，不能安全自动转换；普通分支会阻断 Video+ 自动导出。';title=message;}
+ else if(convertible){message='这是普通单选分支。打开开关会取消原跳转目标，并转换为显示后自动继续的单行提示。';}
  else message='关闭状态是普通 WebGAL 分支，会阻断 Video+ 自动导出；开启后将作为非交互单行提示自动继续。';
  const control=h('div',{style:{display:'flex',flexDirection:'column',gap:'5px',padding:'8px 0'},title},h('label',{style:{display:'flex',alignItems:'center',gap:'8px',width:'fit-content',cursor:!state.requested&&!canEnable?'not-allowed':'pointer'}},h('input',{type:'checkbox','data-wvp-hint-toggle':'1',checked:state.requested,disabled:!state.requested&&!canEnable,onChange:toggle}),'单行提示（Video+）'),h('small',{style:{lineHeight:1.5,opacity:state.requested&&!valid?1:.72,color:state.requested&&!valid?'var(--colorPaletteRedForeground1,#b10e1c)':'inherit'}},message));
  return h('div',{ref:root},h(WebVideoChooseHintOriginal,{...props,extraOptions:h(R.Fragment,null,props.extraOptions,control)}));

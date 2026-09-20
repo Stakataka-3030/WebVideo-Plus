@@ -1,6 +1,6 @@
 # 构建与发布
 
-当前分支产品版本 **1.0.0**，安装器内部版本 **1.0.0.0**，导出内核 **0.5.3**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建 bootstrap 仍固定使用已发布的 **0.4.10.2** 安装器，以保证第三方运行资源来源和校验值可复现。
+当前分支产品版本 **1.0.0**，产品内部开发标识 **0.5.10**，安装器内部版本 **1.0.0.0**，导出内核 **0.5.3**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建 bootstrap 仍固定使用已发布的 **0.4.10.2** 安装器，以保证第三方运行资源来源和校验值可复现。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`manifest.mjs`、`build-product.ps1`、`configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
@@ -57,6 +57,24 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 ```
 
 普通构建会清空并重建 `dist/webvideo-plus/`，以正式构建产物为准。
+
+## 内部版本构建
+
+开发测试包可以使用独立的内部版本标识，而不修改正式产品版本：
+
+```powershell
+.\build-product.ps1 -Fast -InternalBuild
+```
+
+`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.0.0` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
+
+需要重现某个旧内部标识时，可直接覆盖：
+
+```powershell
+.\build-product.ps1 -Fast -InternalVersion 0.5.7
+```
+
+指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.0.0`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建行为和正式产物命名保持不变。
 
 ## GPU Raw 导出与性能诊断
 
