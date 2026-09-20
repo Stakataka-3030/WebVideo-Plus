@@ -1,6 +1,6 @@
 # 构建与发布
 
-当前分支产品版本 **0.5.3**，安装器内部版本 **0.5.3.0**，导出内核 **0.5.3**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建 bootstrap 仍固定使用已发布的 **0.4.10.2** 安装器，以保证第三方运行资源来源和校验值可复现。
+当前分支产品版本 **1.0.0**，安装器内部版本 **1.0.0.0**，导出内核 **0.5.3**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建 bootstrap 仍固定使用已发布的 **0.4.10.2** 安装器，以保证第三方运行资源来源和校验值可复现。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`manifest.mjs`、`build-product.ps1`、`configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
@@ -36,7 +36,7 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 
 输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules` 都不提交。脚本不依赖维护者个人目录；Node 位置由当前 PATH 解析。
 
-按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-0.5.3.exe`；Win32 安装器内部文件版本使用数字形式 `0.5.3.0`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
+按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-1.0.0.exe`；Win32 安装器内部文件版本使用数字形式 `1.0.0.0`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
 
 ## 开发快速构建
 
