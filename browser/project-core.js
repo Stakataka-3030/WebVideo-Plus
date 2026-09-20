@@ -111,7 +111,7 @@
    return {lane:Math.floor(n('lane',0,0,63)),fullLength:!!track.fullLength,id:String(track.id||`track-${i}`),name:String(track.name||track.file?.split('/').pop()||'音乐'),scene:version===1&&track.scene?safePath(track.scene):'',file:safePath(track.file),startSeconds:n('startSeconds',0,0,86400),offsetSeconds:n('offsetSeconds',0,0,86400),durationSeconds,volume:n('volume',100,0,100),fadeInSeconds,fadeOutSeconds,loop:!!track.loop,enabled:track.enabled!==false};
   });
   const legacyPlayers=version===1?Object.fromEntries(Object.entries(value.players||{}).filter(([key,count])=>typeof count==='number'&&Number.isInteger(count)&&count>=1&&count<=64)):{},players=version===2?Math.max(1,Math.min(64,Number.isInteger(value.players)?value.players:1)):Math.max(1,...Object.values(legacyPlayers),...tracks.map(t=>t.lane+1));
-  return {schemaVersion:version,enabled:value.enabled!==false,replaceGameBgm:!!value.replaceGameBgm,players,legacyPlayers,tracks};
+  return {schemaVersion:version,enabled:value.enabled!==false,replaceGameBgm:!!value.replaceGameBgm,players,tracks};
  }
  root.WebVideoProjectCore={norm,hash,safeId,safePath,escapeText,metadata,expand,makePlan,anchor,resolveAnchor,generatedMarkers,inspect,parseAnogo,importAnogo,musicProject};
 })(typeof window==='undefined'?globalThis:window);
