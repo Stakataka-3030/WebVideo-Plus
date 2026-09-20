@@ -58,7 +58,8 @@ fs.appendFileSync(path.join(root,'package/product-ui/editor-runtime.js'),'\n'+re
 for(const name of ['timeline-core.js','timeline.css'])fs.copyFileSync(path.join(root,'browser',name),path.join(root,'package/timeline',name));
 fs.writeFileSync(path.join(root,'package/timeline/timeline-core.js'),read('browser/navigation-metadata.js')+'\n'+read('browser/navigation-model.js')+'\n'+read('browser/filter-library.js')+'\n'+read('browser/preset-library.js')+'\n'+read('browser/timing-tasks.js')+'\n'+read('browser/timeline-core.js'));
 fs.writeFileSync(path.join(root,'package/timeline/timeline.css'),read('browser/timeline.css')+'\n'+read('browser/timeline-theme.css'));
-let host=read('browser/timeline-host.js');
+// Git may check out browser sources with CRLF on Windows; normalize before line-boundary extraction.
+let host=read('browser/timeline-host.js').replace(/\r\n?/g,'\n');
 for(const [variable,module] of [['nav','navigator'],['modal','selector']]){
   const prefix=`  const ${variable}=`,line=host.split('\n').find(l=>l.startsWith(prefix));if(!line||!line.endsWith(';'))throw Error('Module view boundary missing');
   fs.writeFileSync(path.join(root,`package/timeline/${module}.js`),line.slice(prefix.length,-1));
