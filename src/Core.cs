@@ -19,6 +19,7 @@ namespace NativeVideo {
  public static class VersionInfo {
   static object Manifest(){foreach(var name in new[]{"MANIFEST.json","product.json"}){var data=J.TryRead(Path.Combine(Files.Root,name));if(data!=null)return data;}throw new IOException("WebVideo+ 版本清单缺失，请重新构建或重新安装组件。");}
   public static string Product{get{var value=J.S(Manifest(),"version");if(value=="")throw new IOException("WebVideo+ 产品版本缺失，请重新构建或重新安装组件。");return value;}}
+  public static string Internal{get{return J.S(Manifest(),"internalVersion");}}
   public static string Kernel{get{var value=J.S(Manifest(),"kernelVersion");if(value=="")throw new IOException("WebVideo+ 内核版本缺失，请重新构建或重新安装组件。");return value;}}
  }
  public static class Files {
