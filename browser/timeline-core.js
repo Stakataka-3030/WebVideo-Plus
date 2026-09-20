@@ -9,7 +9,8 @@
   const singleChooseInfo=item=>{if(item?.command!=='choose')return {isHint:false,convertible:false};const args=item.args||{},options=String(item.content||'').split(/(?<!\\)\|/),nodes=String(options[0]||'').split(/(?<!\\):/),text=(nodes[0]||'').trim(),target=(nodes[1]||'').trim(),reserved=/^__wvp_hint_[A-Za-z0-9_]+$/.test(target),isHint=options.length===1&&nodes.length===2&&reserved&&Number(args.defaultChoose)===1&&!args.next,hasHintArg=args.wvpHint!==undefined||/(?:^|\\s)-wvpHint(?:=|\\s|;|$)/.test(String(item.source||'')),unsafe=Object.keys(args).filter(key=>key!=='defaultChoose'&&key!=='wvpHint');return {isHint,convertible:!isHint&&!hasHintArg&&options.length===1&&nodes.length===2&&!String(options[0]).includes('->')&&!!text&&!!target&&unsafe.length===0,text,target,duration:isHint?hintDuration(item):0};};
   const singleLineHintDuration=item=>singleChooseInfo(item).duration||0;
   const isSingleLineHint=item=>singleChooseInfo(item).isHint;
-  const isLinearSceneChange=item=>{if(item?.command!=='changeScene'||Object.keys(item.args||{}).length)return false;const value=String(item.content||''),target=value.replace(/^\.\/game\/scene\//i,'');return target!==value&&target.toLowerCase().endsWith('.txt')&&!target.split('/').some(part=>!part||part==='.'||part==='..')&&!/[?:#]/.test(target);};
+  const sceneChangeTarget=item=>{if(item?.command!=='changeScene'||Object.keys(item.args||{}).length)return '';let target=String(item.content||'').trim().replace(/\\/g,'/');target=target.replace(/^(?:\.\/)?game\/scene\//i,'').replace(/^\.\//,'');if(!target||target.startsWith('/')||!target.toLowerCase().endsWith('.txt')||target.split('/').some(part=>!part||part==='.'||part==='..')||/[?:#]/.test(target))return '';return target;};
+  const isLinearSceneChange=item=>!!sceneChangeTarget(item);
   const ignoredInTiming=item=>(ignoredCommands.has(item.command)&&!isSingleLineHint(item)&&!isLinearSceneChange(item))||item.args.userForward===true||Object.prototype.hasOwnProperty.call(item.args,'when');
   function derive(path,source,parsed,types){
     if(root.WebVideoNavigation)return root.WebVideoNavigation.derive(path,source,parsed,types);
@@ -23,8 +24,9 @@
       const command=types[s.command]||s.commandRaw||'unknown',content=String(s.content||'');
       const item={id:`${start}:${end}`,command,startLine:start+1,endLine:end+1,startOffset:offsets[start],endOffset:offsets[end+1],source:source.slice(offsets[start],offsets[end+1]),content,args,sectionId:section,kind:'technical',speaker:'',title:content,annotations:[]};
       statements.push(item);
-      const singleChoice=singleChooseInfo(item);item.convertibleSingleChoose=singleChoice.convertible;item.ignoredInTiming=ignoredInTiming(item);if(item.ignoredInTiming){if(firstManualLine===null)firstManualLine=item.startLine;if(!item.convertibleSingleChoose)continue;}if(hiddenCommands.has(command)&&!isSingleLineHint(item)&&!item.convertibleSingleChoose)continue;
+      const singleChoice=singleChooseInfo(item),linearSceneTarget=sceneChangeTarget(item);item.convertibleSingleChoose=singleChoice.convertible;item.linearSceneChange=!!linearSceneTarget;item.ignoredInTiming=ignoredInTiming(item);if(item.ignoredInTiming){if(firstManualLine===null)firstManualLine=item.startLine;if(!item.convertibleSingleChoose)continue;}if(hiddenCommands.has(command)&&!isSingleLineHint(item)&&!item.convertibleSingleChoose&&!item.linearSceneChange)continue;
       if(item.convertibleSingleChoose){item.kind='event';item.title='单选分支 · '+singleChoice.text;item.annotations.push('可转为单行提示');}
+      else if(item.linearSceneChange){item.kind='event';item.title='场景跳转 · '+linearSceneTarget;item.annotations.push('自动继续');}
       else if(command==='changeBg'){item.kind='section';item.title=(command==='changeBg'?'背景 · ':'场景 · ')+(content||'清除');section=item.id;item.sectionId=section;}
       else if(command==='say'){
         if(args.speaker!==undefined&&args.speaker!==null)speaker=String(args.speaker);
@@ -66,5 +68,5 @@
     snapshot(){if(!this.model)return null;const m=this.model;const selected=this.mode==='range'&&this.range?m.statements.filter(s=>s.startLine>=this.range[0]&&s.endLine<=this.range[1]):m.statements.filter(s=>this.ids.has(s.id));let ranges=selected.map(s=>({startLine:s.startLine,endLine:s.endLine,startOffset:s.startOffset,endOffset:s.endOffset}));if(this.mode==='range'&&this.range){const lines=m.source.split('\n');const start=lines.slice(0,this.range[0]-1).reduce((n,l)=>n+l.length+1,0);let end=lines.slice(0,this.range[1]).reduce((n,l)=>n+l.length+1,0);ranges=[{startLine:this.range[0],endLine:this.range[1],startOffset:start,endOffset:Math.min(end,m.source.length)}];}return JSON.parse(JSON.stringify({schemaVersion:1,path:m.path,revision:m.revision,mode:this.mode,ids:[...this.ids],ranges,statements:selected,source:m.source}));}
   }
   function filter(rows,{text='',speaker='',kind=''}={}){text=text.trim().toLocaleLowerCase();return rows.filter(r=>(!speaker||(r.displaySpeaker||r.speaker)===speaker)&&(!kind||r.kind===kind)&&(!text||[r.title,r.displaySpeaker||r.speaker,r.speakerSource||'',...r.annotations,...(r.parts||[]).flatMap(p=>[p.title,...p.items,p.footer])].join(' ').toLocaleLowerCase().includes(text)));}
-  root.WebVideoTimelineCore={derive,Selection,filter,fingerprint,ignoredInTiming,singleLineHintDuration,singleChooseInfo};
+  root.WebVideoTimelineCore={derive,Selection,filter,fingerprint,ignoredInTiming,singleLineHintDuration,singleChooseInfo,sceneChangeTarget,isLinearSceneChange};
 })(typeof window==='undefined'?globalThis:window);
