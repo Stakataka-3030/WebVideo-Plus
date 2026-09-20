@@ -53,7 +53,7 @@ if($Fast){
   }finally{$taskZip.Dispose()}
  }finally{$taskStream.Dispose()}
 }else{
- $taskOut=Join-Path $taskRoot ('dist/'+$taskPackageFolderLabel)
+ $taskOut=Join-Path $taskRoot 'dist/webvideo-plus'
  if(Test-Path $taskOut){Remove-Item -LiteralPath $taskOut -Recurse -Force}
  if(Test-Path $taskArchive){Remove-Item -LiteralPath $taskArchive -Force}
  New-Item -ItemType Directory -Path $taskOut | Out-Null
