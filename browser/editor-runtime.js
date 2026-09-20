@@ -76,19 +76,52 @@ const WebVideoSingleLineHint=(()=>{
   return await applyPlan(plan,label);
  }
  function convertibleRows(model=window.WebVideoPlus?.state().model){return model?.statements?.filter(row=>analyze(row).convertible)||[];}
- return {analyze,createText,buildPlan,convertRows,convertibleRows};
+ function sentenceRow(sentence){
+  const command=String(sentence?.commandRaw||''),args=Object.fromEntries((sentence?.args||[]).map(arg=>[arg.key,arg.value]));
+  return {command,content:String(sentence?.content||''),args,source:''};
+ }
+ function graphicalSentences(sentences){
+  const source=Array.isArray(sentences)?sentences:[],result=[];
+  for(let index=0;index<source.length;index++){
+   const sentence=source[index],info=analyze(sentenceRow(sentence));
+   if(!info.isHint){result.push(sentence);continue;}
+   const next=source[index+1],paired=!!next&&String(next.commandRaw||'')==='label'&&String(next.content||'').trim()===info.target&&Number(next.startLine)===Number(sentence.endLine)+1;
+   if(paired){result.push({...sentence,endLine:next.endLine,__wvpHintPair:true,__wvpHintTarget:info.target});index++;continue;}
+   result.push({...sentence,__wvpHintBroken:true,__wvpHintTarget:info.target});
+  }
+  return result;
+ }
+ function graphicalTitle(sentence,fallback){return sentence?.__wvpHintPair?'单行提示（Video+）':sentence?.__wvpHintBroken?'单行提示损坏（Video+）':fallback;}
+ function graphicalLineLabel(sentence,startLine){return sentence?.__wvpHintPair?String(startLine)+'–'+String(Number(sentence.endLine)+1):String(startLine);}
+ return {analyze,createText,buildPlan,convertRows,convertibleRows,graphicalSentences,graphicalTitle,graphicalLineLabel};
 })();
 window.WebVideoSingleLineHint=WebVideoSingleLineHint;
 let WebVideoChooseHintOriginal=null;
 function webVideoChooseHintState(sentence){
- const args=sentence?.args||[],hintArg=args.find(a=>a.key==='wvpHint'),defaultArg=args.find(a=>a.key==='defaultChoose'),nextArg=args.find(a=>a.key==='next'),content=String(sentence?.content||''),options=content.split(/(?<!\\)\|/),nodes=(options[0]||'').split(/(?<!\\):/),target=nodes[1]?.trim()||'',duration=Number(hintArg?.value),defaultChoose=Number(defaultArg?.value),reservedTarget=/^__wvp_hint_[A-Za-z0-9_]+$/.test(target),requested=!!hintArg||(options.length===1&&nodes.length===2&&reservedTarget&&defaultChoose===1&&nextArg?.value!==true);
- return {requested,duration:Number.isFinite(duration)&&duration>=100&&duration<=60000?duration:1800,defaultChoose,optionCount:options.length,reservedTarget};
+ const args=sentence?.args||[],hintArg=args.find(a=>a.key==='wvpHint'),defaultArg=args.find(a=>a.key==='defaultChoose'),nextArg=args.find(a=>a.key==='next'),content=String(sentence?.content||''),options=content.split(/(?<!\\)\|/),nodes=(options[0]||'').split(/(?<!\\):/),text=(nodes[0]||'').replace(/\\([:|\\])/g,'$1').trim(),target=nodes[1]?.trim()||'',duration=Number(hintArg?.value),defaultChoose=Number(defaultArg?.value),reservedTarget=/^__wvp_hint_[A-Za-z0-9_]+$/.test(target),requested=!!hintArg||(options.length===1&&nodes.length===2&&reservedTarget&&defaultChoose===1&&nextArg?.value!==true);
+ return {requested,duration:Number.isFinite(duration)&&duration>=100&&duration<=60000?duration:1800,defaultChoose,optionCount:options.length,reservedTarget,text,target,paired:sentence?.__wvpHintPair===true,broken:sentence?.__wvpHintBroken===true};
 }
 function webVideoSubmitChooseArgs(sentence,updates){
  const args=new Map((sentence?.args||[]).map(arg=>[arg.key,arg.value]));for(const update of updates){if(update.value===''||update.value===false)args.delete(update.key);else args.set(update.key,update.value);}
  const argText=[...args].map(([key,value])=>value===true?' -'+key:' -'+key+'='+value).join(''),head=sentence.commandRaw===undefined?String(sentence.content||''):String(sentence.commandRaw)+':'+String(sentence.content||''),comment=String(sentence.inlineComment||'').trim();
  return head+argText+(comment?'; '+comment:';');
 }
+function webVideoEscapeHintText(value){return String(value??'').replace(/\\/g,'\\\\').replace(/([:|;])/g,'\\$1').replace(/\r?\n/g,' ');}
+function webVideoHintPairText(sentence,state,text=state.text,duration=state.duration){
+ const clean=String(text||'').trim()||'时间 / 地点',ms=Math.max(100,Math.min(60000,Math.round(Number(duration)||1800))),content=webVideoEscapeHintText(clean)+':'+state.target,comment=String(sentence?.inlineComment||'').trim();
+ const hint=combineSubmitString(sentence?.commandRaw||'choose',content,[],[{key:'defaultChoose',value:1},{key:'wvpHint',value:ms}],comment);
+ return hint+'\nlabel:'+state.target+';';
+}
+function WebVideoSingleLineHintCompactEditor({sentence,onSubmit,state}){
+ const h=reactExports.createElement,seconds=state.duration/1000,fieldStyle={width:'100%',boxSizing:'border-box'},rowStyle={display:'grid',gridTemplateColumns:'92px minmax(0,1fr)',alignItems:'center',gap:'10px'},submitText=event=>onSubmit(webVideoHintPairText(sentence,state,event.currentTarget.value,state.duration)),submitDuration=event=>{const value=Number(event.currentTarget.value);onSubmit(webVideoHintPairText(sentence,state,state.text,Number.isFinite(value)?value*1000:state.duration));};
+ return h('div',{style:{display:'flex',flexDirection:'column',gap:'10px',padding:'6px 0'}},
+  h('div',{style:{display:'flex',alignItems:'center',gap:'8px'}},h('strong',null,'单行提示'),h('span',{style:{fontSize:'12px',opacity:.65}},'Video+ 管理跳转与自动继续')),
+  h('label',{style:rowStyle},h('span',null,'显示文字'),h('input',{key:'wvp-hint-text:'+state.target+':'+state.text,defaultValue:state.text,onBlur:submitText,style:fieldStyle})),
+  h('label',{style:rowStyle},h('span',null,'显示时长'),h('div',{style:{display:'flex',alignItems:'center',gap:'6px'}},h('input',{key:'wvp-hint-duration:'+state.target+':'+state.duration,type:'number',min:.1,max:60,step:.1,defaultValue:Number(seconds.toFixed(3)),onBlur:submitDuration,style:{...fieldStyle,maxWidth:'120px'}}),h('span',null,'秒'))),
+  h('small',{style:{opacity:.68,lineHeight:1.5}},'内部标签已与本行绑定；在图形编辑器中拖动、删除和同步都会作为一个整体处理。')
+ );
+}
+
 function WebVideoChooseHintEditor(props){
  const R=reactExports,h=R.createElement,root=R.useRef(null),state=webVideoChooseHintState(props.sentence),liveModel=window.WebVideoPlus?.state().model,liveRow=liveModel?.statements?.find(row=>row.startLine===Number(props.sentence?.startLine)+1&&row.command==='choose'),convertible=!!liveRow&&window.WebVideoSingleLineHint.analyze(liveRow).convertible,valid=state.requested&&state.optionCount===1&&state.reservedTarget&&state.defaultChoose===1,canEnable=state.optionCount===1&&(state.reservedTarget||convertible),lockTip='请先关闭“单行提示”再添加选项。添加多个选项会变成交互分支，并阻断 Video+ 自动导出。';
  R.useEffect(()=>{const host=root.current;if(!host)return;const buttons=[...host.querySelectorAll('button')],add=buttons.find(button=>button.getAttribute('aria-label')==='添加语句'||button.title==='添加语句')||buttons[buttons.length-1];if(add){add.disabled=state.requested;add.setAttribute('aria-disabled',state.requested?'true':'false');add.title=state.requested?lockTip:'';const row=add.parentElement;if(row){row.title=state.requested?lockTip:'';row.style.cursor=state.requested?'not-allowed':'';}}const defaults=[...host.querySelectorAll('input[type="checkbox"]')].filter(input=>input.dataset.wvpHintToggle!=='1');for(const input of defaults){const lockDefault=valid;input.disabled=lockDefault;const holder=input.closest('label')||input.parentElement;if(holder)holder.title=lockDefault?'单行提示固定使用第一个选项作为快速预览默认项；关闭“单行提示”后可修改。':'';}},[state.requested,state.optionCount,state.reservedTarget,state.defaultChoose,valid,props.sentence?.content]);
@@ -99,7 +132,9 @@ function WebVideoChooseHintEditor(props){
  else if(!canEnable){message=state.optionCount!==1?'普通多选项分支会阻断 Video+ 自动导出；删到一个选项后才能使用单行提示。':'此分支含有额外控制条件，不能安全自动转换；普通分支会阻断 Video+ 自动导出。';title=message;}
  else if(convertible){message='这是普通单选分支。打开开关会取消原跳转目标，并转换为显示后自动继续的单行提示。';}
  else message='关闭状态是普通 WebGAL 分支，会阻断 Video+ 自动导出；开启后将作为非交互单行提示自动继续。';
- const control=h('div',{style:{display:'flex',flexDirection:'column',gap:'5px',padding:'8px 0'},title},h('label',{style:{display:'flex',alignItems:'center',gap:'8px',width:'fit-content',cursor:!state.requested&&!canEnable?'not-allowed':'pointer'}},h('input',{type:'checkbox','data-wvp-hint-toggle':'1',checked:state.requested,disabled:!state.requested&&!canEnable,onChange:toggle}),'单行提示（Video+）'),h('small',{style:{lineHeight:1.5,opacity:state.requested&&!valid?1:.72,color:state.requested&&!valid?'var(--colorPaletteRedForeground1,#b10e1c)':'inherit'}},message));
+ if(valid&&state.paired)return h(WebVideoSingleLineHintCompactEditor,{sentence:props.sentence,onSubmit:props.onSubmit,state});
+ if(valid&&state.broken){message='此单行提示的内部标签已被删除或与提示分离。请撤销该操作，或切到代码模式修复后再继续编辑。';title=message;}
+ const control=h('div',{style:{display:'flex',flexDirection:'column',gap:'5px',padding:'8px 0'},title},h('label',{style:{display:'flex',alignItems:'center',gap:'8px',width:'fit-content',cursor:!state.requested&&!canEnable?'not-allowed':'pointer'}},h('input',{type:'checkbox','data-wvp-hint-toggle':'1',checked:state.requested,disabled:!state.requested&&!canEnable,onChange:toggle}),'单行提示（Video+）'),h('small',{style:{lineHeight:1.5,opacity:state.requested&&!valid?1:.72,color:state.broken||state.requested&&!valid?'var(--colorPaletteRedForeground1,#b10e1c)':'inherit'}},message));
  return h('div',{ref:root},h(WebVideoChooseHintOriginal,{...props,extraOptions:h(R.Fragment,null,props.extraOptions,control)}));
 }
 function installWebVideoChooseHintEditor(){
