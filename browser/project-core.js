@@ -6,7 +6,7 @@
  const safeId=value=>{value=String(value||'').trim();if(!/^[\p{L}\p{N}_][\p{L}\p{N}_.-]{0,95}$/u.test(value))throw Error('ID 只能包含文字、数字、下划线、点和连字符');return value;};
  const safePath=value=>{value=String(value||'').replace(/\\/g,'/').trim();if(!value||/^(?:\/|[A-Za-z]:|https?:|data:)/i.test(value)||value.split('/').some(x=>!x||x==='.'||x==='..')||/[\x00-\x1f<>:"|?*%]/.test(value))throw Error('请填写项目内的相对文件路径');return value;};
  const escapeText=text=>String(text??'').replace(/;/g,'\\;').replace(/\r?\n/g,'|');
- function metadata(value={}){if(value.schemaVersion!==undefined&&value.schemaVersion!==1)throw Error('项目配置版本暂不支持');for(const name of ['templates','markers','backups'])if(value[name]!==undefined&&!Array.isArray(value[name]))throw Error('项目配置中的 '+name+' 无效');return {schemaVersion:1,bindings:{},templates:[],markers:[],backups:[],timings:{},showChecks:true,showVideoTime:false,...value};}
+ function metadata(value={}){if(value.schemaVersion!==undefined&&value.schemaVersion!==1)throw Error('项目配置版本暂不支持');for(const name of ['templates','markers','backups'])if(value[name]!==undefined&&!Array.isArray(value[name]))throw Error('项目配置中的 '+name+' 无效');return {schemaVersion:1,bindings:{},templates:[],markers:[],backups:[],timings:{},storyTiming:null,showChecks:true,showVideoTime:false,...value};}
  function expand(template,row,project){const values={speaker:row.speaker||'',figureId:project.bindings[row.speaker]?.id||row.args.figureId||row.args.id||'',content:escapeText(row.content),motion:row.args.motion||'',expression:row.args.expression||''};return String(template).replace(/\{\{(\w+)\}\}/g,(_,key)=>{if(!(key in values)||values[key]==='')throw Error(`第 ${row.startLine} 行缺少模板变量 ${key}`);return String(values[key]);});}
  function makePlan(model,selection,operation,project,native){
   if(!model||!selection||selection.path!==model.path||selection.source!==model.source)throw Error('选择已失效，请重新选择');
@@ -103,13 +103,15 @@
   return {script:lines.join('\n')+'\n',warnings,statements:statements.length,needsMapping:!dialogueOnly&&warnings.length>0};
  }
  function musicProject(value={}){
-  if(value.schemaVersion!==undefined&&value.schemaVersion!==1)throw Error('音乐时间线版本暂不支持');
+  const version=value.schemaVersion===undefined?1:Number(value.schemaVersion);if(![1,2].includes(version))throw Error('音乐时间线版本暂不支持');
   if(!Array.isArray(value.tracks||[])||(value.tracks||[]).length>64)throw Error('音乐时间线最多包含 64 个片段');const tracks=(value.tracks||[]).map((track,i)=>{
    const n=(key,fallback,min,max)=>{const v=Number(track[key]??fallback);if(!Number.isFinite(v)||v<min||v>max)throw Error(`音乐 ${i+1} 的 ${key} 超出范围`);return v;};
    const durationSeconds=n('durationSeconds',0,.001,86400),fadeInSeconds=n('fadeInSeconds',0,0,86400),fadeOutSeconds=n('fadeOutSeconds',0,0,86400);
    if(fadeInSeconds+fadeOutSeconds>durationSeconds)throw Error(`音乐 ${i+1} 的淡入淡出超过片段长度`);
-   return {lane:Math.floor(n('lane',0,0,63)),fullLength:!!track.fullLength,id:String(track.id||`track-${i}`),name:String(track.name||track.file?.split('/').pop()||'音乐'),scene:track.scene?safePath(track.scene):'',file:safePath(track.file),startSeconds:n('startSeconds',0,0,86400),offsetSeconds:n('offsetSeconds',0,0,86400),durationSeconds,volume:n('volume',100,0,100),fadeInSeconds,fadeOutSeconds,loop:!!track.loop,enabled:track.enabled!==false};
-  });return {schemaVersion:1,enabled:value.enabled!==false,replaceGameBgm:!!value.replaceGameBgm,players:Object.fromEntries(Object.entries(value.players||{}).filter(([key,count])=>typeof count==='number'&&Number.isInteger(count)&&count>=1&&count<=64)),tracks};
+   return {lane:Math.floor(n('lane',0,0,63)),fullLength:!!track.fullLength,id:String(track.id||`track-${i}`),name:String(track.name||track.file?.split('/').pop()||'音乐'),scene:version===1&&track.scene?safePath(track.scene):'',file:safePath(track.file),startSeconds:n('startSeconds',0,0,86400),offsetSeconds:n('offsetSeconds',0,0,86400),durationSeconds,volume:n('volume',100,0,100),fadeInSeconds,fadeOutSeconds,loop:!!track.loop,enabled:track.enabled!==false};
+  });
+  const legacyPlayers=version===1?Object.fromEntries(Object.entries(value.players||{}).filter(([key,count])=>typeof count==='number'&&Number.isInteger(count)&&count>=1&&count<=64)):{},players=version===2?Math.max(1,Math.min(64,Number.isInteger(value.players)?value.players:1)):Math.max(1,...Object.values(legacyPlayers),...tracks.map(t=>t.lane+1));
+  return {schemaVersion:version,enabled:value.enabled!==false,replaceGameBgm:!!value.replaceGameBgm,players,legacyPlayers,tracks};
  }
  root.WebVideoProjectCore={norm,hash,safeId,safePath,escapeText,metadata,expand,makePlan,anchor,resolveAnchor,generatedMarkers,inspect,parseAnogo,importAnogo,musicProject};
 })(typeof window==='undefined'?globalThis:window);
