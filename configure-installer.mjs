@@ -25,8 +25,8 @@ between(' public static InstallationState Read(', '\n}\npublic class SetupForm',
   state.ValidTerre=File.Exists(Path.Combine(directory,"public/index.html"));string marker=Path.Combine(directory,"webvideo-plus.json");bool product=File.Exists(marker);state.Mounted=product||File.Exists(Path.Combine(directory,"video-export-wrapper.json"));
   if(!state.Mounted){state.UpdateAvailable=true;state.Message=state.ValidTerre?"默认安装全部模块；可在高级选项中调整。":"请选择有效的 Terre 安装目录。";return state;}
   if(!product){state.UpdateAvailable=true;state.Message="检测到视频导出器，可升级为 WebVideo+ 并保留导出设置。";return state;}
-  var json=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(marker));state.Version=Convert.ToString(json["version"]);int comparison=CompareVersions(packageVersion,state.Version);state.UpdateAvailable=comparison>=0;
-  state.Message=comparison>0?"可从 WebVideo+ "+state.Version+" 升级至 "+packageVersion+"。":comparison==0?"已安装 WebVideo+ "+state.Version+"；可在高级选项中添加或拆卸模块。":"已安装较新版本 "+state.Version+"；此安装包不提供降级。";
+  var json=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(marker));state.Version=Convert.ToString(json["version"]);string installedLabel=state.Version+(json.ContainsKey("internalVersion")&&!String.IsNullOrWhiteSpace(Convert.ToString(json["internalVersion"]))?"（内部 "+Convert.ToString(json["internalVersion"])+"）":"");int comparison=CompareVersions(packageVersion,state.Version);state.UpdateAvailable=comparison>=0;
+  state.Message=comparison>0?"可从 WebVideo+ "+installedLabel+" 升级至 "+packageVersion+"。":comparison==0?"已安装 WebVideo+ "+installedLabel+"；可在高级选项中添加或拆卸模块。":"已安装较新版本 "+installedLabel+"；此安装包不提供降级。";
  }catch{state.UpdateAvailable=false;state.Message="安装记录无法读取，请核对所选目录。";}return state;}
 `);
 replace('CheckBox advancedToggle,start;','CheckBox advancedToggle,start,navigatorModule,selectorModule,exporterModule;string loadedModulesPath="";');
