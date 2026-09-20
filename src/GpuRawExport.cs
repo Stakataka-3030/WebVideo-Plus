@@ -3,25 +3,22 @@ namespace NativeVideo {
  public static class GpuRawExport {
   static async Task<string> ErrorText(Task<string> error){return await Task.WhenAny(error,Task.Delay(5000))==error?await error:"编码进程未及时关闭错误输出。";}
   static void StopEncoder(Process process){try{if(!process.HasExited)process.Kill();}catch(InvalidOperationException){}}
-  static async Task CheckEncoder(Process process,Task<string> error){if(process.HasExited)throw GpuEncoding.EncoderError("GPU raw 编码进程提前退出："+await ErrorText(error));}
-  static async Task WriteFrame(Process process,Task<string> error,byte[] frame){await CheckEncoder(process,error);var write=process.StandardInput.BaseStream.WriteAsync(frame,0,frame.Length);if(await Task.WhenAny(write,Task.Delay(60000))!=write){StopEncoder(process);var ignored=write.ContinueWith(t=>{var observed=t.Exception;},TaskContinuationOptions.OnlyOnFaulted);throw new TimeoutException("编码器连续 60 秒未接收完一帧，已停止本次分段。"+await ErrorText(error));}await write;}
+  static async Task CheckEncoder(Process process,Task<string> error,string codec){if(process.HasExited)throw GpuEncoding.EncoderError(codec,"GPU raw 编码进程提前退出："+await ErrorText(error));}
+  static async Task WriteFrame(Process process,Task<string> error,byte[] frame,string codec){await CheckEncoder(process,error,codec);var write=process.StandardInput.BaseStream.WriteAsync(frame,0,frame.Length);if(await Task.WhenAny(write,Task.Delay(60000))!=write){StopEncoder(process);var ignored=write.ContinueWith(t=>{var observed=t.Exception;},TaskContinuationOptions.OnlyOnFaulted);throw new TimeoutException("编码器连续 60 秒未接收完一帧，已停止本次分段。"+await ErrorText(error));}await write;}
 
   public static async Task Run(BrowserHost browser,object request,object settings,string part,object gpu,int width,int height,int fps,int start,int end,int first,Stopwatch began,double browserStartupSeconds,double navigationSeconds,double setupSeconds,double restoreSeconds){
-   string codec=J.S(request,"gpuRawCodec","x264rgb").ToLowerInvariant();if(codec!="x264rgb"&&codec!="nvenc")throw new ArgumentException("gpuRawCodec 仅支持 x264rgb 或 nvenc");
+   string codec=J.S(request,"gpuRawCodec","x264").ToLowerInvariant(),mode=GpuEncoding.NormalizeMode(J.S(request,"gpuRawMode",J.S(settings,"gpuRawMode","recommended")));if(!new[]{"x264rgb","nvenc","amf","qsv","x264"}.Contains(codec))throw new ArgumentException("gpuRawCodec 不受支持："+codec);
    bool domOverlay=J.B(request,"gpuRawDom",true);double stepSeconds=0,readbackSeconds=0,hostCopySeconds=0,pipeSeconds=0,encoderFinalizeSeconds=0,domCaptureSeconds=0,domUploadSeconds=0,domAnimationSeconds=0;long hostBytes=0,domOverlayBytes=0;int domCaptureCount=0,domRefreshCount=0;object domInstall=null,domLastUpdate=null,domAnimation=null;
    for(int frame=first;frame<start;frame++){long mark=Stopwatch.GetTimestamp();await browser.Eval("__webviewStep("+frame+")",30000);stepSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;}
    var rendererScale=await browser.Eval("__gpuReadbackRendererScale("+width+","+height+")",30000);var colorInfo=await browser.Eval("(()=>{const gl=__wgProbe.core.gameplay.pixiStage.currentApp.renderer.gl,a=gl.getContextAttributes();return {alpha:!!a.alpha,premultipliedAlpha:!!a.premultipliedAlpha,preserveDrawingBuffer:!!a.preserveDrawingBuffer,antialias:!!a.antialias,drawingBufferColorSpace:String(gl.drawingBufferColorSpace||''),unpackColorSpaceConversion:gl.getParameter(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL)};})()");
    if(domOverlay)domInstall=await browser.Eval("__gpuDomInstall()");
    int frameBytes=checked(checked(width*height)*4);var shared=await browser.CreateGpuReadbackBuffer(frameBytes);await browser.Eval("__gpuReadbackPrepare("+width+","+height+")",30000);byte[] hostFrame=new byte[frameBytes];string output=Path.Combine(part,"video.mp4");
-   var ffargs=new List<string>{"-v","error","-y","-f","rawvideo","-pix_fmt","rgba","-video_size",width+"x"+height,"-framerate",fps.ToString(),"-i","pipe:0","-vf",codec=="x264rgb"?"vflip,format=rgb24":"vflip,scale=in_range=pc:out_range=tv:out_color_matrix=bt709,format=nv12"};
-   if(codec=="x264rgb")ffargs.AddRange(new[]{"-c:v","libx264rgb","-preset","ultrafast","-crf","0","-pix_fmt","rgb24","-color_range","pc","-x264-params","fullrange=on:colorprim=bt709:transfer=iec61966-2-1","-threads","2"});
-   else ffargs.AddRange(new[]{"-c:v","h264_nvenc","-preset","p1","-tune","hq","-rc","vbr","-cq","19","-b:v","0","-pix_fmt","yuv420p","-color_range","tv","-colorspace","bt709","-color_primaries","bt709","-color_trc","iec61966-2-1"});
-   ffargs.AddRange(new[]{"-an","-frames:v",(end-start).ToString(),output});
+   var ffargs=new List<string>{"-v","error","-y","-f","rawvideo","-pix_fmt","rgba","-video_size",width+"x"+height,"-framerate",fps.ToString(),"-i","pipe:0","-vf",GpuEncoding.Filter(codec)};GpuEncoding.AddEncoderArgs(ffargs,codec,mode);ffargs.AddRange(new[]{"-an","-frames:v",(end-start).ToString(),output});
    var rendering=Stopwatch.StartNew();double last=-1;Exception failure=null;
    try{
     using(var p=Commands.Start("ffmpeg",ffargs,true,true)){var err=p.StandardError.ReadToEndAsync();var stdout=p.StandardOutput.ReadToEndAsync();try{
      for(int frame=start;frame<end;frame++){
-      await CheckEncoder(p,err);
+      await CheckEncoder(p,err,codec);
       long mark=Stopwatch.GetTimestamp();await browser.Eval("__webviewStep("+frame+")",30000);stepSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
       if(domOverlay){
        var needDom=await browser.Eval("__gpuDomCaptureNeeded()");
@@ -33,12 +30,12 @@ namespace NativeVideo {
       }
       mark=Stopwatch.GetTimestamp();await browser.Eval("__gpuReadbackShared("+width+","+height+")",30000);readbackSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
       mark=Stopwatch.GetTimestamp();int copied=0;using(var stream=shared.OpenStream()){while(copied<frameBytes){int n=stream.Read(hostFrame,copied,frameBytes-copied);if(n<=0)break;copied+=n;}}hostCopySeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;hostBytes+=copied;if(copied!=frameBytes)throw new EndOfStreamException("SharedBuffer host copy 不完整："+copied+"/"+frameBytes);
-      mark=Stopwatch.GetTimestamp();IOException pipeFailure=null;try{await WriteFrame(p,err,hostFrame);}catch(IOException writeError){pipeFailure=writeError;}if(pipeFailure!=null){StopEncoder(p);throw GpuEncoding.EncoderError("GPU raw 编码管道提前结束："+await ErrorText(err)+"\n"+pipeFailure.Message);}pipeSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
+      mark=Stopwatch.GetTimestamp();IOException pipeFailure=null;try{await WriteFrame(p,err,hostFrame,codec);}catch(IOException writeError){pipeFailure=writeError;}if(pipeFailure!=null){StopEncoder(p);throw GpuEncoding.EncoderError("GPU raw 编码管道提前结束："+await ErrorText(err)+"\n"+pipeFailure.Message);}pipeSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
       if(rendering.Elapsed.TotalSeconds-last>.5||frame==end-1){last=rendering.Elapsed.TotalSeconds;J.Write(Path.Combine(part,"progress.json"),J.O("phase","rendering","frame",frame,"startFrame",start,"endFrame",end,"outputFrames",frame-start+1,"elapsedSeconds",rendering.Elapsed.TotalSeconds,"pipeline","gpu-raw","codec",codec,"domRefreshes",domRefreshCount));}
       if(browser.Errors.Count>0)throw new IOException(string.Join("; ",browser.Errors));
      }
      J.Write(Path.Combine(part,"progress.json"),J.O("phase","encoder-finalizing","startFrame",start,"endFrame",end,"outputFrames",end-start,"elapsedSeconds",rendering.Elapsed.TotalSeconds,"pipeline","gpu-raw","codec",codec));
-     long finalMark=Stopwatch.GetTimestamp();p.StandardInput.Close();while(!p.HasExited){if((Stopwatch.GetTimestamp()-finalMark)/(double)Stopwatch.Frequency>120){StopEncoder(p);throw new TimeoutException("帧已提交，但编码器在 120 秒内未完成收尾，已停止本次分段。"+await ErrorText(err));}await Task.Delay(20);}if(await Task.WhenAny(stdout,Task.Delay(5000))!=stdout)throw new TimeoutException("编码进程已退出，但输出管道未关闭。");await stdout;var message=await ErrorText(err);encoderFinalizeSeconds=(Stopwatch.GetTimestamp()-finalMark)/(double)Stopwatch.Frequency;if(p.ExitCode!=0)throw GpuEncoding.EncoderError("GPU raw 编码失败："+message);
+     long finalMark=Stopwatch.GetTimestamp();p.StandardInput.Close();while(!p.HasExited){if((Stopwatch.GetTimestamp()-finalMark)/(double)Stopwatch.Frequency>120){StopEncoder(p);throw new TimeoutException("帧已提交，但编码器在 120 秒内未完成收尾，已停止本次分段。"+await ErrorText(err));}await Task.Delay(20);}if(await Task.WhenAny(stdout,Task.Delay(5000))!=stdout)throw new TimeoutException("编码进程已退出，但输出管道未关闭。");await stdout;var message=await ErrorText(err);encoderFinalizeSeconds=(Stopwatch.GetTimestamp()-finalMark)/(double)Stopwatch.Frequency;if(p.ExitCode!=0)throw GpuEncoding.EncoderError(codec,"GPU raw 编码失败："+message);
     }finally{if(!p.HasExited)p.Kill();}}
    }catch(Exception e){failure=e;}
    try{await browser.ReleaseGpuReadbackBuffer();}catch(Exception e){if(failure==null)failure=e;}
