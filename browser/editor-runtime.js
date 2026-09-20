@@ -37,6 +37,47 @@ const WebVideoRuntime=(()=>{
  return {setContext(value){context=value;},peekGameSettings,readGameSettings,writeGameSettings,syncPreview,cancelNavigation(){navigation++;},storeFor};
 })();
 window.WebVideoRuntime=WebVideoRuntime;
+const WebVideoSingleLineHint=(()=>{
+ const reserved=/^__wvp_hint_[A-Za-z0-9_]+$/;
+ const splitOptions=value=>String(value||'').split(/(?<!\\)\|/);
+ const splitNodes=value=>String(value||'').split(/(?<!\\):/);
+ function analyze(row){
+  if(!row||row.command!=='choose')return {isHint:false,convertible:false,reason:'not-choose'};
+  const args=row.args||{},options=splitOptions(row.content),nodes=splitNodes(options[0]||''),text=(nodes[0]||'').trim(),target=(nodes[1]||'').trim(),duration=Number(args.wvpHint);
+  const isHint=options.length===1&&nodes.length===2&&reserved.test(target)&&Number(args.defaultChoose)===1&&!args.next&&Number.isFinite(duration)&&duration>=100&&duration<=60000;
+  if(isHint)return {isHint:true,convertible:false,text,target,duration};
+  const unsafeArgs=Object.keys(args).filter(key=>key!=='defaultChoose');
+  const convertible=args.wvpHint===undefined&&options.length===1&&nodes.length===2&&!String(options[0]).includes('->')&&!!text&&!!target&&unsafeArgs.length===0;
+  return {isHint:false,convertible,text,target,duration:1800,reason:convertible?'single-choice':'unsafe',unsafeArgs};
+ }
+ function id(){return '__wvp_hint_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}
+ function createText(text='时间 / 地点',duration=1800){const target=id();return 'choose:'+text+':'+target+' -defaultChoose=1 -wvpHint='+duration+';\nlabel:'+target+';';}
+ function buildPlan(model,rows,duration=1800){
+  if(!model||!Array.isArray(rows)||!rows.length)throw Error('没有可转换的单选分支。');
+  const current=new Map(model.statements.map(row=>[row.id,row])),patches=[];
+  for(const requested of rows){const row=current.get(requested.id)||current.get(String(requested.startLine-1)+':'+String(requested.endLine-1));if(!row)continue;const info=analyze(row);if(!info.convertible)continue;
+   const parsed=parseScene(row.source).sentenceList.find(sentence=>!sentence.isLineBreakHolder);if(!parsed)continue;
+   const target=id(),hint=combineSubmitString(parsed.commandRaw||'choose',info.text+':'+target,parsed.args,[{key:'defaultChoose',value:1},{key:'wvpHint',value:duration}],parsed.inlineComment||''),replacement=hint+'\nlabel:'+target+';'+(/\n$/.test(row.source)?'\n':'');
+   patches.push({startOffset:row.startOffset,endOffset:row.endOffset,before:model.source.slice(row.startOffset,row.endOffset),after:replacement,line:row.startLine,oldTarget:info.target});
+  }
+  if(!patches.length)throw Error('没有可安全转换的单选分支。');
+  patches.sort((a,b)=>a.startOffset-b.startOffset);let after=model.source;for(const patch of [...patches].reverse())after=after.slice(0,patch.startOffset)+patch.after+after.slice(patch.endOffset);parseScene(after);
+  return {schemaVersion:1,path:model.path,before:model.source,after,operation:{type:'singleLineHint'},patches,warnings:[],changed:patches.length};
+ }
+ async function applyPlan(plan,label){
+  const live=window.WebVideoPlus?.state().model;if(!live||live.path!==plan.path||live.source!==plan.before)throw Error('剧本已变化，请重新执行转换。');
+  if(window.WebVideoProject?.commit)return await window.WebVideoProject.commit(plan,label);
+  await window.WebVideoPlus.flushEditor?.();const latest=window.WebVideoPlus?.state().model;if(!latest||latest.path!==plan.path||latest.source!==plan.before)throw Error('剧本已变化，请重新执行转换。');
+  await api.manageGameControllerEditTextFile({textFile:plan.after,path:plan.path});window.WebVideoPlus.replaceBuffer(plan.path,plan.after);eventBus?.emit?.('editor:update-scene',{scene:plan.after});return {changed:plan.changed};
+ }
+ async function convertRows(rows,{confirm=true,duration=1800,label='转为单行提示'}={}){
+  const model=window.WebVideoPlus?.state().model,plan=buildPlan(model,rows,duration);if(confirm&&!window.confirm('将 '+plan.changed+' 个单选分支转为单行提示？\n\n原选项的跳转目标会被取消，改为显示约 '+(duration/1000)+' 秒后继续下一句。'))return {changed:0,canceled:true};
+  return await applyPlan(plan,label);
+ }
+ function convertibleRows(model=window.WebVideoPlus?.state().model){return model?.statements?.filter(row=>analyze(row).convertible)||[];}
+ return {analyze,createText,buildPlan,convertRows,convertibleRows};
+})();
+window.WebVideoSingleLineHint=WebVideoSingleLineHint;
 let WebVideoChooseHintOriginal=null;
 function webVideoChooseHintState(sentence){
  const args=sentence?.args||[],hintArg=args.find(a=>a.key==='wvpHint'),defaultArg=args.find(a=>a.key==='defaultChoose'),content=String(sentence?.content||''),options=content.split(/(?<!\\)\|/),nodes=(options[0]||'').split(/(?<!\\):/),target=nodes[1]?.trim()||'',duration=Number(hintArg?.value);
