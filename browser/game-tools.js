@@ -1,4 +1,5 @@
-function webVideoSingleLineHintText(){const id='__wvp_hint_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);return 'choose:时间 / 地点:'+id+' -defaultChoose=1 -wvpHint=1800;\nlabel:'+id+';';}
+function webVideoSingleLineHintText(){return window.WebVideoSingleLineHint?.createText?.()||(()=>{const id='__wvp_hint_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);return 'choose:时间 / 地点:'+id+' -defaultChoose=1 -wvpHint=1800;\nlabel:'+id+';';})();}
+function WebVideoSingleLineHintTopbarButton(){const h=reactExports.createElement;return h(IconWithTextItemSmall,{icon:h('span',{'aria-hidden':true,style:{fontSize:'18px',lineHeight:1}},'—'),text:'单行提示',onClick:()=>addSentenceText(webVideoSingleLineHintText())});}
 function WebVideoAddSentenceDialog(props){
  const R=reactExports,h=R.createElement,[query,setQuery]=R.useState(''),[gamePage,setGamePage]=R.useState(!!props.gameOnly),[presetPage,setPresetPage]=R.useState(false);
  R.useEffect(()=>{if(props.open){setQuery('');setGamePage(!!props.gameOnly);setPresetPage(false);}},[props.open]);
