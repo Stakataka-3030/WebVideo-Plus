@@ -5,7 +5,9 @@
   const ignoredCommands=new Set(['changeScene','callScene','return','choose','chooseLabel','jumpLabel','getUserInput','if','setVar','showVars']);
   const hiddenCommands=new Set([...ignoredCommands,'label','unlockCg','unlockBgm','wait','applyStyle','callSteam','end']);
   const majorLabels={bgm:'背景音乐',video:'播放视频',playVideo:'播放视频',playEffect:'效果声音',setAnimation:'调用动画',setComplexAnimation:'复杂动画',setTransform:'单段动画',setTempAnimation:'多段动画',setTransition:'进出场动画',pixi:'使用特效',pixiPerform:'使用特效',pixiInit:'清除特效',intro:'全屏文字',miniAvatar:'角落头像',setTextbox:'文本显示',filmMode:'电影模式'};
-  const ignoredInTiming=item=>ignoredCommands.has(item.command)||item.args.userForward===true||Object.prototype.hasOwnProperty.call(item.args,'when');
+  const singleLineHintDuration=item=>{if(item?.command!=='choose'||Number(item.args?.defaultChoose)!==1||item.args?.next===true)return 0;const ms=Number(item.args?.wvpHint);if(!Number.isFinite(ms)||ms<100||ms>60000)return 0;const options=String(item.content||'').split(/(?<!\\)\|/);if(options.length!==1)return 0;const nodes=options[0].split(/(?<!\\):/);return nodes.length>1&&/^__wvp_hint_[A-Za-z0-9_]+$/.test(nodes[1].trim())?ms:0;};
+  const isSingleLineHint=item=>singleLineHintDuration(item)>0;
+  const ignoredInTiming=item=>(ignoredCommands.has(item.command)&&!isSingleLineHint(item))||item.args.userForward===true||Object.prototype.hasOwnProperty.call(item.args,'when');
   function derive(path,source,parsed,types){
     if(root.WebVideoNavigation)return root.WebVideoNavigation.derive(path,source,parsed,types);
     const lines=source.split('\n'),offsets=[0];for(let i=0;i<lines.length;i++)offsets.push(offsets[i]+lines[i].length+(i<lines.length-1?1:0));
@@ -18,7 +20,7 @@
       const command=types[s.command]||s.commandRaw||'unknown',content=String(s.content||'');
       const item={id:`${start}:${end}`,command,startLine:start+1,endLine:end+1,startOffset:offsets[start],endOffset:offsets[end+1],source:source.slice(offsets[start],offsets[end+1]),content,args,sectionId:section,kind:'technical',speaker:'',title:content,annotations:[]};
       statements.push(item);
-      item.ignoredInTiming=ignoredInTiming(item);if(item.ignoredInTiming){if(firstManualLine===null)firstManualLine=item.startLine;continue;}if(hiddenCommands.has(command))continue;
+      item.ignoredInTiming=ignoredInTiming(item);if(item.ignoredInTiming){if(firstManualLine===null)firstManualLine=item.startLine;continue;}if(hiddenCommands.has(command)&&!isSingleLineHint(item))continue;
       if(command==='changeBg'){item.kind='section';item.title=(command==='changeBg'?'背景 · ':'场景 · ')+(content||'清除');section=item.id;item.sectionId=section;}
       else if(command==='say'){
         if(args.speaker!==undefined&&args.speaker!==null)speaker=String(args.speaker);
@@ -31,7 +33,8 @@
         if(!gone&&previous===content&&(position!==previousState?.position||['transform','enter','exit','bounds','zIndex','skin','blendMode','focus','blink','ignoreDefault'].some(key=>args[key]!==undefined))){item.kind='event';item.title='立绘调整 · '+id;}
         if(gone)figures.delete(id);else figures.set(id,{file:content,position});
         if(args.motion)item.annotations.push('动 '+args.motion);if(args.expression)item.annotations.push('表 '+args.expression);
-      }else if(majorLabels[command]){item.kind='event';item.title=majorLabels[command]+(content?' · '+content:'');}
+      }else if(isSingleLineHint(item)){const option=content.split(/(?<!\\)\|/)[0].split(/(?<!\\):/)[0].replace(/\\([:|\\])/g,'$1'),seconds=singleLineHintDuration(item)/1000;item.kind='event';item.title='单行提示 · '+option;item.annotations.push((Number.isInteger(seconds)?seconds:seconds.toFixed(1))+' 秒');}
+      else if(majorLabels[command]){item.kind='event';item.title=majorLabels[command]+(content?' · '+content:'');}
       else if(command==='comment'){
         const marker=content.match(/(?:TODO|FIXME|待办|待修|完成|标记)[：:\s]*(.*)/i);if(marker)pending.push({text:marker[0],line:item.startLine});
       }
@@ -59,5 +62,5 @@
     snapshot(){if(!this.model)return null;const m=this.model;const selected=this.mode==='range'&&this.range?m.statements.filter(s=>s.startLine>=this.range[0]&&s.endLine<=this.range[1]):m.statements.filter(s=>this.ids.has(s.id));let ranges=selected.map(s=>({startLine:s.startLine,endLine:s.endLine,startOffset:s.startOffset,endOffset:s.endOffset}));if(this.mode==='range'&&this.range){const lines=m.source.split('\n');const start=lines.slice(0,this.range[0]-1).reduce((n,l)=>n+l.length+1,0);let end=lines.slice(0,this.range[1]).reduce((n,l)=>n+l.length+1,0);ranges=[{startLine:this.range[0],endLine:this.range[1],startOffset:start,endOffset:Math.min(end,m.source.length)}];}return JSON.parse(JSON.stringify({schemaVersion:1,path:m.path,revision:m.revision,mode:this.mode,ids:[...this.ids],ranges,statements:selected,source:m.source}));}
   }
   function filter(rows,{text='',speaker='',kind=''}={}){text=text.trim().toLocaleLowerCase();return rows.filter(r=>(!speaker||(r.displaySpeaker||r.speaker)===speaker)&&(!kind||r.kind===kind)&&(!text||[r.title,r.displaySpeaker||r.speaker,r.speakerSource||'',...r.annotations,...(r.parts||[]).flatMap(p=>[p.title,...p.items,p.footer])].join(' ').toLocaleLowerCase().includes(text)));}
-  root.WebVideoTimelineCore={derive,Selection,filter,fingerprint,ignoredInTiming};
+  root.WebVideoTimelineCore={derive,Selection,filter,fingerprint,ignoredInTiming,singleLineHintDuration};
 })(typeof window==='undefined'?globalThis:window);
