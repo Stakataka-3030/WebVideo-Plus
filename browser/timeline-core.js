@@ -9,7 +9,8 @@
   const singleChooseInfo=item=>{if(item?.command!=='choose')return {isHint:false,convertible:false};const args=item.args||{},options=String(item.content||'').split(/(?<!\\)\|/),nodes=String(options[0]||'').split(/(?<!\\):/),text=(nodes[0]||'').trim(),target=(nodes[1]||'').trim(),reserved=/^__wvp_hint_[A-Za-z0-9_]+$/.test(target),isHint=options.length===1&&nodes.length===2&&reserved&&Number(args.defaultChoose)===1&&!args.next,hasHintArg=args.wvpHint!==undefined||/(?:^|\\s)-wvpHint(?:=|\\s|;|$)/.test(String(item.source||'')),unsafe=Object.keys(args).filter(key=>key!=='defaultChoose'&&key!=='wvpHint');return {isHint,convertible:!isHint&&!hasHintArg&&options.length===1&&nodes.length===2&&!String(options[0]).includes('->')&&!!text&&!!target&&unsafe.length===0,text,target,duration:isHint?hintDuration(item):0};};
   const singleLineHintDuration=item=>singleChooseInfo(item).duration||0;
   const isSingleLineHint=item=>singleChooseInfo(item).isHint;
-  const ignoredInTiming=item=>(ignoredCommands.has(item.command)&&!isSingleLineHint(item))||item.args.userForward===true||Object.prototype.hasOwnProperty.call(item.args,'when');
+  const isLinearSceneChange=item=>{if(item?.command!=='changeScene'||Object.keys(item.args||{}).length)return false;const value=String(item.content||''),target=value.replace(/^\.\/game\/scene\//i,'');return target!==value&&target.toLowerCase().endsWith('.txt')&&!target.split('/').some(part=>!part||part==='.'||part==='..')&&!/[?:#]/.test(target);};
+  const ignoredInTiming=item=>(ignoredCommands.has(item.command)&&!isSingleLineHint(item)&&!isLinearSceneChange(item))||item.args.userForward===true||Object.prototype.hasOwnProperty.call(item.args,'when');
   function derive(path,source,parsed,types){
     if(root.WebVideoNavigation)return root.WebVideoNavigation.derive(path,source,parsed,types);
     const lines=source.split('\n'),offsets=[0];for(let i=0;i<lines.length;i++)offsets.push(offsets[i]+lines[i].length+(i<lines.length-1?1:0));
