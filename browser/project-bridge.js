@@ -52,7 +52,7 @@ const WebVideoProject=((terreApi)=>{
      const afterDisk=beforeDisk.includes('\r\n')?C.norm(plan.after).replace(/\n/g,'\r\n'):plan.after;
      await write(plan.path,afterDisk);window.WebVideoPlus.replaceBuffer(plan.path,C.norm(plan.after));
      if(plan.reviewOffsets?.length)window.WebVideoPlus.markForReview(plan.path,C.norm(plan.after),plan.reviewOffsets.map(offset=>C.norm(plan.after.slice(0,offset)).length));
-     if(['idize','restore','expressionPrep','batchFilter','batchNext','autoExit','filterEdit','presetEffect','novelImport','importAnogo'].includes(plan.operation?.type)){changed();return {backupPath,changed:plan.changed};}
+     if(['idize','restore','expressionPrep','batchFilter','batchNext','autoExit','filterEdit','presetEffect','novelImport','importAnogo','singleLineHint'].includes(plan.operation?.type)){changed();return {backupPath,changed:plan.changed};}
      let warning='';try{const p=C.metadata(JSON.parse(JSON.stringify(project)));p.backups.unshift({id,label,path:plan.path,file:backupPath,createdAt:backup.createdAt});p.backups=p.backups.slice(0,200);const afterModel=api.model(plan.path,C.norm(plan.after));if(plan.operation?.type!=='restore')p.markers.push(...C.generatedMarkers(afterModel,{...plan,patches:plan.patches.map(p=>({...p,startOffset:C.norm(plan.before.slice(0,p.startOffset)).length,endOffset:C.norm(plan.before.slice(0,p.endOffset)).length,after:C.norm(p.after)}))},id));if(scope===at)project=p;}catch(e){warning='剧本已应用，备份文件已保存，但项目索引更新失败：'+e.message;}
      changed();return {id,backupPath,warning,changed:plan.changed??plan.patches?.length??1};
     }finally{busy=false;changed();}
