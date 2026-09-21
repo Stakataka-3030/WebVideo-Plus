@@ -127,6 +127,7 @@ namespace NativeVideo {
     string exeName=J.S(product,"exeName",J.S(life,"exeName",""));if(exeName==""){foreach(var name in new[]{"WebGAL_Terre.exe","WebGAL Terre.exe"})if(File.Exists(Path.Combine(terre,name))){exeName=name;break;}if(exeName==""){var matches=Directory.GetFiles(terre,"*.exe").Where(f=>Regex.Replace(Path.GetFileNameWithoutExtension(f),@"[\s_-]+","").Equals("WebGALTerre",StringComparison.OrdinalIgnoreCase)).ToArray();if(matches.Length==1)exeName=Path.GetFileName(matches[0]);}if(exeName=="")throw new IOException("未找到 Terre 主程序（支持 WebGAL_Terre.exe / WebGAL Terre.exe）");}
     string exe=Files.Under(terre,exeName),originalName=J.S(life,"originalName",Path.GetFileNameWithoutExtension(exeName)+".video-original.exe"),original=Files.Under(terre,originalName),recordedOriginalHash=J.S(life,"originalHash"),recordedWrapperHash=J.S(life,"wrapperHash");
     bool originalValid=File.Exists(original)&&(recordedOriginalHash==""||Files.Hash(original)==recordedOriginalHash),wrapperValid=File.Exists(exe)&&(recordedWrapperHash==""||Files.Hash(exe)==recordedWrapperHash);
+    if(wrapped&&life==null&&!force)throw ForceRequired("Terre 启动程序的安装校验记录缺失。");
     if(wrapped&&!originalValid&&RestoreRecoveryExe(sourceState,original,recordedOriginalHash)){originalValid=true;Console.WriteLine("已从 WebVideo+ 恢复备份自动重建 Terre 原程序副本。");}
     if(wrapped&&(!originalValid||!wrapperValid)){
      if(!force)throw ForceRequired("Terre 启动程序或原版备份与安装记录不一致。");
