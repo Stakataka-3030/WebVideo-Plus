@@ -1,7 +1,8 @@
 using System;using System.IO;using System.Linq;using System.Text;using System.Reflection;using System.Collections.Generic;using System.Security.Cryptography;using System.Diagnostics;using System.Threading.Tasks;
 namespace NativeVideo {
  public sealed partial class AiProviderStore {
-  readonly object gate=new object();readonly string folder=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebVideoPlus","ai");
+  readonly object gate=new object();readonly string folder;
+  public AiProviderStore(string dataRoot=null){folder=Path.Combine(string.IsNullOrWhiteSpace(dataRoot)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebVideoPlus"):Files.Full(dataRoot),"ai");}
   string FilePath{get{return Path.Combine(folder,"providers.json");}}
   void Enabled(){if(!File.Exists(Path.Combine(Files.Root,"ai-runtime","worker.mjs")))throw new IOException("尚未安装生成式AI组件，请通过安装器启用。");}
   object Catalog(){using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("ai-providers.factory.json")){if(stream==null)throw new IOException("提供商目录缺失，请重新安装。");using(var reader=new StreamReader(stream))return J.Parse(reader.ReadToEnd());}}
