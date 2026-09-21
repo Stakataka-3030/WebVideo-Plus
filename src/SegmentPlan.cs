@@ -2,13 +2,13 @@ using System;using System.IO;using System.Linq;using System.Collections.Generic;
 namespace NativeVideo {
  public static class SegmentPlan {
   const double DomRefreshFrameCost=12d,MinSegmentSeconds=5d,MinReplayWarmupSeconds=1d,ReplayPenaltyWeight=.35d,MaxReplayOverheadRatio=.60d;
-  sealed class ReplayWindow { public int Start;public int End;public bool Root;public ReplayWindow(int start,int end,bool root=false){Start=start;End=end;Root=root;} }
+  sealed class ReplayWindow { public int Start;public int End;public bool Root;public bool NoCut;public ReplayWindow(int start,int end,bool root=false,bool noCut=false){Start=start;End=end;Root=root;NoCut=noCut;} }
 
   static ReplayWindow[] ReplayWindows(object plan,int total,int fps){
    return J.A(J.Get(plan,"replayWindows")).Select(w=>new ReplayWindow(
     Math.Max(0,Math.Min(total,(int)Math.Floor(J.N(w,"startMs")*fps/1000))),
     Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(w,"endMs")*fps/1000))),
-    J.B(w,"rootReplay")
+    J.B(w,"rootReplay"),J.B(w,"noCut")
    )).Where(w=>w.End>w.Start).OrderBy(w=>w.Start).ToArray();
   }
 
@@ -42,13 +42,14 @@ namespace NativeVideo {
     Math.Max(0,Math.Min(total,(int)Math.Floor(J.N(h,"startMs")*fps/1000))),
     Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(h,"endMs")*fps/1000)))
    )).Where(w=>w.End>w.Start).OrderBy(w=>w.Start).ToArray();
-   Func<int,bool> safeCut=frame=>!protectedWindows.Any(w=>frame>w.Start&&frame<w.End);
+   var replayOnly=ReplayWindows(plan,total,fps),noCutWindows=replayOnly.Where(w=>w.NoCut).ToArray(),cutProtected=protectedWindows.Concat(noCutWindows).OrderBy(w=>w.Start).ToArray();
+   Func<int,bool> safeCut=frame=>!cutProtected.Any(w=>frame>w.Start&&frame<w.End);
    Func<int,int> snapCut=frame=>{
-    foreach(var w in protectedWindows)if(frame>w.Start&&frame<w.End)frame=frame-w.Start<=w.End-frame?w.Start:w.End;
+    foreach(var w in cutProtected)if(frame>w.Start&&frame<w.End)frame=frame-w.Start<=w.End-frame?w.Start:w.End;
     return Math.Max(0,Math.Min(total,frame));
    };
 
-   var replayWindows=ReplayWindows(plan,total,fps).Concat(protectedWindows).OrderBy(w=>w.Start).ToArray();
+   var replayWindows=replayOnly.Concat(protectedWindows).OrderBy(w=>w.Start).ToArray();
    Func<int,int> replayFor=cut=>ReplayAnchor(cut,minReplayWarmupFrames,replayWindows);
 
    var events=J.A(J.Get(plan,"events")).Where(e=>J.N(e,"line")>0&&!J.S(e,"command").StartsWith("__")).ToList();
