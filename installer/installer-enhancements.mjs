@@ -3,7 +3,7 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
  const replace=(a,b)=>{if(!s.includes(a))throw Error('Missing enhanced installer anchor '+a);s=s.replace(a,b);};
  const between=(a,b,t)=>{const i=s.indexOf(a),j=s.indexOf(b,i+a.length);if(i<0||j<0)throw Error('Missing enhanced installer range '+a);s=s.slice(0,i)+t+s.slice(j);};
 
- between(' public void Install(', '\n }\n}\npublic class InstallationState', \` public void Install(RuntimePlan p,string terre,string games,string output,string url,string dataDir,string workDir,string installCache,bool keepRecovery,bool force,bool start){
+ between(' public void Install(', '\n }\n}\npublic class InstallationState', ` public void Install(RuntimePlan p,string terre,string games,string output,string url,string dataDir,string workDir,string installCache,bool keepRecovery,bool force,bool start){
   Report("正在应用 WebVideo+ 模块选择…");var args=new List<string>{"install","--terre-dir",terre,"--games-root",games,"--output-dir",output,"--terre-url",url,"--state-dir",dataDir,"--work-dir",workDir,"--install-cache-dir",installCache,"--keep-recovery",keepRecovery?"true":"false","--runtime-path",p.RuntimePath,"--modules",string.Join(",",p.RequestedModules)};if(force)args.AddRange(new[]{"--force","true"});
   Run(Path.Combine(p.Payload,"WebVideoPlus.Manager.exe"),args,p.RuntimePath,p.Payload);if(start&&p.Modules.Length>0){Report("正在启动 Terre 与 WebVideo+…");Run(Path.Combine(p.Payload,"WebVideoPlus.Manager.exe"),new[]{"launch","--terre-dir",terre},p.RuntimePath,p.Payload);}Report("安装完成。",100);
  }
@@ -13,7 +13,7 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
    if(Directory.Exists(Root)&&!Directory.EnumerateFileSystemEntries(Root).Any())Directory.Delete(Root);
   }catch(Exception e){Report("部分安装缓存未能删除："+e.Message);}
  }
-\`);
+`);
 
  replace(' }catch{state.UpdateAvailable=false;state.Message="安装记录无法读取，请核对所选目录。";}return state;}',
          ' }catch{state.UpdateAvailable=state.ValidTerre;state.Message=state.ValidTerre?"安装记录不完整或文件已变化；仍可点击应用更改，必要时安装器会提供强制修复。":"安装记录无法读取，请核对所选目录。";}return state;}');
@@ -24,24 +24,24 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
 
  replace(
   'moduleNote=new Label{Location=new Point(30,204),Size=new Size(690,72),ForeColor=Color.DimGray};advanced.Controls.Add(moduleNote);foreach(var box in moduleBoxes.Values)box.CheckStateChanged+=(sender,eventArgs)=>{if(!syncModules)ReconcileModules();};ReconcileModules();',
-  \`moduleNote=new Label{Location=new Point(30,204),Size=new Size(690,52),ForeColor=Color.DimGray};advanced.Controls.Add(moduleNote);foreach(var box in moduleBoxes.Values)box.CheckStateChanged+=(sender,eventArgs)=>{if(!syncModules)ReconcileModules();};ReconcileModules();
+  `moduleNote=new Label{Location=new Point(30,204),Size=new Size(690,52),ForeColor=Color.DimGray};advanced.Controls.Add(moduleNote);foreach(var box in moduleBoxes.Values)box.CheckStateChanged+=(sender,eventArgs)=>{if(!syncModules)ReconcileModules();};ReconcileModules();
   dataDir=Field(advanced,"WebVideo+ 数据目录",DefaultDataDirectory(terre.Text),386,true);
   workDir=Field(advanced,"导出工作缓存",Path.Combine(output.Text,".webvideo-cache"),428,true);
   installCache=Field(advanced,"安装缓存目录",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGALVideoExporter"),470,true);
-  keepRecovery=new CheckBox{Text="保留 Terre 原始文件的长期恢复备份（推荐）",Checked=true,AutoSize=true,Location=new Point(170,516)};advanced.Controls.Add(keepRecovery);\`
+  keepRecovery=new CheckBox{Text="保留 Terre 原始文件的长期恢复备份（推荐）",Checked=true,AutoSize=true,Location=new Point(170,516)};advanced.Controls.Add(keepRecovery);`
  );
 
  replace('if(loadedModulesPath!=terre.Text){loadedModulesPath=terre.Text;var modules=ModuleCatalog.Advanced;try{',
          'if(loadedModulesPath!=terre.Text){loadedModulesPath=terre.Text;LoadStoragePaths();var modules=ModuleCatalog.Advanced;try{');
 
- between(' string[] SelectedModules(){',' void ReconcileModules(){',\` static string TextHash16(string text){using(var sha=SHA256.Create()){var hash=sha.ComputeHash(Encoding.UTF8.GetBytes((text??"").ToLowerInvariant()));return BitConverter.ToString(hash).Replace("-","").ToLowerInvariant().Substring(0,16);}}
+ between(' string[] SelectedModules(){',' void ReconcileModules(){',` static string TextHash16(string text){using(var sha=SHA256.Create()){var hash=sha.ComputeHash(Encoding.UTF8.GetBytes((text??"").ToLowerInvariant()));return BitConverter.ToString(hash).Replace("-","").ToLowerInvariant().Substring(0,16);}}
  string DefaultDataDirectory(string terrePath){string path=String.IsNullOrWhiteSpace(terrePath)?"unknown":Path.GetFullPath(terrePath);return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGALVideoExporter","instances",TextHash16(path));}
  void LoadStoragePaths(){if(dataDir==null)return;string defaultInstall=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGALVideoExporter");dataDir.Text=DefaultDataDirectory(terre.Text);workDir.Text=Path.Combine(output.Text,".webvideo-cache");installCache.Text=defaultInstall;keepRecovery.Checked=true;try{string configPath="";var product=Path.Combine(terre.Text,"webvideo-plus.json");if(File.Exists(product)){var p=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(product));if(p.ContainsKey("config"))configPath=Convert.ToString(p["config"]);}if(configPath==""||!File.Exists(configPath)){var wrapper=Path.Combine(terre.Text,"video-export-wrapper.json");if(File.Exists(wrapper)){var w=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(wrapper));if(w.ContainsKey("config"))configPath=Convert.ToString(w["config"]);}}if(configPath!=""&&File.Exists(configPath)){var cfg=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(configPath));dataDir.Text=Path.GetDirectoryName(configPath);if(cfg.ContainsKey("gamesRoot"))games.Text=Convert.ToString(cfg["gamesRoot"]);if(cfg.ContainsKey("outputDir"))output.Text=Convert.ToString(cfg["outputDir"]);if(cfg.ContainsKey("terreUrl"))url.Text=Convert.ToString(cfg["terreUrl"]);workDir.Text=cfg.ContainsKey("workDir")?Convert.ToString(cfg["workDir"]):Path.Combine(output.Text,".webvideo-cache");installCache.Text=cfg.ContainsKey("installCacheDir")?Convert.ToString(cfg["installCacheDir"]):defaultInstall;if(cfg.ContainsKey("keepRecoveryBackup"))keepRecovery.Checked=Convert.ToBoolean(cfg["keepRecoveryBackup"]);}}catch{}}
  void ValidateStoragePath(string value,string label,string terrePath,string gamesPath){string full=Path.GetFullPath(value),root=Path.GetPathRoot(full).TrimEnd('\\\\','/');if(full.TrimEnd('\\\\','/').Equals(root,StringComparison.OrdinalIgnoreCase))throw new Exception(label+"不能使用磁盘根目录。");string t=Path.GetFullPath(terrePath).TrimEnd('\\\\','/'),g=Path.GetFullPath(gamesPath).TrimEnd('\\\\','/');if(full.Equals(t,StringComparison.OrdinalIgnoreCase)||full.StartsWith(t+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)||full.Equals(g,StringComparison.OrdinalIgnoreCase)||full.StartsWith(g+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))throw new Exception(label+"不能位于 Terre 或游戏目录内部。");}
  string[] SelectedModules(){return ModuleCatalog.Advanced.Where(id=>moduleBoxes[id].CheckState==CheckState.Checked).Concat(aiModule.Checked?new[]{"generativeAI"}:new string[0]).ToArray();}
-\`);
+`);
 
- between(' async Task Install(){','\n async Task Uninstall(){',\` async Task Install(){
+ between(' async Task Install(){','\n async Task Uninstall(){',` async Task Install(){
   var mounted=InstallationState.Read(terre.Text,InstallerBuild.PackageVersion);bool updating=mounted.Mounted;
   if(!File.Exists(Path.Combine(terre.Text,"public/index.html"))){MessageBox.Show(this,"没有找到 Terre 的 public/index.html，请选择 Terre 安装目录。","请核对路径");return;}
   Uri address;if(!Uri.TryCreate(url.Text,UriKind.Absolute,out address)||!new[]{"localhost","127.0.0.1"}.Contains(address.Host)){MessageBox.Show(this,"请填写本机 Terre 地址，例如 http://localhost:3001。","请核对地址");return;}
@@ -54,9 +54,9 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
    catch(Exception first){if(!first.Message.Contains("[FORCE_AVAILABLE]"))throw;var choice=MessageBox.Show(this,first.Message.Replace("[FORCE_AVAILABLE]","").Trim()+"\\n\\n是否强制修复？\\n安装器会先创建事务性临时回滚副本，操作成功后立即删除。若现有文件可识别，会尽量保留 Terre 的外部修改。","检测到安装状态不一致",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2);if(choice!=DialogResult.Yes)throw;await Task.Run(()=>engine.Install(plan,t,g,o,u,d,w,ic,keep,true,launch));}
    loadedModulesPath="";RefreshInstallation(true);MessageBox.Show(this,(updating?"更新 / 修复":"安装")+"完成。",updating?"操作完成":"安装完成");
   }catch(Exception e){engine.Report("安装未完成："+e.Message);MessageBox.Show(this,e.Message.Replace("[FORCE_AVAILABLE]","").Trim()+"\\n\\n可点击“打开日志”查看详情。","安装未完成");}finally{SetBusy(false);}
- }\`);
+ }`);
 
- between(' async Task Uninstall(){','\n}\npublic static class InstallerMain',\` bool ShowUninstallOptions(out bool deleteCache,out bool deleteData){deleteCache=true;deleteData=false;using(var f=new Form{Text="卸载 WebVideo+",ClientSize=new Size(610,330),FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,StartPosition=FormStartPosition.CenterParent,Font=Font,BackColor=BackColor}){
+ between(' async Task Uninstall(){','\n}\npublic static class InstallerMain',` bool ShowUninstallOptions(out bool deleteCache,out bool deleteData){deleteCache=true;deleteData=false;using(var f=new Form{Text="卸载 WebVideo+",ClientSize=new Size(610,330),FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,StartPosition=FormStartPosition.CenterParent,Font=Font,BackColor=BackColor}){
   f.Controls.Add(new Label{Text="拆卸 WebVideo+ 后将尽量恢复 Terre 原程序。请选择是否同时清理本机数据：",Location=new Point(24,24),Size=new Size(560,48)});
   var cacheBox=new CheckBox{Text="删除 WebVideo+ 缓存和临时文件",Checked=true,AutoSize=true,Location=new Point(28,92)};f.Controls.Add(cacheBox);
   f.Controls.Add(new Label{Text="包括导出工作缓存、WebView 临时数据、临时音乐，以及安装下载 / 解包 / 运行依赖缓存。",Location=new Point(52,120),Size=new Size(520,42),ForeColor=Color.DimGray});
@@ -69,7 +69,7 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
    try{await Task.Run(()=>runForce(false));}catch(Exception first){if(!first.Message.Contains("[FORCE_AVAILABLE]"))throw;var choice=MessageBox.Show(this,first.Message.Replace("[FORCE_AVAILABLE]","").Trim()+"\\n\\n是否强制拆卸？\\n安装器会先备份当前现场并尽量恢复 Terre；无法安全判断的未知文件不会被主动覆盖。","检测到安装状态不一致",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2);if(choice!=DialogResult.Yes)throw;await Task.Run(()=>runForce(true));}
    engine.CleanupInstallCache(deleteCache,deleteData);loadedModulesPath="";status.Text=deleteCache&&deleteData?"WebVideo+ 已完整卸载，缓存和用户数据已清理。":"WebVideo+ 已卸载。已导出的 MP4 和 WebGAL 游戏工程保留。";RefreshInstallation(false);MessageBox.Show(this,status.Text,"卸载完成");
   }catch(Exception e){MessageBox.Show(this,e.Message.Replace("[FORCE_AVAILABLE]","").Trim(),"卸载未完成");}finally{SetBusy(false);}}
-\`);
+`);
 
  return s;
 }
