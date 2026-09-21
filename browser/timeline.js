@@ -120,7 +120,7 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
   const ended=()=>core.sceneManager.sceneData.currentSentenceId>=core.sceneManager.sceneData.currentScene.sentenceList.length;
   let blockedPrematureAutoNext=0;
   globalThis.__nativeBeforeNext=()=>{
-    if(core.gameplay.isAuto&&pc.performList.some(p=>p.blockingAuto?.())){
+    if(policy.mode==='auto'&&pc.performList.some(p=>p.blockingAuto?.())){
       blockedPrematureAutoNext++;
       return false;
     }
