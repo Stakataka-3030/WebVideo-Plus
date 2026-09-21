@@ -89,7 +89,7 @@ namespace NativeVideo {
   static async Task<string> Burn(string input,string target,string subtitle,double duration,object request,string log){
    string codec=J.S(request,"gpuRawCodec");if(string.IsNullOrWhiteSpace(codec))codec="x264";string mode=J.S(request,"gpuRawMode",J.S(J.Get(request,"settings"),"gpuRawMode","recommended"));if(mode=="traditional")mode="recommended";
    Func<string,Task> run=async selected=>{var args=new List<string>{"-v","error","-y","-i",input,"-vf","subtitles=filename='"+FilterPath(subtitle)+"'","-map","0:v:0","-map","0:a?"};GpuEncoding.AddEncoderArgs(args,selected,selected=="x264rgb"?"lossless":mode);args.AddRange(new[]{"-c:a","copy","-t",J.Num(duration),"-movflags","+faststart",target});await Commands.Run("ffmpeg",args,log,7200000);};
-   try{await run(codec);return codec;}catch(Exception e){if(!GpuEncoding.IsHardware(codec)||!GpuEncoding.IsCompatibilityError(e.Message))throw;if(File.Exists(target))File.Delete(target);await run("x264");return "x264";}
+   try{await run(codec);return codec;}catch(Exception e){if(!GpuEncoding.IsHardware(codec)||!GpuEncoding.IsCompatibilityError(e.Message))throw;}if(File.Exists(target))File.Delete(target);await run("x264");return "x264";
   }
   public static async Task<object> Apply(string input,string target,object subtitle,object timing,object bounds,object musicTimeline,object request,string log){
    string source=J.S(subtitle,"file");if(!File.Exists(source))throw new FileNotFoundException("任务字幕快照已丢失");double anchor=ResolveAnchor(subtitle,timing,bounds,musicTimeline),duration=J.N(bounds,"durationSeconds");string mode=J.S(subtitle,"mode","soft"),codec="copy";
