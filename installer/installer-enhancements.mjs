@@ -8,8 +8,9 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
   Run(Path.Combine(p.Payload,"WebVideoPlus.Manager.exe"),args,p.RuntimePath,p.Payload);if(start&&p.Modules.Length>0){Report("正在启动 Terre 与 WebVideo+…");Run(Path.Combine(p.Payload,"WebVideoPlus.Manager.exe"),new[]{"launch","--terre-dir",terre},p.RuntimePath,p.Payload);}Report("安装完成。",100);
  }
  public void CleanupInstallCache(bool deleteCache,bool deleteConfig){
-  try{if(deleteCache){foreach(var name in new[]{"downloads","packages","tools"}){var dir=Path.Combine(Root,name);if(Directory.Exists(dir))Directory.Delete(dir,true);}foreach(var file in Directory.GetFiles(Root,"payload-*.zip"))try{File.Delete(file);}catch{}}
-   if(deleteConfig){foreach(var name in new[]{"last-install.json","installer.log",".webvideo-install-cache"}){var file=Path.Combine(Root,name);if(File.Exists(file))try{File.Delete(file);}catch{}}}
+  try{string registry=Path.Combine(Root,"instances.json");bool shared=false;if(File.Exists(registry))try{var doc=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(registry));if(doc.ContainsKey("instances"))shared=((System.Collections.IEnumerable)doc["instances"]).Cast<object>().Any();}catch{shared=true;}
+   if(deleteCache){foreach(var name in new[]{"downloads","packages"}){var dir=Path.Combine(Root,name);if(Directory.Exists(dir))Directory.Delete(dir,true);}foreach(var file in Directory.GetFiles(Root,"payload-*.zip"))try{File.Delete(file);}catch{}if(!shared){var tools=Path.Combine(Root,"tools");if(Directory.Exists(tools))Directory.Delete(tools,true);if(File.Exists(registry))File.Delete(registry);}}
+   if(deleteConfig){foreach(var name in new[]{"last-install.json","installer.log",".webvideo-install-cache"}){var file=Path.Combine(Root,name);if(File.Exists(file))try{File.Delete(file);}catch{}}if(!shared&&File.Exists(registry))try{File.Delete(registry);}catch{}}
    if(Directory.Exists(Root)&&!Directory.EnumerateFileSystemEntries(Root).Any())Directory.Delete(Root);
   }catch(Exception e){Report("部分安装缓存未能删除："+e.Message);}
  }
