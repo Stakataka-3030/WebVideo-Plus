@@ -143,7 +143,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    if(hasStop)end=Math.min(end,stop);
   }else end=hasStop?stop:start+duration;
   end=Math.min(fullDurationMs,end);
-  if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command)),rootReplay:false,noCut:w.command==='pixiPerform'});
+  if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command)),rootReplay:false,noCut:w.command==='pixiPerform'||w.command==='say'});
  }
  const resolvedExitReplay=[],usedStageExits=new Set();
  for(const window of exitReplay){
