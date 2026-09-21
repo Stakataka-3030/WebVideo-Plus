@@ -19,7 +19,7 @@ namespace NativeVideo {
     // Runtime-only effects such as Pixi performs and persistent model state can
     // consume hidden runtime state that fast-prefix restore cannot serialize.
     // If one touches this warmup/output boundary, replay from the story root.
-    if(windows.Any(w=>w.Root&&w.Start<cut&&w.End>anchor))return 0;
+    if(windows.Any(w=>w.Root&&w.Start<=cut&&w.End>anchor))return 0;
     moved=false;
     foreach(var w in windows){
      if(w.Start<anchor&&w.End>anchor){
