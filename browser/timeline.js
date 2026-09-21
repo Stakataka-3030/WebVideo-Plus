@@ -138,8 +138,10 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
   };
 
   // Keep the source engine in charge of perform semantics, but make the unattended planner
-  // preserve plain wait and make manual text timing deterministic. Only visual/text performs
-  // need lifecycle records; audio/static no-op performs would make long projects unnecessarily large.
+  // preserve plain wait and make manual text timing deterministic. A normal wait must only
+  // block autoplay; changing blockingNext creates a stale 100 ms goNextWhenOver retry in
+  // WebGAL when a preceding -notend/-next say overlaps the wait, and that retry can later
+  // settle the following dialogue. -nobreak already supplies native blockingNext semantics.
   const arrange=pc.arrangeNewPerform;
   const trackedPerformCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','playVideo','intro','pixiPerform']);
   pc.arrangeNewPerform=function(perform,s,...rest){
@@ -147,7 +149,6 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
     const command=s.command===0?'say':s.commandRaw;
     if(command==='wait'&&params.next!==true){
       perform.blockingAuto=()=>true;
-      perform.blockingNext=()=>true;
     }
     if(policy.mode==='manual'&&s.command===0&&perform.performName!=='vocal-play'&&!perform.isHoldOn&&!params.notend){
       const n=w.compileText(s.content,3).reduce((sum,a)=>sum+a.length,0);
