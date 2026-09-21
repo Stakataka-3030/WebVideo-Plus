@@ -38,7 +38,8 @@ namespace NativeVideo {
    if(type=="music"){
     if(musicTimeline==null)throw new ArgumentException("字幕基准使用了成片音乐，但本次导出未启用成片音乐");
     string id=J.S(anchor,"musicId");var track=J.A(J.Get(musicTimeline,"tracks")).FirstOrDefault(item=>J.S(item,"id")==id);if(track==null)throw new ArgumentException("作为字幕基准的成片音乐已不存在，请重新选择");
-    return Relative(J.N(track,"startSeconds"),bounds,"所选成片音乐");
+    double start=J.N(track,"startSeconds");string legacy=J.S(track,"legacyScene");if(legacy!=""){var legacyScene=J.A(J.Get(J.Get(timing,"storyTimeline"),"scenes")).FirstOrDefault(item=>J.S(item,"scene").Equals(legacy,StringComparison.OrdinalIgnoreCase));if(legacyScene==null)throw new ArgumentException("旧版成片音乐所属场景不在本次故事时间线中，请先重新保存音乐配置");start+=J.N(legacyScene,"startSeconds");}
+    return Relative(start,bounds,"所选成片音乐");
    }
    if(type=="timeline"){
     string scene=J.S(anchor,"scene");int line=(int)J.N(anchor,"line");var story=J.Get(timing,"storyTimeline");var item=J.A(J.Get(story,"scenes")).FirstOrDefault(x=>J.S(x,"scene").Equals(scene,StringComparison.OrdinalIgnoreCase));if(item==null)throw new ArgumentException("所选字幕时间线语句不在本次故事时间线中");
