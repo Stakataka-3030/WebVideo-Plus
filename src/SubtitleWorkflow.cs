@@ -41,7 +41,7 @@ namespace NativeVideo {
     return Relative(J.N(track,"startSeconds"),bounds,"所选成片音乐");
    }
    if(type=="timeline"){
-    string scene=J.S(anchor,"scene");int line=(int)J.N(anchor,"line");var story=J.Get(timing,"storyTimeline"),item=J.A(J.Get(story,"scenes")).FirstOrDefault(x=>J.S(x,"scene").Equals(scene,StringComparison.OrdinalIgnoreCase));if(item==null)throw new ArgumentException("所选字幕时间线语句不在本次故事时间线中");
+    string scene=J.S(anchor,"scene");int line=(int)J.N(anchor,"line");var story=J.Get(timing,"storyTimeline");var item=J.A(J.Get(story,"scenes")).FirstOrDefault(x=>J.S(x,"scene").Equals(scene,StringComparison.OrdinalIgnoreCase));if(item==null)throw new ArgumentException("所选字幕时间线语句不在本次故事时间线中");
     string expected=J.S(anchor,"sourceHash");if(expected!=""&&!J.S(item,"hash").Equals(expected,StringComparison.OrdinalIgnoreCase))throw new ArgumentException("所选字幕时间线语句所在场景已经变化，请重新选择");
     var times=J.A(J.Get(item,"lineTimes"));if(line<1||line>times.Count||times[line-1]==null)throw new ArgumentException("所选 WebGAL 语句没有可定位的执行时间，请选择实际执行的语句");
     double ms=Number(times[line-1],"所选 WebGAL 语句时间无效",0,86400000);return Relative(ms/1000,bounds,"所选 WebGAL 语句");
@@ -95,7 +95,7 @@ namespace NativeVideo {
    if(mode=="soft"){
     var args=new List<string>{"-v","error","-y","-i",input,"-itsoffset",J.Num(anchor),"-i",source,"-map","0:v:0","-map","0:a?","-map","1:0","-c:v","copy","-c:a","copy","-c:s","mov_text","-t",J.Num(duration),"-movflags","+faststart",target};await Commands.Run("ffmpeg",args,log,600000);
    }else if(mode=="burn")codec=await Burn(input,target,ShiftForBurn(source,anchor),duration,request,log);else throw new ArgumentException("字幕输出方式无效");
-   var probe=await Commands.Probe(target);var video=J.A(J.Get(probe,"streams")).FirstOrDefault(x=>J.S(x,"codec_type")=="video"),settings=J.Get(request,"settings");if(video==null||J.N(video,"width")!=J.N(settings,"width")||J.N(video,"height")!=J.N(settings,"height"))throw new IOException("字幕后处理后的画面尺寸不符");double actual=J.N(J.Get(probe,"format"),"duration");if(actual<=0||Math.Abs(actual-duration)>.35)throw new IOException("字幕后处理后的成片时长不符");
+   var probe=await Commands.Probe(target);var video=J.A(J.Get(probe,"streams")).FirstOrDefault(x=>J.S(x,"codec_type")=="video");var settings=J.Get(request,"settings");if(video==null||J.N(video,"width")!=J.N(settings,"width")||J.N(video,"height")!=J.N(settings,"height"))throw new IOException("字幕后处理后的画面尺寸不符");double actual=J.N(J.Get(probe,"format"),"duration");if(actual<=0||Math.Abs(actual-duration)>.35)throw new IOException("字幕后处理后的成片时长不符");
    return J.O("mode",mode,"anchorSeconds",anchor,"source",J.S(subtitle,"name",Path.GetFileName(source)),"codec",codec,"subtitleCodec",mode=="soft"?"mov_text":"burned","assStylePreserved",mode=="burn"&&new[]{".ass",".ssa"}.Contains(Path.GetExtension(source).ToLowerInvariant()));
   }
  }
