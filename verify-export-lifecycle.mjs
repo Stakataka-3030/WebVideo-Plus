@@ -59,7 +59,7 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   assert.ok(beginDialogue>prefixRestore&&syncScene>beginDialogue,'prefix restore must arm dialogue mutation tracking before sync-scene');
   assert.ok(domReady>syncScene&&forceSettle>domReady,'prefix restore must wait for actual dialogue DOM mutation before forced settle');
   const timelineSource=fs.readFileSync(path.join(root,'browser','timeline.js'),'utf8');
-  assert.ok(timelineSource.includes('core.gameplay.isAuto&&pc.performList.some(p=>p.blockingAuto?.())'),'planner must reject autoplay next while dialogue still blocks auto');
+  assert.ok(timelineSource.includes("policy.mode==='auto'&&pc.performList.some(p=>p.blockingAuto?.())"),'planner must reject autoplay next while dialogue still blocks auto');
   const renderSource=fs.readFileSync(path.join(root,'browser','render.js'),'utf8');
   assert.ok(renderSource.includes("timingMode==='auto'&&pc.performList.some(p=>p.blockingAuto?.())"),'renderer must ignore stale replayed auto-next while dialogue still blocks auto');
   const segmentSource=fs.readFileSync(path.join(root,'src','SegmentPlan.cs'),'utf8');
