@@ -33,8 +33,12 @@ jobs:
       - name: Run real WebView2 runtime smoke
         shell: pwsh
         run: |
-          .\package\WebGAL.Video.exe smoke --web (Join-Path $PWD 'package/runtime/web') --work (Join-Path $PWD '.runtime-smoke')
-          Get-Content -LiteralPath (Join-Path $PWD '.runtime-smoke/result.json')
+          $exe = Join-Path $PWD 'package/WebGAL.Video.exe'
+          $web = Join-Path $PWD 'package/runtime/web'
+          $work = Join-Path $PWD '.runtime-smoke'
+          $p = Start-Process -FilePath $exe -ArgumentList @('smoke','--web',$web,'--work',$work) -Wait -PassThru -NoNewWindow
+          if($p.ExitCode -ne 0){ throw "WebView2 runtime smoke failed with exit code $($p.ExitCode)" }
+          Get-Content -LiteralPath (Join-Path $work 'result.json')
 
       - name: Verify Terre integration anchors
         shell: pwsh
