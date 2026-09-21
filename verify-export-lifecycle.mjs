@@ -115,8 +115,30 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   ],stageExitWindows:[{target:'hero123-off',startMs:4000,stopMs:4450}]};
   const plan=build({script,parsed,media:{},animations:{},timing,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
   assert.equal(plan.replayWindows.find(w=>w.command==='pixiPerform').noCut,true);
-  assert.equal(plan.replayWindows.find(w=>w.command==='changeFigure-runtime').noCut,true);
-  assert.equal(plan.replayWindows.find(w=>w.command==='changeFigure-exit').noCut,true);
+  assert.equal(plan.replayWindows.some(w=>w.command==='changeFigure-runtime'),false);
+  const exit=plan.replayWindows.find(w=>w.command==='changeFigure-exit');
+  assert.equal(exit.noCut,false);
+  assert.equal(exit.startMs,4000);
+}
+
+{
+  // A Live2D/WMDL figure may stay on stage for most of a scene. Its motion/blink/focus
+  // configuration is part of stage state and is restored by WebGAL syncLive2d, so the
+  // figure's whole lifetime must not become a no-cut window.
+  const script=['changeFigure:hero/model.json -id=hero;','hero:first;','hero:middle;','hero:last;'].join('\n');
+  const parsed={sentenceList:[
+    cmd('changeFigure','hero/model.json',[{key:'id',value:'hero'},{key:'motion',value:'idle'},{key:'blink',value:'{"blinkInterval":5000}'}],0),
+    say('first',[],1),say('middle',[],2),say('last',[],3)
+  ]};
+  const timing={durationSeconds:60,lineTimes:[0,1000,20000,40000],sourceEvents:[{index:0,forwardGroup:1},{index:1,forwardGroup:2},{index:2,forwardGroup:3},{index:3,forwardGroup:4}],controlEvents:[],performWindows:[
+    {command:'changeFigure',line:0,role:'primary',durationMs:300,hold:false,startMs:0,stopMs:300},
+    {command:'say',line:1,role:'primary',durationMs:800,hold:false,startMs:1000,stopMs:1800},
+    {command:'say',line:2,role:'primary',durationMs:800,hold:false,startMs:20000,stopMs:20800},
+    {command:'say',line:3,role:'primary',durationMs:800,hold:false,startMs:40000,stopMs:40800}
+  ],stageExitWindows:[]};
+  const plan=build({script,parsed,media:{},animations:{},timing,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
+  assert.equal(plan.replayWindows.some(w=>w.noCut&&w.startMs===0&&w.endMs>=60000),false);
+  assert.equal(plan.replayWindows.some(w=>w.command==='changeFigure-runtime'),false);
 }
 
 console.log('Export lifecycle regression checks passed.');
