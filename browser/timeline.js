@@ -51,7 +51,7 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
 
   const events=[],elastic=[],controlEvents=[],performWindows=[];
   let origin=null,lastCommand='',lastParams={},lastLine=0,done=false,finishedAt=0,manualTimer=null,hintTimer=null,hintError='';
-  let forwardGroupCounter=0,openForwardGroup=0,performToken=0;
+  let forwardGroupCounter=0,openForwardGroup=0;
   const nowMs=()=>origin===null?0:performance.now()-origin;
   const currentForwardGroup=()=>{
     if(!openForwardGroup){
@@ -119,9 +119,10 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
   };
 
   // Keep the source engine in charge of perform semantics, but make the unattended planner
-  // preserve plain wait and make manual text timing deterministic. Every started perform is
-  // tagged so the renderer/segmenter can reproduce its lifetime without guessing from commands.
+  // preserve plain wait and make manual text timing deterministic. Only visual/text performs
+  // need lifecycle records; audio/static no-op performs would make long projects unnecessarily large.
   const arrange=pc.arrangeNewPerform;
+  const trackedPerformCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','playVideo','intro','pixiPerform']);
   pc.arrangeNewPerform=function(perform,s,...rest){
     const params=Object.fromEntries(s.args.map(a=>[a.key,a.value]));
     const command=s.command===0?'say':s.commandRaw;
@@ -133,35 +134,20 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
       const n=w.compileText(s.content,3).reduce((sum,a)=>sum+a.length,0);
       perform.duration=n*w.textDelay(policy.textSpeed)+w.textAnimation(policy.textSpeed);
     }
+    if(perform.performName==='vocal-play'||!trackedPerformCommands.has(command))return arrange.call(this,perform,s,...rest);
 
     const item={
-      token:++performToken,
       command,
       line:core.sceneManager.sceneData.currentSentenceId,
-      name:String(perform.performName||''),
-      role:perform.performName==='vocal-play'?'vocal':'primary',
+      role:'primary',
       durationMs:Math.max(0,Number(perform.duration)||0),
       hold:!!perform.isHoldOn,
       startMs:null,
-      stopMs:null,
-      params:{
-        next:params.next===true,
-        notend:params.notend===true,
-        keep:params.keep===true,
-        parallel:params.parallel===true,
-        continue:params.continue===true
-      }
+      stopMs:null
     };
-    const start=perform.startFunction;
-    const stop=perform.stopFunction;
-    perform.startFunction=()=>{
-      if(item.startMs===null)item.startMs=nowMs();
-      return start?.();
-    };
-    perform.stopFunction=()=>{
-      if(item.stopMs===null)item.stopMs=nowMs();
-      return stop?.();
-    };
+    const start=perform.startFunction,stop=perform.stopFunction;
+    perform.startFunction=()=>{if(item.startMs===null)item.startMs=nowMs();return start?.();};
+    perform.stopFunction=()=>{if(item.stopMs===null)item.stopMs=nowMs();return stop?.();};
     performWindows.push(item);
     return arrange.call(this,perform,s,...rest);
   };
