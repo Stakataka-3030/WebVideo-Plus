@@ -3,6 +3,16 @@
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
 
+### 内部版本 0.7.6 / 导出内核 0.6.6
+
+- 根据 0.6.5 实测侧车重新定位“是歌词吗？！”仍然瞬间完成的问题：GPU 文字合成本身已经记录到逐帧 opacity，但该句在约 4 个输出帧后就被引擎 settle，说明剩余问题不在 DOM 捕获，而在自动推进时序。Planner 现在在 WebGAL autoplay 调用 next 时再次检查当前 perform 的 `blockingAuto`；只要当前对白仍阻塞自动播放，就拒绝这次过早 next，不记录控制事件，也不允许它提前结算当前 say。最终 renderer 对回放的 `__nativeNext` 同样执行该保护，避免旧规划中的过早 auto-next 再次打断当前对白。
+- 时间线侧车新增 `blockedPrematureAutoNext`、原始 control events 和每条 say 的 nominal duration / start / stop 摘要。若仍存在异常，可以直接区分“自然结束”“被 next 提前结束”与“后续 source event 提前执行”，不再靠成片反推。
+- 修复 0.6.5 多 Worker 安全切点判定的 1 帧取整偏差。source event 切点使用首个可执行帧（ceil），但 replay/no-cut 窗口起点此前使用 floor，导致本应恰好位于 say 开始边界的合法切点被误判成已经进入 say 区间。replay window 起点现在与实际首个渲染帧统一使用 ceil。
+- 新增与该实测形状一致的原生分段回归：带小数毫秒起点的 say no-cut 窗口不再吞掉同一语句的合法 source-event 边界。14.58 秒一类短片仍受 5 秒最小分段长度限制，因此最多会选择 2 Worker；本次修复针对的是错误回退到 1 Worker，而不是强行把极短片切成 8 段。
+- pipeline revision 更新为 `auto-next-cut-rounding-0.7.6`，旧规划和分片缓存全部失效。
+
+
+
 ### 内部版本 0.7.5 / 导出内核 0.6.5
 
 - 根据同一实测样例重新定位 0.7.3 / 0.7.4 未命中的两处问题，不再继续围绕 `textSettle` 猜测。逐字显示异常的直接风险点在最终 GPU DOM 合成：say 状态提交后 React TextBox 可能尚未把新的逐字节点挂到 DOM，而宿主已经开始本帧捕获；等到下一次 DOM 刷新时，文字动画可能已接近或到达终态。最终渲染现在在每次 say 周围显式跟踪 `#textBoxMain` 真实 DOM mutation，并在新的文字节点数量与当前 stage `showText/currentDialogKey` 对齐后，才继续建立文字 atlas / opacity 动画基线。
