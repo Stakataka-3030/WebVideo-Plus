@@ -3,6 +3,16 @@
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
 
+### 内部版本 0.7.1 / 导出内核 0.6.1
+
+- 修复 0.7.0 的多 Worker 安全判定过度保守：此前把 Live2D / WMDL / JSON 模型以及带眨眼、motion、focus 等参数的立绘整个在场生命周期都标记为不可切分，常见项目中角色会长期在场，因此几乎所有候选切点都会被拒绝，最终自动退回 1 Worker。
+- 持续立绘本身不再形成整段 no-cut 窗口。WebGAL 的 fast-preview 舞台恢复会从 stage state 重新创建立绘，并通过 `syncLive2d` 重新应用当前 motion、expression、blink、focus 等状态；Worker 仍保留至少 1 秒真实 warmup，用于让恢复后的运行时稳定。
+- 立绘/背景真正的入场、退场、`setTransform` / `setAnimation` / `setTempAnimation`、视频、intro 与有限 DOM 动画仍按其动态时间窗回退 replay anchor；任意 Pixi perform 仍保持 no-cut，因为其内部状态没有通用可恢复表示。
+- 立绘退场窗口现在只要求从“触发退场的那条语句”开始真实重放，不再错误地退回到该角色最初登场时刻，避免长时间在场角色造成巨量 warmup 和 Worker 数下降。
+- 新增回归测试，明确保证一个 Live2D/WMDL 角色贯穿整段剧情时不会仅因“角色仍在场”而阻止多 Worker 分段。旧 0.7.0 规划缓存通过新的 pipeline revision 自动失效。
+
+
+
 ### 内部版本 0.7.0 / 导出内核 0.6.0
 
 - 修复跨语句演出在导出时的生命周期偏差：`-notend` / `-continue` / `wait` 触发的内部继续现在会显式重放非 hold 演出的结算，不再只推进下一条语句；旧对白的 `textSettle` 也不会再串到后续对白并把新文字瞬间显示完。
