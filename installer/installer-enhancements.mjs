@@ -3,7 +3,7 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
  const replace=(a,b)=>{if(!s.includes(a))throw Error('Missing enhanced installer anchor '+a);s=s.replace(a,b);};
  const between=(a,b,t)=>{const i=s.indexOf(a),j=s.indexOf(b,i+a.length);if(i<0||j<0)throw Error('Missing enhanced installer range '+a);s=s.slice(0,i)+t+s.slice(j);};
 
- between(' public void Install(', '\n }\n}\npublic class InstallationState', ` public void Install(RuntimePlan p,string terre,string games,string output,string url,string dataDir,string workDir,string installCache,bool keepRecovery,bool force,bool start){
+ between(' public void Install(', '\n}\npublic class InstallationState', ` public void Install(RuntimePlan p,string terre,string games,string output,string url,string dataDir,string workDir,string installCache,bool keepRecovery,bool force,bool start){
   Report("正在应用 WebVideo+ 模块选择…");var args=new List<string>{"install","--terre-dir",terre,"--games-root",games,"--output-dir",output,"--terre-url",url,"--state-dir",dataDir,"--work-dir",workDir,"--install-cache-dir",installCache,"--keep-recovery",keepRecovery?"true":"false","--runtime-path",p.RuntimePath,"--modules",string.Join(",",p.RequestedModules)};if(force)args.AddRange(new[]{"--force","true"});
   Run(Path.Combine(p.Payload,"WebVideoPlus.Manager.exe"),args,p.RuntimePath,p.Payload);if(start&&p.Modules.Length>0){Report("正在启动 Terre 与 WebVideo+…");Run(Path.Combine(p.Payload,"WebVideoPlus.Manager.exe"),new[]{"launch","--terre-dir",terre},p.RuntimePath,p.Payload);}Report("安装完成。",100);
  }
