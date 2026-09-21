@@ -1,11 +1,27 @@
 // With GPU DOM compositing, draw the stage only at the final composite step.
 // Re-rendering WMDL Live2D models without an intervening update can lose clipping masks.
 globalThis.__exportTextSettleApplies=(ownerKey,currentKey,force=false)=>!!force||(ownerKey!==null&&ownerKey!==undefined&&String(ownerKey)===String(currentKey));
+globalThis.__exportInstallTextSettleGuard=textSettleEvent=>{
+  if(!textSettleEvent||textSettleEvent.__webvideoTextSettleGuarded)return;
+  const nativeEmit=textSettleEvent.emit.bind(textSettleEvent);
+  textSettleEvent.emit=(message,id)=>{
+    if(!globalThis.__exportTextSettleApplies(globalThis.__exportTextSettleOwnerToken,globalThis.__exportActiveSayToken,globalThis.__exportForceTextSettle))return;
+    return nativeEmit(message,id);
+  };
+  textSettleEvent.__webvideoTextSettleGuarded=true;
+};
+globalThis.__exportRestoredDialogueReady=()=>{
+  const stage=__wgProbe.stageManager.getCalculationStageState?.(),showText=String(stage?.showText??'');
+  if(!showText)return true;
+  const box=document.getElementById('textBoxMain');
+  return !!box&&box.querySelectorAll('span[id]').length>0;
+};
 globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50})=>{
   const pc=__wgProbe.core.gameplay.performController,arrange=pc.arrangeNewPerform;
   const dormantHoldCommands=new Set(['setAnimation','setTempAnimation','setTransform']);
   globalThis.__exportCurrentEvent=null;
   globalThis.__exportBatchCollecting=false;
+  globalThis.__exportInstallTextSettleGuard(__wgProbe.core.events.textSettle);
 
   pc.arrangeNewPerform=function(perform,script,...rest){
     const current=globalThis.__exportCurrentEvent,command=script.command===0?'say':script.commandRaw;
@@ -31,7 +47,6 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
   const markTextSettled=()=>{
     const state=globalThis.__gpuDomState;
     if(!state)return;
-    if(!globalThis.__exportTextSettleApplies(globalThis.__exportTextSettleOwnerToken,globalThis.__exportActiveSayToken,globalThis.__exportForceTextSettle))return;
     state.textSettled=true;
     state.settledMaskPrepared=false;
     const els=[...document.querySelectorAll('.Textelement_start')],values=els.map(x=>Math.max(0,Math.min(1,Number(getComputedStyle(x).opacity)||0)));
