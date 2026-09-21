@@ -2,12 +2,13 @@ using System;using System.IO;using System.Linq;using System.Collections.Generic;
 namespace NativeVideo {
  public static class SegmentPlan {
   const double DomRefreshFrameCost=12d,MinSegmentSeconds=5d,MinReplayWarmupSeconds=1d,ReplayPenaltyWeight=.35d,MaxReplayOverheadRatio=.60d;
-  sealed class ReplayWindow { public int Start;public int End;public ReplayWindow(int start,int end){Start=start;End=end;} }
+  sealed class ReplayWindow { public int Start;public int End;public bool Root;public ReplayWindow(int start,int end,bool root=false){Start=start;End=end;Root=root;} }
 
   static ReplayWindow[] ReplayWindows(object plan,int total,int fps){
    return J.A(J.Get(plan,"replayWindows")).Select(w=>new ReplayWindow(
     Math.Max(0,Math.Min(total,(int)Math.Floor(J.N(w,"startMs")*fps/1000))),
-    Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(w,"endMs")*fps/1000)))
+    Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(w,"endMs")*fps/1000))),
+    J.B(w,"rootReplay")
    )).Where(w=>w.End>w.Start).OrderBy(w=>w.Start).ToArray();
   }
 
@@ -15,6 +16,10 @@ namespace NativeVideo {
    int anchor=Math.Max(0,cut-minWarmupFrames);
    bool moved;
    do{
+    // Runtime-only effects such as Pixi performs and persistent model state can
+    // consume hidden runtime state that fast-prefix restore cannot serialize.
+    // If one touches this warmup/output boundary, replay from the story root.
+    if(windows.Any(w=>w.Root&&w.Start<cut&&w.End>anchor))return 0;
     moved=false;
     foreach(var w in windows){
      if(w.Start<anchor&&w.End>anchor){
