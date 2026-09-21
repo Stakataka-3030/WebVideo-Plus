@@ -3,6 +3,14 @@
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
 
+### 内部版本 0.7.3 / 导出内核 0.6.3
+
+- 修复 `-notend -next` / `wait` 链后旧对白的 `textSettle` 仍可能在新对白已经开始后触发的问题。导出器现在给每个 say perform 分配独立 ownership token；旧对白结束时只有 token 仍属于当前活动对白才允许把文字标记为 settled，避免上一句把下一句瞬间全部显示。
+- 修复多 Worker 接缝处当前对白重新播放文字动画的问题。GPU DOM 文字状态现在在 prefix fast-preview 恢复之前就建立监听；prefix 恢复完成后只对恢复出的当前对白执行一次显式 settle。若新的对白是在 warmup 期间真正开始，仍会按正常文字动画继续，不会被前缀恢复强制完成。
+- 新增回归检查，覆盖“旧 dialogue key 不能 settle 新 dialogue key”、显式 prefix settle 仍可生效，以及 GPU DOM 初始化必须早于 prefix restore。旧 0.7.2 规划/分片缓存通过新的 pipeline revision 自动失效。
+
+
+
 ### 内部版本 0.7.2 / 导出内核 0.6.2
 
 - 高级设置新增“允许装饰性 Pixi 跨段”，默认关闭。开启后仅对白名单内的 WebGAL 内置 `rain`、`snow`、`heavySnow`、`cherryBlossoms` 允许跨 Worker 切段；恢复时会重新建立粒子演出，因此切点附近粒子相位可能变化。未知或自定义 Pixi 继续保持严格 no-cut。

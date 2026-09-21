@@ -12,11 +12,25 @@ vm.createContext(context);
 for(const name of ['workload.js','timeline.js','render.js','finish-timeline.js']){
   const source=fs.readFileSync(path.join(root,'browser',name),'utf8');
   new vm.Script(source,{filename:name});
-  if(name==='workload.js')vm.runInContext(source,context,{filename:name});
+  if(name==='workload.js'||name==='render.js')vm.runInContext(source,context,{filename:name});
 }
 const build=context.__buildNativeWorkload,finish=context.__finishNativeTimeline;
 assert.equal(typeof build,'function');
 assert.equal(typeof finish,'function');
+assert.equal(typeof context.__exportTextSettleApplies,'function');
+assert.equal(context.__exportTextSettleApplies('old','new',false),false);
+assert.equal(context.__exportTextSettleApplies('same','same',false),true);
+assert.equal(context.__exportTextSettleApplies(null,'same',false),false);
+assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
+
+{
+  const rendererSource=fs.readFileSync(path.join(root,'src','Renderer.cs'),'utf8');
+  const domInstall=rendererSource.indexOf('__gpuDomInstall()');
+  const prefixRestore=rendererSource.indexOf('globalThis.__exportPrefixRestore=true');
+  assert.ok(domInstall>=0&&prefixRestore>=0&&domInstall<prefixRestore,'GPU DOM tracking must exist before prefix restore');
+  assert.ok(rendererSource.includes('__exportForceTextSettle=true'),'prefix restore must force-settle restored dialogue');
+}
+
 
 const say=(content,args=[],startLine=0,endLine=startLine)=>({command:0,commandRaw:'',content,args,startLine,endLine,isLineBreakHolder:false});
 const cmd=(commandRaw,content,args=[],startLine=0,endLine=startLine)=>({command:99,commandRaw,content,args,startLine,endLine,isLineBreakHolder:false});
