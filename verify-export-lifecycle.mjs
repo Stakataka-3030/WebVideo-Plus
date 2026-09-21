@@ -122,7 +122,8 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
 
   const relaxed=build({script,parsed,media:{},animations:{},timing,root:'C:/root',project:'P',sceneName:'start.txt',fps:60,allowDecorativePixiCuts:true});
   assert.equal(relaxed.replayWindows.some(w=>w.command==='pixiPerform'),false);
-  assert.deepEqual(relaxed.relaxedDecorativePixi.map(x=>x.name),['rain']);
+  assert.equal(relaxed.relaxedDecorativePixi.length,1);
+  assert.equal(relaxed.relaxedDecorativePixi[0].name,'rain');
 
   const customScript=script.replace('pixiPerform:rain;','pixiPerform:customStorm;');
   const customParsed={sentenceList:[parsed.sentenceList[0],cmd('pixiPerform','customStorm',[],1),parsed.sentenceList[2],parsed.sentenceList[3]]};
