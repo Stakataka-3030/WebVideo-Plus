@@ -187,9 +187,21 @@ globalThis.__finishNativeTimeline=({result,pre,settings,playlist,range})=>{
   const map=t=>total>0?t+windows.reduce((n,w)=>n+Math.max(0,Math.min(t,w.endMs)-w.startMs)/total*delta,0):t;
   for(const event of result.controlEvents)event.atMs=Math.round(map(event.atMs));
   for(const event of sourceEvents)event.atMs=Math.round(map(event.atMs));
-  for(const window of performWindows.concat(stageExitWindows)){
-   if(window.startMs!==null&&window.startMs!==undefined&&Number.isFinite(Number(window.startMs)))window.startMs=map(Number(window.startMs));
-   if(window.stopMs!==null&&window.stopMs!==undefined&&Number.isFinite(Number(window.stopMs)))window.stopMs=map(Number(window.stopMs));
+  for(const window of performWindows){
+   if(window.startMs===null||window.startMs===undefined||!Number.isFinite(Number(window.startMs)))continue;
+   const start=Number(window.startMs),mappedStart=map(start),duration=Math.max(0,Number(window.durationMs)||0);
+   if(window.stopMs!==null&&window.stopMs!==undefined&&Number.isFinite(Number(window.stopMs))){
+    const stop=Number(window.stopMs);
+    if(window.hold)window.stopMs=map(stop);
+    else window.stopMs=stop<start+duration-1?map(stop):mappedStart+duration;
+   }
+   window.startMs=mappedStart;
+  }
+  for(const window of stageExitWindows){
+   if(window.startMs===null||window.startMs===undefined||!Number.isFinite(Number(window.startMs)))continue;
+   const start=Number(window.startMs),mappedStart=map(start);
+   if(window.stopMs!==null&&window.stopMs!==undefined&&Number.isFinite(Number(window.stopMs)))window.stopMs=mappedStart+Math.max(0,Number(window.stopMs)-start);
+   window.startMs=mappedStart;
   }
   for(let i=0;i<lineTimes.length;i++)if(Number.isFinite(lineTimes[i]))lineTimes[i]=Math.round(map(lineTimes[i]));
   actualElastic=result.elastic.map(w=>({...w,startMs:map(w.startMs),endMs:map(w.endMs)}));
