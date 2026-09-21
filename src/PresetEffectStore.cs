@@ -1,7 +1,8 @@
 using System;using System.IO;using System.Linq;using System.Reflection;using System.Collections.Generic;
 namespace NativeVideo {
  public sealed class PresetEffectStore {
-  readonly object gate=new object();readonly string file=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebVideoPlus","preset-effects","effects.json");
+  readonly object gate=new object();readonly string file;
+  public PresetEffectStore(string dataRoot=null){file=Path.Combine(string.IsNullOrWhiteSpace(dataRoot)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebVideoPlus"):Files.Full(dataRoot),"preset-effects","effects.json");}
   object[] Saved(){if(!File.Exists(file))return new object[0];if(new FileInfo(file).Length>8*1024*1024)throw new IOException("预制效果库过大。");var doc=J.Read(file);if(J.N(doc,"schemaVersion")!=1||!(J.Get(doc,"effects") is object[]))throw new IOException("预制效果库格式错误，原文件未被覆盖。");return J.A(J.Get(doc,"effects")).ToArray();}
   object[] Presets(){using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("preset-effects.factory.json")){if(stream==null)return new object[0];using(var reader=new StreamReader(stream))return J.A(J.Get(J.Parse(reader.ReadToEnd()),"effects")).ToArray();}}
   public object List(){lock(gate)return J.O("presets",Presets(),"saved",Saved());}
