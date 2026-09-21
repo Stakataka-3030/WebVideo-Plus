@@ -112,7 +112,7 @@ namespace NativeVideo {
    string oldConfigFile=Path.Combine(sourceState,"config.json"),oldManifestFile=Path.Combine(sourceState,"install.json"),oldLifeFile=Path.Combine(sourceState,"lifecycle-install.json");
    string index=Path.Combine(terre,"public/index.html"),assets=Path.Combine(terre,"public/assets"),addon=Files.Under(terre,"video-export"),wrapperFile=Path.Combine(terre,"video-export-wrapper.json");if(!File.Exists(index))throw new IOException("缺少 Terre public/index.html");
    var product=J.TryRead(ProductFile(terre));var manifest=J.TryRead(oldManifestFile);var previous=J.TryRead(oldConfigFile);var life=J.TryRead(oldLifeFile);bool mounted=product!=null||File.Exists(wrapperFile),wrapped=File.Exists(wrapperFile);
-   if(previous!=null&&wrapped)await Integration.StopInstance(previous);
+   if(previous!=null)await Integration.StopInstance(previous);
    bool migrated=false;try{
     if(!SamePath(state,sourceState)){
      string full=Files.Full(state).TrimEnd('\\','/'),drive=Path.GetPathRoot(full).TrimEnd('\\','/');if(full.Equals(drive,StringComparison.OrdinalIgnoreCase)||Files.Within(terre,full,true)||Files.Within(full,terre,true))throw new IOException("WebVideo+ 数据目录不能是磁盘根目录，也不能与 Terre 安装目录重叠。");
@@ -128,12 +128,14 @@ namespace NativeVideo {
     string exe=Files.Under(terre,exeName),originalName=J.S(life,"originalName",Path.GetFileNameWithoutExtension(exeName)+".video-original.exe"),original=Files.Under(terre,originalName),recordedOriginalHash=J.S(life,"originalHash"),recordedWrapperHash=J.S(life,"wrapperHash");
     bool originalValid=File.Exists(original)&&(recordedOriginalHash==""||Files.Hash(original)==recordedOriginalHash),wrapperValid=File.Exists(exe)&&(recordedWrapperHash==""||Files.Hash(exe)==recordedWrapperHash);
     if(wrapped&&life==null&&!force)throw ForceRequired("Terre 启动程序的安装校验记录缺失。");
+    if(!wrapped&&life!=null&&originalValid&&wrapperValid&&!force)throw ForceRequired("WebVideo+ 挂载标记缺失，但仍检测到已记录的启动器和原程序副本。");
     if(wrapped&&!originalValid&&RestoreRecoveryExe(sourceState,original,recordedOriginalHash)){originalValid=true;Console.WriteLine("已从 WebVideo+ 恢复备份自动重建 Terre 原程序副本。");}
     if(wrapped&&(!originalValid||!wrapperValid)){
      if(!force)throw ForceRequired("Terre 启动程序或原版备份与安装记录不一致。");
      if(!originalValid){if(File.Exists(original)){originalValid=true;Console.WriteLine("强制模式：接受现有 Terre 原程序备份。");}else if(File.Exists(exe)&&!wrapperValid){Files.CopyFile(exe,original);originalValid=true;Console.WriteLine("强制模式：当前 Terre 主程序不像已记录的 WebVideo+ 启动器，已将其作为新的原程序备份。");}else throw new IOException("强制修复仍找不到可恢复的 Terre 原程序。请重新安装 Terre 后再试。");}
     }
-    if(!wrapped&&File.Exists(original)&&!force)throw ForceRequired("发现未匹配安装记录的 Terre 原程序备份。");
+    bool managedLauncher=wrapped||life!=null&&originalValid&&wrapperValid;
+    if(!wrapped&&File.Exists(original)&&!managedLauncher&&!force)throw ForceRequired("发现未匹配安装记录的 Terre 原程序备份。");
     if(!File.Exists(exe)){if(force&&File.Exists(original))Files.CopyFile(original,exe);else throw new IOException("Terre 主程序不存在。");}
     string url=App.Arg("--terre-url",J.S(previous,"terreUrl","http://localhost:3001"));Uri uri;if(!Uri.TryCreate(url,UriKind.Absolute,out uri)||!new[]{"localhost","127.0.0.1"}.Contains(uri.Host))throw new IOException("Terre 地址必须是本机地址");
     string gamesRoot=Files.Full(App.Arg("--games-root",J.S(previous,"gamesRoot",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".webgal_terre/games")))),outputDir=Files.Full(App.Arg("--output-dir",J.S(previous,"outputDir",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),"WebGAL Exports")))),workDir=Files.Full(App.Arg("--work-dir",J.S(previous,"workDir",Path.Combine(outputDir,".webvideo-cache")))),installCacheDir=Files.Full(App.Arg("--install-cache-dir",J.S(previous,"installCacheDir",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGALVideoExporter"))));bool keepRecovery=App.Arg("--keep-recovery",J.B(previous,"keepRecoveryBackup",true)?"true":"false")!="false";
@@ -148,9 +150,9 @@ namespace NativeVideo {
      string baselineExe=wrapped&&File.Exists(original)?original:exe,originalBundleFile="";try{if(bundleName!="")originalBundleFile=Files.Under(Path.Combine(terre,"public","assets"),Path.GetFileName(bundleName));}catch{}if(modules.Length>0&&keepRecovery)SaveRecovery(state,baselineExe,originalEntry,originalBundleFile,bundleName);
      if(Directory.Exists(addon)){Directory.Move(addon,retired);moved=true;}if(modules.Length>0){Directory.Move(stage,addon);staged=true;}
      string originalHash=Files.Hash(baselineExe);
-     if(export){if(!wrapped){if(File.Exists(original)){if(!force)throw ForceRequired("发现冲突的 Terre 原程序备份。");File.Delete(original);}File.Move(exe,original);}Files.CopyFile(Path.Combine(addon,"TerreLauncher.exe"),exe);}
-     else if(wrapped){if(File.Exists(original)){Files.CopyFile(original,exe);File.Delete(original);}else if(!(force&&File.Exists(exe)))throw new IOException("无法恢复 Terre 原程序。");}
-     else if(force&&File.Exists(original)){if(!File.Exists(exe))Files.CopyFile(original,exe);File.Delete(original);}
+     if(export){if(!managedLauncher){if(File.Exists(original)){if(!force)throw ForceRequired("发现冲突的 Terre 原程序备份。");File.Delete(original);}File.Move(exe,original);}Files.CopyFile(Path.Combine(addon,"TerreLauncher.exe"),exe);}
+     else if(managedLauncher){if(File.Exists(original)){Files.CopyFile(original,exe);File.Delete(original);}else if(!(force&&File.Exists(exe)))throw new IOException("无法恢复 Terre 原程序。");}
+     else if(force&&File.Exists(original)){Files.CopyFile(original,exe);File.Delete(original);}
      if(modules.Length>0){Files.Atomic(bundle,source);using(var gz=new GZipStream(File.Create(bundle+".gz"),CompressionMode.Compress)){var bytes=Files.Utf8.GetBytes(source);gz.Write(bytes,0,bytes.Length);}if(string.IsNullOrWhiteSpace(bundleName)||!html.Contains(bundleName))throw new IOException("无法在 Terre 原版入口中定位前端脚本引用，未覆盖入口。");Files.Atomic(index,html.Replace(bundleName,newBundle));}else File.WriteAllBytes(index,originalEntry);
      var config=J.D(previous);config["terreDir"]=terre;config["terreUrl"]=url;config["stateDir"]=state;config["runtimePath"]=App.Arg("--runtime-path",J.S(previous,"runtimePath"));config["gamesRoot"]=gamesRoot;config["outputDir"]=outputDir;config["workDir"]=workDir;config["installCacheDir"]=installCacheDir;config["keepRecoveryBackup"]=keepRecovery;config["userDataRoot"]=Path.Combine(state,"user-data");config["allowedOrigins"]=new[]{uri.GetLeftPart(UriPartial.Authority),new UriBuilder(uri){Host=uri.Host=="localhost"?"127.0.0.1":"localhost"}.Uri.GetLeftPart(UriPartial.Authority)};config["sourcePackageRoot"]=addon;config["instanceId"]=Files.HashText(terre.ToLowerInvariant()).Substring(0,20);config["exeName"]=exeName;config["modules"]=modules;J.Write(configFile,config);J.Write(Path.Combine(state,".webvideo-data.json"),J.O("terreDir",terre,"createdAt",DateTime.UtcNow.ToString("o")));
      if(export){J.Write(wrapperFile,J.O("version",KernelVersion,"backend",originalName,"addon","video-export","native","WebGAL.Video.exe","config",configFile));J.Write(Path.Combine(assets,"video-export-instance.json"),J.O("id",config["instanceId"]));J.Write(lifeFile,J.O("version",KernelVersion,"exeName",exeName,"originalName",originalName,"originalHash",originalHash,"wrapperHash",Files.Hash(exe),"addon",addon));}
