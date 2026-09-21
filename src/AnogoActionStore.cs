@@ -2,7 +2,7 @@ using System;using System.IO;using System.Linq;using System.Collections.Generic;
 namespace NativeVideo {
  public sealed class AnogoActionStore {
   readonly string folder,file;readonly object gate=new object();
-  public AnogoActionStore(){folder=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebVideoPlus","anogo-actions");file=Path.Combine(folder,"actions.json");bool firstUse=!Directory.Exists(folder);Directory.CreateDirectory(folder);if(firstUse)Files.Atomic(file,Factory());Read();}
+  public AnogoActionStore(string dataRoot=null){folder=Path.Combine(string.IsNullOrWhiteSpace(dataRoot)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebVideoPlus"):Files.Full(dataRoot),"anogo-actions");file=Path.Combine(folder,"actions.json");bool firstUse=!Directory.Exists(folder);Directory.CreateDirectory(folder);if(firstUse)Files.Atomic(file,Factory());Read();}
   string Factory(){using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("anogo-actions.factory.json")){if(stream==null)throw new IOException("内置出厂表缺失，请重新安装组件");using(var reader=new StreamReader(stream))return reader.ReadToEnd();}}
   object Compile(object raw){
    var doc=raw as Dictionary<string,object>;if(doc==null||J.N(doc,"schemaVersion")!=1||!(J.Get(doc,"rows") is object[]))throw new ArgumentException("JSON 必须包含 schemaVersion: 1 和 rows 数组。");var rows=J.A(J.Get(doc,"rows"));if(rows.Count>10000)throw new ArgumentException("映射表超过 10000 行。");var lookup=J.O();var seen=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);var outputs=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);var warnings=new List<string>();
