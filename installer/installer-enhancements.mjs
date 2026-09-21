@@ -17,6 +17,7 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
 
  replace(' }catch{state.UpdateAvailable=false;state.Message="安装记录无法读取，请核对所选目录。";}return state;}',
          ' }catch{state.UpdateAvailable=state.ValidTerre;state.Message=state.ValidTerre?"安装记录不完整或文件已变化；仍可点击应用更改，必要时安装器会提供强制修复。":"安装记录无法读取，请核对所选目录。";}return state;}');
+ replace('state.Mounted=product||File.Exists(Path.Combine(directory,"video-export-wrapper.json"));','state.Mounted=product||File.Exists(Path.Combine(directory,"video-export-wrapper.json"))||Directory.Exists(Path.Combine(directory,"video-export"))||Directory.Exists(directory)&&Directory.GetFiles(directory,"*.video-original.exe").Length>0;');
 
  replace('TextBox terre,games,output,url;','TextBox terre,games,output,url,dataDir,workDir,installCache;');
  replace('CheckBox advancedToggle,start,navigatorModule,selectorModule,exporterModule,aiModule;','CheckBox advancedToggle,start,navigatorModule,selectorModule,exporterModule,aiModule,keepRecovery;');
