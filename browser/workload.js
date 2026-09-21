@@ -55,7 +55,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    if(changed&&previousPresent){
     const state=transitionStates.get(target)||{},fallback=cmd==='changeBg'?1500:450;
     const exitMs=state.exitName?ensureAnimation(state.exitName):Math.max(0,Number.isFinite(Number(state.exitDuration))?Number(state.exitDuration):fallback);
-    if(exitMs>0){const active=cmd==='changeFigure'?activePersistentFigures.get(target):null;exitReplay.push({startMs:active?active.startMs:cursor,triggerMs:cursor,endMs:cursor+exitMs,target,command:cmd==='changeBg'?'changeBg-exit':'changeFigure-exit',line:range.start+1,hold:false,dormantRestorable:false,rootReplay:false});}
+    if(exitMs>0){const active=cmd==='changeFigure'?activePersistentFigures.get(target):null;exitReplay.push({startMs:active?active.startMs:cursor,triggerMs:cursor,endMs:cursor+exitMs,target,command:cmd==='changeBg'?'changeBg-exit':'changeFigure-exit',line:range.start+1,hold:false,dormantRestorable:false,rootReplay:false,noCut:!!active});}
    }
    visualSources.set(key,visualName);
    if(cmd==='changeFigure'){
@@ -73,7 +73,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
     const old=activePersistentFigures.get(target);
     if(old&&changed){old.endMs=cursor;persistentReplay.push(old);activePersistentFigures.delete(target);}
     const persistent=!gone&&(/\.(json|jsonl|wmdl)([?#].*)?$/i.test(visualName)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(visualName)||!!params.motion||!!params.animationFlag||!!params.blink||!!params.eyesOpen||!!params.eyesClose);
-    if(persistent&&!activePersistentFigures.has(target))activePersistentFigures.set(target,{startMs:cursor,endMs:null,command:'changeFigure-runtime',line:range.start+1,hold:true,dormantRestorable:false,rootReplay:false});
+    if(persistent&&!activePersistentFigures.has(target))activePersistentFigures.set(target,{startMs:cursor,endMs:null,command:'changeFigure-runtime',line:range.start+1,hold:true,dormantRestorable:false,rootReplay:false,noCut:true});
    }
   }
   if(cmd==='playVideo'){
@@ -142,7 +142,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    if(hasStop)end=Math.min(end,stop);
   }else end=hasStop?stop:start+duration;
   end=Math.min(fullDurationMs,end);
-  if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command)),rootReplay:false});
+  if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command)),rootReplay:false,noCut:w.command==='pixiPerform'});
  }
  const resolvedExitReplay=[],usedStageExits=new Set();
  for(const window of exitReplay){
@@ -160,7 +160,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  stageExitWindows.forEach((actual,index)=>{
   if(usedStageExits.has(index)||actual.startMs===null||actual.startMs===undefined||!Number.isFinite(Number(actual.startMs)))return;
   const end=actual.stopMs!==null&&actual.stopMs!==undefined&&Number.isFinite(Number(actual.stopMs))?Number(actual.stopMs):fullDurationMs;
-  resolvedExitReplay.push({startMs:Number(actual.startMs),triggerMs:Number(actual.startMs),endMs:end,target:String(actual.target||''),command:'stage-exit',line:0,hold:false,dormantRestorable:false,rootReplay:false});
+  resolvedExitReplay.push({startMs:Number(actual.startMs),triggerMs:Number(actual.startMs),endMs:end,target:String(actual.target||''),command:'stage-exit',line:0,hold:false,dormantRestorable:false,rootReplay:false,noCut:false});
  });
  for(const window of persistentReplay.concat(resolvedExitReplay)){
   const start=Math.max(0,Number(window.startMs)||0),end=Math.min(fullDurationMs,Number(window.endMs)||0);
