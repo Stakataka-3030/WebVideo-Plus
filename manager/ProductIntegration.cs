@@ -140,11 +140,12 @@ namespace NativeVideo {
     bool originalValid=File.Exists(original)&&(recordedOriginalHash==""||Files.Hash(original)==recordedOriginalHash),wrapperValid=File.Exists(exe)&&(recordedWrapperHash==""||Files.Hash(exe)==recordedWrapperHash);
     if(wrapped&&life==null&&!force)throw ForceRequired("Terre 启动程序的安装校验记录缺失。");
     if(!wrapped&&life!=null&&originalValid&&wrapperValid&&!force)throw ForceRequired("WebVideo+ 挂载标记缺失，但仍检测到已记录的启动器和原程序副本。");
-    if(wrapped&&!originalValid&&RestoreRecoveryExe(sourceState,original,recordedOriginalHash)){originalValid=true;Console.WriteLine("已从 WebVideo+ 恢复备份自动重建 Terre 原程序副本。");}
+    if(life!=null&&!originalValid&&RestoreRecoveryExe(sourceState,original,recordedOriginalHash)){originalValid=true;Console.WriteLine("已从 WebVideo+ 恢复备份自动重建 Terre 原程序副本。");}
     if(wrapped&&(!originalValid||!wrapperValid)){
      if(!force)throw ForceRequired("Terre 启动程序或原版备份与安装记录不一致。");
      if(!originalValid){if(File.Exists(original)){originalValid=true;Console.WriteLine("强制模式：接受现有 Terre 原程序备份。");}else if(File.Exists(exe)&&!wrapperValid){Files.CopyFile(exe,original);originalValid=true;Console.WriteLine("强制模式：当前 Terre 主程序不像已记录的 WebVideo+ 启动器，已将其作为新的原程序备份。");}else throw new IOException("强制修复仍找不到可恢复的 Terre 原程序。请重新安装 Terre 后再试。");}
     }
+    if(!wrapped&&life!=null&&wrapperValid&&!originalValid&&force)throw new IOException("检测到 Terre 主程序仍与已记录的 WebVideo+ 启动器一致，但原程序备份和恢复副本都已丢失。为避免把 WebVideo+ 启动器误当作 Terre 原程序，请先修复或重新安装 Terre。");
     bool managedLauncher=wrapped||life!=null&&originalValid&&wrapperValid;
     if(!wrapped&&File.Exists(original)&&!managedLauncher&&!force)throw ForceRequired("发现未匹配安装记录的 Terre 原程序备份。");
     if(!File.Exists(exe)){if(force&&File.Exists(original))Files.CopyFile(original,exe);else throw new IOException("Terre 主程序不存在。");}
