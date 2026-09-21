@@ -1,6 +1,6 @@
 // Data-only scheduling. Files, processes and browser lifecycle are owned by C#.
-globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,project,sceneName,fps})=>{
- const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],exitReplay=[],counts={},visualSources=new Map(),figureIdentities=new Map(),transitionStates=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
+globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,project,sceneName,fps,allowDecorativePixiCuts=false})=>{
+ const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],softCutWindows=[],exitReplay=[],counts={},visualSources=new Map(),figureIdentities=new Map(),transitionStates=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
  const clean=(kind,name)=>String(name||'').replace(new RegExp('^\\.?/?game/'+kind+'/'),'');
  const physical=name=>decodeURIComponent(String(name||'').split(/[?#]/)[0]);
  const local=(kind,name)=>root.replaceAll('\\','/')+'/game/'+kind+'/'+physical(clean(kind,name));
@@ -60,6 +60,8 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    visualSources.set(key,visualName);
    if(cmd==='changeFigure'){
     if(gone)figureIdentities.delete(target);else figureIdentities.set(target,{name:visualName,position,bounds:nextBounds});
+    const liveRuntime=!gone&&(/\.(json|jsonl|wmdl)([?#].*)?$/i.test(visualName)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(visualName)||!!params.motion||!!params.skin||!!params.expression||!!params.blink||!!params.focus||!!params.animationFlag||!!params.eyesOpen||!!params.eyesClose);
+    if(liveRuntime)softCutWindows.push({startMs:Math.round(cursor),endMs:Math.round(cursor+1000),reason:'live2d-state-change',target,line:range.start+1});
    }
    if(changed&&(/\.(webm|mp4|mov|mkv)([?#].*)?$/i.test(visualName)||/[?&]type=video(?:&|$)/i.test(visualName)))videoCues.push({path:'/game/'+kind+'/'+physical(visualName),target,atMs:Math.round(cursor),durationMs:info(kind,visualName).durationMs});
    if(changed)transitionStates.delete(target);
@@ -124,11 +126,16 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  const replayWindows=[];
  const dynamicCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','playVideo','intro','pixiPerform']);
  const dormantHoldCommands=new Set(['setTransform','setTempAnimation','setAnimation']);
+ const decorativePixiNames=new Set(['rain','snow','heavySnow','cherryBlossoms']),relaxedDecorativePixi=[];
  for(const w of performWindows){
   if(w.role==='vocal'||!dynamicCommands.has(w.command))continue;
   const hasStart=w.startMs!==null&&w.startMs!==undefined&&Number.isFinite(Number(w.startMs)),hasStop=w.stopMs!==null&&w.stopMs!==undefined&&Number.isFinite(Number(w.stopMs));
   const start=hasStart?Number(w.startMs):NaN,stop=hasStop?Number(w.stopMs):NaN,duration=Math.max(0,Number(w.durationMs)||0);
   if(!hasStart||start<0||start>=fullDurationMs)continue;
+  if(w.command==='pixiPerform'){
+   const sentence=parsed.sentenceList?.[Number(w.line)],name=String(sentence?.content||'').trim();
+   if(allowDecorativePixiCuts&&decorativePixiNames.has(name)){relaxedDecorativePixi.push({name,startMs:start,endMs:hasStop?stop:fullDurationMs,line:Number(w.line)+1});continue;}
+  }
   let end;
   if(w.command==='pixiPerform'&&w.hold)end=hasStop?stop:fullDurationMs;
   else if(w.hold&&dormantHoldCommands.has(w.command)){
@@ -160,7 +167,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   const start=Math.max(0,Number(window.startMs)||0),end=Math.min(fullDurationMs,Number(window.endMs)||0);
   if(end>start+.01)replayWindows.push({...window,startMs:start,endMs:end});
  }
- return {project,sceneName,sourceLines:sourceLines.length,parsedStatements:parsed.sentenceList.length,counts,fullDuration,duration:fullDuration,fps,events,audio,videoCues,muteWindows,singleLineHints,replayWindows,extraAnimations:[...extraAnimations]};
+ return {project,sceneName,sourceLines:sourceLines.length,parsedStatements:parsed.sentenceList.length,counts,fullDuration,duration:fullDuration,fps,events,audio,videoCues,muteWindows,singleLineHints,softCutWindows,replayWindows,relaxedDecorativePixi,extraAnimations:[...extraAnimations]};
 };
 
 globalThis.__finishNativeTimeline=({result,pre,settings,playlist,range})=>{
