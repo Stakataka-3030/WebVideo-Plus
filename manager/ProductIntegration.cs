@@ -59,7 +59,7 @@ namespace NativeVideo {
    source=null;bundle=null;string publicDir=Path.Combine(terre,"public"),assets=Path.Combine(publicDir,"assets");
    var names=new List<string>();if(!string.IsNullOrWhiteSpace(preferred))names.Add(preferred);
    foreach(Match m in Regex.Matches(html??"","(?:src|href)=[\"']([^\"']+\\.js)[\"']"))names.Add(m.Groups[1].Value.TrimStart('.','/').Replace('/','\\'));
-   if(scanAll&&Directory.Exists(assets))names.AddRange(Directory.GetFiles(assets,"*.js").Select(file=>"assets\\ "+Path.GetFileName(file)).Select(x=>x.Replace("assets\\ ","assets\\")));
+   if(scanAll&&Directory.Exists(assets))names.AddRange(Directory.GetFiles(assets,"*.js").Select(file=>"assets\\"+Path.GetFileName(file)));
    var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);string fallbackSource=null,fallbackBundle=null;
    foreach(var name in names){string file;try{file=Path.IsPathRooted(name)?name:Files.Under(publicDir,name);}catch{continue;}if(!File.Exists(file)||!seen.Add(Files.Full(file)))continue;string candidate;try{candidate=File.ReadAllText(file);}catch{continue;}if(!candidate.Contains("function AddSentenceTab(){")||PatchedSource(candidate))continue;string relative=Path.GetFileName(file);if(Files.HashText(candidate)==TerreBaselineHash){source=candidate;bundle=relative;return true;}if(fallbackSource==null){fallbackSource=candidate;fallbackBundle=relative;}}
    if(fallbackSource!=null){source=fallbackSource;bundle=fallbackBundle;return true;}return false;
@@ -74,7 +74,7 @@ namespace NativeVideo {
    if(originalText!="")return Files.Utf8.GetBytes(originalText);if(originalFile!=""&&File.Exists(originalFile))return File.ReadAllBytes(originalFile);var fallback=RecoveryIndex(state);if(fallback!=null)return fallback;
    string html=Files.Utf8.GetString(current),oldBundle=J.S(manifest,"originalBundle"),installedBundle=J.S(manifest,"installedBundle"),candidatePath="";
    if(oldBundle!=""){try{candidatePath=Files.Under(Path.Combine(terre,"public/assets"),Path.GetFileName(oldBundle));}catch{}if(File.Exists(candidatePath)){string candidate=File.ReadAllText(candidatePath);if(candidate.Contains("function AddSentenceTab(){")&&!PatchedSource(candidate)){if(installedBundle!=""&&html.Contains(installedBundle))html=html.Replace(installedBundle,oldBundle);return Files.Utf8.GetBytes(html);}}}
-   string source,bundle;if(TryCleanBundle(terre,html,oldBundle,true,out source,out bundle)){var matches=Regex.Matches(html,"(?:src|href)=[\"']([^\"']+\\.js)[\"']");if(matches.Count>0){string first=matches[0].Groups[1].Value;html=html.Replace(first,bundle);return Files.Utf8.GetBytes(html);}}
+   string source,bundle;if(TryCleanBundle(terre,html,oldBundle,true,out source,out bundle)){var matches=Regex.Matches(html,"(?:src|href)=[\"']([^\"']+\\.js)[\"']");string replaceRef=null;foreach(Match match in matches){string candidate;try{candidate=Files.Under(Path.Combine(terre,"public"),match.Groups[1].Value.TrimStart('.','/'));}catch{continue;}if(File.Exists(candidate)){try{if(PatchedSource(File.ReadAllText(candidate))){replaceRef=match.Groups[1].Value;break;}}catch{}}}if(replaceRef==null&&matches.Count==1)replaceRef=matches[0].Groups[1].Value;if(replaceRef!=null){html=html.Replace(replaceRef,Regex.Replace(replaceRef,@"[^/\\]+$",bundle));return Files.Utf8.GetBytes(html);}}
    throw new IOException("强制操作仍无法找到可确认的 Terre 原版前端。当前文件未被覆盖，请先修复或重新安装 Terre。");
   }
   static void SaveRecovery(string state,string originalExe,byte[] originalIndex,string originalBundleFile,string originalBundleName){
