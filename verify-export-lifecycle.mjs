@@ -119,6 +119,16 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const exit=plan.replayWindows.find(w=>w.command==='changeFigure-exit');
   assert.equal(exit.noCut,false);
   assert.equal(exit.startMs,4000);
+
+  const relaxed=build({script,parsed,media:{},animations:{},timing,root:'C:/root',project:'P',sceneName:'start.txt',fps:60,allowDecorativePixiCuts:true});
+  assert.equal(relaxed.replayWindows.some(w=>w.command==='pixiPerform'),false);
+  assert.deepEqual(relaxed.relaxedDecorativePixi.map(x=>x.name),['rain']);
+
+  const customScript=script.replace('pixiPerform:rain;','pixiPerform:customStorm;');
+  const customParsed={sentenceList:[parsed.sentenceList[0],cmd('pixiPerform','customStorm',[],1),parsed.sentenceList[2],parsed.sentenceList[3]]};
+  const custom=build({script:customScript,parsed:customParsed,media:{},animations:{},timing,root:'C:/root',project:'P',sceneName:'start.txt',fps:60,allowDecorativePixiCuts:true});
+  assert.equal(custom.replayWindows.find(w=>w.command==='pixiPerform').noCut,true);
+  assert.equal(custom.relaxedDecorativePixi.length,0);
 }
 
 {
@@ -139,6 +149,10 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const plan=build({script,parsed,media:{},animations:{},timing,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
   assert.equal(plan.replayWindows.some(w=>w.noCut&&w.startMs===0&&w.endMs>=60000),false);
   assert.equal(plan.replayWindows.some(w=>w.command==='changeFigure-runtime'),false);
+  assert.equal(plan.softCutWindows.length,1);
+  assert.equal(plan.softCutWindows[0].reason,'live2d-state-change');
+  assert.equal(plan.softCutWindows[0].startMs,0);
+  assert.equal(plan.softCutWindows[0].endMs,1000);
 }
 
 console.log('Export lifecycle regression checks passed.');
