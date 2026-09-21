@@ -45,7 +45,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
     if(old){old.endMs=cursor;persistentReplay.push(old);activePersistentFigures.delete(target);}
     const gone=!name||name==='none';
     const persistent=!gone&&(/\.(json|jsonl|wmdl)([?#].*)?$/i.test(name)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(name)||!!params.motion||!!params.animationFlag||!!params.blink||!!params.eyesOpen||!!params.eyesClose);
-    if(persistent)activePersistentFigures.set(target,{startMs:cursor,endMs:null,command:'changeFigure-runtime',line:range.start+1,hold:true,dormantRestorable:false});
+    if(persistent)activePersistentFigures.set(target,{startMs:cursor,endMs:null,command:'changeFigure-runtime',line:range.start+1,hold:true,dormantRestorable:false,rootReplay:true});
    }
   }
   if(cmd==='playVideo'){
@@ -114,7 +114,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    if(hasStop)end=Math.min(end,stop);
   }else end=hasStop?stop:start+duration;
   end=Math.min(fullDurationMs,end);
-  if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command))});
+  if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command)),rootReplay:w.command==='pixiPerform'});
  }
  for(const window of persistentReplay){
   const start=Math.max(0,Number(window.startMs)||0),end=Math.min(fullDurationMs,Number(window.endMs)||0);
