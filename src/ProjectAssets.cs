@@ -38,12 +38,95 @@ namespace NativeVideo {
   public static bool SingleLineHint(string command,object sentence,Dictionary<string,object> args){if(command!="choose"||J.N(args,"defaultChoose",-1)!=1||J.B(args,"next"))return false;var options=Regex.Split(J.S(sentence,"content"),@"(?<!\\)\|");if(options.Length!=1)return false;var nodes=Regex.Split(options[0],@"(?<!\\):");return nodes.Length==2&&Regex.IsMatch(nodes[1].Trim(),@"^__wvp_hint_[A-Za-z0-9_]+$");}
   public static bool ConvertibleSingleChoose(string command,object sentence,Dictionary<string,object> args){if(command!="choose"||args.ContainsKey("wvpHint")||J.B(args,"next")||args.Keys.Any(key=>key!="defaultChoose"))return false;var options=Regex.Split(J.S(sentence,"content"),@"(?<!\\)\|");if(options.Length!=1||options[0].Contains("->"))return false;var nodes=Regex.Split(options[0],@"(?<!\\):");return nodes.Length==2&&!string.IsNullOrWhiteSpace(nodes[0])&&!string.IsNullOrWhiteSpace(nodes[1]);}
   void CheckJson(object text,bool array,int line,string label){try{object value=text is string?J.Parse((string)text):text;if(array?!(value is object[]):!(value is Dictionary<string,object>))throw new Exception(array?"应为动画帧数组":"应为对象");}catch(Exception e){Add("syntax",line,label,"参数无法解析："+e.Message);}}
-  public object Scan(object parsed){Parsed=parsed;var lines=Regex.Split(Script,"\r?\n");var sentences=J.A(J.Get(parsed,"sentenceList"));var forbidden=new HashSet<string>(new[]{"changeScene","callScene","return","choose","chooseLabel","jumpLabel","getUserInput","if","setVar","showVars"});var mapping=new Dictionary<string,string>{{"changeBg","background"},{"changeFigure","figure"},{"miniAvatar","figure"},{"bgm","bgm"},{"playEffect","vocal"},{"playVideo","video"}};var args=new Dictionary<string,string>{{"vocal","vocal"},{"backgroundImage","background"},{"mouthOpen","figure"},{"mouthClose","figure"},{"mouthHalfOpen","figure"},{"eyesOpen","figure"},{"eyesClose","figure"}};
-   for(int i=0;i<lines.Length;i++){int line=i+1;if(string.IsNullOrWhiteSpace(lines[i])||lines[i].TrimStart().StartsWith(";"))continue;if(i>=sentences.Count){Add("syntax",line,"场景","此行未能解析");continue;}var s=sentences[i];string cmd=J.N(s,"command",-1)==0?"say":J.S(s,"commandRaw");var p=Params(s);bool singleLineHint=SingleLineHint(cmd,s,p),convertibleSingleChoose=ConvertibleSingleChoose(cmd,s,p);var skip=J.O("line",line,"kind","skip-line");if((forbidden.Contains(cmd)&&!singleLineHint)||J.B(p,"userForward")||p.ContainsKey("when"))Add("unsupported",line,cmd,convertibleSingleChoose?"普通单选分支会等待玩家操作；可转为单行提示后导出":"含跨场景、分支、变量或需要玩家操作的命令");if(cmd=="setTransform"||cmd=="setTempAnimation")CheckJson(J.Get(s,"content"),cmd=="setTempAnimation",line,cmd);if(p.ContainsKey("transform"))CheckJson(p["transform"],false,line,"transform");double wait;if(cmd=="wait"&&(!double.TryParse(J.S(s,"content"),out wait)||wait<0))Add("syntax",line,"wait","等待时长需要是非负毫秒数");if(mapping.ContainsKey(cmd))Ref(mapping[cmd],J.S(s,"content"),line,skip);if(cmd=="changeFigure"){var content=J.S(s,"content");if(Regex.IsMatch(content,@"\.(skel|mkv)([?#].*)?$",RegexOptions.IgnoreCase)||content.Contains("type=spine"))Add("unsupported",line,content,"当前不支持此立绘格式");else if(!Adapter.IsMygo&&(Regex.IsMatch(content,@"\.(webm|mp4|mov|jsonl|wmdl)([?#].*)?$",RegexOptions.IgnoreCase)||content.Contains("type=video")))Add("unsupported",line,content,"此立绘需要选择已安装的 MyGO 3.2.1 引擎");}foreach(var a in args)if(p.ContainsKey(a.Key))Ref(a.Value,J.S(p,a.Key),line,J.O("line",line,"kind","remove-argument","key",a.Key));if(cmd=="setAnimation")Ref("animation",J.S(s,"content")+".json",line,skip);if(new[]{"setTransition","changeBg","changeFigure"}.Contains(cmd))foreach(var key in new[]{"enter","exit"})if(p.ContainsKey(key))Ref("animation",J.S(p,key)+".json",line,J.O("line",line,"kind","remove-argument","key",key));if(i%10==0)Report(J.O("phase","scanning","scannedLines",line,"totalLines",lines.Length,"checkedFiles",checkedFiles.Count));}
-   foreach(var lib in libraries)if(!J.B(lib,"found"))Add("environment",0,J.S(lib,"name"),"未找到引擎运行库，请检查工程或安装配置");var template=Path.Combine(Project,"game/template");if(Directory.Exists(template))foreach(var file in Directory.GetFiles(template,"*",SearchOption.AllDirectories)){checkedFiles.Add(file);if(Path.GetFileName(file)=="template.json")try{J.Read(file);}catch(Exception e){Add("syntax",0,"template.json","模板 JSON 无法解析："+e.Message);}if(Regex.IsMatch(file,@"\.(css|scss)$",RegexOptions.IgnoreCase))foreach(Match m in Regex.Matches(File.ReadAllText(file),"url\\(\\s*[\"']?([^\"')]+)[\"']?\\s*\\)")){string name=m.Groups[1].Value.Trim();if(Regex.IsMatch(name,@"^(data:|https?:|#|/assets/)",RegexOptions.IgnoreCase))continue;var clean=Regex.Split(name,"[?#]")[0];var child=Regex.IsMatch(clean,@"^\.?/?game/")?Files.Full(Path.Combine(Project,Regex.Replace(clean,@"^\.?/",""))):Files.Full(Path.Combine(Path.GetDirectoryName(file),clean));if(Allowed(child))Inspect(child,0,name,J.O("kind","font-fallback"),null);}}
-   var table=Path.Combine(Project,"game/animation/animationTable.json");if(File.Exists(table))try{var names=J.Read(table);if(!(names is object[])||J.A(names).Any(x=>!(x is string)))throw new Exception("应为动画名称数组");foreach(var name in J.A(names))Ref("animation",name+".json",0,J.O("kind","animation-table","name",name));}catch(Exception e){Add("syntax",0,"animationTable.json","动画表无法解析："+e.Message);}var list=issues.Values.ToArray();var unique=actions.GroupBy(J.Text).Select(g=>g.First()).ToArray();var sanitized=(string[])lines.Clone();foreach(var a in unique){int n=(int)J.N(a,"line")-1;if(n<0||n>=sanitized.Length)continue;if(J.S(a,"kind")=="skip-line")sanitized[n]="; 导出副本：跳过缺少资源的语句";if(J.S(a,"kind")=="remove-argument"&&!sanitized[n].StartsWith(";"))sanitized[n]=StripArgument(sanitized[n],J.S(a,"key"));}return J.O("schemaVersion",1,"complete",true,"totalLines",lines.Length,"checkedFiles",checkedFiles.Count,"issues",list,"actions",unique,"canContinue",list.Length>0&&list.All(x=>J.S(x,"kind")=="missing"),"digest",Files.HashText(J.Text(J.O("script",Script,"issues",list))),"sanitizedScript",string.Join("\n",sanitized));
+  public object Scan(object parsed){
+   Parsed=parsed;
+   var lines=Regex.Split(Script,"\r?\n");
+   var sentences=J.A(J.Get(parsed,"sentenceList"));
+   var forbidden=new HashSet<string>(new[]{"changeScene","callScene","return","choose","chooseLabel","jumpLabel","getUserInput","if","setVar","showVars"});
+   var mapping=new Dictionary<string,string>{{"changeBg","background"},{"changeFigure","figure"},{"miniAvatar","figure"},{"bgm","bgm"},{"playEffect","vocal"},{"playVideo","video"}};
+   var args=new Dictionary<string,string>{{"vocal","vocal"},{"backgroundImage","background"},{"mouthOpen","figure"},{"mouthClose","figure"},{"mouthHalfOpen","figure"},{"eyesOpen","figure"},{"eyesClose","figure"}};
+   for(int i=0;i<lines.Length;i++){
+    if(string.IsNullOrWhiteSpace(lines[i])||lines[i].TrimStart().StartsWith(";"))continue;
+    if(i>=sentences.Count){Add("syntax",i+1,"场景","此行未能解析");continue;}
+    var s=sentences[i];
+    if(J.B(s,"isLineBreakHolder"))continue;
+    int first=Math.Max(0,(int)J.N(s,"startLine",i)),last=Math.Max(first,(int)J.N(s,"endLine",first)),line=first+1,endLine=last+1;
+    string cmd=J.N(s,"command",-1)==0?"say":J.S(s,"commandRaw");
+    var p=Params(s);
+    bool singleLineHint=SingleLineHint(cmd,s,p),convertibleSingleChoose=ConvertibleSingleChoose(cmd,s,p);
+    var skip=J.O("line",line,"startLine",line,"endLine",endLine,"kind","skip-line");
+    if((forbidden.Contains(cmd)&&!singleLineHint)||J.B(p,"userForward")||p.ContainsKey("when"))Add("unsupported",line,cmd,convertibleSingleChoose?"普通单选分支会等待玩家操作；可转为单行提示后导出":"含跨场景、分支、变量或需要玩家操作的命令");
+    if(cmd=="setTransform"||cmd=="setTempAnimation")CheckJson(J.Get(s,"content"),cmd=="setTempAnimation",line,cmd);
+    if(p.ContainsKey("transform"))CheckJson(p["transform"],false,line,"transform");
+    double wait;if(cmd=="wait"&&(!double.TryParse(J.S(s,"content"),out wait)||wait<0))Add("syntax",line,"wait","等待时长需要是非负毫秒数");
+    if(mapping.ContainsKey(cmd))Ref(mapping[cmd],J.S(s,"content"),line,skip);
+    if(cmd=="changeFigure"){
+     var value=J.S(s,"content");
+     if(Regex.IsMatch(value,@"\.(skel|mkv)([?#].*)?$",RegexOptions.IgnoreCase)||value.Contains("type=spine"))Add("unsupported",line,value,"当前不支持此立绘格式");
+     else if(!Adapter.IsMygo&&(Regex.IsMatch(value,@"\.(webm|mp4|mov|jsonl|wmdl)([?#].*)?$",RegexOptions.IgnoreCase)||value.Contains("type=video")))Add("unsupported",line,value,"此立绘需要选择已安装的 MyGO 3.2.1 引擎");
+    }
+    foreach(var a in args)if(p.ContainsKey(a.Key))Ref(a.Value,J.S(p,a.Key),line,J.O("line",line,"startLine",line,"endLine",endLine,"kind","remove-argument","key",a.Key));
+    if(cmd=="setAnimation")Ref("animation",J.S(s,"content")+".json",line,skip);
+    if(new[]{"setTransition","changeBg","changeFigure"}.Contains(cmd))foreach(var key in new[]{"enter","exit"})if(p.ContainsKey(key))Ref("animation",J.S(p,key)+".json",line,J.O("line",line,"startLine",line,"endLine",endLine,"kind","remove-argument","key",key));
+    if(i%10==0)Report(J.O("phase","scanning","scannedLines",line,"totalLines",lines.Length,"checkedFiles",checkedFiles.Count));
+   }
+   foreach(var lib in libraries)if(!J.B(lib,"found"))Add("environment",0,J.S(lib,"name"),"未找到引擎运行库，请检查工程或安装配置");
+   var template=Path.Combine(Project,"game/template");
+   if(Directory.Exists(template))foreach(var file in Directory.GetFiles(template,"*",SearchOption.AllDirectories)){
+    checkedFiles.Add(file);
+    if(Path.GetFileName(file)=="template.json")try{J.Read(file);}catch(Exception e){Add("syntax",0,"template.json","模板 JSON 无法解析："+e.Message);}
+    if(Regex.IsMatch(file,@"\.(css|scss)$",RegexOptions.IgnoreCase))foreach(Match m in Regex.Matches(File.ReadAllText(file),"url\\(\\s*[\"']?([^\"')]+)[\"']?\\s*\\)")){
+     string name=m.Groups[1].Value.Trim();if(Regex.IsMatch(name,@"^(data:|https?:|#|/assets/)",RegexOptions.IgnoreCase))continue;
+     var clean=Regex.Split(name,"[?#]")[0];var child=Regex.IsMatch(clean,@"^\.?/?game/")?Files.Full(Path.Combine(Project,Regex.Replace(clean,@"^\.?/",""))):Files.Full(Path.Combine(Path.GetDirectoryName(file),clean));
+     if(Allowed(child))Inspect(child,0,name,J.O("kind","font-fallback"),null);
+    }
+   }
+   var table=Path.Combine(Project,"game/animation/animationTable.json");
+   if(File.Exists(table))try{
+    var names=J.Read(table);if(!(names is object[])||J.A(names).Any(x=>!(x is string)))throw new Exception("应为动画名称数组");
+    foreach(var name in J.A(names))Ref("animation",name+".json",0,J.O("kind","animation-table","name",name));
+   }catch(Exception e){Add("syntax",0,"animationTable.json","动画表无法解析："+e.Message);}
+
+   var list=issues.Values.ToArray();
+   var unique=actions.GroupBy(J.Text).Select(g=>g.First()).ToArray();
+   var sanitized=(string[])lines.Clone();
+   var ranged=unique.Where(a=>J.N(a,"startLine",J.N(a,"line"))>0).GroupBy(a=>((int)J.N(a,"startLine",J.N(a,"line")))+"|"+((int)J.N(a,"endLine",J.N(a,"line"))));
+   foreach(var group in ranged){
+    var sample=group.First();
+    int first=(int)J.N(sample,"startLine",J.N(sample,"line"))-1,last=(int)J.N(sample,"endLine",J.N(sample,"line"))-1;
+    first=Math.Max(0,Math.Min(first,sanitized.Length-1));last=Math.Max(first,Math.Min(last,sanitized.Length-1));
+    if(group.Any(a=>J.S(a,"kind")=="skip-line")){
+     for(int n=first;n<=last;n++)sanitized[n]="; 导出副本：跳过缺少资源的语句";
+     continue;
+    }
+    var keys=group.Where(a=>J.S(a,"kind")=="remove-argument").Select(a=>J.S(a,"key")).Where(k=>!string.IsNullOrWhiteSpace(k)).Distinct().ToArray();
+    if(keys.Length==0||sanitized[first].StartsWith(";"))continue;
+    string logical=string.Join("\n",sanitized.Skip(first).Take(last-first+1));
+    foreach(var key in keys)logical=StripArgument(logical,key);
+    sanitized[first]=Regex.Replace(logical,@"\s*\r?\n\s*"," ").Trim();
+    for(int n=first+1;n<=last;n++)sanitized[n]="; 导出副本：多行参数续行已合并";
+   }
+   return J.O("schemaVersion",1,"complete",true,"totalLines",lines.Length,"checkedFiles",checkedFiles.Count,"issues",list,"actions",unique,"canContinue",list.Length>0&&list.All(x=>J.S(x,"kind")=="missing"),"digest",Files.HashText(J.Text(J.O("script",Script,"issues",list))),"sanitizedScript",string.Join("\n",sanitized));
   }
-  static string StripArgument(string line,string key){var starts=new List<KeyValuePair<int,string>>();char quote='\0';bool escape=false;int depth=0;for(int i=0;i<line.Length;i++){char c=line[i];if(escape){escape=false;continue;}if(c=='\\'){escape=true;continue;}if(quote!='\0'){if(c==quote)quote='\0';continue;}if(c=='"'||c=='\''){quote=c;continue;}if(c=='{'||c=='[')depth++;if(c=='}'||c==']')depth--;if(depth==0&&char.IsWhiteSpace(c)&&i+1<line.Length&&line[i+1]=='-'){var m=Regex.Match(line.Substring(i+1),@"^-([A-Za-z]\w*)");if(m.Success)starts.Add(new KeyValuePair<int,string>(i,m.Groups[1].Value));}}int at=starts.FindIndex(x=>x.Value==key);if(at<0)return line;int end=at+1<starts.Count?starts[at+1].Key:line.LastIndexOf(';')>=0?line.LastIndexOf(';'):line.Length;return line.Substring(0,starts[at].Key)+line.Substring(end);}
+
+  static string StripArgument(string line,string key){
+   var starts=new List<KeyValuePair<int,string>>();char quote='\0';bool escape=false;int depth=0;
+   for(int i=0;i<line.Length;i++){
+    char c=line[i];
+    if(escape){escape=false;continue;}
+    if(c=='\\'){escape=true;continue;}
+    if(quote!='\0'){if(c==quote)quote='\0';continue;}
+    if(c=='"'||c=='\''){quote=c;continue;}
+    if(c=='{'||c=='[')depth++;if(c=='}'||c==']')depth--;
+    if(depth==0&&char.IsWhiteSpace(c)&&i+1<line.Length&&line[i+1]=='-'){
+     var m=Regex.Match(line.Substring(i+1),@"^-([A-Za-z]\w*)");if(m.Success)starts.Add(new KeyValuePair<int,string>(i,m.Groups[1].Value));
+    }
+   }
+   int at=starts.FindIndex(x=>x.Value==key);if(at<0)return line;
+   int finish=at+1<starts.Count?starts[at+1].Key:line.LastIndexOf(';')>=0?line.LastIndexOf(';'):line.Length;
+   return line.Substring(0,starts[at].Key)+line.Substring(finish);
+  }
+
   public async Task Snapshot(){long bytes=0;int count=0;foreach(var item in copies){Files.CopyFile(item.Value,item.Key);bytes+=new FileInfo(item.Value).Length;if(++count%50==0){Report(J.O("phase","copying","copiedFiles",count,"copiedBytes",bytes));await Task.Yield();}}foreach(var name in new[]{"template","animation"}){var from=Path.Combine(Project,"game",name);if(!Directory.Exists(from)&&name=="template")from=Path.Combine(Engine,"game",name);if(Directory.Exists(from))Files.CopyTree(from,Path.Combine(Root,"game",name));}var css=Path.Combine(Project,"game/userStyleSheet.css");if(File.Exists(css))Files.CopyFile(css,Path.Combine(Root,"game/userStyleSheet.css"));var table=Path.Combine(Root,"game/animation/animationTable.json");var names=J.A(J.TryRead(table)).Where(n=>File.Exists(Path.Combine(Root,"game/animation",n+".json"))).ToArray();J.Write(table,names);var fontRoot=Directory.Exists(Path.Combine(Project,"game/template"))?Project:Engine;var fonts=new FontSnapshot(fontRoot,Root).Run();Presentation=J.O("fonts",fonts,"animationNames",names,"aggregateCounts",AggregateCounts);foreach(var file in Directory.GetFiles(Path.Combine(Root,"game/animation"),"*.json")){if(Path.GetFileName(file)=="animationTable.json")continue;Animations[Path.GetFileNameWithoutExtension(file)]=J.Read(file);}var mediaFiles=copies.Keys.Where(x=>Regex.IsMatch(x,@"\.(mp3|wav|ogg|m4a|aac|flac|mp4|webm|mov|mkv)$",RegexOptions.IgnoreCase)).ToArray();for(int i=0;i<mediaFiles.Length;i++){var file=mediaFiles[i];Report(J.O("phase","media-info","current",i,"total",mediaFiles.Length));var probe=await Commands.Probe(file);double duration=J.N(J.Get(probe,"format"),"duration")*1000;if(duration<=0)throw new IOException("媒体时长无效："+Path.GetFileName(file));var url="/"+file.Substring(Root.Length+1).Replace('\\','/');Media[url]=J.O("durationMs",duration,"hasAudio",J.A(J.Get(probe,"streams")).Any(s=>J.S(s,"codec_type")=="audio"));}Report(J.O("phase","copying","copiedFiles",count,"copiedBytes",bytes));}
  }
  public sealed class FontSnapshot {

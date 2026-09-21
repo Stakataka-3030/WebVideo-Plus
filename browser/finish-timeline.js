@@ -1,6 +1,7 @@
 globalThis.__finishNativeTimeline=({result,pre,settings,playlist,range})=>{
  if(Number(result.options.textSpeed)!==Number(settings.textSpeed)||Number(result.options.autoSpeed)!==Number(settings.autoSpeed))throw Error('引擎播放速度与导出设置不一致');
- const lineTimes=Array(pre.parsedStatements).fill(null);for(const e of result.events)if(e.index>=0&&e.index<lineTimes.length)lineTimes[e.index]=Math.round(e.atMs);
+ const sourceEvents=(result.events||[]).map(e=>({...e})),performWindows=(result.performWindows||[]).map(w=>({...w,params:w.params?{...w.params}:w.params})),stageExitWindows=(result.stageExitWindows||[]).map(w=>({...w}));
+ const lineTimes=Array(pre.parsedStatements).fill(null);for(const e of sourceEvents)if(e.index>=0&&e.index<lineTimes.length)lineTimes[e.index]=Math.round(e.atMs);
  let durationMs=result.durationMs,rangeStartMs=0;
  if(range){const start=range.startLine-1,end=range.endLine;const value=lineTimes.slice(start,end).find(Number.isFinite);if(value===undefined)throw Error('选区中没有实际执行的语句');rangeStartMs=value;}
  let windows=result.elastic,actualElastic=result.elastic;
@@ -14,8 +15,27 @@ globalThis.__finishNativeTimeline=({result,pre,settings,playlist,range})=>{
   const total=windows.reduce((n,w)=>n+w.endMs-w.startMs,0),delta=target-durationMs;
   const map=t=>total>0?t+windows.reduce((n,w)=>n+Math.max(0,Math.min(t,w.endMs)-w.startMs)/total*delta,0):t;
   for(const event of result.controlEvents)event.atMs=Math.round(map(event.atMs));
+  for(const event of sourceEvents)event.atMs=Math.round(map(event.atMs));
+  for(const window of performWindows){
+   if(window.startMs===null||window.startMs===undefined||!Number.isFinite(Number(window.startMs)))continue;
+   const start=Number(window.startMs),mappedStart=map(start),duration=Math.max(0,Number(window.durationMs)||0);
+   if(window.stopMs!==null&&window.stopMs!==undefined&&Number.isFinite(Number(window.stopMs))){
+    const stop=Number(window.stopMs);
+    if(window.hold)window.stopMs=map(stop);
+    else window.stopMs=stop<start+duration-1?map(stop):mappedStart+duration;
+   }
+   window.startMs=mappedStart;
+  }
+  for(const window of stageExitWindows){
+   if(window.startMs===null||window.startMs===undefined||!Number.isFinite(Number(window.startMs)))continue;
+   const start=Number(window.startMs),mappedStart=map(start);
+   if(window.stopMs!==null&&window.stopMs!==undefined&&Number.isFinite(Number(window.stopMs)))window.stopMs=mappedStart+Math.max(0,Number(window.stopMs)-start);
+   window.startMs=mappedStart;
+  }
   for(let i=0;i<lineTimes.length;i++)if(Number.isFinite(lineTimes[i]))lineTimes[i]=Math.round(map(lineTimes[i]));
-  actualElastic=result.elastic.map(w=>({...w,startMs:map(w.startMs),endMs:map(w.endMs)}));if(synthetic)actualElastic.push({startMs:durationMs,endMs:target,line:lineTimes.length-1});durationMs=target;
+  actualElastic=result.elastic.map(w=>({...w,startMs:map(w.startMs),endMs:map(w.endMs)}));
+  if(synthetic)actualElastic.push({startMs:durationMs,endMs:target,line:lineTimes.length-1});
+  durationMs=target;
  }
- return {schemaVersion:1,mode:settings.mode,durationSeconds:Math.ceil(durationMs*settings.fps/1000)/settings.fps,lineTimes,textSpeed:settings.textSpeed,autoSpeed:settings.autoSpeed,holdSeconds:settings.holdSeconds,playlist,playlistOffsetMs:rangeStartMs,range,controlEvents:result.controlEvents,sourceEvents:result.events,elasticWindows:actualElastic};
+ return {schemaVersion:1,mode:settings.mode,durationSeconds:Math.ceil(durationMs*settings.fps/1000)/settings.fps,lineTimes,textSpeed:settings.textSpeed,autoSpeed:settings.autoSpeed,holdSeconds:settings.holdSeconds,playlist,playlistOffsetMs:rangeStartMs,range,controlEvents:result.controlEvents,sourceEvents,performWindows,stageExitWindows,elasticWindows:actualElastic};
 };
