@@ -2,7 +2,7 @@ using System;using System.IO;using System.Linq;using System.Collections.Generic;
 namespace NativeVideo {
  public sealed class CharacterMapStore {
   readonly string folder,file;readonly object gate=new object();
-  public CharacterMapStore(){folder=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebVideoPlus","character-map");file=Path.Combine(folder,"characters.json");bool firstUse=!Directory.Exists(folder);Directory.CreateDirectory(folder);if(firstUse)Files.Atomic(file,Factory());Read();}
+  public CharacterMapStore(string dataRoot=null){folder=Path.Combine(string.IsNullOrWhiteSpace(dataRoot)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebVideoPlus"):Files.Full(dataRoot),"character-map");file=Path.Combine(folder,"characters.json");bool firstUse=!Directory.Exists(folder);Directory.CreateDirectory(folder);if(firstUse)Files.Atomic(file,Factory());Read();}
   string Factory(){using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("character-map.factory.json")){if(stream==null)throw new IOException("内置出厂表缺失，请重新安装组件");using(var reader=new StreamReader(stream))return reader.ReadToEnd();}}
   object Compile(object raw){
    var doc=raw as Dictionary<string,object>;if(doc==null||J.N(doc,"schemaVersion")!=1||!(J.Get(doc,"rows") is object[]))throw new ArgumentException("JSON 必须包含 schemaVersion: 1 和 rows 数组。");
