@@ -1,0 +1,35 @@
+name: Native smoke build
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  native-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.20.0'
+
+      - name: Download fixed bootstrap installer
+        shell: pwsh
+        run: |
+          curl.exe -L "https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v0.4.10.2/WebVideo%2B-Setup-0.4.10.2.exe" -o bootstrap.exe
+          if ($LASTEXITCODE -ne 0) { throw "Bootstrap download failed" }
+
+      - name: Prepare fixed WebView2 and engine build inputs
+        shell: pwsh
+        run: .\prepare-build.ps1 -InstallerPath (Join-Path $PWD 'bootstrap.exe')
+
+      - name: Compile native exporter and run lifecycle regressions
+        shell: pwsh
+        run: .\build.ps1
+
+      - name: Verify Terre integration anchors
+        shell: pwsh
+        run: node .\build-timeline.mjs
