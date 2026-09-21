@@ -30,6 +30,12 @@ jobs:
         shell: pwsh
         run: .\build.ps1
 
+      - name: Verify semantic worker segmentation
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath (Join-Path $PWD 'package/WebGAL.Video.exe') -ArgumentList @('segment-smoke') -Wait -PassThru -NoNewWindow
+          if($p.ExitCode -ne 0){ throw "Semantic segment smoke failed with exit code $($p.ExitCode)" }
+
       - name: Verify Terre integration anchors
         shell: pwsh
         run: node .\build-timeline.mjs

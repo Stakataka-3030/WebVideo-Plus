@@ -100,8 +100,10 @@ namespace NativeVideo {
    var events=J.A(J.Get(plan,"events")).Where(e=>J.N(e,"line")>0&&!J.S(e,"command").StartsWith("__")).ToList();
    var preferredCuts=events.Where(e=>J.S(e,"command")=="say"&&!Regex.IsMatch(J.S(e,"script"),@"^\s*:\s*;\s*$"))
     .Select(e=>(int)Math.Ceiling(J.N(e,"atMs")*fps/1000)).Where(frame=>frame>0&&frame<total).Distinct().OrderBy(frame=>frame).ToList();
-   var replayBoundaries=replayWindows.SelectMany(w=>new[]{w.Start,w.End}).Where(frame=>frame>0&&frame<total).Distinct().OrderBy(frame=>frame).ToList();
-   var softBoundaries=softWindows.SelectMany(w=>new[]{w.Start,w.End}).Where(frame=>frame>0&&frame<total).Distinct().OrderBy(frame=>frame).ToList();
+   var eventCuts=events.Select(e=>(int)Math.Ceiling(J.N(e,"atMs")*fps/1000))
+    .Where(frame=>frame>0&&frame<total).Distinct().OrderBy(frame=>frame).ToList();
+   var preferredCutSet=new HashSet<int>(preferredCuts);
+   diagnostics["semanticCutCount"]=eventCuts.Count;diagnostics["preferredDialogueCutCount"]=preferredCuts.Count;
 
    var workload=J.A(J.Get(plan,"domWorkload")).Select(x=>new{Frame=Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(x,"atMs")*fps/1000))),Units=Math.Max(0,J.N(x,"units",1))}).OrderBy(x=>x.Frame).ToArray();
    var costPoints=new List<KeyValuePair<int,double>>();double cumulativeUnits=0;
@@ -132,14 +134,13 @@ namespace NativeVideo {
      if(maxFrame<minFrame){valid=false;break;}
      double targetCost=part*totalCost/parts;
      int targetFrame=(int)((long)part*total/parts);
-     var candidates=new List<int>{snapCut(targetFrame),snapCut(minFrame),snapCut(maxFrame)};
-     candidates.AddRange(Nearest(preferredCuts,targetFrame,minFrame,maxFrame,12));
-     candidates.AddRange(Nearest(preferredCuts,minFrame,minFrame,maxFrame,4));
-     candidates.AddRange(Nearest(preferredCuts,maxFrame,minFrame,maxFrame,4));
-     candidates.AddRange(Nearest(replayBoundaries,targetFrame,minFrame,maxFrame,12));
-     candidates.AddRange(Nearest(replayBoundaries,minFrame,minFrame,maxFrame,4));
-     candidates.AddRange(Nearest(replayBoundaries,maxFrame,minFrame,maxFrame,4));
-     candidates.AddRange(Nearest(softBoundaries,targetFrame,minFrame,maxFrame,8));
+     var candidates=new List<int>();
+     candidates.AddRange(Nearest(preferredCuts,targetFrame,minFrame,maxFrame,16));
+     candidates.AddRange(Nearest(preferredCuts,minFrame,minFrame,maxFrame,6));
+     candidates.AddRange(Nearest(preferredCuts,maxFrame,minFrame,maxFrame,6));
+     candidates.AddRange(Nearest(eventCuts,targetFrame,minFrame,maxFrame,24));
+     candidates.AddRange(Nearest(eventCuts,minFrame,minFrame,maxFrame,8));
+     candidates.AddRange(Nearest(eventCuts,maxFrame,minFrame,maxFrame,8));
      var distinct=candidates.Distinct().Where(candidate=>candidate>=minFrame&&candidate<=maxFrame&&candidate>lastCut&&candidate>0&&candidate<total).ToArray();
      candidateCount+=distinct.Length;unsafeRejected+=distinct.Count(candidate=>!safeCut(candidate));
      var safe=distinct.Where(safeCut).ToArray();
@@ -147,6 +148,8 @@ namespace NativeVideo {
      var preferred=safe.Where(candidate=>!softCut(candidate)).ToArray();
      var usable=preferred.Length>0?preferred:safe;
      if(preferred.Length>0)softAvoided+=safe.Length-preferred.Length;
+     var dialogueCuts=usable.Where(candidate=>preferredCutSet.Contains(candidate)).ToArray();
+     if(dialogueCuts.Length>0)usable=dialogueCuts;
      int best=-1;double bestScore=double.MaxValue;
      foreach(int candidate in usable){
       int replay=replayFor(candidate);
