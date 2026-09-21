@@ -197,6 +197,11 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const plan=build({script,parsed,media:{},animations:{},timing,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
   assert.equal(plan.replayWindows.some(w=>w.noCut&&w.startMs===0&&w.endMs>=60000),false);
   assert.equal(plan.replayWindows.some(w=>w.command==='changeFigure-runtime'),false);
+  const phase=plan.replayWindows.find(w=>w.command==='changeFigure-phase');
+  assert.ok(phase,'persistent Live2D must carry a replay-only phase window');
+  assert.equal(phase.startMs,0);
+  assert.equal(phase.endMs,60000);
+  assert.equal(phase.noCut,false,'Live2D phase preservation must replay rather than forbid every cut');
   assert.equal(plan.softCutWindows.length,1);
   assert.equal(plan.softCutWindows[0].reason,'live2d-state-change');
   assert.equal(plan.softCutWindows[0].startMs,0);
