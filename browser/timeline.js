@@ -118,7 +118,12 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
   };
 
   const ended=()=>core.sceneManager.sceneData.currentSentenceId>=core.sceneManager.sceneData.currentScene.sentenceList.length;
+  let blockedPrematureAutoNext=0;
   globalThis.__nativeBeforeNext=()=>{
+    if(policy.mode==='auto'&&pc.performList.some(p=>p.blockingAuto?.())){
+      blockedPrematureAutoNext++;
+      return false;
+    }
     if(ended()&&!pc.hasBlockingNextPerform()&&!pc.performList.some(p=>p.blockingAuto())){finish();return false;}
     if(origin!==null)controlEvents.push({atMs:nowMs(),kind:'next',line:lastLine});
     return true;
@@ -203,5 +208,5 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
   yieldChannel.port1.close();
   yieldChannel.port2.close();
   if(!done)throw new Error('播放时序规划超时，场景可能含等待交互的指令');
-  return {events,elastic,controlEvents,performWindows,stageExitWindows,domWorkload,durationMs:origin===null?0:finishedAt-origin,options:w.store.getState().userData.optionData};
+  return {events,elastic,controlEvents,performWindows,stageExitWindows,domWorkload,blockedPrematureAutoNext,durationMs:origin===null?0:finishedAt-origin,options:w.store.getState().userData.optionData};
 };

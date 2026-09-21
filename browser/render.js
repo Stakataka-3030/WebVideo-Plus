@@ -139,6 +139,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
       return;
     }
     if(e.command==='__nativeNext'){
+      if(timingMode==='auto'&&pc.performList.some(p=>p.blockingAuto?.()))return;
       __wgProbe.core.events.userInteractNext.emit();
       if(!pc.hasBlockingNextPerform()&&pc.hasUnsettledNonHoldPerform())pc.settleNonHoldPerforms(false);
       return;
