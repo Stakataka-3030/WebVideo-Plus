@@ -69,7 +69,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const parsed={sentenceList:[say('new',[],0)]};
   const timing={durationSeconds:2,lineTimes:[600],sourceEvents:[{index:0,forwardGroup:2}],controlEvents:[{atMs:600,kind:'settle-nonhold',line:0}],performWindows:[{command:'say',line:0,role:'primary',durationMs:900,hold:false,startMs:600,stopMs:1500}],stageExitWindows:[]};
   const plan=build({script:'new;',parsed,media:{},animations:{},timing,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
-  assert.deepEqual(plan.events.slice(0,2).map(e=>e.command),['__settleNonHold','say']);
+  assert.deepEqual(Array.from(plan.events.slice(0,2),e=>e.command),['__settleNonHold','say']);
 }
 
 {
