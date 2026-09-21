@@ -30,6 +30,12 @@ jobs:
         shell: pwsh
         run: .\build.ps1
 
+      - name: Run real WebView2 runtime smoke
+        shell: pwsh
+        run: |
+          .\package\WebGAL.Video.exe smoke --web (Join-Path $PWD 'package/runtime/web') --work (Join-Path $PWD '.runtime-smoke')
+          Get-Content -LiteralPath (Join-Path $PWD '.runtime-smoke/result.json')
+
       - name: Verify Terre integration anchors
         shell: pwsh
         run: node .\build-timeline.mjs
