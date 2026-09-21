@@ -33,7 +33,7 @@ namespace NativeVideo {
   }
   public static Dictionary<string,object>[] Segments(object plan,object bounds,int fps,int workers){
    int start=(int)J.N(bounds,"startFrame"),end=(int)J.N(bounds,"endFrame");var ranges=SegmentPlan.Create(plan,end,fps,workers).Where(r=>J.N(r,"endFrame")>start&&J.N(r,"startFrame")<end).ToArray();
-   for(int i=0;i<ranges.Length;i++){ranges[i]["index"]=i;ranges[i]["startFrame"]=Math.Max(start,(int)J.N(ranges[i],"startFrame"));ranges[i]["endFrame"]=Math.Min(end,(int)J.N(ranges[i],"endFrame"));}
+   for(int i=0;i<ranges.Length;i++){ranges[i]["index"]=i;int first=Math.Max(start,(int)J.N(ranges[i],"startFrame")),last=Math.Min(end,(int)J.N(ranges[i],"endFrame")),replay=Math.Max(0,Math.Min(first,(int)J.N(ranges[i],"replayFrame")));ranges[i]["startFrame"]=first;ranges[i]["endFrame"]=last;ranges[i]["replayFrame"]=replay;ranges[i]["warmupFrames"]=Math.Max(0,first-replay);}
    return ranges;
   }
   static double Number(object track,string key,double fallback,double min,double max){double n=fallback;if(J.D(track).ContainsKey(key)&&!double.TryParse(Convert.ToString(J.Get(track,key),System.Globalization.CultureInfo.InvariantCulture),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out n))throw new ArgumentException("音乐参数必须为数字："+key);if(double.IsNaN(n)||double.IsInfinity(n)||n<min||n>max)throw new ArgumentException("音乐参数无效："+key);return n;}
