@@ -89,7 +89,10 @@ namespace NativeVideo {
    string file=RecoveryExe(state);if(file==null)return false;try{var meta=J.TryRead(RecoveryMeta(state));string hash=J.S(meta,"originalExeHash");if(hash!=""&&Files.Hash(file)!=hash)return false;if(expectedHash!=""&&hash!=""&&hash!=expectedHash)return false;Files.CopyFile(file,target);return true;}catch{return false;}
   }
   static void CopyStateVerified(string source,string target){
-   if(!Directory.Exists(source)){if(Directory.Exists(target)&&Directory.EnumerateFileSystemEntries(target).Any())throw new IOException("新的 WebVideo+ 数据目录必须为空，避免覆盖其中现有文件。");Directory.CreateDirectory(target);return;}if(Directory.Exists(target)&&Directory.EnumerateFileSystemEntries(target).Any())throw new IOException("新的 WebVideo+ 数据目录必须为空，避免覆盖其中现有文件。");Directory.CreateDirectory(target);Files.CopyTree(source,target);string prefix=Files.Full(source).TrimEnd('\\','/')+Path.DirectorySeparatorChar;
+   Directory.CreateDirectory(target);if(!Directory.Exists(source))return;string prefix=Files.Full(source).TrimEnd('\\','/')+Path.DirectorySeparatorChar;
+   foreach(var dir in Directory.GetDirectories(source,"*",SearchOption.AllDirectories)){if((File.GetAttributes(dir)&FileAttributes.ReparsePoint)!=0)throw new IOException("WebVideo+ 数据目录不能包含目录链接："+dir);string relative=Files.Full(dir).Substring(prefix.Length),copy=Path.Combine(target,relative);if(File.Exists(copy))throw new IOException("目标数据目录存在与 WebVideo+ 子目录冲突的同名文件："+relative);}
+   foreach(var file in Directory.GetFiles(source,"*",SearchOption.AllDirectories)){if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0)continue;string relative=Files.Full(file).Substring(prefix.Length),copy=Path.Combine(target,relative);if(Directory.Exists(copy))throw new IOException("目标数据目录存在与 WebVideo+ 文件冲突的同名目录："+relative);if(File.Exists(copy)&&(new FileInfo(copy).Length!=new FileInfo(file).Length||Files.Hash(copy)!=Files.Hash(file)))throw new IOException("目标数据目录已有不同内容的同名文件，未覆盖："+relative);}
+   Files.CopyTree(source,target);
    foreach(var file in Directory.GetFiles(source,"*",SearchOption.AllDirectories)){if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0)continue;string relative=Files.Full(file).Substring(prefix.Length),copy=Path.Combine(target,relative);if(!File.Exists(copy)||new FileInfo(copy).Length!=new FileInfo(file).Length||Files.Hash(copy)!=Files.Hash(file))throw new IOException("WebVideo+ 数据目录迁移校验失败："+relative);}
    foreach(var transient in new[]{"lifecycle.lock","lifecycle-control.json","service-state.json","runtime-session.json"}){string file=Path.Combine(target,transient);if(File.Exists(file))File.Delete(file);}RelocateJobStatePaths(source,target);
   }
@@ -135,7 +138,7 @@ namespace NativeVideo {
    if(previous!=null)await Integration.StopInstance(previous);
    bool migrated=false;try{
     if(!SamePath(state,sourceState)){
-     string full=Files.Full(state).TrimEnd('\\','/'),drive=Path.GetPathRoot(full).TrimEnd('\\','/');if(full.Equals(drive,StringComparison.OrdinalIgnoreCase)||Files.Within(terre,full,true)||Files.Within(full,terre,true))throw new IOException("WebVideo+ 数据目录不能是磁盘根目录，也不能与 Terre 安装目录重叠。");
+     string full=Files.Full(state).TrimEnd('\\','/'),drive=Path.GetPathRoot(full).TrimEnd('\\','/');if(full.Equals(drive,StringComparison.OrdinalIgnoreCase)||Files.Within(terre,full,true)||Files.Within(full,terre,true))Console.WriteLine("警告：WebVideo+ 数据目录使用了高风险位置，将按用户选择继续；若存在同名文件冲突则停止迁移而不覆盖："+state);
      CopyStateVerified(sourceState,state);migrated=true;
     }else Directory.CreateDirectory(state);
     string configFile=Path.Combine(state,"config.json"),manifestFile=Path.Combine(state,"install.json"),lifeFile=Path.Combine(state,"lifecycle-install.json");
