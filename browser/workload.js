@@ -96,8 +96,9 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  const dormantHoldCommands=new Set(['setTransform','setTempAnimation','setAnimation']);
  for(const w of performWindows){
   if(w.role==='vocal'||!dynamicCommands.has(w.command))continue;
-  const start=Number(w.startMs),stop=Number(w.stopMs),duration=Math.max(0,Number(w.durationMs)||0);
-  if(!Number.isFinite(start)||start<0||start>=fullDurationMs)continue;
+  const hasStart=w.startMs!==null&&w.startMs!==undefined&&Number.isFinite(Number(w.startMs)),hasStop=w.stopMs!==null&&w.stopMs!==undefined&&Number.isFinite(Number(w.stopMs));
+  const start=hasStart?Number(w.startMs):NaN,stop=hasStop?Number(w.stopMs):NaN,duration=Math.max(0,Number(w.durationMs)||0);
+  if(!hasStart||start<0||start>=fullDurationMs)continue;
   let end;
   if(w.command==='pixiPerform'&&w.hold)end=hasStop?stop:fullDurationMs;
   else if(w.hold&&dormantHoldCommands.has(w.command)){
@@ -129,8 +130,8 @@ globalThis.__finishNativeTimeline=({result,pre,settings,playlist,range})=>{
   for(const event of result.controlEvents)event.atMs=Math.round(map(event.atMs));
   for(const event of sourceEvents)event.atMs=Math.round(map(event.atMs));
   for(const window of performWindows){
-   if(Number.isFinite(Number(window.startMs)))window.startMs=map(Number(window.startMs));
-   if(Number.isFinite(Number(window.stopMs)))window.stopMs=map(Number(window.stopMs));
+   if(window.startMs!==null&&window.startMs!==undefined&&Number.isFinite(Number(window.startMs)))window.startMs=map(Number(window.startMs));
+   if(window.stopMs!==null&&window.stopMs!==undefined&&Number.isFinite(Number(window.stopMs)))window.stopMs=map(Number(window.stopMs));
   }
   for(let i=0;i<lineTimes.length;i++)if(Number.isFinite(lineTimes[i]))lineTimes[i]=Math.round(map(lineTimes[i]));
   actualElastic=result.elastic.map(w=>({...w,startMs:map(w.startMs),endMs:map(w.endMs)}));
