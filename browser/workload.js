@@ -70,9 +70,9 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
     transitionStates.set(target,state);
    }
    if(cmd==='changeFigure'){
-    const old=activePersistentFigures.get(target);
-    if(old&&changed){old.endMs=cursor;persistentReplay.push(old);activePersistentFigures.delete(target);}
     const persistent=!gone&&(/\.(json|jsonl|wmdl)([?#].*)?$/i.test(visualName)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(visualName)||!!params.motion||!!params.animationFlag||!!params.blink||!!params.eyesOpen||!!params.eyesClose);
+    const old=activePersistentFigures.get(target);
+    if(old&&(changed||!persistent)){old.endMs=cursor;persistentReplay.push(old);activePersistentFigures.delete(target);}
     if(persistent&&!activePersistentFigures.has(target))activePersistentFigures.set(target,{startMs:cursor,endMs:null,command:'changeFigure-runtime',line:range.start+1,hold:true,dormantRestorable:false,rootReplay:false,noCut:true});
    }
   }
