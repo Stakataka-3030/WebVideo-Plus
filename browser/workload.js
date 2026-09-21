@@ -15,7 +15,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  const singleLineHintDuration=(cmd,params,content,raw='')=>{if(cmd!=='choose'||Number(params.defaultChoose)!==1||params.next===true)return 0;const options=String(content||'').split(/(?<!\\)\|/);if(options.length!==1)return 0;const nodes=options[0].split(/(?<!\\):/);if(nodes.length!==2||!/^__wvp_hint_[A-Za-z0-9_]+$/.test(nodes[1].trim()))return 0;const fromArgs=Number(params.wvpHint),match=String(raw||'').match(/(?:^|\s)-wvpHint=([0-9]+(?:\.[0-9]+)?)(?=\s|;|$)/),fromSource=match?Number(match[1]):NaN,ms=Number.isFinite(fromArgs)?fromArgs:fromSource;return Number.isFinite(ms)&&ms>=100&&ms<=60000?ms:1800;};
  const sourceEvents=Array.isArray(timing?.sourceEvents)?timing.sourceEvents:[],performWindows=Array.isArray(timing?.performWindows)?timing.performWindows:[];
  const sourceEventByIndex=new Map();for(const e of sourceEvents)if(Number.isInteger(e.index)&&!sourceEventByIndex.has(e.index))sourceEventByIndex.set(e.index,e);
- const primaryPerform=(index,cmd)=>performWindows.find(w=>w.role!=='vocal'&&Number(w.line)===index&&w.command===cmd&&Number.isFinite(Number(w.startMs)));
+ const primaryPerform=(index,cmd)=>performWindows.find(w=>w.role!=='vocal'&&Number(w.line)===index&&w.command===cmd&&w.startMs!==null&&w.startMs!==undefined&&Number.isFinite(Number(w.startMs)));
  for(let i=0;i<parsed.sentenceList.length;i++){
   if(timing&&Number.isFinite(timing.lineTimes[i]))cursor=timing.lineTimes[i];
   const s=parsed.sentenceList[i];if(s.isLineBreakHolder)continue;
@@ -99,11 +99,11 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   const start=Number(w.startMs),stop=Number(w.stopMs),duration=Math.max(0,Number(w.durationMs)||0);
   if(!Number.isFinite(start)||start<0||start>=fullDurationMs)continue;
   let end;
-  if(w.command==='pixiPerform'&&w.hold)end=Number.isFinite(stop)?stop:fullDurationMs;
+  if(w.command==='pixiPerform'&&w.hold)end=hasStop?stop:fullDurationMs;
   else if(w.hold&&dormantHoldCommands.has(w.command)){
    end=start+duration;
-   if(Number.isFinite(stop))end=Math.min(end,stop);
-  }else end=Number.isFinite(stop)?stop:start+duration;
+   if(hasStop)end=Math.min(end,stop);
+  }else end=hasStop?stop:start+duration;
   end=Math.min(fullDurationMs,end);
   if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command))});
  }
