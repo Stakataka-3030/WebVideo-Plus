@@ -108,10 +108,10 @@ namespace NativeVideo {
    if(command!="install"&&command!="uninstall")throw new ArgumentException("使用 install / uninstall / launch --terre-dir DIR");
    bool force=App.Arg("--force","false")=="true",deleteCache=App.Arg("--delete-cache","false")=="true",deleteData=App.Arg("--delete-data","false")=="true";
    var requestedModules=command=="uninstall"?new string[0]:App.Arg("--modules",string.Join(",",ModuleCatalog.Advanced)).Split(',').Where(x=>x!="").Distinct().ToArray();requestedModules=ModuleCatalog.Normalize(requestedModules);var modules=ModuleCatalog.Resolve(requestedModules);bool export=ModuleCatalog.NeedsKernel(modules),timeline=modules.Contains("timelineCore");
-   string discoveredState=Files.Full(State(terre)),requestedState=Files.Full(App.Arg("--state-dir",discoveredState)),state=requestedState,sourceState=command=="uninstall"?requestedState:discoveredState;
+   string discoveredState=Files.Full(State(terre)),requestedState=Files.Full(App.Arg("--state-dir",discoveredState)),state=requestedState;bool requestedHasState=File.Exists(Path.Combine(requestedState,"config.json"));string sourceState=command=="uninstall"?requestedState:!SamePath(requestedState,discoveredState)&&requestedHasState?requestedState:discoveredState;
    string oldConfigFile=Path.Combine(sourceState,"config.json"),oldManifestFile=Path.Combine(sourceState,"install.json"),oldLifeFile=Path.Combine(sourceState,"lifecycle-install.json");
    string index=Path.Combine(terre,"public/index.html"),assets=Path.Combine(terre,"public/assets"),addon=Files.Under(terre,"video-export"),wrapperFile=Path.Combine(terre,"video-export-wrapper.json");if(!File.Exists(index))throw new IOException("缺少 Terre public/index.html");
-   var product=J.TryRead(ProductFile(terre));var manifest=J.TryRead(oldManifestFile);var previous=J.TryRead(oldConfigFile);var life=J.TryRead(oldLifeFile);bool wrapped=File.Exists(wrapperFile),mounted=product!=null||wrapped||manifest!=null||life!=null;
+   var product=J.TryRead(ProductFile(terre));var manifest=J.TryRead(oldManifestFile);var previous=J.TryRead(oldConfigFile);var life=J.TryRead(oldLifeFile);if(previous!=null&&J.S(previous,"terreDir")!=""&&!SamePath(J.S(previous,"terreDir"),terre))throw new IOException("所选 WebVideo+ 数据目录属于另一份 Terre，未更改文件。");bool wrapped=File.Exists(wrapperFile),mounted=product!=null||wrapped||manifest!=null||life!=null;
    if(previous!=null)await Integration.StopInstance(previous);
    bool migrated=false;try{
     if(!SamePath(state,sourceState)){
