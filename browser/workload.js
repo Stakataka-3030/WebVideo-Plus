@@ -34,7 +34,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   }
   const namedDuration=cmd==='setAnimation'?ensureAnimation(s.content):0;
   if(['setTransition','changeBg','changeFigure'].includes(cmd)){ensureAnimation(params.enter);ensureAnimation(params.exit);}
-  if(cmd==='wait'){cursor+=Math.max(0,Number(s.content)||0);continue;}
+  if(cmd==='wait'){if(!params.next)cursor+=Math.max(0,Number(s.content)||0);continue;}
   let videoDuration=0;
   if(cmd==='changeBg'||cmd==='changeFigure'){
    const position=['left','right','left13','right13','left14','right14'].find(k=>params[k])||'center',target=cmd==='changeBg'?'bg-main':params.id||'fig-'+position,key=cmd+':'+target,changed=visualSources.get(key)!==name;
