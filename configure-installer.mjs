@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {applyInstallerEnhancements} from './installer/installer-enhancements.mjs';
 import path from 'node:path';import {fileURLToPath} from 'node:url';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const internalAt=process.argv.indexOf('--internal-version'),internalVersion=internalAt>=0?process.argv[internalAt+1]:'';if(internalAt>=0&&!internalVersion)throw Error('--internal-version requires a value');
@@ -73,5 +74,6 @@ replace('modules=((System.Collections.IEnumerable)data["modules"]).Cast<object>(
 replace('navigatorModule.Checked=modules.Contains("timelineNavigator");selectorModule.Checked=modules.Contains("timelineSelector");exporterModule.Checked=modules.Contains("exporter");','syncModules=true;foreach(var id in ModuleCatalog.Advanced)moduleBoxes[id].CheckState=modules.Contains(id)?CheckState.Checked:CheckState.Unchecked;aiModule.Checked=modules.Contains("generativeAI");syncModules=false;ReconcileModules();');
 s=s.replace('void SetBusy(bool value){','void SetBusy(bool value){if(aiModule!=null)aiModule.Enabled=!value;');
 s=s.replaceAll('Size=new Size(770,280),Visible=false','Size=new Size(770,280),AutoScroll=true,Visible=false');
+s=applyInstallerEnhancements(s,{productVersion,internalVersion,kernelVersion});
 fs.writeFileSync(path.join(root,'installer/Installer.cs'),s);
 console.log('WebVideo+ installer source generated.');
