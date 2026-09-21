@@ -164,7 +164,7 @@ namespace NativeVideo {
     if(warmup>total*MaxReplayOverheadRatio){replayRejectedAny=true;attemptRows.Add(J.O("parts",parts,"outcome","replay-overhead","warmupFrames",warmup,"maxWarmupFrames",total*MaxReplayOverheadRatio,"candidateCount",candidateCount,"unsafeRejected",unsafeRejected,"softAvoided",softAvoided));continue;}
     attemptRows.Add(J.O("parts",parts,"outcome","selected","warmupFrames",warmup,"candidateCount",candidateCount,"unsafeRejected",unsafeRejected,"softAvoided",softAvoided));
     diagnostics["selectedParts"]=parts;
-    diagnostics["reductionReason"]=parts<requestedWorkers?(requestedWorkers>workers?"duration-too-short":ReductionReason(noCutWindows,protectedWindows,replayRejectedAny)):"";
+    diagnostics["reductionReason"]=parts<workers?ReductionReason(noCutWindows,protectedWindows,replayRejectedAny):parts<requestedWorkers?"duration-too-short":"";
     diagnostics["safeCutRejected"]=safeCutRejectedAny;
     diagnostics["replayRejected"]=replayRejectedAny;
     return ranges;
@@ -173,7 +173,7 @@ namespace NativeVideo {
    diagnostics["selectedParts"]=1;
    diagnostics["safeCutRejected"]=safeCutRejectedAny;
    diagnostics["replayRejected"]=replayRejectedAny;
-   diagnostics["reductionReason"]=requestedWorkers>workers?"duration-too-short":ReductionReason(noCutWindows,protectedWindows,replayRejectedAny);
+   diagnostics["reductionReason"]=workers>1?ReductionReason(noCutWindows,protectedWindows,replayRejectedAny):requestedWorkers>workers?"duration-too-short":ReductionReason(noCutWindows,protectedWindows,replayRejectedAny);
    return new[]{J.O("index",0,"startFrame",0,"endFrame",total,"replayFrame",0,"warmupFrames",0,"estimatedCost",costAt(total),"replayKinds",new object[0])};
   }
  }
