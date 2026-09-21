@@ -17,8 +17,8 @@ globalThis.__finishNativeTimeline=({result,pre,settings,playlist,range})=>{
   for(const event of result.controlEvents)event.atMs=Math.round(map(event.atMs));
   for(const event of sourceEvents)event.atMs=Math.round(map(event.atMs));
   for(const window of performWindows){
-   if(Number.isFinite(Number(window.startMs)))window.startMs=map(Number(window.startMs));
-   if(Number.isFinite(Number(window.stopMs)))window.stopMs=map(Number(window.stopMs));
+   if(window.startMs!==null&&window.startMs!==undefined&&Number.isFinite(Number(window.startMs)))window.startMs=map(Number(window.startMs));
+   if(window.stopMs!==null&&window.stopMs!==undefined&&Number.isFinite(Number(window.stopMs)))window.stopMs=map(Number(window.stopMs));
   }
   for(let i=0;i<lineTimes.length;i++)if(Number.isFinite(lineTimes[i]))lineTimes[i]=Math.round(map(lineTimes[i]));
   actualElastic=result.elastic.map(w=>({...w,startMs:map(w.startMs),endMs:map(w.endMs)}));
