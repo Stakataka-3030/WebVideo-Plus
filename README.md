@@ -4,7 +4,7 @@
 
 [下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [0.5.3 发行说明](RELEASE_NOTES_0.5.3.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前源码版本：1.0.0（内部开发标识 0.6.0；安装器 Win32 版本 1.0.0.0，导出内核 0.5.5）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
+**当前源码版本：1.0.0（内部开发标识 0.6.2；安装器 Win32 版本 1.0.0.0，导出内核 0.5.5）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
 
 当前适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
 
@@ -15,7 +15,7 @@
 - **剧情导航**：按连续执行和目标整理主次组件，显示说话人、表情动作及命名滤镜/预制效果，点击即可定位编辑器与预览。
 - **剧情选择与时间线工具**：辅助选择连续区间、整理剧情结构和导出范围。
 - **音乐配置**：直接添加或拖入音频，可增加并行播放器行，按文字/放映速度匹配故事时长。
-- **导出视频**：读取预览速度，导出全文或连续区间；任务、进度和输出位置由本机服务管理。
+- **导出视频**：读取预览速度，导出全文或连续区间；任务、进度和输出位置由本机服务管理。\n- **字幕后处理（可选模块）**：导出完成后封装 SRT/ASS/SSA 软字幕或通过 FFmpeg/libass 烧录；可按视频起点、WebGAL 时间线语句、后处理音乐或手动时间定位。字幕内容和样式交给 Subtitle Edit、Aegisub 等外部编辑器处理。
 - **导入 Anogo 故事**：接收粘贴文本及 JSON/YAML 文件，转换后追加故事；动作导入默认关闭，待核对项由作者检查。
 - **检查与标记 / 备份与恢复**：提供制作提醒、待核对标签、历史备份与确认回滚；打开游戏和整十分钟自动备份分别保留最新一份。
 - **游戏工具收纳**：可将场景分支、鉴赏和游戏控制等入口集中到“游戏工具”。
@@ -122,7 +122,7 @@ WebVideo+ 建立在多个开源项目、公开技术资料和社区贡献之上�
 | 项目 | 本项目中的用途 |
 | --- | --- |
 | [boomwwww/webgal-mygo](https://github.com/boomwwww/webgal-mygo) | 可选 MyGO 引擎、模型/口型和播放设置适配；WebVideo+ 不捆绑引擎或角色素材。 |
-| [A-kirami/anogo](https://github.com/A-kirami/anogo) | 结构化故事格式与默认动作词表来源；WebVideo+ 仅提供导入适配。 |
+| [A-kirami/anogo](https://github.com/A-kirami/anogo) | 结构化故事格式与默认动作词表来源；WebVideo+ 仅提供导入适配。 |\n| [SubtitleEdit/subtitleedit](https://github.com/SubtitleEdit/subtitleedit) / [TypesettingTools/Aegisub](https://github.com/TypesettingTools/Aegisub) | 推荐的外部字幕编辑器；WebVideo+ 仅通过系统文件关联打开用户已安装的软件，不捆绑其程序或源码。 |
 
 ### 工作流与研究参考
 
