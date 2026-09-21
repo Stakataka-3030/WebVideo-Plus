@@ -53,6 +53,20 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
   let origin=null,lastCommand='',lastParams={},lastLine=0,done=false,finishedAt=0,manualTimer=null,hintTimer=null,hintError='';
   let forwardGroupCounter=0,openForwardGroup=0;
   const nowMs=()=>origin===null?0:performance.now()-origin;
+  const stageExitWindows=[],activeStageExits=new Map(),stage=core.gameplay.pixiStage,nativeRegisterAnimation=stage.registerAnimation.bind(stage),nativeRemoveAnimation=stage.removeAnimation.bind(stage);
+  stage.registerAnimation=function(animation,key,target,...rest){
+    const result=nativeRegisterAnimation(animation,key,target,...rest),id=String(key||'');
+    if(id.endsWith('-softoff')){
+      const item={key:id,target:String(target||''),startMs:nowMs(),stopMs:null};
+      stageExitWindows.push(item);activeStageExits.set(id,item);
+    }
+    return result;
+  };
+  stage.removeAnimation=function(key,...rest){
+    const id=String(key||''),item=activeStageExits.get(id);
+    if(item&&item.stopMs===null){item.stopMs=nowMs();activeStageExits.delete(id);}
+    return nativeRemoveAnimation(key,...rest);
+  };
   const currentForwardGroup=()=>{
     if(!openForwardGroup){
       openForwardGroup=++forwardGroupCounter;
@@ -189,5 +203,5 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
   yieldChannel.port1.close();
   yieldChannel.port2.close();
   if(!done)throw new Error('播放时序规划超时，场景可能含等待交互的指令');
-  return {events,elastic,controlEvents,performWindows,domWorkload,durationMs:origin===null?0:finishedAt-origin,options:w.store.getState().userData.optionData};
+  return {events,elastic,controlEvents,performWindows,stageExitWindows,domWorkload,durationMs:origin===null?0:finishedAt-origin,options:w.store.getState().userData.optionData};
 };
