@@ -18,17 +18,39 @@ const build=context.__buildNativeWorkload,finish=context.__finishNativeTimeline;
 assert.equal(typeof build,'function');
 assert.equal(typeof finish,'function');
 assert.equal(typeof context.__exportTextSettleApplies,'function');
+assert.equal(typeof context.__exportInstallTextSettleGuard,'function');
 assert.equal(context.__exportTextSettleApplies('old','new',false),false);
 assert.equal(context.__exportTextSettleApplies('same','same',false),true);
 assert.equal(context.__exportTextSettleApplies(null,'same',false),false);
 assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
 
 {
+  const delivered=[],event={emit(message,id){delivered.push([message,id]);}};
+  context.__exportInstallTextSettleGuard(event);
+  context.__exportActiveSayToken=2;
+  context.__exportTextSettleOwnerToken=1;
+  context.__exportForceTextSettle=false;
+  event.emit('stale');
+  assert.equal(delivered.length,0,'stale say must not reach WebGAL textSettle listeners');
+  context.__exportTextSettleOwnerToken=2;
+  event.emit('current');
+  assert.equal(delivered.length,1);
+  assert.equal(delivered[0][0],'current');
+  context.__exportTextSettleOwnerToken=1;
+  context.__exportForceTextSettle=true;
+  event.emit('prefix');
+  assert.equal(delivered.length,2,'explicit prefix settle must bypass ownership');
+  context.__exportForceTextSettle=false;
+}
+
+{
   const rendererSource=fs.readFileSync(path.join(root,'src','Renderer.cs'),'utf8');
   const domInstall=rendererSource.indexOf('__gpuDomInstall()');
   const prefixRestore=rendererSource.indexOf('globalThis.__exportPrefixRestore=true');
+  const domReady=rendererSource.indexOf('__exportRestoredDialogueReady()');
+  const forceSettle=rendererSource.indexOf('__exportForceTextSettle=true');
   assert.ok(domInstall>=0&&prefixRestore>=0&&domInstall<prefixRestore,'GPU DOM tracking must exist before prefix restore');
-  assert.ok(rendererSource.includes('__exportForceTextSettle=true'),'prefix restore must force-settle restored dialogue');
+  assert.ok(domReady>prefixRestore&&forceSettle>domReady,'prefix restore must wait for rendered dialogue DOM before forced settle');
 }
 
 
