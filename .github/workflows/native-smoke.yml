@@ -40,6 +40,43 @@ jobs:
           if($p.ExitCode -ne 0){ throw "WebView2 runtime smoke failed with exit code $($p.ExitCode)" }
           Get-Content -LiteralPath (Join-Path $work 'result.json')
 
+      - name: Run deterministic two-worker dialogue export smoke
+        shell: pwsh
+        run: |
+          $project = Join-Path $PWD '.runtime-export-project'
+          $sceneDir = Join-Path $project 'game/scene'
+          New-Item -ItemType Directory -Force -Path $sceneDir | Out-Null
+          $scene = @'
+          A:旧句 -notend -next;
+          wait:600;
+          B:是歌词吗？！;
+          wait:1800;
+          B:第二句正在逐字出现;
+          wait:1800;
+          C:第三句正在逐字出现;
+          wait:1800;
+          D:第四句正在逐字出现;
+          wait:1800;
+          E:第五句正在逐字出现;
+          '@
+          [IO.File]::WriteAllText((Join-Path $sceneDir 'start.txt'), $scene.Trim(), (New-Object Text.UTF8Encoding($false)))
+          $out = Join-Path $PWD '.runtime-dialogue-smoke.mp4'
+          $work = Join-Path $PWD '.runtime-dialogue-work'
+          $err = Join-Path $PWD '.runtime-dialogue-error.log'
+          $args = @('export','--project',$project,'--scene','start.txt','--out',$out,'--work-dir',$work,'--workers','2','--mode','auto','--width','640','--height','360','--fps','30','--gpu-raw-export','x264','--error-log',$err)
+          $p = Start-Process -FilePath (Join-Path $PWD 'package/WebGAL.Video.exe') -ArgumentList $args -Wait -PassThru -NoNewWindow
+          if($p.ExitCode -ne 0){
+            if(Test-Path $err){ Get-Content -LiteralPath $err }
+            throw "Two-worker dialogue export smoke failed with exit code $($p.ExitCode)"
+          }
+          $sidecar = [IO.Path]::ChangeExtension($out,'.json')
+          $result = Get-Content -LiteralPath $sidecar -Raw | ConvertFrom-Json
+          if([int]$result.effectiveWorkers -lt 2){ throw "Dialogue smoke unexpectedly reduced to $($result.effectiveWorkers) worker" }
+          $transitions = @($result.renderParts | ForEach-Object { @($_.domStats.textTransitions) })
+          $intermediate = @($transitions | Where-Object { [double]$_.averageOpacity -gt 0.02 -and [double]$_.averageOpacity -lt 0.98 })
+          if($intermediate.Count -eq 0){ throw 'GPU dialogue compositor produced no intermediate text-opacity states' }
+          $result | ConvertTo-Json -Depth 8
+
       - name: Verify Terre integration anchors
         shell: pwsh
         run: node .\build-timeline.mjs
