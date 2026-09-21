@@ -1026,34 +1026,6 @@ globalThis.WebVideoNavigationMetadata={
   ],
   "filterPresets": [
     {
-      "id": "sr-01",
-      "name": "夜晚柔光",
-      "appliesTo": "both",
-      "effects": [
-        {
-          "brightness": 0.6,
-          "contrast": 0.976,
-          "saturation": 1.268,
-          "gamma": 0.866,
-          "colorRed": 255,
-          "colorGreen": 235,
-          "colorBlue": 214,
-          "bloom": 0.652,
-          "bloomBrightness": 0.854,
-          "bloomBlur": 23,
-          "bloomThreshold": 0,
-          "bevel": 0.616,
-          "bevelThickness": 4,
-          "bevelRotation": 0,
-          "bevelSoftness": 0.476,
-          "bevelRed": 255,
-          "bevelGreen": 217,
-          "bevelBlue": 143
-        }
-      ],
-      "category": "冷色与夜景"
-    },
-    {
       "id": "sr-02",
       "name": "室内光",
       "appliesTo": "both",
@@ -1080,11 +1052,300 @@ globalThis.WebVideoNavigationMetadata={
           "bevelBlue": 255
         }
       ],
-      "category": "柔光与梦境"
+      "category": "日常与自然光"
+    },
+    {
+      "id": "sr-10",
+      "name": "白天（通用）",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "blur": 2,
+          "brightness": 0.866,
+          "contrast": 1,
+          "colorRed": 242,
+          "colorGreen": 242,
+          "colorBlue": 242,
+          "bloom": 0.354,
+          "bloomBrightness": 0.915,
+          "bloomBlur": 37,
+          "bevel": 0.756,
+          "bevelThickness": 12,
+          "bevelRotation": 77,
+          "bevelSoftness": 0.671,
+          "bevelRed": 255,
+          "bevelGreen": 255,
+          "bevelBlue": 255
+        }
+      ],
+      "category": "日常与自然光",
+      "aliases": [
+        "白天（sr）"
+      ]
+    },
+    {
+      "id": "sr-13",
+      "name": "高档咖啡馆",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "brightness": 0.829,
+          "colorRed": 255,
+          "colorGreen": 242,
+          "colorBlue": 201,
+          "bloom": 0.366,
+          "bloomBrightness": 0.854,
+          "bloomBlur": 36,
+          "bevel": 0.799,
+          "bevelThickness": 19,
+          "bevelRotation": 132,
+          "bevelSoftness": 0.518,
+          "bevelRed": 255,
+          "bevelGreen": 231,
+          "bevelBlue": 166
+        }
+      ],
+      "category": "日常与自然光"
+    },
+    {
+      "id": "template-a130",
+      "name": "白天 · 背景",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "brightness": 0.7,
+          "contrast": 1.1,
+          "saturation": 0.8,
+          "gamma": 0.5,
+          "colorRed": 255,
+          "colorGreen": 255,
+          "colorBlue": 255,
+          "bloom": 0.5,
+          "bloomBrightness": 0.8,
+          "bloomBlur": 10
+        }
+      ],
+      "category": "日常与自然光",
+      "aliases": [
+        "白天（一）"
+      ]
+    },
+    {
+      "id": "template-a131",
+      "name": "白天 · 人物",
+      "appliesTo": "figure",
+      "effects": [
+        {
+          "brightness": 0.6,
+          "contrast": 1.1,
+          "saturation": 0.8,
+          "gamma": 0.6,
+          "colorRed": 255,
+          "colorGreen": 255,
+          "colorBlue": 255,
+          "bloom": 0.7,
+          "bloomBrightness": 0.6,
+          "bloomBlur": 10,
+          "bevel": 1,
+          "bevelThickness": 18,
+          "bevelRotation": 30,
+          "bevelRed": 255,
+          "bevelGreen": 255,
+          "bevelBlue": 255
+        }
+      ],
+      "category": "日常与自然光",
+      "aliases": [
+        "白天（二）"
+      ]
+    },
+    {
+      "id": "template-a226",
+      "name": "面光（白天） · 背景",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "brightness": 0.8,
+          "contrast": 0.8,
+          "saturation": 0.7,
+          "gamma": 0.5,
+          "colorRed": 227,
+          "colorGreen": 227,
+          "colorBlue": 227,
+          "bloom": 0.7,
+          "bloomBrightness": 0.8,
+          "bloomBlur": 10
+        }
+      ],
+      "category": "日常与自然光",
+      "aliases": [
+        "面光（白天）（一）"
+      ]
+    },
+    {
+      "id": "template-a227",
+      "name": "面光（白天） · 人物",
+      "appliesTo": "figure",
+      "effects": [
+        {
+          "brightness": 0.75,
+          "contrast": 1,
+          "saturation": 0.8,
+          "gamma": 0.7,
+          "colorRed": 255,
+          "colorGreen": 255,
+          "colorBlue": 255,
+          "bloom": 0.5,
+          "bloomBrightness": 1,
+          "bloomBlur": 10,
+          "bevel": 0.5,
+          "bevelThickness": 18,
+          "bevelRotation": 30,
+          "bevelRed": 196,
+          "bevelGreen": 185,
+          "bevelBlue": 185
+        }
+      ],
+      "category": "日常与自然光",
+      "aliases": [
+        "面光（白天）（二）"
+      ]
+    },
+    {
+      "id": "original-25",
+      "name": "清新日系（背景）",
+      "category": "日常与自然光",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "brightness": 1.05,
+          "contrast": 0.85,
+          "saturation": 1.2,
+          "gamma": 0.95,
+          "colorRed": 245,
+          "colorGreen": 250,
+          "colorBlue": 255,
+          "bloom": 0.6,
+          "bloomBlur": 9
+        }
+      ],
+      "source": "原特效库 #25"
+    },
+    {
+      "id": "original-26",
+      "name": "清新日系（人物）",
+      "category": "日常与自然光",
+      "appliesTo": "figure",
+      "effects": [
+        {
+          "brightness": 1,
+          "contrast": 0.9,
+          "saturation": 1.1,
+          "gamma": 1,
+          "colorRed": 248,
+          "colorGreen": 252,
+          "colorBlue": 255,
+          "bloom": 0.5,
+          "bloomBlur": 7,
+          "bevel": 0.7,
+          "bevelThickness": 10,
+          "bevelRotation": 30,
+          "bevelRed": 240,
+          "bevelGreen": 245,
+          "bevelBlue": 250
+        }
+      ],
+      "source": "原特效库 #26"
+    },
+    {
+      "id": "contrib-morning",
+      "name": "清晨",
+      "appliesTo": "both",
+      "category": "日常与自然光",
+      "effects": [
+        {
+          "brightness": 1.1,
+          "colorRed": 201.875,
+          "colorGreen": 231.758,
+          "bloomBlur": 1,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 30,
+          "bevelSoftness": 1,
+          "bevelRed": 211.172,
+          "bevelGreen": 242.673
+        }
+      ]
+    },
+    {
+      "id": "contrib-cream-warm-light",
+      "name": "奶油暖光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 241,
+          "colorGreen": 220,
+          "colorBlue": 197,
+          "bloom": 0.25,
+          "bloomBrightness": 0.83,
+          "bloomBlur": 10,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 80,
+          "bevelSoftness": 1,
+          "bevelGreen": 241,
+          "bevelBlue": 210
+        }
+      ],
+      "category": "日常与自然光"
+    },
+    {
+      "id": "contrib-soft-warm-white",
+      "name": "暖白柔光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 232,
+          "colorGreen": 216,
+          "colorBlue": 205,
+          "bloom": 0.25,
+          "bloomBrightness": 0.83,
+          "bloomBlur": 10,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 80,
+          "bevelSoftness": 1,
+          "bevelGreen": 241,
+          "bevelBlue": 215
+        }
+      ],
+      "category": "日常与自然光"
+    },
+    {
+      "id": "contrib-soft-green-daylight",
+      "name": "柔绿日光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 184,
+          "colorGreen": 209,
+          "colorBlue": 195,
+          "bloom": 0.2,
+          "bloomBlur": 20,
+          "bloomThreshold": 0.5,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 150,
+          "bevelSoftness": 1,
+          "bevelGreen": 240,
+          "bevelBlue": 188
+        }
+      ],
+      "category": "日常与自然光"
     },
     {
       "id": "sr-03",
-      "name": "黄昏（一）",
+      "name": "黄昏 · 方案 1",
       "appliesTo": "both",
       "effects": [
         {
@@ -1103,55 +1364,14 @@ globalThis.WebVideoNavigationMetadata={
           "bevelBlue": 143
         }
       ],
-      "category": "暖色与黄昏"
-    },
-    {
-      "id": "sr-04",
-      "name": "夜晚（开灯）",
-      "appliesTo": "both",
-      "effects": [
-        {
-          "brightness": 0.841,
-          "colorRed": 255,
-          "colorGreen": 248,
-          "colorBlue": 222,
-          "bloom": 0.244,
-          "bloomBlur": 44,
-          "bevel": 0.427,
-          "bevelThickness": 27,
-          "bevelRotation": 134,
-          "bevelRed": 255,
-          "bevelGreen": 248,
-          "bevelBlue": 143
-        }
-      ],
-      "category": "冷色与夜景"
-    },
-    {
-      "id": "sr-05",
-      "name": "夜晚（关灯）",
-      "appliesTo": "both",
-      "effects": [
-        {
-          "brightness": 0.488,
-          "colorRed": 255,
-          "colorGreen": 254,
-          "colorBlue": 222,
-          "bloom": 0.409,
-          "bloomBlur": 45,
-          "bevel": 0.134,
-          "bevelThickness": 24,
-          "bevelRotation": 130,
-          "bevelRed": 255,
-          "bevelGreen": 243,
-          "bevelBlue": 199
-        }
-      ],
-      "category": "冷色与夜景"
+      "category": "暖色与黄昏",
+      "aliases": [
+        "黄昏（一）"
+      ]
     },
     {
       "id": "sr-06",
-      "name": "黄昏（二）",
+      "name": "黄昏 · 方案 2",
       "appliesTo": "both",
       "effects": [
         {
@@ -1174,11 +1394,14 @@ globalThis.WebVideoNavigationMetadata={
           "bevelBlue": 148
         }
       ],
-      "category": "暖色与黄昏"
+      "category": "暖色与黄昏",
+      "aliases": [
+        "黄昏（二）"
+      ]
     },
     {
       "id": "sr-07",
-      "name": "黄昏（三）",
+      "name": "黄昏 · 方案 3",
       "appliesTo": "both",
       "effects": [
         {
@@ -1199,84 +1422,10 @@ globalThis.WebVideoNavigationMetadata={
           "bevelBlue": 48
         }
       ],
-      "category": "暖色与黄昏"
-    },
-    {
-      "id": "sr-08",
-      "name": "暗处",
-      "appliesTo": "both",
-      "effects": [
-        {
-          "blur": 2,
-          "brightness": 0.744,
-          "saturation": 1.244,
-          "gamma": 1.122,
-          "colorRed": 255,
-          "colorGreen": 255,
-          "colorBlue": 255,
-          "bloom": 0.165,
-          "bloomBlur": 38,
-          "bevel": 0.445,
-          "bevelThickness": 31,
-          "bevelRotation": 92,
-          "bevelRed": 227,
-          "bevelGreen": 227,
-          "bevelBlue": 227
-        }
-      ],
-      "category": "其他调色"
-    },
-    {
-      "id": "sr-09",
-      "name": "室外夜晚",
-      "appliesTo": "both",
-      "effects": [
-        {
-          "blur": 2,
-          "brightness": 0.915,
-          "contrast": 1,
-          "saturation": 1.329,
-          "colorRed": 199,
-          "colorGreen": 199,
-          "colorBlue": 199,
-          "bloom": 0.305,
-          "bloomBlur": 41,
-          "bevel": 0.756,
-          "bevelThickness": 12,
-          "bevelRotation": 2,
-          "bevelSoftness": 0.329,
-          "bevelRed": 235,
-          "bevelGreen": 235,
-          "bevelBlue": 235
-        }
-      ],
-      "category": "冷色与夜景"
-    },
-    {
-      "id": "sr-10",
-      "name": "白天（sr）",
-      "appliesTo": "both",
-      "effects": [
-        {
-          "blur": 2,
-          "brightness": 0.866,
-          "contrast": 1,
-          "colorRed": 242,
-          "colorGreen": 242,
-          "colorBlue": 242,
-          "bloom": 0.354,
-          "bloomBrightness": 0.915,
-          "bloomBlur": 37,
-          "bevel": 0.756,
-          "bevelThickness": 12,
-          "bevelRotation": 77,
-          "bevelSoftness": 0.671,
-          "bevelRed": 255,
-          "bevelGreen": 255,
-          "bevelBlue": 255
-        }
-      ],
-      "category": "其他调色"
+      "category": "暖色与黄昏",
+      "aliases": [
+        "黄昏（三）"
+      ]
     },
     {
       "id": "sr-11",
@@ -1305,175 +1454,8 @@ globalThis.WebVideoNavigationMetadata={
       "category": "暖色与黄昏"
     },
     {
-      "id": "sr-12",
-      "name": "仓库（未开灯）",
-      "appliesTo": "both",
-      "effects": [
-        {
-          "blur": 2,
-          "brightness": 0.598,
-          "contrast": 1,
-          "colorRed": 255,
-          "colorGreen": 255,
-          "colorBlue": 255,
-          "bloom": 0.524,
-          "bloomBrightness": 0.829,
-          "bloomBlur": 41,
-          "bevel": 0.39,
-          "bevelThickness": 30,
-          "bevelRotation": 156,
-          "bevelSoftness": 0.329,
-          "bevelRed": 255,
-          "bevelGreen": 255,
-          "bevelBlue": 255
-        }
-      ],
-      "category": "其他调色"
-    },
-    {
-      "id": "sr-13",
-      "name": "高档咖啡馆",
-      "appliesTo": "both",
-      "effects": [
-        {
-          "brightness": 0.829,
-          "colorRed": 255,
-          "colorGreen": 242,
-          "colorBlue": 201,
-          "bloom": 0.366,
-          "bloomBrightness": 0.854,
-          "bloomBlur": 36,
-          "bevel": 0.799,
-          "bevelThickness": 19,
-          "bevelRotation": 132,
-          "bevelSoftness": 0.518,
-          "bevelRed": 255,
-          "bevelGreen": 231,
-          "bevelBlue": 166
-        }
-      ],
-      "category": "其他调色"
-    },
-    {
-      "id": "sr-14",
-      "name": "灯家天桥",
-      "appliesTo": "both",
-      "effects": [
-        {
-          "brightness": 0.793,
-          "colorRed": 217,
-          "colorGreen": 217,
-          "colorBlue": 217,
-          "bloom": 0.39,
-          "bloomBlur": 50,
-          "bevel": 0.482,
-          "bevelThickness": 23,
-          "bevelRotation": 66,
-          "bevelRed": 242,
-          "bevelGreen": 242,
-          "bevelBlue": 242
-        }
-      ],
-      "category": "其他调色"
-    },
-    {
-      "id": "template-a30",
-      "name": "火光／爆炸（一）",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "brightness": 0.9,
-          "contrast": 0.8,
-          "saturation": 0.5,
-          "gamma": 0.6,
-          "colorRed": 255,
-          "colorGreen": 218,
-          "colorBlue": 184,
-          "bloom": 1,
-          "bloomBrightness": 0.8,
-          "bloomBlur": 8,
-          "bevelRed": 255,
-          "bevelGreen": 194,
-          "bevelBlue": 125
-        }
-      ],
-      "category": "柔光与梦境"
-    },
-    {
-      "id": "template-a31",
-      "name": "火光／爆炸（二）",
-      "appliesTo": "figure",
-      "effects": [
-        {
-          "brightness": 0.75,
-          "contrast": 1.1,
-          "saturation": 0.8,
-          "gamma": 1,
-          "colorRed": 255,
-          "colorGreen": 234,
-          "colorBlue": 217,
-          "bloom": 0.6,
-          "bloomBrightness": 0.7,
-          "bloomBlur": 4,
-          "bevel": 2,
-          "bevelThickness": 20,
-          "bevelRotation": 80,
-          "bevelRed": 255,
-          "bevelGreen": 201,
-          "bevelBlue": 125
-        }
-      ],
-      "category": "柔光与梦境"
-    },
-    {
-      "id": "template-a54",
-      "name": "黑暗（有灯光）（一）",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "brightness": 0.7,
-          "contrast": 0.8,
-          "saturation": 0.7,
-          "gamma": 0.5,
-          "colorRed": 255,
-          "colorGreen": 255,
-          "colorBlue": 255,
-          "bloom": 1,
-          "bloomBrightness": 0.7,
-          "bloomBlur": 10
-        }
-      ],
-      "category": "柔光与梦境"
-    },
-    {
-      "id": "template-a55",
-      "name": "黑暗（有灯光）（二）",
-      "appliesTo": "figure",
-      "effects": [
-        {
-          "brightness": 0.6,
-          "contrast": 1.1,
-          "saturation": 0.9,
-          "gamma": 0.9,
-          "colorRed": 255,
-          "colorGreen": 255,
-          "colorBlue": 255,
-          "bloom": 0.2,
-          "bloomBrightness": 0.9,
-          "bloomBlur": 10,
-          "bevel": 1,
-          "bevelThickness": 18,
-          "bevelRotation": 30,
-          "bevelRed": 204,
-          "bevelGreen": 204,
-          "bevelBlue": 204
-        }
-      ],
-      "category": "柔光与梦境"
-    },
-    {
       "id": "template-a79",
-      "name": "清晨／黄昏（轻）（一）",
+      "name": "清晨／黄昏（轻） · 背景",
       "appliesTo": "background",
       "effects": [
         {
@@ -1491,12 +1473,13 @@ globalThis.WebVideoNavigationMetadata={
       ],
       "category": "暖色与黄昏",
       "aliases": [
-        "面光·清晨／黄昏（轻）"
+        "面光·清晨／黄昏（轻）",
+        "清晨／黄昏（轻）（一）"
       ]
     },
     {
       "id": "template-a80",
-      "name": "清晨／黄昏（轻）（二）",
+      "name": "清晨／黄昏（轻） · 人物",
       "appliesTo": "figure",
       "effects": [
         {
@@ -1518,103 +1501,14 @@ globalThis.WebVideoNavigationMetadata={
           "bevelBlue": 224
         }
       ],
-      "category": "暖色与黄昏"
-    },
-    {
-      "id": "template-a104",
-      "name": "黑暗（无灯光）（一）",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "brightness": 0.7,
-          "contrast": 0.8,
-          "saturation": 0.7,
-          "gamma": 0.5,
-          "colorRed": 222,
-          "colorGreen": 222,
-          "colorBlue": 222,
-          "bloom": 1,
-          "bloomBrightness": 0.7,
-          "bloomBlur": 10
-        }
-      ],
-      "category": "柔光与梦境"
-    },
-    {
-      "id": "template-a105",
-      "name": "黑暗（无灯光）（二）",
-      "appliesTo": "figure",
-      "effects": [
-        {
-          "brightness": 0.4,
-          "contrast": 1.1,
-          "saturation": 0.9,
-          "gamma": 0.7,
-          "colorRed": 255,
-          "colorGreen": 255,
-          "colorBlue": 255,
-          "bloom": 0.2,
-          "bloomBrightness": 0.9,
-          "bloomBlur": 10,
-          "bevel": 0.2,
-          "bevelThickness": 18,
-          "bevelRotation": 130,
-          "bevelRed": 161,
-          "bevelGreen": 161,
-          "bevelBlue": 161
-        }
-      ],
-      "category": "柔光与梦境"
-    },
-    {
-      "id": "template-a130",
-      "name": "白天（一）",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "brightness": 0.7,
-          "contrast": 1.1,
-          "saturation": 0.8,
-          "gamma": 0.5,
-          "colorRed": 255,
-          "colorGreen": 255,
-          "colorBlue": 255,
-          "bloom": 0.5,
-          "bloomBrightness": 0.8,
-          "bloomBlur": 10
-        }
-      ],
-      "category": "其他调色"
-    },
-    {
-      "id": "template-a131",
-      "name": "白天（二）",
-      "appliesTo": "figure",
-      "effects": [
-        {
-          "brightness": 0.6,
-          "contrast": 1.1,
-          "saturation": 0.8,
-          "gamma": 0.6,
-          "colorRed": 255,
-          "colorGreen": 255,
-          "colorBlue": 255,
-          "bloom": 0.7,
-          "bloomBrightness": 0.6,
-          "bloomBlur": 10,
-          "bevel": 1,
-          "bevelThickness": 18,
-          "bevelRotation": 30,
-          "bevelRed": 255,
-          "bevelGreen": 255,
-          "bevelBlue": 255
-        }
-      ],
-      "category": "其他调色"
+      "category": "暖色与黄昏",
+      "aliases": [
+        "清晨／黄昏（轻）（二）"
+      ]
     },
     {
       "id": "template-a156",
-      "name": "黄昏（重室外）（一）",
+      "name": "黄昏（重室外） · 背景",
       "appliesTo": "background",
       "effects": [
         {
@@ -1630,11 +1524,14 @@ globalThis.WebVideoNavigationMetadata={
           "bloomBlur": 10
         }
       ],
-      "category": "暖色与黄昏"
+      "category": "暖色与黄昏",
+      "aliases": [
+        "黄昏（重室外）（一）"
+      ]
     },
     {
       "id": "template-a157",
-      "name": "黄昏（重室外）（二）",
+      "name": "黄昏（重室外） · 人物",
       "appliesTo": "figure",
       "effects": [
         {
@@ -1655,11 +1552,14 @@ globalThis.WebVideoNavigationMetadata={
           "bevelBlue": 148
         }
       ],
-      "category": "暖色与黄昏"
+      "category": "暖色与黄昏",
+      "aliases": [
+        "黄昏（重室外）（二）"
+      ]
     },
     {
       "id": "template-a180",
-      "name": "黄昏（重室内）（一）",
+      "name": "黄昏（重室内） · 背景",
       "appliesTo": "background",
       "effects": [
         {
@@ -1675,11 +1575,14 @@ globalThis.WebVideoNavigationMetadata={
           "bloomBlur": 10
         }
       ],
-      "category": "暖色与黄昏"
+      "category": "暖色与黄昏",
+      "aliases": [
+        "黄昏（重室内）（一）"
+      ]
     },
     {
       "id": "template-a181",
-      "name": "黄昏（重室内）（二）",
+      "name": "黄昏（重室内） · 人物",
       "appliesTo": "figure",
       "effects": [
         {
@@ -1700,11 +1603,14 @@ globalThis.WebVideoNavigationMetadata={
           "bevelBlue": 148
         }
       ],
-      "category": "暖色与黄昏"
+      "category": "暖色与黄昏",
+      "aliases": [
+        "黄昏（重室内）（二）"
+      ]
     },
     {
       "id": "template-a204",
-      "name": "面光（黄昏）（一）",
+      "name": "面光（黄昏） · 背景",
       "appliesTo": "background",
       "effects": [
         {
@@ -1720,11 +1626,14 @@ globalThis.WebVideoNavigationMetadata={
           "bloomBlur": 10
         }
       ],
-      "category": "暖色与黄昏"
+      "category": "暖色与黄昏",
+      "aliases": [
+        "面光（黄昏）（一）"
+      ]
     },
     {
       "id": "template-a205",
-      "name": "面光（黄昏）（二）",
+      "name": "面光（黄昏） · 人物",
       "appliesTo": "figure",
       "effects": [
         {
@@ -1746,57 +1655,14 @@ globalThis.WebVideoNavigationMetadata={
           "bevelBlue": 148
         }
       ],
-      "category": "暖色与黄昏"
-    },
-    {
-      "id": "template-a226",
-      "name": "面光（白天）（一）",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "brightness": 0.8,
-          "contrast": 0.8,
-          "saturation": 0.7,
-          "gamma": 0.5,
-          "colorRed": 227,
-          "colorGreen": 227,
-          "colorBlue": 227,
-          "bloom": 0.7,
-          "bloomBrightness": 0.8,
-          "bloomBlur": 10
-        }
-      ],
-      "category": "柔光与梦境"
-    },
-    {
-      "id": "template-a227",
-      "name": "面光（白天）（二）",
-      "appliesTo": "figure",
-      "effects": [
-        {
-          "brightness": 0.75,
-          "contrast": 1,
-          "saturation": 0.8,
-          "gamma": 0.7,
-          "colorRed": 255,
-          "colorGreen": 255,
-          "colorBlue": 255,
-          "bloom": 0.5,
-          "bloomBrightness": 1,
-          "bloomBlur": 10,
-          "bevel": 0.5,
-          "bevelThickness": 18,
-          "bevelRotation": 30,
-          "bevelRed": 196,
-          "bevelGreen": 185,
-          "bevelBlue": 185
-        }
-      ],
-      "category": "柔光与梦境"
+      "category": "暖色与黄昏",
+      "aliases": [
+        "面光（黄昏）（二）"
+      ]
     },
     {
       "id": "template-a250",
-      "name": "面光·清晨／黄昏（轻）",
+      "name": "面光·清晨／黄昏（轻） · 人物",
       "appliesTo": "figure",
       "effects": [
         {
@@ -1818,199 +1684,10 @@ globalThis.WebVideoNavigationMetadata={
           "bevelBlue": 176
         }
       ],
-      "category": "暖色与黄昏"
-    },
-    {
-      "id": "original-1",
-      "name": "赛博朋克/电子故障风格",
-      "category": "风格与失真",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "glitchFilm": 1,
-          "rgbFilm": 1,
-          "oldFilm": 1,
-          "colorRed": 200,
-          "colorGreen": 255,
-          "colorBlue": 255,
-          "brightness": 1.2
-        }
-      ],
-      "source": "原特效库 #1"
-    },
-    {
-      "id": "original-5",
-      "name": "水下/热浪扭曲效果",
-      "category": "风格与失真",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "reflectionFilm": 1,
-          "colorRed": 200,
-          "colorGreen": 220,
-          "colorBlue": 255,
-          "blur": 1
-        }
-      ],
-      "source": "原特效库 #5"
-    },
-    {
-      "id": "original-6",
-      "name": "角色高光/觉醒状态（立绘）",
-      "category": "柔光与梦境",
-      "appliesTo": "figure",
-      "effects": [
-        {
-          "bloom": 1.5,
-          "bloomBlur": 4,
-          "bloomThreshold": 0.1,
-          "brightness": 1.2
-        }
-      ],
-      "source": "原特效库 #6"
-    },
-    {
-      "id": "original-8",
-      "name": "复古胶片（人物）",
-      "category": "其他调色",
-      "appliesTo": "figure",
-      "effects": [
-        {
-          "brightness": 0.7,
-          "contrast": 1.3,
-          "saturation": 0.7,
-          "gamma": 1,
-          "colorRed": 255,
-          "colorGreen": 235,
-          "colorBlue": 210,
-          "bloom": 0.2,
-          "bloomBlur": 4,
-          "bevel": 1,
-          "bevelThickness": 15,
-          "bevelRotation": 45,
-          "bevelRed": 250,
-          "bevelGreen": 220,
-          "bevelBlue": 180
-        }
-      ],
-      "source": "原特效库 #8"
-    },
-    {
-      "id": "original-10",
-      "name": "赛博朋克（人物）",
-      "category": "风格与失真",
-      "appliesTo": "figure",
-      "effects": [
-        {
-          "brightness": 0.8,
-          "contrast": 1.4,
-          "saturation": 1.6,
-          "gamma": 0.8,
-          "colorRed": 200,
-          "colorGreen": 220,
-          "colorBlue": 255,
-          "bloom": 0.8,
-          "bloomBlur": 8,
-          "bevel": 2,
-          "bevelThickness": 20,
-          "bevelRotation": 60,
-          "bevelRed": 150,
-          "bevelGreen": 180,
-          "bevelBlue": 255
-        }
-      ],
-      "source": "原特效库 #10"
-    },
-    {
-      "id": "original-11",
-      "name": "梦幻柔光（背景）",
-      "category": "柔光与梦境",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "brightness": 1.1,
-          "contrast": 0.7,
-          "saturation": 1.3,
-          "gamma": 0.8,
-          "colorRed": 250,
-          "colorGreen": 240,
-          "colorBlue": 255,
-          "bloom": 1.5,
-          "bloomBrightness": 0.6,
-          "bloomBlur": 15
-        }
-      ],
-      "source": "原特效库 #11"
-    },
-    {
-      "id": "original-12",
-      "name": "梦幻柔光（人物）",
-      "category": "柔光与梦境",
-      "appliesTo": "figure",
-      "effects": [
-        {
-          "brightness": 1,
-          "contrast": 0.8,
-          "saturation": 1.2,
-          "gamma": 0.9,
-          "colorRed": 252,
-          "colorGreen": 245,
-          "colorBlue": 255,
-          "bloom": 1,
-          "bloomBlur": 10,
-          "bevel": 0.8,
-          "bevelThickness": 12,
-          "bevelRotation": 30,
-          "bevelRed": 255,
-          "bevelGreen": 250,
-          "bevelBlue": 255
-        }
-      ],
-      "source": "原特效库 #12"
-    },
-    {
-      "id": "original-13",
-      "name": "冷色调极简（背景）",
-      "category": "冷色与夜景",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "brightness": 0.75,
-          "contrast": 1.2,
-          "saturation": 0.4,
-          "gamma": 0.8,
-          "colorRed": 180,
-          "colorGreen": 200,
-          "colorBlue": 255,
-          "bloom": 0.2,
-          "bloomBlur": 5
-        }
-      ],
-      "source": "原特效库 #13"
-    },
-    {
-      "id": "original-14",
-      "name": "冷色调极简（人物）",
-      "category": "冷色与夜景",
-      "appliesTo": "figure",
-      "effects": [
-        {
-          "brightness": 0.7,
-          "contrast": 1.3,
-          "saturation": 0.5,
-          "gamma": 0.9,
-          "colorRed": 190,
-          "colorGreen": 210,
-          "colorBlue": 255,
-          "bevel": 1,
-          "bevelThickness": 10,
-          "bevelRotation": 40,
-          "bevelRed": 170,
-          "bevelGreen": 190,
-          "bevelBlue": 250
-        }
-      ],
-      "source": "原特效库 #14"
+      "category": "暖色与黄昏",
+      "aliases": [
+        "面光·清晨／黄昏（轻）"
+      ]
     },
     {
       "id": "original-15",
@@ -2059,79 +1736,702 @@ globalThis.WebVideoNavigationMetadata={
       "source": "原特效库 #16"
     },
     {
-      "id": "original-17",
-      "name": "水墨风（背景）",
-      "category": "其他调色",
+      "id": "original-32",
+      "name": "羞涩脸红·暖色滤镜",
+      "category": "暖色与黄昏",
       "appliesTo": "background",
       "effects": [
         {
-          "brightness": 0.8,
-          "contrast": 1.6,
-          "saturation": 0.2,
-          "gamma": 0.7,
-          "colorRed": 200,
+          "colorRed": 255,
           "colorGreen": 200,
           "colorBlue": 200,
-          "bloom": 0.1,
-          "bloomBlur": 3
+          "saturation": 1.3,
+          "brightness": 1.1
         }
       ],
-      "source": "原特效库 #17"
+      "source": "原特效库 #32"
     },
     {
-      "id": "original-18",
-      "name": "水墨风（人物）",
-      "category": "其他调色",
+      "id": "original-46",
+      "name": "逢魔之时（黄昏）",
+      "category": "暖色与黄昏",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "colorRed": 255,
+          "colorGreen": 150,
+          "colorBlue": 100,
+          "contrast": 1.3
+        }
+      ],
+      "source": "原特效库 #46"
+    },
+    {
+      "id": "original-50",
+      "name": "黄昏余晖·暖橙色",
+      "category": "暖色与黄昏",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "colorRed": 255,
+          "colorGreen": 210,
+          "colorBlue": 160,
+          "brightness": 1.05
+        }
+      ],
+      "source": "原特效库 #50"
+    },
+    {
+      "id": "contrib-dusk",
+      "name": "黄昏（通用）",
+      "aliases": [
+        "黄昏"
+      ],
+      "appliesTo": "both",
+      "category": "暖色与黄昏",
+      "effects": [
+        {
+          "saturation": 1.2,
+          "gamma": 1.2,
+          "colorGreen": 245.413,
+          "colorBlue": 211.172,
+          "bloomBlur": 1,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 30,
+          "bevelSoftness": 1,
+          "bevelGreen": 241.304,
+          "bevelBlue": 211.172
+        }
+      ]
+    },
+    {
+      "id": "contrib-warm-brown-glow",
+      "name": "暖棕余晖",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 214,
+          "colorGreen": 180,
+          "colorBlue": 155,
+          "bloom": 0.2,
+          "bloomBlur": 10,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 90,
+          "bevelSoftness": 1,
+          "bevelGreen": 240,
+          "bevelBlue": 207
+        }
+      ],
+      "category": "暖色与黄昏"
+    },
+    {
+      "id": "contrib-amber-warm-light",
+      "name": "琥珀暖光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 242,
+          "colorGreen": 214,
+          "colorBlue": 178,
+          "bloom": 0.25,
+          "bloomBrightness": 0.83,
+          "bloomBlur": 10,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 80,
+          "bevelSoftness": 1,
+          "bevelGreen": 241,
+          "bevelBlue": 210
+        }
+      ],
+      "category": "暖色与黄昏"
+    },
+    {
+      "id": "sr-01",
+      "name": "夜晚柔光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "brightness": 0.6,
+          "contrast": 0.976,
+          "saturation": 1.268,
+          "gamma": 0.866,
+          "colorRed": 255,
+          "colorGreen": 235,
+          "colorBlue": 214,
+          "bloom": 0.652,
+          "bloomBrightness": 0.854,
+          "bloomBlur": 23,
+          "bloomThreshold": 0,
+          "bevel": 0.616,
+          "bevelThickness": 4,
+          "bevelRotation": 0,
+          "bevelSoftness": 0.476,
+          "bevelRed": 255,
+          "bevelGreen": 217,
+          "bevelBlue": 143
+        }
+      ],
+      "category": "冷色与夜景"
+    },
+    {
+      "id": "sr-04",
+      "name": "夜晚（开灯）",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "brightness": 0.841,
+          "colorRed": 255,
+          "colorGreen": 248,
+          "colorBlue": 222,
+          "bloom": 0.244,
+          "bloomBlur": 44,
+          "bevel": 0.427,
+          "bevelThickness": 27,
+          "bevelRotation": 134,
+          "bevelRed": 255,
+          "bevelGreen": 248,
+          "bevelBlue": 143
+        }
+      ],
+      "category": "冷色与夜景"
+    },
+    {
+      "id": "sr-05",
+      "name": "夜晚（关灯）",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "brightness": 0.488,
+          "colorRed": 255,
+          "colorGreen": 254,
+          "colorBlue": 222,
+          "bloom": 0.409,
+          "bloomBlur": 45,
+          "bevel": 0.134,
+          "bevelThickness": 24,
+          "bevelRotation": 130,
+          "bevelRed": 255,
+          "bevelGreen": 243,
+          "bevelBlue": 199
+        }
+      ],
+      "category": "冷色与夜景"
+    },
+    {
+      "id": "sr-09",
+      "name": "室外夜晚",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "blur": 2,
+          "brightness": 0.915,
+          "contrast": 1,
+          "saturation": 1.329,
+          "colorRed": 199,
+          "colorGreen": 199,
+          "colorBlue": 199,
+          "bloom": 0.305,
+          "bloomBlur": 41,
+          "bevel": 0.756,
+          "bevelThickness": 12,
+          "bevelRotation": 2,
+          "bevelSoftness": 0.329,
+          "bevelRed": 235,
+          "bevelGreen": 235,
+          "bevelBlue": 235
+        }
+      ],
+      "category": "冷色与夜景"
+    },
+    {
+      "id": "sr-14",
+      "name": "灯家天桥",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "brightness": 0.793,
+          "colorRed": 217,
+          "colorGreen": 217,
+          "colorBlue": 217,
+          "bloom": 0.39,
+          "bloomBlur": 50,
+          "bevel": 0.482,
+          "bevelThickness": 23,
+          "bevelRotation": 66,
+          "bevelRed": 242,
+          "bevelGreen": 242,
+          "bevelBlue": 242
+        }
+      ],
+      "category": "冷色与夜景"
+    },
+    {
+      "id": "original-13",
+      "name": "冷色调极简（背景）",
+      "category": "冷色与夜景",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "brightness": 0.75,
+          "contrast": 1.2,
+          "saturation": 0.4,
+          "gamma": 0.8,
+          "colorRed": 180,
+          "colorGreen": 200,
+          "colorBlue": 255,
+          "bloom": 0.2,
+          "bloomBlur": 5
+        }
+      ],
+      "source": "原特效库 #13"
+    },
+    {
+      "id": "original-14",
+      "name": "冷色调极简（人物）",
+      "category": "冷色与夜景",
+      "appliesTo": "figure",
+      "effects": [
+        {
+          "brightness": 0.7,
+          "contrast": 1.3,
+          "saturation": 0.5,
+          "gamma": 0.9,
+          "colorRed": 190,
+          "colorGreen": 210,
+          "colorBlue": 255,
+          "bevel": 1,
+          "bevelThickness": 10,
+          "bevelRotation": 40,
+          "bevelRed": 170,
+          "bevelGreen": 190,
+          "bevelBlue": 250
+        }
+      ],
+      "source": "原特效库 #14"
+    },
+    {
+      "id": "original-45",
+      "name": "深夜模式",
+      "category": "冷色与夜景",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "colorRed": 80,
+          "colorGreen": 80,
+          "colorBlue": 200,
+          "brightness": 0.5,
+          "contrast": 1.2
+        }
+      ],
+      "source": "原特效库 #45"
+    },
+    {
+      "id": "original-49",
+      "name": "月下唯美·冷色调",
+      "category": "冷色与夜景",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "colorRed": 180,
+          "colorGreen": 190,
+          "colorBlue": 255,
+          "brightness": 0.8,
+          "contrast": 1.2
+        }
+      ],
+      "source": "原特效库 #49"
+    },
+    {
+      "id": "contrib-muted-twilight-blue",
+      "name": "暮蓝冷调",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 126,
+          "colorGreen": 145,
+          "colorBlue": 178,
+          "bloom": 0.2,
+          "bloomBlur": 10,
+          "bevel": 0.75,
+          "bevelThickness": 30,
+          "bevelSoftness": 1,
+          "bevelGreen": 213,
+          "bevelBlue": 138
+        }
+      ],
+      "category": "冷色与夜景"
+    },
+    {
+      "id": "sr-08",
+      "name": "暗处",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "blur": 2,
+          "brightness": 0.744,
+          "saturation": 1.244,
+          "gamma": 1.122,
+          "colorRed": 255,
+          "colorGreen": 255,
+          "colorBlue": 255,
+          "bloom": 0.165,
+          "bloomBlur": 38,
+          "bevel": 0.445,
+          "bevelThickness": 31,
+          "bevelRotation": 92,
+          "bevelRed": 227,
+          "bevelGreen": 227,
+          "bevelBlue": 227
+        }
+      ],
+      "category": "暗处与低照"
+    },
+    {
+      "id": "sr-12",
+      "name": "仓库（未开灯）",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "blur": 2,
+          "brightness": 0.598,
+          "contrast": 1,
+          "colorRed": 255,
+          "colorGreen": 255,
+          "colorBlue": 255,
+          "bloom": 0.524,
+          "bloomBrightness": 0.829,
+          "bloomBlur": 41,
+          "bevel": 0.39,
+          "bevelThickness": 30,
+          "bevelRotation": 156,
+          "bevelSoftness": 0.329,
+          "bevelRed": 255,
+          "bevelGreen": 255,
+          "bevelBlue": 255
+        }
+      ],
+      "category": "暗处与低照"
+    },
+    {
+      "id": "template-a54",
+      "name": "黑暗（有灯光） · 背景",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "brightness": 0.7,
+          "contrast": 0.8,
+          "saturation": 0.7,
+          "gamma": 0.5,
+          "colorRed": 255,
+          "colorGreen": 255,
+          "colorBlue": 255,
+          "bloom": 1,
+          "bloomBrightness": 0.7,
+          "bloomBlur": 10
+        }
+      ],
+      "category": "暗处与低照",
+      "aliases": [
+        "黑暗（有灯光）（一）"
+      ]
+    },
+    {
+      "id": "template-a55",
+      "name": "黑暗（有灯光） · 人物",
+      "appliesTo": "figure",
+      "effects": [
+        {
+          "brightness": 0.6,
+          "contrast": 1.1,
+          "saturation": 0.9,
+          "gamma": 0.9,
+          "colorRed": 255,
+          "colorGreen": 255,
+          "colorBlue": 255,
+          "bloom": 0.2,
+          "bloomBrightness": 0.9,
+          "bloomBlur": 10,
+          "bevel": 1,
+          "bevelThickness": 18,
+          "bevelRotation": 30,
+          "bevelRed": 204,
+          "bevelGreen": 204,
+          "bevelBlue": 204
+        }
+      ],
+      "category": "暗处与低照",
+      "aliases": [
+        "黑暗（有灯光）（二）"
+      ]
+    },
+    {
+      "id": "template-a104",
+      "name": "黑暗（无灯光） · 背景",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "brightness": 0.7,
+          "contrast": 0.8,
+          "saturation": 0.7,
+          "gamma": 0.5,
+          "colorRed": 222,
+          "colorGreen": 222,
+          "colorBlue": 222,
+          "bloom": 1,
+          "bloomBrightness": 0.7,
+          "bloomBlur": 10
+        }
+      ],
+      "category": "暗处与低照",
+      "aliases": [
+        "黑暗（无灯光）（一）"
+      ]
+    },
+    {
+      "id": "template-a105",
+      "name": "黑暗（无灯光） · 人物",
+      "appliesTo": "figure",
+      "effects": [
+        {
+          "brightness": 0.4,
+          "contrast": 1.1,
+          "saturation": 0.9,
+          "gamma": 0.7,
+          "colorRed": 255,
+          "colorGreen": 255,
+          "colorBlue": 255,
+          "bloom": 0.2,
+          "bloomBrightness": 0.9,
+          "bloomBlur": 10,
+          "bevel": 0.2,
+          "bevelThickness": 18,
+          "bevelRotation": 130,
+          "bevelRed": 161,
+          "bevelGreen": 161,
+          "bevelBlue": 161
+        }
+      ],
+      "category": "暗处与低照",
+      "aliases": [
+        "黑暗（无灯光）（二）"
+      ]
+    },
+    {
+      "id": "original-37",
+      "name": "黑化·深渊模式",
+      "category": "暗处与低照",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "radiusAlphaFilter": 0.4
+        }
+      ],
+      "source": "原特效库 #37"
+    },
+    {
+      "id": "original-extra-1",
+      "name": "「失去高光·绝望」（setTransform版本）",
+      "category": "暗处与低照",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "saturation": 0,
+          "brightness": 0.8,
+          "contrast": 1.3
+        }
+      ],
+      "source": "原特效库 补充1"
+    },
+    {
+      "id": "contrib-dark-brown-highlight",
+      "name": "暗棕点光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 111,
+          "colorGreen": 89,
+          "colorBlue": 77,
+          "bloom": 0.25,
+          "bloomBrightness": 1.75,
+          "bloomBlur": 10,
+          "bevel": 0.5,
+          "bevelThickness": 30,
+          "bevelRotation": 80,
+          "bevelSoftness": 1,
+          "bevelGreen": 215,
+          "bevelBlue": 154
+        }
+      ],
+      "category": "暗处与低照"
+    },
+    {
+      "id": "contrib-dark-warm-interior",
+      "name": "暗暖室内光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 139,
+          "colorGreen": 118,
+          "colorBlue": 111,
+          "bloom": 0.5,
+          "bloomBrightness": 1.1,
+          "bloomBlur": 1.25,
+          "bloomThreshold": 0.06,
+          "bevel": 1,
+          "bevelThickness": 30,
+          "bevelRotation": 90,
+          "bevelSoftness": 1,
+          "bevelGreen": 212,
+          "bevelBlue": 147
+        }
+      ],
+      "category": "暗处与低照"
+    },
+    {
+      "id": "contrib-dark-warm-bloom",
+      "name": "暗暖泛光",
+      "appliesTo": "both",
+      "effects": [
+        {
+          "colorRed": 139,
+          "colorGreen": 118,
+          "colorBlue": 111,
+          "bloom": 1,
+          "bloomBrightness": 0.8,
+          "bloomBlur": 0.5,
+          "bevel": 0.5,
+          "bevelThickness": 32,
+          "bevelSoftness": 1,
+          "bevelGreen": 212,
+          "bevelBlue": 147
+        }
+      ],
+      "category": "暗处与低照"
+    },
+    {
+      "id": "template-a30",
+      "name": "火光／爆炸 · 背景",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "brightness": 0.9,
+          "contrast": 0.8,
+          "saturation": 0.5,
+          "gamma": 0.6,
+          "colorRed": 255,
+          "colorGreen": 218,
+          "colorBlue": 184,
+          "bloom": 1,
+          "bloomBrightness": 0.8,
+          "bloomBlur": 8,
+          "bevelRed": 255,
+          "bevelGreen": 194,
+          "bevelBlue": 125
+        }
+      ],
+      "category": "柔光与高光",
+      "aliases": [
+        "火光／爆炸（一）"
+      ]
+    },
+    {
+      "id": "template-a31",
+      "name": "火光／爆炸 · 人物",
       "appliesTo": "figure",
       "effects": [
         {
           "brightness": 0.75,
-          "contrast": 1.7,
-          "saturation": 0.3,
-          "gamma": 0.8,
-          "colorRed": 210,
-          "colorGreen": 210,
-          "colorBlue": 210,
-          "bevel": 0.5,
-          "bevelThickness": 8,
-          "bevelRotation": 30,
-          "bevelRed": 180,
-          "bevelGreen": 180,
-          "bevelBlue": 180
+          "contrast": 1.1,
+          "saturation": 0.8,
+          "gamma": 1,
+          "colorRed": 255,
+          "colorGreen": 234,
+          "colorBlue": 217,
+          "bloom": 0.6,
+          "bloomBrightness": 0.7,
+          "bloomBlur": 4,
+          "bevel": 2,
+          "bevelThickness": 20,
+          "bevelRotation": 80,
+          "bevelRed": 255,
+          "bevelGreen": 201,
+          "bevelBlue": 125
         }
       ],
-      "source": "原特效库 #18"
+      "category": "柔光与高光",
+      "aliases": [
+        "火光／爆炸（二）"
+      ]
     },
     {
-      "id": "original-22",
-      "name": "电影感暗角（人物）",
-      "category": "其他调色",
+      "id": "original-6",
+      "name": "角色高光/觉醒状态（立绘）",
+      "category": "柔光与高光",
       "appliesTo": "figure",
       "effects": [
         {
-          "brightness": 0.9,
-          "contrast": 1.2,
-          "saturation": 1,
-          "gamma": 0.9,
-          "colorRed": 252,
-          "colorGreen": 247,
-          "colorBlue": 242,
-          "bloom": 0.4,
-          "bloomBlur": 5,
-          "bevel": 1.1,
-          "bevelThickness": 15,
-          "bevelRotation": 35,
-          "bevelRed": 245,
-          "bevelGreen": 240,
-          "bevelBlue": 235
+          "bloom": 1.5,
+          "bloomBlur": 4,
+          "bloomThreshold": 0.1,
+          "brightness": 1.2
         }
       ],
-      "source": "原特效库 #22"
+      "source": "原特效库 #6"
+    },
+    {
+      "id": "original-11",
+      "name": "梦幻柔光（背景）",
+      "category": "柔光与高光",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "brightness": 1.1,
+          "contrast": 0.7,
+          "saturation": 1.3,
+          "gamma": 0.8,
+          "colorRed": 250,
+          "colorGreen": 240,
+          "colorBlue": 255,
+          "bloom": 1.5,
+          "bloomBrightness": 0.6,
+          "bloomBlur": 15
+        }
+      ],
+      "source": "原特效库 #11"
+    },
+    {
+      "id": "original-12",
+      "name": "梦幻柔光（人物）",
+      "category": "柔光与高光",
+      "appliesTo": "figure",
+      "effects": [
+        {
+          "brightness": 1,
+          "contrast": 0.8,
+          "saturation": 1.2,
+          "gamma": 0.9,
+          "colorRed": 252,
+          "colorGreen": 245,
+          "colorBlue": 255,
+          "bloom": 1,
+          "bloomBlur": 10,
+          "bevel": 0.8,
+          "bevelThickness": 12,
+          "bevelRotation": 30,
+          "bevelRed": 255,
+          "bevelGreen": 250,
+          "bevelBlue": 255
+        }
+      ],
+      "source": "原特效库 #12"
     },
     {
       "id": "original-23",
       "name": "高光溢出（背景）",
-      "category": "柔光与梦境",
+      "category": "柔光与高光",
       "appliesTo": "background",
       "effects": [
         {
@@ -2152,7 +2452,7 @@ globalThis.WebVideoNavigationMetadata={
     {
       "id": "original-24",
       "name": "高光溢出（人物）",
-      "category": "柔光与梦境",
+      "category": "柔光与高光",
       "appliesTo": "figure",
       "effects": [
         {
@@ -2176,55 +2476,9 @@ globalThis.WebVideoNavigationMetadata={
       "source": "原特效库 #24"
     },
     {
-      "id": "original-25",
-      "name": "清新日系（背景）",
-      "category": "其他调色",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "brightness": 1.05,
-          "contrast": 0.85,
-          "saturation": 1.2,
-          "gamma": 0.95,
-          "colorRed": 245,
-          "colorGreen": 250,
-          "colorBlue": 255,
-          "bloom": 0.6,
-          "bloomBlur": 9
-        }
-      ],
-      "source": "原特效库 #25"
-    },
-    {
-      "id": "original-26",
-      "name": "清新日系（人物）",
-      "category": "其他调色",
-      "appliesTo": "figure",
-      "effects": [
-        {
-          "brightness": 1,
-          "contrast": 0.9,
-          "saturation": 1.1,
-          "gamma": 1,
-          "colorRed": 248,
-          "colorGreen": 252,
-          "colorBlue": 255,
-          "bloom": 0.5,
-          "bloomBlur": 7,
-          "bevel": 0.7,
-          "bevelThickness": 10,
-          "bevelRotation": 30,
-          "bevelRed": 240,
-          "bevelGreen": 245,
-          "bevelBlue": 250
-        }
-      ],
-      "source": "原特效库 #26"
-    },
-    {
       "id": "original-27",
       "name": "圣光降临",
-      "category": "柔光与梦境",
+      "category": "柔光与高光",
       "appliesTo": "background",
       "effects": [
         {
@@ -2237,7 +2491,7 @@ globalThis.WebVideoNavigationMetadata={
     {
       "id": "original-28",
       "name": "天使光环",
-      "category": "柔光与梦境",
+      "category": "柔光与高光",
       "appliesTo": "background",
       "effects": [
         {
@@ -2250,22 +2504,9 @@ globalThis.WebVideoNavigationMetadata={
       "source": "原特效库 #28"
     },
     {
-      "id": "original-29",
-      "name": "梦境边缘·色差",
-      "category": "柔光与梦境",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "rgbFilm": 1,
-          "blur": 1
-        }
-      ],
-      "source": "原特效库 #29"
-    },
-    {
       "id": "original-30",
       "name": "水下/波光粼粼",
-      "category": "柔光与梦境",
+      "category": "柔光与高光",
       "appliesTo": "background",
       "effects": [
         {
@@ -2275,25 +2516,9 @@ globalThis.WebVideoNavigationMetadata={
       "source": "原特效库 #30"
     },
     {
-      "id": "original-32",
-      "name": "羞涩脸红·暖色滤镜",
-      "category": "暖色与黄昏",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "colorRed": 255,
-          "colorGreen": 200,
-          "colorBlue": 200,
-          "saturation": 1.3,
-          "brightness": 1.1
-        }
-      ],
-      "source": "原特效库 #32"
-    },
-    {
       "id": "original-33",
       "name": "暧昧气氛·朦胧美",
-      "category": "柔光与梦境",
+      "category": "柔光与高光",
       "appliesTo": "background",
       "effects": [
         {
@@ -2308,7 +2533,7 @@ globalThis.WebVideoNavigationMetadata={
     {
       "id": "original-34",
       "name": "视线模糊·含泪",
-      "category": "柔光与梦境",
+      "category": "柔光与高光",
       "appliesTo": "background",
       "effects": [
         {
@@ -2320,9 +2545,203 @@ globalThis.WebVideoNavigationMetadata={
       "source": "原特效库 #34"
     },
     {
+      "id": "original-42",
+      "name": "立绘·高光时刻（背景变暗）",
+      "category": "柔光与高光",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "brightness": 0.5
+        }
+      ],
+      "source": "原特效库 #42"
+    },
+    {
+      "id": "original-43",
+      "name": "立绘·高光时刻（立绘发光）",
+      "category": "柔光与高光",
+      "appliesTo": "figure",
+      "effects": [
+        {
+          "bloom": 0.5,
+          "brightness": 1.1
+        }
+      ],
+      "source": "原特效库 #43"
+    },
+    {
+      "id": "original-1",
+      "name": "赛博朋克/电子故障风格",
+      "category": "风格化与失真",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "glitchFilm": 1,
+          "rgbFilm": 1,
+          "oldFilm": 1,
+          "colorRed": 200,
+          "colorGreen": 255,
+          "colorBlue": 255,
+          "brightness": 1.2
+        }
+      ],
+      "source": "原特效库 #1"
+    },
+    {
+      "id": "original-5",
+      "name": "水下/热浪扭曲效果",
+      "category": "风格化与失真",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "reflectionFilm": 1,
+          "colorRed": 200,
+          "colorGreen": 220,
+          "colorBlue": 255,
+          "blur": 1
+        }
+      ],
+      "source": "原特效库 #5"
+    },
+    {
+      "id": "original-8",
+      "name": "复古胶片（人物）",
+      "category": "风格化与失真",
+      "appliesTo": "figure",
+      "effects": [
+        {
+          "brightness": 0.7,
+          "contrast": 1.3,
+          "saturation": 0.7,
+          "gamma": 1,
+          "colorRed": 255,
+          "colorGreen": 235,
+          "colorBlue": 210,
+          "bloom": 0.2,
+          "bloomBlur": 4,
+          "bevel": 1,
+          "bevelThickness": 15,
+          "bevelRotation": 45,
+          "bevelRed": 250,
+          "bevelGreen": 220,
+          "bevelBlue": 180
+        }
+      ],
+      "source": "原特效库 #8"
+    },
+    {
+      "id": "original-10",
+      "name": "赛博朋克（人物）",
+      "category": "风格化与失真",
+      "appliesTo": "figure",
+      "effects": [
+        {
+          "brightness": 0.8,
+          "contrast": 1.4,
+          "saturation": 1.6,
+          "gamma": 0.8,
+          "colorRed": 200,
+          "colorGreen": 220,
+          "colorBlue": 255,
+          "bloom": 0.8,
+          "bloomBlur": 8,
+          "bevel": 2,
+          "bevelThickness": 20,
+          "bevelRotation": 60,
+          "bevelRed": 150,
+          "bevelGreen": 180,
+          "bevelBlue": 255
+        }
+      ],
+      "source": "原特效库 #10"
+    },
+    {
+      "id": "original-17",
+      "name": "水墨风（背景）",
+      "category": "风格化与失真",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "brightness": 0.8,
+          "contrast": 1.6,
+          "saturation": 0.2,
+          "gamma": 0.7,
+          "colorRed": 200,
+          "colorGreen": 200,
+          "colorBlue": 200,
+          "bloom": 0.1,
+          "bloomBlur": 3
+        }
+      ],
+      "source": "原特效库 #17"
+    },
+    {
+      "id": "original-18",
+      "name": "水墨风（人物）",
+      "category": "风格化与失真",
+      "appliesTo": "figure",
+      "effects": [
+        {
+          "brightness": 0.75,
+          "contrast": 1.7,
+          "saturation": 0.3,
+          "gamma": 0.8,
+          "colorRed": 210,
+          "colorGreen": 210,
+          "colorBlue": 210,
+          "bevel": 0.5,
+          "bevelThickness": 8,
+          "bevelRotation": 30,
+          "bevelRed": 180,
+          "bevelGreen": 180,
+          "bevelBlue": 180
+        }
+      ],
+      "source": "原特效库 #18"
+    },
+    {
+      "id": "original-22",
+      "name": "电影感暗角（人物）",
+      "category": "风格化与失真",
+      "appliesTo": "figure",
+      "effects": [
+        {
+          "brightness": 0.9,
+          "contrast": 1.2,
+          "saturation": 1,
+          "gamma": 0.9,
+          "colorRed": 252,
+          "colorGreen": 247,
+          "colorBlue": 242,
+          "bloom": 0.4,
+          "bloomBlur": 5,
+          "bevel": 1.1,
+          "bevelThickness": 15,
+          "bevelRotation": 35,
+          "bevelRed": 245,
+          "bevelGreen": 240,
+          "bevelBlue": 235
+        }
+      ],
+      "source": "原特效库 #22"
+    },
+    {
+      "id": "original-29",
+      "name": "梦境边缘·色差",
+      "category": "风格化与失真",
+      "appliesTo": "background",
+      "effects": [
+        {
+          "rgbFilm": 1,
+          "blur": 1
+        }
+      ],
+      "source": "原特效库 #29"
+    },
+    {
       "id": "original-35",
       "name": "恋爱脑·色彩增强",
-      "category": "其他调色",
+      "category": "风格化与失真",
       "appliesTo": "background",
       "effects": [
         {
@@ -2336,7 +2755,7 @@ globalThis.WebVideoNavigationMetadata={
     {
       "id": "original-36",
       "name": "病娇·精神污染",
-      "category": "风格与失真",
+      "category": "风格化与失真",
       "appliesTo": "background",
       "effects": [
         {
@@ -2350,21 +2769,9 @@ globalThis.WebVideoNavigationMetadata={
       "source": "原特效库 #36"
     },
     {
-      "id": "original-37",
-      "name": "黑化·深渊模式",
-      "category": "其他调色",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "radiusAlphaFilter": 0.4
-        }
-      ],
-      "source": "原特效库 #37"
-    },
-    {
       "id": "original-38",
       "name": "耳鸣·视觉重影",
-      "category": "风格与失真",
+      "category": "风格化与失真",
       "appliesTo": "background",
       "effects": [
         {
@@ -2375,34 +2782,9 @@ globalThis.WebVideoNavigationMetadata={
       "source": "原特效库 #38"
     },
     {
-      "id": "original-42",
-      "name": "立绘·高光时刻（背景变暗）",
-      "category": "柔光与梦境",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "brightness": 0.5
-        }
-      ],
-      "source": "原特效库 #42"
-    },
-    {
-      "id": "original-43",
-      "name": "立绘·高光时刻（立绘发光）",
-      "category": "柔光与梦境",
-      "appliesTo": "figure",
-      "effects": [
-        {
-          "bloom": 0.5,
-          "brightness": 1.1
-        }
-      ],
-      "source": "原特效库 #43"
-    },
-    {
       "id": "original-44",
       "name": "雨天窗户",
-      "category": "风格与失真",
+      "category": "风格化与失真",
       "appliesTo": "background",
       "effects": [
         {
@@ -2413,71 +2795,9 @@ globalThis.WebVideoNavigationMetadata={
       "source": "原特效库 #44"
     },
     {
-      "id": "original-45",
-      "name": "深夜模式",
-      "category": "冷色与夜景",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "colorRed": 80,
-          "colorGreen": 80,
-          "colorBlue": 200,
-          "brightness": 0.5,
-          "contrast": 1.2
-        }
-      ],
-      "source": "原特效库 #45"
-    },
-    {
-      "id": "original-46",
-      "name": "逢魔之时（黄昏）",
-      "category": "暖色与黄昏",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "colorRed": 255,
-          "colorGreen": 150,
-          "colorBlue": 100,
-          "contrast": 1.3
-        }
-      ],
-      "source": "原特效库 #46"
-    },
-    {
-      "id": "original-49",
-      "name": "月下唯美·冷色调",
-      "category": "冷色与夜景",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "colorRed": 180,
-          "colorGreen": 190,
-          "colorBlue": 255,
-          "brightness": 0.8,
-          "contrast": 1.2
-        }
-      ],
-      "source": "原特效库 #49"
-    },
-    {
-      "id": "original-50",
-      "name": "黄昏余晖·暖橙色",
-      "category": "暖色与黄昏",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "colorRed": 255,
-          "colorGreen": 210,
-          "colorBlue": 160,
-          "brightness": 1.05
-        }
-      ],
-      "source": "原特效库 #50"
-    },
-    {
       "id": "original-176",
       "name": "赛博波动（背景滤镜）",
-      "category": "风格与失真",
+      "category": "风格化与失真",
       "appliesTo": "background",
       "effects": [
         {
@@ -2495,7 +2815,7 @@ globalThis.WebVideoNavigationMetadata={
     {
       "id": "original-178",
       "name": "赛博波动（人物滤镜）",
-      "category": "风格与失真",
+      "category": "风格化与失真",
       "appliesTo": "figure",
       "effects": [
         {
@@ -2508,20 +2828,6 @@ globalThis.WebVideoNavigationMetadata={
         }
       ],
       "source": "原特效库 #178"
-    },
-    {
-      "id": "original-extra-1",
-      "name": "「失去高光·绝望」（setTransform版本）",
-      "category": "柔光与梦境",
-      "appliesTo": "background",
-      "effects": [
-        {
-          "saturation": 0,
-          "brightness": 0.8,
-          "contrast": 1.3
-        }
-      ],
-      "source": "原特效库 补充1"
     }
   ],
   "speakerPositions": {

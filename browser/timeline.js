@@ -17,9 +17,15 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
    globalThis.__nativeObserve=s=>{cancelPendingAuto();if(origin===null)origin=performance.now();lastCommand=s.command===0?'say':s.commandRaw;lastParams=Object.fromEntries(s.args.map(a=>[a.key,a.value]));lastLine=core.sceneManager.sceneData.currentSentenceId;events.push({index:lastLine,atMs:performance.now()-origin,command:lastCommand});if(manualTimer){clearTimeout(manualTimer);manualTimer=null;}if(hintTimer){clearTimeout(hintTimer);hintTimer=null;}const hintMs=singleLineHintDuration(s,lastParams);if(hintMs)hintTimer=setTimeout(()=>{hintTimer=null;const item=singleChooseItem();if(!item){hintError='单行提示未能显示唯一选项';return;}item.click();},hintMs);if(lastCommand==='end')finish();};
    const ended=()=>core.sceneManager.sceneData.currentSentenceId>=core.sceneManager.sceneData.currentScene.sentenceList.length;
    globalThis.__nativeBeforeNext=()=>{if(ended()&&!pc.hasBlockingNextPerform()&&!pc.performList.some(p=>p.blockingAuto())){finish();return false;}if(origin!==null)controlEvents.push({atMs:performance.now()-origin,kind:'next'});return true;};
-   if(policy.mode==='manual'){
-    const arrange=pc.arrangeNewPerform;pc.arrangeNewPerform=function(perform,s,...rest){if(s.command===0&&perform.performName!=='vocal-play'&&!perform.isHoldOn){const params=Object.fromEntries(s.args.map(a=>[a.key,a.value]));if(!params.notend){const n=w.compileText(s.content,3).reduce((sum,a)=>sum+a.length,0);perform.duration=n*w.textDelay(policy.textSpeed)+w.textAnimation(policy.textSpeed);}}return arrange.call(this,perform,s,...rest);};
-   }
+   // In an unattended export, plain wait must finish naturally in both timing modes.
+   // Explicit wait -next remains non-blocking; the source script is never rewritten.
+   const arrange=pc.arrangeNewPerform;
+   pc.arrangeNewPerform=function(perform,s,...rest){
+    const params=Object.fromEntries(s.args.map(a=>[a.key,a.value]));
+    if(s.commandRaw==='wait'&&params.next!==true){perform.blockingAuto=()=>true;perform.blockingNext=()=>true;}
+    if(policy.mode==='manual'&&s.command===0&&perform.performName!=='vocal-play'&&!perform.isHoldOn&&!params.notend){const n=w.compileText(s.content,3).reduce((sum,a)=>sum+a.length,0);perform.duration=n*w.textDelay(policy.textSpeed)+w.textAnimation(policy.textSpeed);}
+    return arrange.call(this,perform,s,...rest);
+   };
    document.querySelector('.html-body__title-enter')?.style.setProperty('display','none');
    __probeCommands['preview.command.set-component-visibility']({showStarter:false,isShowLogo:false,showTitle:false,showControls:false,controlsVisibility:false,isEnterGame:true});
    if(typeof globalThis.__gpuDomInstall==='function')globalThis.__gpuDomInstall();__probeCommands['preview.command.run-scene-content']({sceneContent:script});
