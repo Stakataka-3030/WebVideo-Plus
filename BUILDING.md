@@ -1,6 +1,6 @@
 # 构建与发布
 
-当前分支产品版本 **1.0.0**，产品内部开发标识 **0.5.16**，安装器内部版本 **1.0.0.0**，导出内核 **0.5.3**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建 bootstrap 仍固定使用已发布的 **0.4.10.2** 安装器，以保证第三方运行资源来源和校验值可复现。
+当前分支产品版本 **1.0.0**，产品内部开发标识 **0.5.24**，安装器 Win32 版本 **1.0.0.0**，导出内核 **0.5.5**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建 bootstrap 仍固定使用已发布的 **0.4.10.2** 安装器，以保证第三方运行资源来源和校验值可复现。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`manifest.mjs`、`build-product.ps1`、`configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
@@ -76,9 +76,19 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 
 指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.0.0`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建行为和正式产物命名保持不变。
 
+## 安装恢复与存储目录
+
+安装器高级设置管理三类存储根目录：`stateDir`（WebVideo+ 数据目录）、`workDir`（导出工作缓存）和 `installCacheDir`（安装下载、解包、FFmpeg/WebView 等安装缓存）。默认值仍兼容旧安装；三者可由用户改盘。数据目录迁移属于事务操作：先停止当前服务，将旧目录复制到空目标并逐文件 SHA-256 校验，成功安装后才删除旧目录；失败会保留旧目录并清理新目标。工作缓存和安装缓存只影响后续任务或下载。
+
+角色映射、滤镜库、预制效果、Anogo 动作与 AI 提供商配置现在统一使用 `stateDir/user-data`。若新目录首次使用且检测到旧版 `%LOCALAPPDATA%\WebVideoPlus`，服务会尽量复制一次旧数据用于迁移。WebGAL 项目正文和 `video-project.json` 不属于 WebVideo+ 数据目录。
+
+安装/更新继续先走严格校验；入口、启动器或备份记录不一致时，管理器返回 `[FORCE_AVAILABLE]`，安装器再由用户显式确认“强制修复”。强制路径仍尽量使用结构锚点、已知原 bundle、Terre 目录中的原程序副本或可选长期恢复副本；写入前会创建事务性临时副本，成功后删除。长期恢复副本默认开启，放在 `stateDir/recovery`，用户可以关闭；关闭不会取消本次操作的临时回滚能力。
+
+卸载按钮弹出两个复选框：缓存/临时文件默认删除，配置/用户数据默认保留。完整用户数据清理发生在 Terre 恢复成功之后，并包括任务历史、日志、用户库、AI 配置、长期恢复副本、旧版全局配置以及各游戏中的 WebVideo+ `.webvideo-plus` 自动备份元数据；导出的 MP4 和 WebGAL 游戏工程本体不会删除。安装状态不一致时可显式强制拆卸。
+
 ## GPU Raw 导出与性能诊断
 
-0.5.4 的正常导出继续使用 output-size Pixi renderer、WebView2 SharedBuffer raw RGBA 与 ffmpeg 编码，但把“画质档”和“具体编码器”分开。默认“推荐 / 录屏级”会并行实测 NVENC、AMD AMF、Intel Quick Sync，按 NVENC → AMF → QSV 的优先级选择可用硬件编码器；都不可用时使用 CPU x264。高质量档使用相同编码器但提高质量；无损母版才使用 x264rgb CRF 0；“传统/兼容模式”保留旧 JPEG CapturePreview 路径。硬件编码器在任务开始前会按目标分辨率预检，运行时失败也会保持原画质档回退 CPU x264。升级自旧偏好格式时会迁移到新的推荐档（传统兼容模式继续保留）。
+0.5.4 起的正常导出继续使用 output-size Pixi renderer、WebView2 SharedBuffer raw RGBA 与 ffmpeg 编码，并把“画质档”和“具体编码器”分开。界面显示为 **推荐 / 高质量、超高质量、完全无损、传统 / 兼容**：推荐档会并行实测 NVENC、AMD AMF、Intel Quick Sync，按 NVENC → AMF → QSV 的优先级选择可用硬件编码器；都不可用时使用 CPU x264。超高质量使用相同编码器但提高质量；完全无损才使用 x264rgb CRF 0；传统/兼容保留旧 JPEG CapturePreview 路径。质量选择位于导出主设置区，不再藏在高级设置中。硬件编码器在任务开始前会按目标分辨率预检，运行时失败也会保持原画质档回退 CPU x264。升级自旧偏好格式时会迁移到新的推荐档（传统兼容模式继续保留）。
 
 工作缓存从状态目录中拆出：`stateDir/jobs/<id>` 只保留 request/status/log/结果等轻量记录，`config.workDir/<id>` 保存 planning、parts、audio.wav、音乐快照和渲染期 WebView2 profile。默认 `workDir` 为当前成片目录下的 `.webvideo-cache`，导出面板可修改并持久化到 `config.json`。成功任务在校验并落盘后删除重型工作目录；失败/取消保留以支持 retry。规划和每个 part 的 WebView2 profile 无论成功失败都在对应进程结束后清理。 面板上传的临时 BGM 在建任务时复制到 `workDir/<id>/imported-music`，全局 `stateDir/media` 只作为当前服务会话的上传暂存；服务启动/退出会清理未被旧未完成任务引用的副本。
 
