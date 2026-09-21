@@ -19,6 +19,10 @@ assert.equal(typeof build,'function');
 assert.equal(typeof finish,'function');
 assert.equal(typeof context.__exportTextSettleApplies,'function');
 assert.equal(typeof context.__exportInstallTextSettleGuard,'function');
+assert.equal(typeof context.__exportBeginDialogueTransition,'function');
+assert.equal(typeof context.__exportSetDialogueTarget,'function');
+assert.equal(typeof context.__exportDialogueDomReady,'function');
+assert.equal(typeof context.__exportWaitDialogueDom,'function');
 assert.equal(context.__exportTextSettleApplies('old','new',false),false);
 assert.equal(context.__exportTextSettleApplies('same','same',false),true);
 assert.equal(context.__exportTextSettleApplies(null,'same',false),false);
@@ -47,10 +51,15 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   const rendererSource=fs.readFileSync(path.join(root,'src','Renderer.cs'),'utf8');
   const domInstall=rendererSource.indexOf('__gpuDomInstall()');
   const prefixRestore=rendererSource.indexOf('globalThis.__exportPrefixRestore=true');
-  const domReady=rendererSource.indexOf('__exportRestoredDialogueReady()');
+  const beginDialogue=rendererSource.indexOf('__exportBeginDialogueTransition()');
+  const domReady=rendererSource.indexOf('__exportWaitDialogueDom()');
   const forceSettle=rendererSource.indexOf('__exportForceTextSettle=true');
   assert.ok(domInstall>=0&&prefixRestore>=0&&domInstall<prefixRestore,'GPU DOM tracking must exist before prefix restore');
-  assert.ok(domReady>prefixRestore&&forceSettle>domReady,'prefix restore must wait for rendered dialogue DOM before forced settle');
+  assert.ok(beginDialogue>=0&&beginDialogue<=prefixRestore,'prefix restore must arm dialogue mutation tracking before sync-scene');
+  assert.ok(domReady>prefixRestore&&forceSettle>domReady,'prefix restore must wait for actual dialogue DOM mutation before forced settle');
+  const segmentSource=fs.readFileSync(path.join(root,'src','SegmentPlan.cs'),'utf8');
+  assert.ok(segmentSource.includes('var eventCuts=events.Select'),'segment planner must derive cuts from semantic events');
+  assert.ok(!segmentSource.includes('new List<int>{snapCut(targetFrame),snapCut(minFrame),snapCut(maxFrame)}'),'segment planner must not inject arbitrary midpoint/min/max frame cuts');
 }
 
 
@@ -106,6 +115,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const timing={durationSeconds:2,lineTimes:[600],sourceEvents:[{index:0,forwardGroup:2}],controlEvents:[{atMs:600,kind:'settle-nonhold',line:0}],performWindows:[{command:'say',line:0,role:'primary',durationMs:900,hold:false,startMs:600,stopMs:1500}],stageExitWindows:[]};
   const plan=build({script:'new;',parsed,media:{},animations:{},timing,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
   assert.deepEqual(Array.from(plan.events.slice(0,2),e=>e.command),['__settleNonHold','say']);
+  assert.equal(plan.replayWindows.find(w=>w.command==='say').noCut,true,'active dialogue animation must be a hard no-cut interval');
 }
 
 {
