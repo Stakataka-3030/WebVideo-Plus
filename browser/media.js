@@ -1,3 +1,33 @@
+globalThis.__exportPreflightVideo=async paths=>{
+  const unique=[...new Set((paths||[]).map(String).filter(Boolean))],results=[];
+  for(const src of unique){
+    const video=document.createElement('video');video.preload='auto';video.muted=true;video.playsInline=true;video.style.display='none';document.body.appendChild(video);
+    try{
+      await new Promise((resolve,reject)=>{
+        let done=false;
+        const finish=fn=>value=>{if(done)return;done=true;video.removeEventListener('loadeddata',ok);video.removeEventListener('error',fail);fn(value);};
+        const ok=finish(resolve),fail=finish(()=>reject(new Error('WebView2 无法解码视频：'+src)));
+        video.addEventListener('loadeddata',ok,{once:true});video.addEventListener('error',fail,{once:true});
+        video.src=src;video.load();if(video.readyState>=2)ok();
+      });
+      const duration=Number(video.duration);
+      if(!Number.isFinite(duration)||duration<=0)throw new Error('WebView2 无法读取视频时长：'+src);
+      const seek=Math.min(Math.max(.001,duration*.5),Math.max(.001,duration-.01));
+      if(duration>.03){
+        await new Promise((resolve,reject)=>{
+          let done=false;
+          const finish=fn=>value=>{if(done)return;done=true;video.removeEventListener('seeked',ok);video.removeEventListener('error',fail);fn(value);};
+          const ok=finish(resolve),fail=finish(()=>reject(new Error('WebView2 无法定位视频帧：'+src)));
+          video.addEventListener('seeked',ok,{once:true});video.addEventListener('error',fail,{once:true});
+          try{video.currentTime=seek;if(!video.seeking&&Math.abs(video.currentTime-seek)<.01)ok();}catch(error){fail(error);}
+        });
+      }
+      results.push({src,duration,seekable:true});
+    }finally{try{video.pause();}catch{}video.removeAttribute('src');try{video.load();}catch{}video.remove();}
+  }
+  return results;
+};
+
 // Runs inside the engine page. Audio is mixed offline; HTML video decodes the requested logical frame.
 function installOfflineMediaClock() {
   const known=new Set(),records=new WeakMap();let cues=[];

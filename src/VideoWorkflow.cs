@@ -33,11 +33,26 @@ namespace NativeVideo {
   }
   public static Dictionary<string,object>[] Segments(object plan,object bounds,int fps,int workers){
    int start=(int)J.N(bounds,"startFrame"),end=(int)J.N(bounds,"endFrame"),selected=Math.Max(1,end-start),requested=Math.Max(1,workers);
+   var attempts=new List<object>();string rangeReduction="";
    for(int attempt=requested;attempt>=1;attempt--){
-    var ranges=SegmentPlan.Create(plan,end,fps,attempt).Where(r=>J.N(r,"endFrame")>start&&J.N(r,"startFrame")<end).ToArray();
-    for(int i=0;i<ranges.Length;i++){ranges[i]["index"]=i;int first=Math.Max(start,(int)J.N(ranges[i],"startFrame")),last=Math.Min(end,(int)J.N(ranges[i],"endFrame")),replay=Math.Max(0,Math.Min(first,(int)J.N(ranges[i],"replayFrame")));ranges[i]["startFrame"]=first;ranges[i]["endFrame"]=last;ranges[i]["replayFrame"]=replay;ranges[i]["warmupFrames"]=Math.Max(0,first-replay);}
-    long warmup=ranges.Sum(r=>(long)J.N(r,"warmupFrames"));if(ranges.Length<=1||warmup<=selected*.60)return ranges;
+    var created=SegmentPlan.Create(plan,end,fps,attempt);
+    var plannerDiagnostics=J.Get(plan,"segmentPlanAttempt");if(plannerDiagnostics!=null)attempts.Add(plannerDiagnostics);
+    var ranges=created.Where(r=>J.N(r,"endFrame")>start&&J.N(r,"startFrame")<end).ToArray();
+    for(int i=0;i<ranges.Length;i++){
+     ranges[i]["index"]=i;int first=Math.Max(start,(int)J.N(ranges[i],"startFrame"));int last=Math.Min(end,(int)J.N(ranges[i],"endFrame"));int replay=Math.Max(0,Math.Min(first,(int)J.N(ranges[i],"replayFrame")));
+     ranges[i]["startFrame"]=first;ranges[i]["endFrame"]=last;ranges[i]["replayFrame"]=replay;ranges[i]["warmupFrames"]=Math.Max(0,first-replay);
+    }
+    long warmup=ranges.Sum(r=>(long)J.N(r,"warmupFrames"));
+    if(ranges.Length>1&&warmup>selected*.60){rangeReduction="range-replay-overhead";attempts.Add(J.O("scopeAttemptWorkers",attempt,"outcome","range-replay-overhead","warmupFrames",warmup,"selectedFrames",selected));continue;}
+    string reason=J.S(plannerDiagnostics,"reductionReason");
+    if(ranges.Length<Math.Min(requested,attempt)&&reason=="")reason="insufficient-safe-cuts";
+    if(ranges.Length<requested&&reason==""&&start>0)reason="selected-range-boundary";
+    if(rangeReduction!="")reason=rangeReduction;
+    var diagnostics=J.O("schemaVersion",1,"requestedWorkers",requested,"effectiveWorkers",ranges.Length,"reductionReason",ranges.Length<requested?reason:"","selectedStartFrame",start,"selectedEndFrame",end,"selectedFrames",selected,"replayOverheadFrames",warmup,"attempts",attempts.ToArray(),"planner",plannerDiagnostics??J.O());
+    J.D(plan)["segmentDiagnostics"]=diagnostics;
+    return ranges;
    }
+   J.D(plan)["segmentDiagnostics"]=J.O("schemaVersion",1,"requestedWorkers",requested,"effectiveWorkers",0,"reductionReason",rangeReduction==""?"insufficient-safe-cuts":rangeReduction,"selectedStartFrame",start,"selectedEndFrame",end,"selectedFrames",selected,"attempts",attempts.ToArray());
    return new Dictionary<string,object>[0];
   }
   static double Number(object track,string key,double fallback,double min,double max){double n=fallback;if(J.D(track).ContainsKey(key)&&!double.TryParse(Convert.ToString(J.Get(track,key),System.Globalization.CultureInfo.InvariantCulture),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out n))throw new ArgumentException("音乐参数必须为数字："+key);if(double.IsNaN(n)||double.IsInfinity(n)||n<min||n>max)throw new ArgumentException("音乐参数无效："+key);return n;}
