@@ -75,5 +75,13 @@ replace('navigatorModule.Checked=modules.Contains("timelineNavigator");selectorM
 s=s.replace('void SetBusy(bool value){','void SetBusy(bool value){if(aiModule!=null)aiModule.Enabled=!value;');
 s=s.replaceAll('Size=new Size(770,280),Visible=false','Size=new Size(770,280),AutoScroll=true,Visible=false');
 s=applyInstallerEnhancements(s,{productVersion,internalVersion,kernelVersion});
+replace('public class SetupForm:Form {','public partial class SetupForm:Form {');
+const legacyToggle=s.match(/  var lower=Controls[\s\S]*?advancedToggle\.CheckedChanged[\s\S]*?;\};/);
+if(!legacyToggle)throw Error('Legacy installer toggle layout missing');
+s=s.replace(legacyToggle[0],'');
+replace('\n }\n TextBox Field(', '\n  InitializeResponsiveLayout();\n }\n TextBox Field(');
+replace('bool accepted=f.ShowDialog(this)==DialogResult.OK;', 'ConfigureUninstallLayout(f);bool accepted=f.ShowDialog(this)==DialogResult.OK;');
+s+='\n'+fs.readFileSync(path.join(root,'installer/Installer.layout.cs'),'utf8');
+
 fs.writeFileSync(path.join(root,'installer/Installer.cs'),s);
 console.log('WebVideo+ installer source generated.');
