@@ -49,6 +49,54 @@ namespace NativeVideo {
    prefix+="(()=>{const s=document.createElement('style');s.textContent="+J.Text(File.ReadAllText(Path.Combine(Files.Root,"product-ui/toolbar.css")))+";document.head.appendChild(s);})();\n";
    return Once(source,"function AddSentenceTab(){",prefix+"function AddSentenceTab(){");
   }
+
+  static IOException ForceRequired(string message){return new IOException("[FORCE_AVAILABLE] "+message);}
+  static bool SamePath(string a,string b){if(string.IsNullOrWhiteSpace(a)||string.IsNullOrWhiteSpace(b))return false;return Files.Full(a).TrimEnd('\\','/').Equals(Files.Full(b).TrimEnd('\\','/'),StringComparison.OrdinalIgnoreCase);}
+  static bool PatchedSource(string text){return (text??"").Contains("function CodexVideoExport()")||(text??"").Contains("const WebVideoPlus =")||(text??"").Contains("function WebVideoToolsHost");}
+  static string RecoveryDir(string state){return Path.Combine(state,"recovery");}
+  static string RecoveryMeta(string state){return Path.Combine(RecoveryDir(state),"recovery.json");}
+  static bool TryCleanBundle(string terre,string html,string preferred,bool scanAll,out string source,out string bundle){
+   source=null;bundle=null;string publicDir=Path.Combine(terre,"public"),assets=Path.Combine(publicDir,"assets");
+   var names=new List<string>();if(!string.IsNullOrWhiteSpace(preferred))names.Add(preferred);
+   foreach(Match m in Regex.Matches(html??"","(?:src|href)=[\"']([^\"']+\\.js)[\"']"))names.Add(m.Groups[1].Value.TrimStart('.','/').Replace('/','\\'));
+   if(scanAll&&Directory.Exists(assets))names.AddRange(Directory.GetFiles(assets,"*.js").Select(file=>"assets\\ "+Path.GetFileName(file)).Select(x=>x.Replace("assets\\ ","assets\\")));
+   var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);string fallbackSource=null,fallbackBundle=null;
+   foreach(var name in names){string file;try{file=Path.IsPathRooted(name)?name:Files.Under(publicDir,name);}catch{continue;}if(!File.Exists(file)||!seen.Add(Files.Full(file)))continue;string candidate;try{candidate=File.ReadAllText(file);}catch{continue;}if(!candidate.Contains("function AddSentenceTab(){")||PatchedSource(candidate))continue;string relative=file.StartsWith(publicDir,StringComparison.OrdinalIgnoreCase)?file.Substring(publicDir.Length+1).Replace('\\','/'):Path.GetFileName(file);if(Files.HashText(candidate)==TerreBaselineHash){source=candidate;bundle=relative;return true;}if(fallbackSource==null){fallbackSource=candidate;fallbackBundle=relative;}}
+   if(fallbackSource!=null){source=fallbackSource;bundle=fallbackBundle;return true;}return false;
+  }
+  static byte[] RecoveryIndex(string state){string file=Path.Combine(RecoveryDir(state),"index.html");return File.Exists(file)?File.ReadAllBytes(file):null;}
+  static string RecoveryExe(string state){string file=Path.Combine(RecoveryDir(state),"original.exe");return File.Exists(file)?file:null;}
+  static byte[] ResolveOriginalIndex(string terre,string index,object manifest,string state,bool mounted,bool force){
+   byte[] current=File.ReadAllBytes(index);if(!mounted)return current;string installedHash=J.S(manifest,"installedEntryHash"),originalFile=J.S(manifest,"originalEntry"),originalHash=J.S(manifest,"originalEntryHash"),originalText=J.S(manifest,"originalIndexText");
+   bool currentMatches=installedHash!=""&&Files.Hash(index)==installedHash;
+   if(currentMatches){if(originalFile!=""&&File.Exists(originalFile)&&(originalHash==""||Files.Hash(originalFile)==originalHash))return File.ReadAllBytes(originalFile);if(originalText!="")return Files.Utf8.GetBytes(originalText);var recovery=RecoveryIndex(state);if(recovery!=null)return recovery;if(!force)throw ForceRequired("原版 Terre 入口备份缺失或已变化。");}
+   else if(!force)throw ForceRequired("Terre 入口已被其他程序、更新或手动操作修改。");
+   if(originalText!="")return Files.Utf8.GetBytes(originalText);if(originalFile!=""&&File.Exists(originalFile))return File.ReadAllBytes(originalFile);var fallback=RecoveryIndex(state);if(fallback!=null)return fallback;
+   string html=Files.Utf8.GetString(current),oldBundle=J.S(manifest,"originalBundle"),installedBundle=J.S(manifest,"installedBundle"),candidatePath="";
+   if(oldBundle!=""){try{candidatePath=Files.Under(Path.Combine(terre,"public/assets"),Path.GetFileName(oldBundle));}catch{}if(File.Exists(candidatePath)){string candidate=File.ReadAllText(candidatePath);if(candidate.Contains("function AddSentenceTab(){")&&!PatchedSource(candidate)){if(installedBundle!=""&&html.Contains(installedBundle))html=html.Replace(installedBundle,oldBundle);return Files.Utf8.GetBytes(html);}}}
+   string source,bundle;if(TryCleanBundle(terre,html,oldBundle,true,out source,out bundle)){var matches=Regex.Matches(html,"(?:src|href)=[\"']([^\"']+\\.js)[\"']");if(matches.Count>0){string first=matches[0].Groups[1].Value;html=html.Replace(first,bundle);return Files.Utf8.GetBytes(html);}}
+   throw new IOException("强制操作仍无法找到可确认的 Terre 原版前端。当前文件未被覆盖，请先修复或重新安装 Terre。");
+  }
+  static void SaveRecovery(string state,string originalExe,byte[] originalIndex,string originalBundleFile,string originalBundleName){
+   string root=RecoveryDir(state);if(Directory.Exists(root))Files.DeleteTree(state,root);Directory.CreateDirectory(root);Files.CopyFile(originalExe,Path.Combine(root,"original.exe"));File.WriteAllBytes(Path.Combine(root,"index.html"),originalIndex);if(!string.IsNullOrWhiteSpace(originalBundleFile)&&File.Exists(originalBundleFile))Files.CopyFile(originalBundleFile,Path.Combine(root,"original-bundle.js"));J.Write(RecoveryMeta(state),J.O("schemaVersion",1,"originalExeHash",Files.Hash(originalExe),"originalIndexHash",Files.Hash(Path.Combine(root,"index.html")),"originalBundle",originalBundleName,"createdAt",DateTime.UtcNow.ToString("o")));
+  }
+  static bool RestoreRecoveryExe(string state,string target,string expectedHash=""){
+   string file=RecoveryExe(state);if(file==null)return false;try{var meta=J.TryRead(RecoveryMeta(state));string hash=J.S(meta,"originalExeHash");if(hash!=""&&Files.Hash(file)!=hash)return false;if(expectedHash!=""&&hash!=""&&hash!=expectedHash)return false;Files.CopyFile(file,target);return true;}catch{return false;}
+  }
+  static void CopyStateVerified(string source,string target){
+   if(!Directory.Exists(source)){Directory.CreateDirectory(target);return;}if(Directory.Exists(target)&&Directory.EnumerateFileSystemEntries(target).Any())throw new IOException("新的 WebVideo+ 数据目录必须为空，避免覆盖其中现有文件。");Directory.CreateDirectory(target);Files.CopyTree(source,target);string prefix=Files.Full(source).TrimEnd('\\','/')+Path.DirectorySeparatorChar;
+   foreach(var file in Directory.GetFiles(source,"*",SearchOption.AllDirectories)){if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0)continue;string relative=Files.Full(file).Substring(prefix.Length),copy=Path.Combine(target,relative);if(!File.Exists(copy)||new FileInfo(copy).Length!=new FileInfo(file).Length||Files.Hash(copy)!=Files.Hash(file))throw new IOException("WebVideo+ 数据目录迁移校验失败："+relative);}
+   foreach(var transient in new[]{"lifecycle.lock","lifecycle-control.json","service-state.json","runtime-session.json"}){string file=Path.Combine(target,transient);if(File.Exists(file))File.Delete(file);}
+  }
+  static void SaveTransactionCopy(string root,string source,string name){if(!File.Exists(source))return;Directory.CreateDirectory(root);Files.CopyFile(source,Path.Combine(root,name));}
+  static void CleanupWorkCaches(object config,string state){
+   string work=J.S(config,"workDir");if(work!=""&&Directory.Exists(work)){foreach(var dir in Directory.GetDirectories(work)){Guid id;if(Guid.TryParse(Path.GetFileName(dir),out id))try{Files.DeleteTree(work,dir);}catch{}}foreach(var file in Directory.GetFiles(work).Where(x=>Path.GetFileName(x).StartsWith(".webvideo-",StringComparison.OrdinalIgnoreCase)))try{File.Delete(file);}catch{}try{if(!Directory.EnumerateFileSystemEntries(work).Any())Directory.Delete(work);}catch{}}
+   string jobs=Path.Combine(state,"jobs");if(Directory.Exists(jobs))foreach(var job in Directory.GetDirectories(jobs)){foreach(var name in new[]{"parts","planning","music-snapshot","imported-music"}){string dir=Path.Combine(job,name);if(Directory.Exists(dir))try{Files.DeleteTree(job,dir);}catch{}}foreach(var name in new[]{"audio.wav","concat.txt","mix.log"}){string file=Path.Combine(job,name);if(File.Exists(file))try{File.Delete(file);}catch{}}}
+   string media=Path.Combine(state,"media");if(Directory.Exists(media))try{Files.DeleteTree(state,media);}catch{}
+  }
+  static void DeleteOwnedData(string state,string terre){
+   if(string.IsNullOrWhiteSpace(state)||!Directory.Exists(state))return;string full=Files.Full(state).TrimEnd('\\','/'),root=Path.GetPathRoot(full).TrimEnd('\\','/');if(full.Equals(root,StringComparison.OrdinalIgnoreCase)||Files.Within(terre,full,true))throw new IOException("拒绝删除不安全的数据目录："+state);var config=J.TryRead(Path.Combine(state,"config.json"));if(config!=null&&J.S(config,"terreDir")!=""&&!SamePath(J.S(config,"terreDir"),terre))throw new IOException("数据目录属于另一份 Terre，未删除。");Files.DeleteTree(Path.GetDirectoryName(full),full);
+  }
   public static async Task Run(){
    string command=App.Args.FirstOrDefault()??"help",terre=Files.Full(App.Arg("--terre-dir","."));
    if(command=="modules"){Console.WriteLine(J.Text(J.O("selectable",ModuleCatalog.Selectable,"labels",ModuleCatalog.Labels,"dependencies",ModuleCatalog.Graph())));return;}
