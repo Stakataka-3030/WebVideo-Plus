@@ -31,7 +31,7 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
   dataDir=Field(advanced,"WebVideo+ 数据目录",DefaultDataDirectory(terre.Text),386,true);
   workDir=Field(advanced,"导出工作缓存",Path.Combine(output.Text,".webvideo-cache"),428,true);
   installCache=Field(advanced,"安装缓存目录",Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGALVideoExporter"),470,true);
-  keepRecovery=new CheckBox{Text="保留 Terre 原始文件的长期恢复备份（推荐）",Checked=true,AutoSize=true,Location=new Point(170,516)};advanced.Controls.Add(keepRecovery);`
+  keepRecovery=new CheckBox{Text="保留 Terre 原始文件的长期恢复备份（推荐）",Checked=true,AutoSize=true,Location=new Point(170,516)};advanced.Controls.Add(keepRecovery);advanced.Controls.Add(new Label{Text="关闭后仍会为本次安装 / 更新 / 拆卸创建临时回滚副本，操作成功后立即删除。",Location=new Point(170,544),Size=new Size(540,42),ForeColor=Color.DimGray});`
  );
 
  replace('if(loadedModulesPath!=terre.Text){loadedModulesPath=terre.Text;var modules=ModuleCatalog.Advanced;try{',
