@@ -1,12 +1,95 @@
 // With GPU DOM compositing, draw the stage only at the final composite step.
 // Re-rendering WMDL Live2D models without an intervening update can lose clipping masks.
-globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0})=>{
+globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50})=>{
   const pc=__wgProbe.core.gameplay.performController,arrange=pc.arrangeNewPerform;
-  pc.arrangeNewPerform=function(perform,script,...rest){if(globalThis.__exportControlledSpeech&&script.command===0)perform.startFunction=()=>{};return arrange.call(this,perform,script,...rest);};
-  globalThis.__runExportEvent=e=>{if(e.command==='__settleText'){if(globalThis.__gpuDomState){globalThis.__gpuDomState.textSettled=true;globalThis.__gpuDomState.settledMaskPrepared=false;const els=[...document.querySelectorAll('.Textelement_start')],values=els.map(x=>Math.max(0,Math.min(1,Number(getComputedStyle(x).opacity)||0)));globalThis.__gpuDomState.stats.settleEvents=globalThis.__gpuDomState.stats.settleEvents||[];globalThis.__gpuDomState.stats.settleEvents.push({frame:globalThis.__exportCurrentFrame??-1,count:els.length,averageOpacity:values.length?values.reduce((a,b)=>a+b,0)/values.length:1,minOpacity:values.length?Math.min(...values):1,maxOpacity:values.length?Math.max(...values):1});}__wgProbe.core.events.textSettle.emit();return;}if(e.command==='__nativeNext'){__wgProbe.core.events.userInteractNext.emit();if(!pc.hasBlockingNextPerform()&&pc.hasUnsettledNonHoldPerform())pc.settleNonHoldPerforms(false);return;}if(e.command==='__singleLineEnd'){pc.unmountPerform('choose');return;}if(e.command==='__finishVideo'){__exportMedia.finishFullscreen();return;}if(e.command==='say'){if(globalThis.__gpuDomState){globalThis.__gpuDomState.textSettled=false;globalThis.__gpuDomState.settledMaskPrepared=false;}const old=__wgProbe.stageManager.getCalculationStageState().PerformList.filter(p=>p.script.command===0&&!p.isHoldOn);for(const p of old)pc.unmountPerform(p.id,true);}if(e.command==='say')globalThis.__exportSetSpeechMode(e.mouthTarget,e.voiceControlled);globalThis.__exportControlledSpeech=e.voiceControlled;try{__probeCommands['preview.command.run-snippet']({snippet:e.script});}finally{globalThis.__exportControlledSpeech=false;}__wgProbe.stageManager.commit({applyPixiEffects:false});};
+  const dormantHoldCommands=new Set(['setAnimation','setTempAnimation','setTransform']);
+  globalThis.__exportCurrentEvent=null;
+  globalThis.__exportBatchCollecting=false;
+
+  pc.arrangeNewPerform=function(perform,script,...rest){
+    const current=globalThis.__exportCurrentEvent,command=script.command===0?'say':script.commandRaw;
+    if(globalThis.__exportControlledSpeech&&script.command===0)perform.startFunction=()=>{};
+    if(script.command===0&&current?.command==='say'&&Number.isFinite(Number(current.plannedDurationMs)))perform.duration=Math.max(0,Number(current.plannedDurationMs));
+    // Prefix fast-preview restores the terminal stage state of completed -keep animations.
+    // Keep the hold perform identity so later commands can unmount it, but do not restart
+    // an already-finished animation at the replay anchor.
+    if(globalThis.__exportPrefixRestore&&perform.isHoldOn&&dormantHoldCommands.has(command))perform.startFunction=()=>{};
+    return arrange.call(this,perform,script,...rest);
+  };
+
+  const markTextSettled=()=>{
+    const state=globalThis.__gpuDomState;
+    if(!state)return;
+    state.textSettled=true;
+    state.settledMaskPrepared=false;
+    const els=[...document.querySelectorAll('.Textelement_start')],values=els.map(x=>Math.max(0,Math.min(1,Number(getComputedStyle(x).opacity)||0)));
+    state.stats.settleEvents=state.stats.settleEvents||[];
+    state.stats.settleEvents.push({frame:globalThis.__exportCurrentFrame??-1,count:els.length,averageOpacity:values.length?values.reduce((a,b)=>a+b,0)/values.length:1,minOpacity:values.length?Math.min(...values):1,maxOpacity:values.length?Math.max(...values):1});
+  };
+  __wgProbe.core.events.textSettle.on(markTextSettled);
+
+  const runScriptEvent=e=>{
+    if(e.command==='say'&&globalThis.__gpuDomState){globalThis.__gpuDomState.textSettled=false;globalThis.__gpuDomState.settledMaskPrepared=false;}
+    if(e.command==='say')globalThis.__exportSetSpeechMode(e.mouthTarget,e.voiceControlled);
+    globalThis.__exportCurrentEvent=e;
+    globalThis.__exportControlledSpeech=e.voiceControlled;
+    try{__probeCommands['preview.command.run-snippet']({snippet:e.script});}
+    finally{globalThis.__exportControlledSpeech=false;globalThis.__exportCurrentEvent=null;}
+    if(!globalThis.__exportBatchCollecting)__wgProbe.stageManager.commit({applyPixiEffects:false});
+  };
+
+  globalThis.__runExportEvent=e=>{
+    // Legacy cached plans may still contain this event. New plans rely on the actual
+    // owner perform's stopFunction instead, which prevents stale text-settle leakage.
+    if(e.command==='__settleText')return;
+    if(e.command==='__settleNonHold'){
+      if(pc.hasUnsettledNonHoldPerform())pc.settleNonHoldPerforms(false);
+      return;
+    }
+    if(e.command==='__nativeNext'){
+      __wgProbe.core.events.userInteractNext.emit();
+      if(!pc.hasBlockingNextPerform()&&pc.hasUnsettledNonHoldPerform())pc.settleNonHoldPerforms(false);
+      return;
+    }
+    if(e.command==='__singleLineEnd'){pc.unmountPerform('choose');return;}
+    if(e.command==='__finishVideo'){__exportMedia.finishFullscreen();return;}
+    runScriptEvent(e);
+  };
+
+  globalThis.__runExportScriptGroup=group=>{
+    if(group.length<=1){if(group.length)__runExportEvent(group[0]);return;}
+    pc.beginCollectingPerforms();
+    globalThis.__exportBatchCollecting=true;
+    try{for(const event of group)__runExportEvent(event);}
+    finally{globalThis.__exportBatchCollecting=false;pc.endCollectingPerforms();}
+    __wgProbe.stageManager.commit({applyPixiEffects:false});
+    pc.commitPendingPerforms();
+    __wgProbe.stageManager.applyCommittedPixiEffects?.();
+  };
+
   const controlled=new Set(),states=new Map(),levels=new Map(),bound=new WeakSet();
   globalThis.__exportApplyLip=l=>{if(globalThis.__mygoApplyLip){__mygoApplyLip(l);return;}if(!l.active&&!controlled.has(l.target))return;if(l.active){if(!controlled.has(l.target))states.delete(l.target);controlled.add(l.target);levels.set(l.target,l.value);}else{controlled.delete(l.target);levels.delete(l.target);if(l.target===globalThis.__exportCurrentSimulatedTarget)return;}const p=__wgProbe.core.gameplay.pixiStage,obj=p.getStageObjByKey(l.target);if(!obj)return;globalThis.__exportWritingVoice=true;try{p.setModelMouthY(l.target,l.active?50+50*l.value:0);}finally{globalThis.__exportWritingVoice=false;}if(obj.sourceType==='live2d'){for(const model of obj.pixiContainer?.children||[]){const inner=model.internalModel;if(inner&&!bound.has(inner)){bound.add(inner);inner.on('beforeModelUpdate',()=>{if(!levels.has(l.target))return;const value=levels.get(l.target),core=inner.coreModel;core.setParamFloat?.('PARAM_MOUTH_OPEN_Y',value);core.setParameterValueById?.('ParamMouthOpenY',value);});}}}if(obj.sourceType==='img'){const state=l.value>.6?'open':l.value>.2?'half_open':'closed',s=__wgProbe.stageManager.getCalculationStageState(),item=s.figureAssociatedAnimation.find(x=>x.targetId===l.target),key=state==='half_open'?'halfOpen':state==='closed'?'close':'open',url=item?.mouthAnimation?.[key],cacheKey=obj.uuid+':'+url;if(url&&states.get(l.target)!==cacheKey){states.set(l.target,cacheKey);p.performMouthSyncAnimation(l.target,item,state,'center');}}};
-globalThis.__stepExportFrame=async({t,elapsed,batch,lips})=>{if(elapsed>0)await __pwClock.controller.runFor(elapsed);for(const e of batch)__runExportEvent(e);if(batch.length)await __pwClock.controller.runFor(0);if(batch.some(e=>e.loads))await __exportWaitForStageAssets();for(const a of document.getAnimations()){if(!__exportAnimations.has(a)){__exportAnimations.set(a,t);a.pause();}a.currentTime=Math.max(0,t-__exportAnimations.get(a));}const p=__wgProbe.core.gameplay.pixiStage;for(const l of lips)__exportApplyLip(l);await __exportMedia.sync(t);__exportRefreshMouth();if(!globalThis.__gpuDomState)p.currentApp.render();globalThis.__exportRecordMouth(t);globalThis.__inspectFirstFrame?.(t);};
+globalThis.__stepExportFrame=async({t,elapsed,batch,lips})=>{
+  if(elapsed>0)await __pwClock.controller.runFor(elapsed);
+  for(let i=0;i<batch.length;){
+    const event=batch[i];
+    if(!String(event.command||'').startsWith('__')&&Number.isInteger(event.forwardGroup)){
+      const group=[event];let j=i+1;
+      while(j<batch.length&&!String(batch[j].command||'').startsWith('__')&&batch[j].forwardGroup===event.forwardGroup){group.push(batch[j]);j++;}
+      __runExportScriptGroup(group);i=j;
+    }else{__runExportEvent(event);i++;}
+  }
+  if(batch.length)await __pwClock.controller.runFor(0);
+  if(batch.some(e=>e.loads))await __exportWaitForStageAssets();
+  for(const a of document.getAnimations()){if(!__exportAnimations.has(a)){__exportAnimations.set(a,t);a.pause();}a.currentTime=Math.max(0,t-__exportAnimations.get(a));}
+  const p=__wgProbe.core.gameplay.pixiStage;
+  for(const l of lips)__exportApplyLip(l);
+  await __exportMedia.sync(t);
+  __exportRefreshMouth();
+  if(!globalThis.__gpuDomState)p.currentApp.render();
+  globalThis.__exportRecordMouth(t);
+  globalThis.__inspectFirstFrame?.(t);
+};
 
 globalThis.__gpuReadbackRendererScale=(width,height)=>{const p=__wgProbe.core.gameplay.pixiStage,app=p.currentApp,gl=app.renderer.gl,stage=app.stage;if(!globalThis.__gpuReadbackRendererOriginal)globalThis.__gpuReadbackRendererOriginal={width:gl.drawingBufferWidth,height:gl.drawingBufferHeight,stageScaleX:stage.scale.x,stageScaleY:stage.scale.y};const logicalWidth=Number(p.stageWidth)||globalThis.__gpuReadbackRendererOriginal.width,logicalHeight=Number(p.stageHeight)||globalThis.__gpuReadbackRendererOriginal.height;app.renderer.resize(width,height);stage.scale.set(globalThis.__gpuReadbackRendererOriginal.stageScaleX*width/logicalWidth,globalThis.__gpuReadbackRendererOriginal.stageScaleY*height/logicalHeight);app.render();return {mode:'renderer-scale',logicalWidth,logicalHeight,width:gl.drawingBufferWidth,height:gl.drawingBufferHeight,stageScaleX:stage.scale.x,stageScaleY:stage.scale.y,originalWidth:globalThis.__gpuReadbackRendererOriginal.width,originalHeight:globalThis.__gpuReadbackRendererOriginal.height};};
 globalThis.__gpuDomState=null;
