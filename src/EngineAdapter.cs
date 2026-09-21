@@ -5,15 +5,19 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace NativeVideo {
- // Only job-local copies are patched. MyGO is never redistributed by this component.
+ // Engine code is always copied into a job-local snapshot before patching.
+ // Compatible WebGAL 4.6.4 project/template runtimes are preferred so engine-level
+ // defaults, split chunks and CSS stay identical to the game being exported.
  public sealed class EngineAdapter {
   public const string MygoHash = "0407b5a6326ebaa1608d16541b79b4ccc54a0432947ae7d3a6a855606a68866e";
-  public readonly string Id, Version, Source, Bundle;
+  const string BundledWebgalBundle = "assets/index-R1tKotR6.js";
+  public readonly string Id, Version, Source, Bundle, SourceKind;
+  readonly bool externalWebgal;
   public bool IsMygo { get { return Id == "mygo"; } }
-  EngineAdapter(string id, string version, string source, string bundle) {
-   Id=id; Version=version; Source=source; Bundle=bundle;
+  EngineAdapter(string id, string version, string source, string bundle, string sourceKind, bool external=false) {
+   Id=id; Version=version; Source=source; Bundle=bundle; SourceKind=sourceKind; externalWebgal=external;
   }
-  public object Describe() { return J.O("id",Id,"version",Version,"bundle",Bundle,"sourceHash",IsMygo?MygoHash:Files.Hash(Path.Combine(Source,Bundle)),"adapterVersion",1); }
+  public object Describe() { return J.O("id",Id,"version",Version,"bundle",Bundle,"sourceHash",IsMygo?MygoHash:Files.Hash(Path.Combine(Source,Bundle)),"sourceKind",SourceKind,"runtimeParity",externalWebgal,"adapterVersion",2); }
 
   static string MainBundle(string root) {
    string html=Path.Combine(root,"index.html");
@@ -23,6 +27,93 @@ namespace NativeVideo {
    string relative=match.Groups[1].Value;
    if(Regex.IsMatch(relative,@"^(?:[a-z]+:|//)",RegexOptions.IgnoreCase))return null;
    try { return Files.Under(root,relative.TrimStart('.','/')); } catch { return null; }
+  }
+  static string RelativeBundle(string root,string file) {
+   string basePath=Files.Full(root).TrimEnd('\\','/'),full=Files.Full(file),prefix=basePath+Path.DirectorySeparatorChar;
+   if(!full.StartsWith(prefix,StringComparison.OrdinalIgnoreCase))throw new IOException("引擎入口超出运行目录");
+   return full.Substring(prefix.Length).Replace('\\','/');
+  }
+  static EngineAdapter BundledWebgal() {
+   return new EngineAdapter("webgal","4.6.4",Path.Combine(Files.Root,"runtime/web"),BundledWebgalBundle,"bundled-runtime",false);
+  }
+  static bool IdentifierChar(char value) {
+   return char.IsLetterOrDigit(value)||value=='_'||value=='$';
+  }
+  static string InstrumentExternalWebgal(string text) {
+   string baselineFile=Path.Combine(Files.Root,"runtime/web",BundledWebgalBundle);
+   if(!File.Exists(baselineFile))throw new IOException("缺少内置 WebGAL 运行快照");
+   string baseline=File.ReadAllText(baselineFile);
+
+   // The pinned runtime already contains the read-only probe exports used by the
+   // exporter. Transfer those tiny exports to a compatible project runtime rather
+   // than replacing the project's engine code, defaults, split chunks or CSS.
+   if(!text.Contains("globalThis.__probeCommands")) {
+    const string commandMarker="=globalThis.__probeCommands={\"preview.command.sync-scene\"";
+    int at=baseline.IndexOf(commandMarker,StringComparison.Ordinal);
+    if(at<0)throw new IOException("内置 WebGAL 运行快照缺少预览命令探针");
+    int start=at-1;
+    while(start>=0&&IdentifierChar(baseline[start]))start--;
+    string name=baseline.Substring(start+1,at-start-1);
+    if(string.IsNullOrWhiteSpace(name))throw new IOException("无法识别 WebGAL 预览命令表");
+    string from=name+"={\"preview.command.sync-scene\"";
+    text=ReplaceOnce(text,from,name+commandMarker);
+   }
+
+   if(!text.Contains("globalThis.__wgProbe")) {
+    const string probeMarker="globalThis.__wgProbe={";
+    int at=baseline.IndexOf(probeMarker,StringComparison.Ordinal);
+    int end=at<0?-1:baseline.IndexOf(';',at);
+    if(at<0||end<0)throw new IOException("内置 WebGAL 运行快照缺少核心探针");
+    text+="\n;"+baseline.Substring(at,end-at+1)+"\n";
+   }
+   return text;
+  }
+  static EngineAdapter TryWebgalRuntime(string root,string sourceKind,out string error) {
+   error=null;
+   if(string.IsNullOrWhiteSpace(root))return null;
+   try { root=Files.Full(root); } catch { return null; }
+   if(!Directory.Exists(root))return null;
+
+   bool official=false;
+   string descriptor=Path.Combine(root,"webgal-engine.json");
+   if(File.Exists(descriptor)) {
+    try {
+     if(new FileInfo(descriptor).Length>65536)throw new IOException("引擎描述文件过大");
+     var metadata=J.Read(descriptor);
+     string id=J.S(metadata,"id");
+     if(id=="open-webgal.webgal") {
+      official=true;
+      if(J.S(metadata,"version")!="4.6.4"||J.S(metadata,"webgalVersion")!="4.6.4") {
+       error="检测到 WebGAL "+J.S(metadata,"version")+"，当前导出适配基线为 4.6.4";
+       return null;
+      }
+     } else if(!string.IsNullOrWhiteSpace(id))return null;
+    } catch(Exception e) {
+     error="读取 WebGAL 引擎描述失败："+e.Message;
+     return null;
+    }
+   }
+
+   string main=MainBundle(root);
+   if(main==null) {
+    if(official)error="WebGAL 运行目录缺少可识别的模块入口";
+    return null;
+   }
+   if(!File.Exists(main)||new FileInfo(main).Length>32L*1024*1024) {
+    if(official)error="WebGAL 主 bundle 缺失或尺寸异常";
+    return null;
+   }
+   var adapter=new EngineAdapter("webgal","4.6.4",root,RelativeBundle(root,main),sourceKind,true);
+   try {
+    // Dry-run every structural patch. Small engine customizations (for example
+    // transition durations or Live2D defaults) are accepted; incompatible
+    // rebuilds fail before a job snapshot is changed.
+    adapter.Patch(InstrumentExternalWebgal(File.ReadAllText(main)));
+    return adapter;
+   } catch(Exception e) {
+    if(official)error="项目 WebGAL 运行时已修改，但无法安全接入导出探针："+e.Message;
+    return null;
+   }
   }
   public static bool SupportedMygo(string root) {
    try {
@@ -52,32 +143,47 @@ namespace NativeVideo {
   }
   public static EngineAdapter Select(object request) {
    var selected=J.S(J.Get(request,"settings"),"engine","webgal");
-   if(selected=="webgal")return new EngineAdapter("webgal","4.6.4",Path.Combine(Files.Root,"runtime/web"),"assets/index-R1tKotR6.js");
+   if(selected=="webgal") {
+    string error;
+    var project=TryWebgalRuntime(J.S(request,"project"),"project-runtime",out error);
+    if(project!=null)return project;
+    if(error!=null)throw new IOException(error);
+    var template=TryWebgalRuntime(J.S(request,"engineRoot"),"terre-template",out error);
+    if(template!=null)return template;
+    if(error!=null)throw new IOException(error);
+    return BundledWebgal();
+   }
    if(selected!="mygo")throw new IOException("未知导出引擎");
    string source=J.S(request,"mygoRoot");
    if(string.IsNullOrEmpty(source))source=FindMygo(Path.GetDirectoryName(Files.Full(J.S(request,"project"))));
    if(source==null||!SupportedMygo(source))throw new IOException("未检测到受支持的 MyGO 3.2.1 安装，或引擎文件已改变。请安装对应专版，或选择原版 WebGAL。");
    string main=MainBundle(source);
-   return new EngineAdapter("mygo","3.2.1",Files.Full(source),main.Substring(Files.Full(source).TrimEnd('\\','/').Length+1).Replace('\\','/'));
+   return new EngineAdapter("mygo","3.2.1",Files.Full(source),RelativeBundle(source,main),"mygo-runtime",false);
+  }
+  static void CopyRuntimeShell(string source,string root) {
+   // Engine shell only. Game scenes/assets are rebuilt separately from the project
+   // snapshot, so importing a project runtime never duplicates the whole game.
+   foreach(string name in new[]{"assets","icons","lib"}) {
+    var from=Path.Combine(source,name);
+    if(Directory.Exists(from))Files.CopyTree(from,Path.Combine(root,name));
+   }
+   foreach(string name in new[]{"index.html","manifest.json","webgal-engine.json","webgal-serviceworker.js"}) {
+    var from=Path.Combine(source,name);
+    if(File.Exists(from))Files.CopyFile(from,Path.Combine(root,name));
+   }
   }
   public void Prepare(string root) {
-   if(!IsMygo)Files.CopyTree(Source,root);
-   else {
-    // Copy engine code and appearance only; no demo scenes or editor discovery files.
-    foreach(string name in new[]{"assets","icons","lib"}) {
-     var from=Path.Combine(Source,name);
-     if(Directory.Exists(from))Files.CopyTree(from,Path.Combine(root,name));
-    }
-    foreach(string name in new[]{"index.html","manifest.json","webgal-engine.json"}) {
-     var from=Path.Combine(Source,name);
-     if(File.Exists(from))Files.CopyFile(from,Path.Combine(root,name));
-    }
-   }
+   if(IsMygo||externalWebgal)CopyRuntimeShell(Source,root);
+   else Files.CopyTree(Source,root);
    if(IsMygo){string html=Path.Combine(root,"index.html");Files.Atomic(html,RepairMygoHtml(File.ReadAllText(html)));}
    string file=Path.Combine(root,Bundle);
+   if(!File.Exists(file))throw new IOException("导出运行时缺少主 bundle："+Bundle);
    if(IsMygo&&Files.Hash(file)!=MygoHash)throw new IOException("MyGO 文件在准备过程中改变，请重新导出");
-   Files.Atomic(file,Patch(File.ReadAllText(file)));
-   // Ignore any compressed copy of the original main bundle in the snapshot.
+   string text=File.ReadAllText(file);
+   if(externalWebgal)text=InstrumentExternalWebgal(text);
+   Files.Atomic(file,Patch(text));
+   // SnapshotServer serves raw files only; removing stale compressed copies also
+   // prevents later tooling from mistaking them for the patched main bundle.
    foreach(string extension in new[]{".gz",".br"})if(File.Exists(file+extension))File.Delete(file+extension);
    J.Write(Path.Combine(root,"export-engine.json"),Describe());
   }
@@ -131,7 +237,7 @@ namespace NativeVideo {
     text=Deferral(text,"addVideoFigure(","addWmdlFigure(");
     text+="\n;globalThis.__wgProbe={core:R,store:Ie,stageManager:Z,parseScene:Ao,nativeAuto:yP,nativeStopAuto:$_,nativeNext:vp,compileText:Ds,textDelay:CP,textAnimation:PP};\n";
    } else text+="\nObject.assign(globalThis.__wgProbe,{nativeAuto:G$,nativeStopAuto:D_,nativeNext:dp,compileText:Os,textDelay:_P,textAnimation:xP});\n";
-   text+="\nglobalThis.__wgProbe.adapter="+J.Text(J.O("id",Id,"version",Version))+";globalThis.__nativeAdapterInstalled=true;\n";
+   text+="\nglobalThis.__wgProbe.adapter="+J.Text(J.O("id",Id,"version",Version))+ ";globalThis.__nativeAdapterInstalled=true;\n";
    return text;
   }
  }
