@@ -34,7 +34,7 @@ namespace NativeVideo {
    return full.Substring(prefix.Length).Replace('\\','/');
   }
   static EngineAdapter BundledWebgal() {
-   return new EngineAdapter("webgal","4.6.4",Path.Combine(Files.Root,"runtime/web"),BundledWebgalBundle,"bundled-runtime",false);
+   return new EngineAdapter("webgal","4.6.4",Path.Combine(Files.Root,"runtime/web"),BundledWebgalBundle,"bundled-runtime",false,false);
   }
   static bool IdentifierChar(char value) {
    return char.IsLetterOrDigit(value)||value=='_'||value=='$';
@@ -67,6 +67,37 @@ namespace NativeVideo {
     text+="\n;"+baseline.Substring(at,end-at+1)+"\n";
    }
    return text;
+  }
+  static EngineAdapter TryMygoProjectRuntime(string root,out string error) {
+   error=null;
+   if(string.IsNullOrWhiteSpace(root))return null;
+   try { root=Files.Full(root); } catch { return null; }
+   if(!Directory.Exists(root))return null;
+   string descriptor=Path.Combine(root,"webgal-engine.json");
+   if(!File.Exists(descriptor))return null;
+   try {
+    if(new FileInfo(descriptor).Length>65536)throw new IOException("引擎描述文件过大");
+    var metadata=J.Read(descriptor);
+    if(J.S(metadata,"id")!="webgal-mygo.mygo")return null;
+    if(J.S(metadata,"version")!="3.2.1"||J.S(metadata,"webgalVersion")!="4.6.4") {
+     error="检测到项目内 MyGO "+J.S(metadata,"version")+"，当前导出适配基线为 MyGO 3.2.1 / WebGAL 4.6.4";
+     return null;
+    }
+    string main=MainBundle(root);
+    if(main==null||!File.Exists(main)||new FileInfo(main).Length>32L*1024*1024) {
+     error="项目内 MyGO 运行目录缺少可识别的主 bundle";
+     return null;
+    }
+    var adapter=new EngineAdapter("mygo","3.2.1",root,RelativeBundle(root,main),"mygo-project-runtime",false,false);
+    // Per-game derivative projects are full engine copies. Allow project-local
+    // constants/chunks to differ from the canonical MyGO package, but require every
+    // exporter patch anchor to remain unique before accepting the runtime.
+    adapter.Patch(File.ReadAllText(main));
+    return adapter;
+   } catch(Exception e) {
+    error="项目内 MyGO 运行时已修改，但无法安全接入导出探针："+e.Message;
+    return null;
+   }
   }
   static EngineAdapter TryWebgalRuntime(string root,string sourceKind,out string error) {
    error=null;
@@ -178,7 +209,7 @@ namespace NativeVideo {
    if(IsMygo){string html=Path.Combine(root,"index.html");Files.Atomic(html,RepairMygoHtml(File.ReadAllText(html)));}
    string file=Path.Combine(root,Bundle);
    if(!File.Exists(file))throw new IOException("导出运行时缺少主 bundle："+Bundle);
-   if(IsMygo&&Files.Hash(file)!=MygoHash)throw new IOException("MyGO 文件在准备过程中改变，请重新导出");
+   if(IsMygo&&strictMygoHash&&Files.Hash(file)!=MygoHash)throw new IOException("MyGO 文件在准备过程中改变，请重新导出");
    string text=File.ReadAllText(file);
    if(externalWebgal)text=InstrumentExternalWebgal(text);
    Files.Atomic(file,Patch(text));
