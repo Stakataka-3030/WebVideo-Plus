@@ -1,6 +1,6 @@
 // Data-only scheduling. Files, processes and browser lifecycle are owned by C#.
 globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,project,sceneName,fps})=>{
- const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],persistentReplay=[],exitReplay=[],counts={},visualSources=new Map(),activePersistentFigures=new Map(),transitionStates=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
+ const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],persistentReplay=[],exitReplay=[],counts={},visualSources=new Map(),figureIdentities=new Map(),activePersistentFigures=new Map(),transitionStates=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
  const clean=(kind,name)=>String(name||'').replace(new RegExp('^\\.?/?game/'+kind+'/'),'');
  const physical=name=>decodeURIComponent(String(name||'').split(/[?#]/)[0]);
  const local=(kind,name)=>root.replaceAll('\\','/')+'/game/'+kind+'/'+physical(clean(kind,name));
@@ -42,15 +42,26 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   if(cmd==='wait'){if(!params.next)cursor+=Math.max(0,Number(s.content)||0);continue;}
   let videoDuration=0;
   if(cmd==='changeBg'||cmd==='changeFigure'){
-   const position=['left','right','left13','right13','left14','right14'].find(k=>params[k])||'center',target=cmd==='changeBg'?'bg-main':params.id||'fig-'+position,key=cmd+':'+target,previous=visualSources.get(key),changed=previous!==name,gone=!name||name==='none';
-   const previousPresent=previous!==undefined&&previous!==null&&previous!==''&&previous!=='none';
+   const position=['left','right','left13','right13','left14','right14'].find(k=>params[k])||'center',target=cmd==='changeBg'?'bg-main':params.id||'fig-'+position,key=cmd+':'+target;
+   const visualName=cmd==='changeFigure'&&params.clear===true?'':name;
+   const oldIdentity=cmd==='changeFigure'?figureIdentities.get(target):null;
+   const canonicalBounds=value=>String(value??'').split(',').map(x=>x.trim()).join(',');
+   const nextBounds=params.bounds!==undefined?canonicalBounds(params.bounds):(oldIdentity?.bounds||'');
+   const previous=cmd==='changeFigure'?oldIdentity?.name:visualSources.get(key);
+   const changed=cmd==='changeFigure'
+    ?(!oldIdentity||oldIdentity.name!==visualName||oldIdentity.position!==position||(params.bounds!==undefined&&oldIdentity.bounds!==nextBounds))
+    :previous!==visualName;
+   const gone=!visualName||visualName==='none',previousPresent=previous!==undefined&&previous!==null&&previous!==''&&previous!=='none';
    if(changed&&previousPresent){
     const state=transitionStates.get(target)||{},fallback=cmd==='changeBg'?1500:450;
     const exitMs=state.exitName?ensureAnimation(state.exitName):Math.max(0,Number.isFinite(Number(state.exitDuration))?Number(state.exitDuration):fallback);
     if(exitMs>0)exitReplay.push({startMs:cursor,endMs:cursor+exitMs,command:cmd==='changeBg'?'changeBg-exit':'changeFigure-exit',line:range.start+1,hold:false,dormantRestorable:false,rootReplay:cmd==='changeFigure'&&activePersistentFigures.has(target)});
    }
-   visualSources.set(key,name);
-   if(changed&&(/\.(webm|mp4|mov|mkv)([?#].*)?$/i.test(name)||/[?&]type=video(?:&|$)/i.test(name)))videoCues.push({path:'/game/'+kind+'/'+physical(name),target,atMs:Math.round(cursor),durationMs:info(kind,name).durationMs});
+   visualSources.set(key,visualName);
+   if(cmd==='changeFigure'){
+    if(gone)figureIdentities.delete(target);else figureIdentities.set(target,{name:visualName,position,bounds:nextBounds});
+   }
+   if(changed&&(/\.(webm|mp4|mov|mkv)([?#].*)?$/i.test(visualName)||/[?&]type=video(?:&|$)/i.test(visualName)))videoCues.push({path:'/game/'+kind+'/'+physical(visualName),target,atMs:Math.round(cursor),durationMs:info(kind,visualName).durationMs});
    if(changed)transitionStates.delete(target);
    if(!gone){
     const state={...(transitionStates.get(target)||{})};
@@ -61,7 +72,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    if(cmd==='changeFigure'){
     const old=activePersistentFigures.get(target);
     if(old&&changed){old.endMs=cursor;persistentReplay.push(old);activePersistentFigures.delete(target);}
-    const persistent=!gone&&(/\.(json|jsonl|wmdl)([?#].*)?$/i.test(name)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(name)||!!params.motion||!!params.animationFlag||!!params.blink||!!params.eyesOpen||!!params.eyesClose);
+    const persistent=!gone&&(/\.(json|jsonl|wmdl)([?#].*)?$/i.test(visualName)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(visualName)||!!params.motion||!!params.animationFlag||!!params.blink||!!params.eyesOpen||!!params.eyesClose);
     if(persistent&&!activePersistentFigures.has(target))activePersistentFigures.set(target,{startMs:cursor,endMs:null,command:'changeFigure-runtime',line:range.start+1,hold:true,dormantRestorable:false,rootReplay:true});
    }
   }
