@@ -12,12 +12,13 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     if(globalThis.__exportControlledSpeech&&script.command===0)perform.startFunction=()=>{};
     if(script.command===0&&current?.command==='say'&&Number.isFinite(Number(current.plannedDurationMs)))perform.duration=Math.max(0,Number(current.plannedDurationMs));
     if(script.command===0){
-      const ownerKey=__wgProbe.stageManager.getCalculationStageState()?.currentDialogKey,stop=perform.stopFunction;
+      const ownerToken=(globalThis.__exportSayTokenCounter=(globalThis.__exportSayTokenCounter||0)+1),stop=perform.stopFunction;
+      globalThis.__exportActiveSayToken=ownerToken;
       perform.stopFunction=()=>{
-        const previous=globalThis.__exportTextSettleOwnerKey;
-        globalThis.__exportTextSettleOwnerKey=ownerKey;
+        const previous=globalThis.__exportTextSettleOwnerToken;
+        globalThis.__exportTextSettleOwnerToken=ownerToken;
         try{return stop?.();}
-        finally{globalThis.__exportTextSettleOwnerKey=previous;}
+        finally{globalThis.__exportTextSettleOwnerToken=previous;}
       };
     }
     // Prefix fast-preview restores the terminal stage state of completed -keep animations.
@@ -30,8 +31,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
   const markTextSettled=()=>{
     const state=globalThis.__gpuDomState;
     if(!state)return;
-    const currentKey=__wgProbe.stageManager.getCalculationStageState()?.currentDialogKey;
-    if(!globalThis.__exportTextSettleApplies(globalThis.__exportTextSettleOwnerKey,currentKey,globalThis.__exportForceTextSettle))return;
+    if(!globalThis.__exportTextSettleApplies(globalThis.__exportTextSettleOwnerToken,globalThis.__exportActiveSayToken,globalThis.__exportForceTextSettle))return;
     state.textSettled=true;
     state.settledMaskPrepared=false;
     const els=[...document.querySelectorAll('.Textelement_start')],values=els.map(x=>Math.max(0,Math.min(1,Number(getComputedStyle(x).opacity)||0)));
