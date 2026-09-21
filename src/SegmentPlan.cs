@@ -26,6 +26,10 @@ namespace NativeVideo {
    return result.Where(w=>w.End>w.Start).ToArray();
   }
 
+  static IEnumerable<int> Nearest(IEnumerable<int> values,int target,int min,int max,int limit){
+   return values.Where(v=>v>=min&&v<=max).OrderBy(v=>Math.Abs((long)v-target)).Take(limit);
+  }
+
   static int ReplayAnchor(int cut,int minWarmupFrames,ReplayWindow[] windows){
    int anchor=Math.Max(0,cut-minWarmupFrames);
    bool moved;
@@ -68,13 +72,15 @@ namespace NativeVideo {
    var events=J.A(J.Get(plan,"events")).Where(e=>J.N(e,"line")>0&&!J.S(e,"command").StartsWith("__")).ToList();
    var preferredCuts=events.Where(e=>J.S(e,"command")=="say"&&!Regex.IsMatch(J.S(e,"script"),@"^\s*:\s*;\s*$"))
     .Select(e=>(int)Math.Ceiling(J.N(e,"atMs")*fps/1000)).Where(frame=>frame>0&&frame<total).Distinct().OrderBy(frame=>frame).ToList();
+   var replayBoundaries=replayWindows.SelectMany(w=>new[]{w.Start,w.End}).Where(frame=>frame>0&&frame<total).Distinct().OrderBy(frame=>frame).ToList();
 
    var workload=J.A(J.Get(plan,"domWorkload")).Select(x=>new{Frame=Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(x,"atMs")*fps/1000))),Units=Math.Max(0,J.N(x,"units",1))}).OrderBy(x=>x.Frame).ToArray();
    var costPoints=new List<KeyValuePair<int,double>>();double cumulativeUnits=0;
    foreach(var w in workload){cumulativeUnits+=w.Units;costPoints.Add(new KeyValuePair<int,double>(w.Frame,cumulativeUnits));}
    Func<int,double> costAt=frame=>{
-    frame=Math.Max(0,Math.Min(total,frame));double units=0;
-    for(int i=0;i<costPoints.Count;i++){if(costPoints[i].Key>=frame)break;units=costPoints[i].Value;}
+    frame=Math.Max(0,Math.Min(total,frame));double units=0;int lo=0,hi=costPoints.Count-1,best=-1;
+    while(lo<=hi){int mid=lo+(hi-lo)/2;if(costPoints[mid].Key<frame){best=mid;lo=mid+1;}else hi=mid-1;}
+    if(best>=0)units=costPoints[best].Value;
     return frame+units*DomRefreshFrameCost;
    };
 
@@ -96,9 +102,12 @@ namespace NativeVideo {
      double targetCost=part*totalCost/parts;
      int targetFrame=(int)((long)part*total/parts);
      var candidates=new List<int>{snapCut(targetFrame),snapCut(minFrame),snapCut(maxFrame)};
-     foreach(var frame in preferredCuts)if(frame>=minFrame&&frame<=maxFrame)candidates.Add(frame);
-     foreach(var w in protectedWindows){if(w.Start>=minFrame&&w.Start<=maxFrame)candidates.Add(w.Start);if(w.End>=minFrame&&w.End<=maxFrame)candidates.Add(w.End);}
-     foreach(var w in replayWindows){if(w.Start>=minFrame&&w.Start<=maxFrame)candidates.Add(w.Start);if(w.End>=minFrame&&w.End<=maxFrame)candidates.Add(w.End);}
+     candidates.AddRange(Nearest(preferredCuts,targetFrame,minFrame,maxFrame,12));
+     candidates.AddRange(Nearest(preferredCuts,minFrame,minFrame,maxFrame,4));
+     candidates.AddRange(Nearest(preferredCuts,maxFrame,minFrame,maxFrame,4));
+     candidates.AddRange(Nearest(replayBoundaries,targetFrame,minFrame,maxFrame,12));
+     candidates.AddRange(Nearest(replayBoundaries,minFrame,minFrame,maxFrame,4));
+     candidates.AddRange(Nearest(replayBoundaries,maxFrame,minFrame,maxFrame,4));
      int best=-1;double bestScore=double.MaxValue;
      foreach(int candidate in candidates.Distinct()){
       if(candidate<minFrame||candidate>maxFrame||candidate<=lastCut||candidate<=0||candidate>=total||!safeCut(candidate))continue;
