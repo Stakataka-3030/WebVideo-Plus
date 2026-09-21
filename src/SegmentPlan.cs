@@ -9,7 +9,7 @@ namespace NativeVideo {
 
   static ReplayWindow[] ReplayWindows(object plan,int total,int fps){
    return J.A(J.Get(plan,"replayWindows")).Select(w=>new ReplayWindow(
-    Math.Max(0,Math.Min(total,(int)Math.Floor(J.N(w,"startMs")*fps/1000))),
+    Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(w,"startMs")*fps/1000))),
     Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(w,"endMs")*fps/1000))),
     J.B(w,"rootReplay"),J.B(w,"noCut"),J.S(w,"command","perform")
    )).Where(w=>w.End>w.Start).OrderBy(w=>w.Start).ToArray();
