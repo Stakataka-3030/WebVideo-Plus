@@ -150,5 +150,5 @@ globalThis.__finishNativeTimeline=({result,pre,settings,playlist,range})=>{
   if(synthetic)actualElastic.push({startMs:durationMs,endMs:target,line:lineTimes.length-1});
   durationMs=target;
  }
- return {schemaVersion:2,mode:settings.mode,durationSeconds:Math.ceil(durationMs*settings.fps/1000)/settings.fps,lineTimes,textSpeed:settings.textSpeed,autoSpeed:settings.autoSpeed,holdSeconds:settings.holdSeconds,playlist,playlistOffsetMs:rangeStartMs,range,controlEvents:result.controlEvents,sourceEvents,performWindows,elasticWindows:actualElastic};
+ return {schemaVersion:1,mode:settings.mode,durationSeconds:Math.ceil(durationMs*settings.fps/1000)/settings.fps,lineTimes,textSpeed:settings.textSpeed,autoSpeed:settings.autoSpeed,holdSeconds:settings.holdSeconds,playlist,playlistOffsetMs:rangeStartMs,range,controlEvents:result.controlEvents,sourceEvents,performWindows,elasticWindows:actualElastic};
 };
