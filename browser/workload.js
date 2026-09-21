@@ -13,7 +13,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  };
  const statementSource=(s,index)=>{const r=statementRange(s,index);return sourceLines.slice(r.start,r.end+1).join('\n');};
  const singleLineHintDuration=(cmd,params,content,raw='')=>{if(cmd!=='choose'||Number(params.defaultChoose)!==1||params.next===true)return 0;const options=String(content||'').split(/(?<!\\)\|/);if(options.length!==1)return 0;const nodes=options[0].split(/(?<!\\):/);if(nodes.length!==2||!/^__wvp_hint_[A-Za-z0-9_]+$/.test(nodes[1].trim()))return 0;const fromArgs=Number(params.wvpHint),match=String(raw||'').match(/(?:^|\s)-wvpHint=([0-9]+(?:\.[0-9]+)?)(?=\s|;|$)/),fromSource=match?Number(match[1]):NaN,ms=Number.isFinite(fromArgs)?fromArgs:fromSource;return Number.isFinite(ms)&&ms>=100&&ms<=60000?ms:1800;};
- const sourceEvents=Array.isArray(timing?.sourceEvents)?timing.sourceEvents:[],performWindows=Array.isArray(timing?.performWindows)?timing.performWindows:[];
+ const sourceEvents=Array.isArray(timing?.sourceEvents)?timing.sourceEvents:[],performWindows=Array.isArray(timing?.performWindows)?timing.performWindows:[],stageExitWindows=Array.isArray(timing?.stageExitWindows)?timing.stageExitWindows:[];
  const sourceEventByIndex=new Map();for(const e of sourceEvents)if(Number.isInteger(e.index)&&!sourceEventByIndex.has(e.index))sourceEventByIndex.set(e.index,e);
  const primaryPerform=(index,cmd)=>performWindows.find(w=>w.role!=='vocal'&&Number(w.line)===index&&w.command===cmd&&w.startMs!==null&&w.startMs!==undefined&&Number.isFinite(Number(w.startMs)));
  for(let i=0;i<parsed.sentenceList.length;i++){
@@ -55,7 +55,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    if(changed&&previousPresent){
     const state=transitionStates.get(target)||{},fallback=cmd==='changeBg'?1500:450;
     const exitMs=state.exitName?ensureAnimation(state.exitName):Math.max(0,Number.isFinite(Number(state.exitDuration))?Number(state.exitDuration):fallback);
-    if(exitMs>0)exitReplay.push({startMs:cursor,endMs:cursor+exitMs,command:cmd==='changeBg'?'changeBg-exit':'changeFigure-exit',line:range.start+1,hold:false,dormantRestorable:false,rootReplay:cmd==='changeFigure'&&activePersistentFigures.has(target)});
+    if(exitMs>0)exitReplay.push({startMs:cursor,endMs:cursor+exitMs,target,command:cmd==='changeBg'?'changeBg-exit':'changeFigure-exit',line:range.start+1,hold:false,dormantRestorable:false,rootReplay:cmd==='changeFigure'&&activePersistentFigures.has(target)});
    }
    visualSources.set(key,visualName);
    if(cmd==='changeFigure'){
@@ -144,7 +144,25 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   end=Math.min(fullDurationMs,end);
   if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command)),rootReplay:w.command==='pixiPerform'});
  }
- for(const window of persistentReplay.concat(exitReplay)){
+ const resolvedExitReplay=[],usedStageExits=new Set();
+ for(const window of exitReplay){
+  const match=stageExitWindows.find((actual,index)=>{
+   if(usedStageExits.has(index)||actual.startMs===null||actual.startMs===undefined)return false;
+   const target=String(actual.target||''),expected=String(window.target||'');
+   return Math.abs(Number(actual.startMs)-Number(window.startMs))<=2&&(!expected||target.startsWith(expected));
+  });
+  if(match){
+   const index=stageExitWindows.indexOf(match);usedStageExits.add(index);
+   const end=match.stopMs!==null&&match.stopMs!==undefined&&Number.isFinite(Number(match.stopMs))?Number(match.stopMs):fullDurationMs;
+   resolvedExitReplay.push({...window,endMs:end});
+  }else resolvedExitReplay.push(window);
+ }
+ stageExitWindows.forEach((actual,index)=>{
+  if(usedStageExits.has(index)||actual.startMs===null||actual.startMs===undefined||!Number.isFinite(Number(actual.startMs)))return;
+  const end=actual.stopMs!==null&&actual.stopMs!==undefined&&Number.isFinite(Number(actual.stopMs))?Number(actual.stopMs):fullDurationMs;
+  resolvedExitReplay.push({startMs:Number(actual.startMs),endMs:end,target:String(actual.target||''),command:'stage-exit',line:0,hold:false,dormantRestorable:false,rootReplay:false});
+ });
+ for(const window of persistentReplay.concat(resolvedExitReplay)){
   const start=Math.max(0,Number(window.startMs)||0),end=Math.min(fullDurationMs,Number(window.endMs)||0);
   if(end>start+.01)replayWindows.push({...window,startMs:start,endMs:end});
  }
