@@ -32,19 +32,16 @@ namespace NativeVideo {
 
   static int ReplayAnchor(int cut,int minWarmupFrames,ReplayWindow[] windows){
    int anchor=Math.Max(0,cut-minWarmupFrames);
-   bool moved;
-   do{
-    // A future replay window may explicitly request story-root replay when its
-    // runtime state cannot be reconstructed from a local anchor.
-    if(windows.Any(w=>w.Root&&w.Start<=cut&&w.End>anchor))return 0;
-    moved=false;
-    foreach(var w in windows){
-     if(w.Start<anchor&&w.End>anchor){
-      anchor=w.Start;
-      moved=true;
-     }
-    }
-   }while(moved&&anchor>0);
+   // A future replay window may explicitly request story-root replay when its
+   // runtime state cannot be reconstructed from a local anchor.
+   if(windows.Any(w=>w.Root&&w.Start<=cut&&w.End>anchor))return 0;
+   // Windows are start-sorted. Walking backwards computes the transitive overlap
+   // closure in one pass: once anchor moves earlier, already-visited later windows
+   // are automatically covered by the longer replay interval.
+   for(int i=windows.Length-1;i>=0;i--){
+    var w=windows[i];if(w.Start>=anchor)continue;
+    if(w.End>anchor)anchor=w.Start;
+   }
    return Math.Max(0,Math.Min(cut,anchor));
   }
 
