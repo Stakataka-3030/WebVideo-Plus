@@ -12,12 +12,13 @@ namespace NativeVideo {
   public const string MygoHash = "0407b5a6326ebaa1608d16541b79b4ccc54a0432947ae7d3a6a855606a68866e";
   const string BundledWebgalBundle = "assets/index-R1tKotR6.js";
   public readonly string Id, Version, Source, Bundle, SourceKind;
-  readonly bool externalWebgal;
+  readonly bool externalWebgal, strictMygoHash;
   public bool IsMygo { get { return Id == "mygo"; } }
-  EngineAdapter(string id, string version, string source, string bundle, string sourceKind, bool external=false) {
-   Id=id; Version=version; Source=source; Bundle=bundle; SourceKind=sourceKind; externalWebgal=external;
+  public bool RuntimeParity { get { return externalWebgal||SourceKind=="mygo-project-runtime"; } }
+  EngineAdapter(string id, string version, string source, string bundle, string sourceKind, bool external=false, bool strictMygo=false) {
+   Id=id; Version=version; Source=source; Bundle=bundle; SourceKind=sourceKind; externalWebgal=external; strictMygoHash=strictMygo;
   }
-  public object Describe() { return J.O("id",Id,"version",Version,"bundle",Bundle,"sourceHash",IsMygo?MygoHash:Files.Hash(Path.Combine(Source,Bundle)),"sourceKind",SourceKind,"runtimeParity",externalWebgal,"adapterVersion",2); }
+  public object Describe() { string hash=Files.Hash(Path.Combine(Source,Bundle)); return J.O("id",Id,"version",Version,"bundle",Bundle,"sourceHash",hash,"canonicalMygo",IsMygo&&hash==MygoHash,"sourceKind",SourceKind,"runtimeParity",RuntimeParity,"adapterVersion",3); }
 
   static string MainBundle(string root) {
    string html=Path.Combine(root,"index.html");
@@ -185,11 +186,15 @@ namespace NativeVideo {
     return BundledWebgal();
    }
    if(selected!="mygo")throw new IOException("未知导出引擎");
+   string mygoError;
+   var projectMygo=TryMygoProjectRuntime(J.S(request,"project"),out mygoError);
+   if(projectMygo!=null)return projectMygo;
+   if(mygoError!=null)throw new IOException(mygoError);
    string source=J.S(request,"mygoRoot");
    if(string.IsNullOrEmpty(source))source=FindMygo(Path.GetDirectoryName(Files.Full(J.S(request,"project"))));
    if(source==null||!SupportedMygo(source))throw new IOException("未检测到受支持的 MyGO 3.2.1 安装，或引擎文件已改变。请安装对应专版，或选择原版 WebGAL。");
    string main=MainBundle(source);
-   return new EngineAdapter("mygo","3.2.1",Files.Full(source),RelativeBundle(source,main),"mygo-runtime",false);
+   return new EngineAdapter("mygo","3.2.1",Files.Full(source),RelativeBundle(source,main),"mygo-derivative-runtime",false,true);
   }
   static void CopyRuntimeShell(string source,string root) {
    // Engine shell only. Game scenes/assets are rebuilt separately from the project
