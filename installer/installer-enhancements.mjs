@@ -27,7 +27,6 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
    if(safeRecursiveCleanup&&Directory.Exists(Root)&&!Directory.EnumerateFileSystemEntries(Root).Any())Directory.Delete(Root);
   }catch(Exception e){Report("部分安装缓存未能删除："+e.Message);}
  }
- }
 `);
 
  replace(' }catch{state.UpdateAvailable=false;state.Message="安装记录无法读取，请核对所选目录。";}return state;}',
