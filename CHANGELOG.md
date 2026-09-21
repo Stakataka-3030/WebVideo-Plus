@@ -3,6 +3,16 @@
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
 
+### 内部版本 0.7.4 / 导出内核 0.6.4
+
+- 修正 0.7.3 的 `textSettle` 修复层级：不再只让 WebVideo+ 自己的 GPU DOM listener 忽略过期事件，而是在 `WebGAL.events.textSettle.emit` 源头做 owner 校验。旧 say perform 的 settle 若已经不是当前活动对白，会直接被拦截，因此 WebGAL 原生 TextBox listener 也不会再把新对白瞬间切成 settled 状态。
+- Worker prefix 恢复不再只等待 scene pointer / fast-preview 状态结束；若当前舞台存在对白，会继续等待实际 `#textBoxMain` 文字 DOM 挂载完成，再执行一次强制 settle。这样 prefix 恢复出的旧对白不会在新 Worker 接缝处重新播放文字动画。
+- GPU DOM 仍在 prefix 恢复前安装；强制 prefix settle 会同时到达 WebGAL TextBox 与 GPU DOM 状态。warmup 中真正新开始的对白不使用 force，仍按正常动画播放。
+- 导出任务卡新增“内核 x.y.z”显示，方便实测时直接确认当前任务实际运行的导出内核，避免源码已拉取但安装/挂载仍指向旧内核时难以判断。
+- 新增回归：使用伪 WebGAL event 验证 stale settle 不会送达任何 listener、当前 owner 正常送达、prefix force 可绕过 owner；同时检查 prefix settle 必须晚于实际文字 DOM ready。旧缓存通过 `text-settle-source-0.7.4` 自动失效。
+
+
+
 ### 内部版本 0.7.3 / 导出内核 0.6.3
 
 - 修复 `-notend -next` / `wait` 链后旧对白的 `textSettle` 仍可能在新对白已经开始后触发的问题。导出器现在给每个 say perform 分配独立 ownership token；旧对白结束时只有 token 仍属于当前活动对白才允许把文字标记为 settled，避免上一句把下一句瞬间全部显示。
