@@ -110,7 +110,7 @@ namespace NativeVideo {
    if(string.IsNullOrWhiteSpace(state)||!Directory.Exists(state))return;string full=Files.Full(state).TrimEnd('\\','/'),root=Path.GetPathRoot(full).TrimEnd('\\','/');if(full.Equals(root,StringComparison.OrdinalIgnoreCase)||Files.Within(terre,full,true))throw new IOException("拒绝删除不安全的数据目录："+state);var config=J.TryRead(Path.Combine(state,"config.json")),marker=J.TryRead(Path.Combine(state,".webvideo-data.json"));bool owned=config!=null&&SamePath(J.S(config,"terreDir"),terre)||marker!=null&&SamePath(J.S(marker,"terreDir"),terre);if(!owned)throw new IOException("无法确认此目录仅属于当前 WebVideo+ 实例，未自动删除："+state);Files.DeleteTree(Path.GetDirectoryName(full),full);
   }
   static void CleanupProjectMetadata(string gamesRoot){
-   if(string.IsNullOrWhiteSpace(gamesRoot)||!Directory.Exists(gamesRoot))return;foreach(var game in Directory.GetDirectories(gamesRoot)){string meta=Path.Combine(game,".webvideo-plus");if(Directory.Exists(meta))try{Files.DeleteTree(game,meta);}catch{}}
+   if(string.IsNullOrWhiteSpace(gamesRoot)||!Directory.Exists(gamesRoot))return;foreach(var game in Directory.GetDirectories(gamesRoot)){string meta=Path.Combine(game,".webvideo-plus");if(Directory.Exists(meta))try{Files.DeleteTree(game,meta);}catch{}string music=Path.Combine(game,"video-project.json");if(File.Exists(music))try{File.Delete(music);}catch{}}
   }
   static void UpdateInstallRegistry(string installCache,string terre,string state,bool add){
    if(string.IsNullOrWhiteSpace(installCache))return;installCache=Files.Full(installCache);Directory.CreateDirectory(installCache);string file=Path.Combine(installCache,"instances.json");var map=new Dictionary<string,object>(StringComparer.OrdinalIgnoreCase);
