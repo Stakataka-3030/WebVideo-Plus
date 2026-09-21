@@ -3,6 +3,18 @@
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
 
+### 内部版本 0.7.5 / 导出内核 0.6.5
+
+- 根据同一实测样例重新定位 0.7.3 / 0.7.4 未命中的两处问题，不再继续围绕 `textSettle` 猜测。逐字显示异常的直接风险点在最终 GPU DOM 合成：say 状态提交后 React TextBox 可能尚未把新的逐字节点挂到 DOM，而宿主已经开始本帧捕获；等到下一次 DOM 刷新时，文字动画可能已接近或到达终态。最终渲染现在在每次 say 周围显式跟踪 `#textBoxMain` 真实 DOM mutation，并在新的文字节点数量与当前 stage `showText/currentDialogKey` 对齐后，才继续建立文字 atlas / opacity 动画基线。
+- Worker 接缝不再允许落在任意按时长均分得到的帧。分段候选只来自真实 WebGAL source-event 时间点，并优先选择对白边界；活动中的 say perform 作为 hard no-cut 区间，避免在逐字显示过程中切段。原来的工作量均衡仍参与这些合法候选之间的选择。
+- Live2D / WMDL 不重新回到“整个在场生命周期禁止切段”的 0.7.0 策略，而改为 **phase replay**：允许切段，但如果切点处仍有持续模型，Worker 的 replay anchor 会回退到该模型最近一次建立 / 重新 motion 的时刻，再真实重放到输出切点。这样保留多 Worker 的可能性，同时避免仅靠 prefix stage-state 重建导致 motion / physics 从相位 0 重新开始、在接缝处出现明显姿势跳变。
+- prefix fast-preview 恢复同样改为等待实际 TextBox DOM mutation，而不是只等待 scene pointer 或一个已有的 `span[id]`；恢复出的旧对白在 DOM 确认完成后才强制 settle。
+- 诊断侧车新增每个分段的起止帧、replayFrame、segmentRanges，以及 GPU 文字合成的简化 opacity transition 记录。若仍有项目差异，可以直接判断是切点、重放还是文字合成阶段，而不再只凭成片猜测。
+- 新增无需 WebView2 的原生分段 smoke：验证两 Worker 不会选择任意中点帧，并验证持续 Live2D 的 replayFrame 会回到 phase origin。GitHub 托管 Windows 环境无法稳定启动 WebView2 页面，因此 CI 不再把该环境当作视觉 E2E 结论。
+- pipeline revision 更新为 `dialogue-dom-seams-0.7.5`，旧规划和分片缓存全部失效。
+
+
+
 ### 内部版本 0.7.4 / 导出内核 0.6.4
 
 - 修正 0.7.3 的 `textSettle` 修复层级：不再只让 WebVideo+ 自己的 GPU DOM listener 忽略过期事件，而是在 `WebGAL.events.textSettle.emit` 源头做 owner 校验。旧 say perform 的 settle 若已经不是当前活动对白，会直接被拦截，因此 WebGAL 原生 TextBox listener 也不会再把新对白瞬间切成 settled 状态。
