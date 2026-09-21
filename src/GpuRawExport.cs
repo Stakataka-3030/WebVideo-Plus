@@ -23,8 +23,8 @@ namespace NativeVideo {
       if(domOverlay){
        var needDom=await browser.Eval("__gpuDomCaptureNeeded()");
        if(needDom is bool&&(bool)needDom){
-        mark=Stopwatch.GetTimestamp();string domBase=await browser.CaptureDomOverlayPngBase64("base"),domTextbox=await browser.CaptureDomOverlayPngBase64("textbox"),domFinal=await browser.CaptureDomOverlayPngBase64("final");domCaptureSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;domOverlayBytes+=(long)(domBase.Length+domTextbox.Length+domFinal.Length)*3/4;
-        mark=Stopwatch.GetTimestamp();domLastUpdate=await browser.Eval("__gpuDomOverlayUpdate("+J.Text(domBase)+","+J.Text(domTextbox)+","+J.Text(domFinal)+")",60000);domUploadSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;domCaptureCount+=3;domRefreshCount++;
+        mark=Stopwatch.GetTimestamp();string domBase=await browser.CaptureDomOverlayPngBase64("base"),domTextbox=await browser.CaptureDomOverlayPngBase64("textbox"),domFinal=await browser.CaptureDomOverlayPngBase64("final");var atlasPlan=await browser.Eval("__gpuDomPrepareTextAtlas()",30000);int atlasPages=Math.Max(0,(int)J.N(atlasPlan,"pages"));var domAtlas=new List<string>();for(int atlasPage=0;atlasPage<atlasPages;atlasPage++)domAtlas.Add(await browser.CaptureDomOverlayPngBase64("atlas:"+atlasPage));domCaptureSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;domOverlayBytes+=(long)(domBase.Length+domTextbox.Length+domFinal.Length)*3/4+domAtlas.Sum(x=>(long)x.Length)*3/4;
+        string atlasArg="["+string.Join(",",domAtlas.Select(J.Text))+"]";mark=Stopwatch.GetTimestamp();domLastUpdate=await browser.Eval("__gpuDomOverlayUpdate("+J.Text(domBase)+","+J.Text(domTextbox)+","+J.Text(domFinal)+","+atlasArg+")",60000);domUploadSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;domCaptureCount+=3+domAtlas.Count;domRefreshCount++;
        }
        mark=Stopwatch.GetTimestamp();domAnimation=await browser.Eval("__gpuDomApplyAnimations()",30000);domAnimationSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
       }
