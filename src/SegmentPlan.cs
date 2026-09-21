@@ -12,6 +12,20 @@ namespace NativeVideo {
    )).Where(w=>w.End>w.Start).OrderBy(w=>w.Start).ToArray();
   }
 
+  static ReplayWindow[] DomAnimationWindows(object plan,int total,int fps){
+   int margin=Math.Max(1,(int)Math.Ceiling(fps*.25)),mergeGap=Math.Max(1,(int)Math.Ceiling(fps*.20));
+   var frames=J.A(J.Get(plan,"domWorkload")).Where(x=>J.S(x,"reason")=="animation")
+    .Select(x=>Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(x,"atMs")*fps/1000)))).Distinct().OrderBy(x=>x).ToArray();
+   if(frames.Length==0)return new ReplayWindow[0];
+   var result=new List<ReplayWindow>();int first=frames[0],last=frames[0];
+   for(int i=1;i<frames.Length;i++){
+    if(frames[i]-last<=mergeGap){last=frames[i];continue;}
+    result.Add(new ReplayWindow(Math.Max(0,first-margin),Math.Min(total,last+margin)));first=last=frames[i];
+   }
+   result.Add(new ReplayWindow(Math.Max(0,first-margin),Math.Min(total,last+margin)));
+   return result.Where(w=>w.End>w.Start).ToArray();
+  }
+
   static int ReplayAnchor(int cut,int minWarmupFrames,ReplayWindow[] windows){
    int anchor=Math.Max(0,cut-minWarmupFrames);
    bool moved;
@@ -42,7 +56,7 @@ namespace NativeVideo {
     Math.Max(0,Math.Min(total,(int)Math.Floor(J.N(h,"startMs")*fps/1000))),
     Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(h,"endMs")*fps/1000)))
    )).Where(w=>w.End>w.Start).OrderBy(w=>w.Start).ToArray();
-   var replayOnly=ReplayWindows(plan,total,fps),noCutWindows=replayOnly.Where(w=>w.NoCut).ToArray(),cutProtected=protectedWindows.Concat(noCutWindows).OrderBy(w=>w.Start).ToArray();
+   var replayOnly=ReplayWindows(plan,total,fps).Concat(DomAnimationWindows(plan,total,fps)).OrderBy(w=>w.Start).ToArray(),noCutWindows=replayOnly.Where(w=>w.NoCut).ToArray(),cutProtected=protectedWindows.Concat(noCutWindows).OrderBy(w=>w.Start).ToArray();
    Func<int,bool> safeCut=frame=>!cutProtected.Any(w=>frame>w.Start&&frame<w.End);
    Func<int,int> snapCut=frame=>{
     foreach(var w in cutProtected)if(frame>w.Start&&frame<w.End)frame=frame-w.Start<=w.End-frame?w.Start:w.End;
