@@ -62,7 +62,9 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
   var warnings=new List<string>();string full=Path.GetFullPath(value),normalized=full.TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar),root=Path.GetPathRoot(full).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar);
   if(normalized.Equals(root,StringComparison.OrdinalIgnoreCase))warnings.Add(label+"使用了磁盘根目录 "+full+"。WebVideo+ 会尽量只清理能够确认归属的内容，但其它程序也可能使用这里。");
   if(SamePath(full,terrePath))warnings.Add(label+"与 Terre 安装目录相同。建议使用独立子目录，避免同名文件或清理范围发生冲突。");
+  else if(PathInside(terrePath,full))warnings.Add(label+"位于 Terre 安装目录内部。可以继续使用，但建议确认不会与 Terre 自身文件混用。");
   if(SamePath(full,gamesPath))warnings.Add(label+"与游戏目录根相同。建议使用独立子目录，避免同名文件或清理范围发生冲突。");
+  else if(PathInside(gamesPath,full))warnings.Add(label+"位于游戏目录内部。可以继续使用，但建议使用独立缓存子目录，避免与游戏素材混用。");
   string profile=Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);if(!String.IsNullOrWhiteSpace(profile)&&SamePath(full,profile))warnings.Add(label+"使用了用户目录根。建议使用独立子目录。");
   foreach(var special in new[]{Environment.SpecialFolder.Windows,Environment.SpecialFolder.System,Environment.SpecialFolder.SystemX86}){string system=Environment.GetFolderPath(special);if(!String.IsNullOrWhiteSpace(system)&&SameOrInside(system,full)){warnings.Add(label+"位于 Windows 系统目录中。继续前请确认当前账户具有写入权限。");break;}}
   return warnings.Distinct().ToArray();
@@ -85,7 +87,7 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
   Uri address;if(!Uri.TryCreate(url.Text,UriKind.Absolute,out address)||!new[]{"localhost","127.0.0.1"}.Contains(address.Host)){MessageBox.Show(this,"请填写本机 Terre 地址，例如 http://localhost:3001。","请核对地址");return;}
   string t=Path.GetFullPath(terre.Text),g=Path.GetFullPath(games.Text),o=Path.GetFullPath(output.Text),u=url.Text,d=Path.GetFullPath(dataDir.Text),w=Path.GetFullPath(workDir.Text),ic=Path.GetFullPath(installCache.Text);bool launch=start.Checked,keep=keepRecovery.Checked;var selected=SelectedModules();
   var pathWarnings=new List<string>();try{pathWarnings.AddRange(StoragePathWarnings(d,"WebVideo+ 数据目录",t,g));pathWarnings.AddRange(StoragePathWarnings(w,"导出工作缓存",t,g));pathWarnings.AddRange(StoragePathWarnings(ic,"安装缓存目录",t,g));pathWarnings.AddRange(InstallCacheWarnings(ic));if(PathsOverlap(d,w)||PathsOverlap(w,ic)||PathInside(d,ic)||String.Equals(d,ic,StringComparison.OrdinalIgnoreCase))pathWarnings.Add("部分 WebVideo+ 存储目录彼此重叠。功能仍可继续，但清理时会更保守，并可能保留无法确认归属的文件。");}catch(Exception pathError){MessageBox.Show(this,pathError.Message,"请核对存储路径");return;}
-  if(pathWarnings.Count>0){var choice=MessageBox.Show(this,"以下路径存在风险：\n\n• "+string.Join("\n• ",pathWarnings.Distinct())+"\n\n是否仍然使用这些路径？","路径风险提示",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2);if(choice!=DialogResult.Yes)return;}
+  if(pathWarnings.Count>0){var choice=MessageBox.Show(this,"以下路径存在风险：\\n\\n• "+string.Join("\\n• ",pathWarnings.Distinct())+"\\n\\n是否仍然使用这些路径？","路径风险提示",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2);if(choice!=DialogResult.Yes)return;}
   try{PrepareInstallCache(ic);}catch(Exception pathError){MessageBox.Show(this,pathError.Message,"无法使用存储路径");return;}
   engine=new SetupEngine(ic,Report);SetBusy(true);
   try{
