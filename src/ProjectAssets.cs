@@ -106,7 +106,7 @@ namespace NativeVideo {
     sanitized[first]=Regex.Replace(logical,@"\s*\r?\n\s*"," ").Trim();
     for(int n=first+1;n<=last;n++)sanitized[n]="; 导出副本：多行参数续行已合并";
    }
-   return J.O("schemaVersion",2,"complete",true,"totalLines",lines.Length,"checkedFiles",checkedFiles.Count,"issues",list,"actions",unique,"canContinue",list.Length>0&&list.All(x=>J.S(x,"kind")=="missing"),"digest",Files.HashText(J.Text(J.O("script",Script,"issues",list))),"sanitizedScript",string.Join("\n",sanitized));
+   return J.O("schemaVersion",1,"complete",true,"totalLines",lines.Length,"checkedFiles",checkedFiles.Count,"issues",list,"actions",unique,"canContinue",list.Length>0&&list.All(x=>J.S(x,"kind")=="missing"),"digest",Files.HashText(J.Text(J.O("script",Script,"issues",list))),"sanitizedScript",string.Join("\n",sanitized));
   }
 
   static string StripArgument(string line,string key){
