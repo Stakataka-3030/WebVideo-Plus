@@ -30,9 +30,8 @@ namespace NativeVideo {
    int anchor=Math.Max(0,cut-minWarmupFrames);
    bool moved;
    do{
-    // Runtime-only effects such as Pixi performs and persistent model state can
-    // consume hidden runtime state that fast-prefix restore cannot serialize.
-    // If one touches this warmup/output boundary, replay from the story root.
+    // A future replay window may explicitly request story-root replay when its
+    // runtime state cannot be reconstructed from a local anchor.
     if(windows.Any(w=>w.Root&&w.Start<=cut&&w.End>anchor))return 0;
     moved=false;
     foreach(var w in windows){
