@@ -1,5 +1,6 @@
 // With GPU DOM compositing, draw the stage only at the final composite step.
 // Re-rendering WMDL Live2D models without an intervening update can lose clipping masks.
+globalThis.__exportTextSettleApplies=(ownerKey,currentKey,force=false)=>!!force||(ownerKey!==null&&ownerKey!==undefined&&String(ownerKey)===String(currentKey));
 globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50})=>{
   const pc=__wgProbe.core.gameplay.performController,arrange=pc.arrangeNewPerform;
   const dormantHoldCommands=new Set(['setAnimation','setTempAnimation','setTransform']);
@@ -10,6 +11,15 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     const current=globalThis.__exportCurrentEvent,command=script.command===0?'say':script.commandRaw;
     if(globalThis.__exportControlledSpeech&&script.command===0)perform.startFunction=()=>{};
     if(script.command===0&&current?.command==='say'&&Number.isFinite(Number(current.plannedDurationMs)))perform.duration=Math.max(0,Number(current.plannedDurationMs));
+    if(script.command===0){
+      const ownerKey=__wgProbe.stageManager.getCalculationStageState()?.currentDialogKey,stop=perform.stopFunction;
+      perform.stopFunction=()=>{
+        const previous=globalThis.__exportTextSettleOwnerKey;
+        globalThis.__exportTextSettleOwnerKey=ownerKey;
+        try{return stop?.();}
+        finally{globalThis.__exportTextSettleOwnerKey=previous;}
+      };
+    }
     // Prefix fast-preview restores the terminal stage state of completed -keep animations.
     // Keep the hold perform identity so later commands can unmount it, but do not restart
     // an already-finished animation at the replay anchor.
@@ -20,6 +30,8 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
   const markTextSettled=()=>{
     const state=globalThis.__gpuDomState;
     if(!state)return;
+    const currentKey=__wgProbe.stageManager.getCalculationStageState()?.currentDialogKey;
+    if(!globalThis.__exportTextSettleApplies(globalThis.__exportTextSettleOwnerKey,currentKey,globalThis.__exportForceTextSettle))return;
     state.textSettled=true;
     state.settledMaskPrepared=false;
     const els=[...document.querySelectorAll('.Textelement_start')],values=els.map(x=>Math.max(0,Math.min(1,Number(getComputedStyle(x).opacity)||0)));
