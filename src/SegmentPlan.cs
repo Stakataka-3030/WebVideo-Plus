@@ -48,7 +48,7 @@ namespace NativeVideo {
     return Math.Max(0,Math.Min(total,frame));
    };
 
-   var replayWindows=ReplayWindows(plan,total,fps);
+   var replayWindows=ReplayWindows(plan,total,fps).Concat(protectedWindows).OrderBy(w=>w.Start).ToArray();
    Func<int,int> replayFor=cut=>ReplayAnchor(cut,minReplayWarmupFrames,replayWindows);
 
    var events=J.A(J.Get(plan,"events")).Where(e=>J.N(e,"line")>0&&!J.S(e,"command").StartsWith("__")).ToList();
