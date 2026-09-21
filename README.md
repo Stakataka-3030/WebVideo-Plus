@@ -4,7 +4,7 @@
 
 [下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [0.5.3 发行说明](RELEASE_NOTES_0.5.3.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前源码版本：1.0.0（内部开发标识 0.5.24；安装器 Win32 版本 1.0.0.0，导出内核 0.5.5）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
+**当前源码版本：1.0.0（内部开发标识 0.6.0；安装器 Win32 版本 1.0.0.0，导出内核 0.5.5）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
 
 当前适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
 
@@ -39,7 +39,7 @@
 
 安装/更新仍保留严格校验；若 Terre 文件、启动程序或历史安装记录与预期不一致，安装器不会直接锁死，而会提供显式的 **强制修复**。强制操作先建立事务性临时回滚副本，成功后立即删除。用户可选择是否长期保留另一份 Terre 原始文件恢复备份；该长期备份默认开启并放在所选 WebVideo+ 数据目录内，也可关闭。
 
-点击“卸载 WebVideo+”会弹出清理选项：默认勾选“删除 WebVideo+ 缓存和临时文件”，默认不勾“删除 WebVideo+ 配置和用户数据”。后者包括设置、任务历史、日志、自动备份、滤镜/角色映射/预制效果/AI 配置和长期恢复备份。两项都勾选可完整清理 WebVideo+ 产生的数据；**已导出的 MP4 与 WebGAL 游戏工程本身不会删除**。安装状态不一致时同样可以显式选择强制拆卸。
+点击“卸载 WebVideo+”会弹出清理选项：默认勾选“删除 WebVideo+ 缓存和临时文件”，默认不勾“删除 WebVideo+ 配置和用户数据”。后者包括设置、任务历史、日志、自动备份、项目内 WebVideo+ 成片音乐配置、滤镜/角色映射/预制效果/AI 配置和长期恢复备份。两项都勾选可完整清理 WebVideo+ 产生的数据；**已导出的 MP4 与 WebGAL 游戏工程本身不会删除**。安装状态不一致时同样可以显式选择强制拆卸。
 
 并行数支持 1–32，但更多进程不一定更快。Planner 会按剧情安全点和 DOM workload 估算分配分片，且分片数不会超过有效 worker 数，避免额外 WebView2 冷启动。**1080p 是常规推荐档，1440p 适合需要更高输出分辨率的场景；4K 每帧像素量约为 1080p 的 4 倍，建议 2–4 worker。若原始背景、立绘或 Live2D 贴图本身不是 4K，通常不会获得更多真实细节。**
 
@@ -83,7 +83,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于所选 **WebVideo+ 数据�
 故事继续保存在 WebGAL 原有 TXT 中；批量操作前静默备份，不使用旧的 `.webvideo-plus/project.json`。
 
 - 项目备份：项目内 `.webvideo-plus/backups/`（完整卸载并选择删除用户数据时可一并清理）
-- 音乐配置：项目内 `video-project.json`（属于 WebGAL 项目内容，不随卸载删除）
+- 成片音乐配置：项目根目录 `video-project.json`（由 WebVideo+ 生成；只有完整卸载时明确勾选“删除配置和用户数据”才删除）
 - 角色表、手动滤镜、预制效果、Anogo 动作表与 AI 配置：所选 WebVideo+ 数据目录下的 `user-data/`
 - 任务历史、设置与日志：所选 WebVideo+ 数据目录
 - 导出重型临时文件：所选导出工作缓存目录
