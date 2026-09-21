@@ -1,6 +1,6 @@
 // Data-only scheduling. Files, processes and browser lifecycle are owned by C#.
 globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,project,sceneName,fps})=>{
- const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],persistentReplay=[],exitReplay=[],counts={},visualSources=new Map(),figureIdentities=new Map(),activePersistentFigures=new Map(),transitionStates=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
+ const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],exitReplay=[],counts={},visualSources=new Map(),figureIdentities=new Map(),transitionStates=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
  const clean=(kind,name)=>String(name||'').replace(new RegExp('^\\.?/?game/'+kind+'/'),'');
  const physical=name=>decodeURIComponent(String(name||'').split(/[?#]/)[0]);
  const local=(kind,name)=>root.replaceAll('\\','/')+'/game/'+kind+'/'+physical(clean(kind,name));
@@ -55,7 +55,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    if(changed&&previousPresent){
     const state=transitionStates.get(target)||{},fallback=cmd==='changeBg'?1500:450;
     const exitMs=state.exitName?ensureAnimation(state.exitName):Math.max(0,Number.isFinite(Number(state.exitDuration))?Number(state.exitDuration):fallback);
-    if(exitMs>0){const active=cmd==='changeFigure'?activePersistentFigures.get(target):null;exitReplay.push({startMs:active?active.startMs:cursor,triggerMs:cursor,endMs:cursor+exitMs,target,command:cmd==='changeBg'?'changeBg-exit':'changeFigure-exit',line:range.start+1,hold:false,dormantRestorable:false,rootReplay:false,noCut:!!active});}
+    if(exitMs>0)exitReplay.push({startMs:cursor,triggerMs:cursor,endMs:cursor+exitMs,target,command:cmd==='changeBg'?'changeBg-exit':'changeFigure-exit',line:range.start+1,hold:false,dormantRestorable:false,rootReplay:false,noCut:false});
    }
    visualSources.set(key,visualName);
    if(cmd==='changeFigure'){
@@ -69,12 +69,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
     state.exitDuration=Math.max(0,Number(params.exitDuration??(cmd==='changeBg'?1500:450))||0);
     transitionStates.set(target,state);
    }
-   if(cmd==='changeFigure'){
-    const persistent=!gone&&(/\.(json|jsonl|wmdl)([?#].*)?$/i.test(visualName)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(visualName)||!!params.motion||!!params.animationFlag||!!params.blink||!!params.eyesOpen||!!params.eyesClose);
-    const old=activePersistentFigures.get(target);
-    if(old&&(changed||!persistent)){old.endMs=cursor;persistentReplay.push(old);activePersistentFigures.delete(target);}
-    if(persistent&&!activePersistentFigures.has(target))activePersistentFigures.set(target,{startMs:cursor,endMs:null,command:'changeFigure-runtime',line:range.start+1,hold:true,dormantRestorable:false,rootReplay:false,noCut:true});
-   }
+
   }
   if(cmd==='playVideo'){
    const m=info(kind,name);videoDuration=m.durationMs;
@@ -126,7 +121,6 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  const controlOrder=e=>e.command==='__singleLineEnd'?-4:e.command==='__settleNonHold'?-3:e.command==='__nativeNext'?-2:e.command==='__finishVideo'?-1:0;
  events.sort((a,b)=>a.atMs-b.atMs||controlOrder(a)-controlOrder(b));
  const fullDuration=timing?.durationSeconds??(Math.ceil(Math.max(cursor,...videoCues.filter(v=>v.target==='fullscreen').map(v=>v.atMs+v.durationMs))/1000)+1),fullDurationMs=fullDuration*1000;
- for(const item of activePersistentFigures.values()){item.endMs=fullDurationMs;persistentReplay.push(item);}
  const replayWindows=[];
  const dynamicCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','playVideo','intro','pixiPerform']);
  const dormantHoldCommands=new Set(['setTransform','setTempAnimation','setAnimation']);
@@ -162,7 +156,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   const end=actual.stopMs!==null&&actual.stopMs!==undefined&&Number.isFinite(Number(actual.stopMs))?Number(actual.stopMs):fullDurationMs;
   resolvedExitReplay.push({startMs:Number(actual.startMs),triggerMs:Number(actual.startMs),endMs:end,target:String(actual.target||''),command:'stage-exit',line:0,hold:false,dormantRestorable:false,rootReplay:false,noCut:false});
  });
- for(const window of persistentReplay.concat(resolvedExitReplay)){
+ for(const window of resolvedExitReplay){
   const start=Math.max(0,Number(window.startMs)||0),end=Math.min(fullDurationMs,Number(window.endMs)||0);
   if(end>start+.01)replayWindows.push({...window,startMs:start,endMs:end});
  }
