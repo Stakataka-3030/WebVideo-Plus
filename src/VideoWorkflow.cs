@@ -47,7 +47,7 @@ namespace NativeVideo {
     if(J.B(track,"fullLength")){offset=0;length=sourceDuration;loop=false;fadeIn=0;fadeOut=0;int lane=(int)Number(track,"lane",0,0,63);string laneKey=legacyScene+"|"+lane;List<Tuple<double,double>> intervals;if(!occupied.TryGetValue(laneKey,out intervals)){intervals=new List<Tuple<double,double>>();occupied[laneKey]=intervals;}if(intervals.Any(interval=>start<interval.Item2-.001&&start+length>interval.Item1+.001))throw new ArgumentException("同一播放器行中的音乐不能重叠，请移动音乐或增加播放器行");intervals.Add(Tuple.Create(start,start+length));}
     if(fadeIn+fadeOut>length+.001)throw new ArgumentException("淡入淡出长度超过音乐片段长度");if(!loop&&(offset>=sourceDuration||length>sourceDuration-offset+.1))throw new ArgumentException("音乐片段超出音源长度，请缩短片段或启用循环");if(loop)offset%=sourceDuration;
     string copy=Path.Combine(jobDir,"music-snapshot",Guid.NewGuid().ToString("N")+ext);Files.CopyFile(source,copy);result.Add(J.O("file",copy,"originalFile",relative,"legacyScene",legacyScene,"startSeconds",start,"offsetSeconds",offset,"durationSeconds",length,"volume",volume,"fadeInSeconds",fadeIn,"fadeOutSeconds",fadeOut,"loop",loop));
-   }return J.O("schemaVersion",2,"sourceSchemaVersion",version,"replaceGameBgm",result.Count>0&&J.B(data,"replaceGameBgm"),"tracks",result);
+   }return J.O("schemaVersion",2,"sourceSchemaVersion",version,"replaceGameBgm",result.Count>0&&J.B(data,"replaceGameBgm",true),"tracks",result);
   }
   public static void AddMusic(object plan,object request,object timing){
    var music=J.Get(request,"musicTimeline");if(music==null)return;var audio=J.A(J.Get(plan,"audio"));if(J.B(music,"replaceGameBgm"))audio=audio.Where(a=>J.S(a,"kind")!="bgm"||J.S(a,"origin")=="playlist").ToList();
