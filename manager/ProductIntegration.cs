@@ -90,7 +90,14 @@ namespace NativeVideo {
   static void CopyStateVerified(string source,string target){
    if(!Directory.Exists(source)){if(Directory.Exists(target)&&Directory.EnumerateFileSystemEntries(target).Any())throw new IOException("新的 WebVideo+ 数据目录必须为空，避免覆盖其中现有文件。");Directory.CreateDirectory(target);return;}if(Directory.Exists(target)&&Directory.EnumerateFileSystemEntries(target).Any())throw new IOException("新的 WebVideo+ 数据目录必须为空，避免覆盖其中现有文件。");Directory.CreateDirectory(target);Files.CopyTree(source,target);string prefix=Files.Full(source).TrimEnd('\\','/')+Path.DirectorySeparatorChar;
    foreach(var file in Directory.GetFiles(source,"*",SearchOption.AllDirectories)){if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0)continue;string relative=Files.Full(file).Substring(prefix.Length),copy=Path.Combine(target,relative);if(!File.Exists(copy)||new FileInfo(copy).Length!=new FileInfo(file).Length||Files.Hash(copy)!=Files.Hash(file))throw new IOException("WebVideo+ 数据目录迁移校验失败："+relative);}
-   foreach(var transient in new[]{"lifecycle.lock","lifecycle-control.json","service-state.json","runtime-session.json"}){string file=Path.Combine(target,transient);if(File.Exists(file))File.Delete(file);}
+   foreach(var transient in new[]{"lifecycle.lock","lifecycle-control.json","service-state.json","runtime-session.json"}){string file=Path.Combine(target,transient);if(File.Exists(file))File.Delete(file);}RelocateJobStatePaths(source,target);
+  }
+  static object RelocateStateValue(object value,string source,string target){
+   if(value is string){string text=(string)value;try{string full=Files.Full(text),root=Files.Full(source).TrimEnd('\\','/');if(full.Equals(root,StringComparison.OrdinalIgnoreCase))return Files.Full(target);string prefix=root+Path.DirectorySeparatorChar;if(full.StartsWith(prefix,StringComparison.OrdinalIgnoreCase))return Path.Combine(Files.Full(target),full.Substring(prefix.Length));}catch{}return value;}
+   var dict=value as Dictionary<string,object>;if(dict!=null){foreach(var key in dict.Keys.ToArray())dict[key]=RelocateStateValue(dict[key],source,target);return dict;}var array=value as object[];if(array!=null){for(int i=0;i<array.Length;i++)array[i]=RelocateStateValue(array[i],source,target);return array;}var list=value as List<object>;if(list!=null){for(int i=0;i<list.Count;i++)list[i]=RelocateStateValue(list[i],source,target);return list;}return value;
+  }
+  static void RelocateJobStatePaths(string source,string target){
+   string jobs=Path.Combine(target,"jobs");if(!Directory.Exists(jobs))return;foreach(var dir in Directory.GetDirectories(jobs))foreach(var name in new[]{"request.json","status.json"}){string file=Path.Combine(dir,name);if(!File.Exists(file))continue;try{var data=RelocateStateValue(J.Read(file),source,target);J.Write(file,data);}catch(Exception e){throw new IOException("迁移任务记录路径失败："+file,e);}}
   }
   static void SaveTransactionCopy(string root,string source,string name){if(!File.Exists(source))return;Directory.CreateDirectory(root);Files.CopyFile(source,Path.Combine(root,name));}
   static void CleanupWorkCaches(object config,string state){
