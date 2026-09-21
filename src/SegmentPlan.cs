@@ -56,7 +56,9 @@ namespace NativeVideo {
     Math.Max(0,Math.Min(total,(int)Math.Floor(J.N(h,"startMs")*fps/1000))),
     Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(h,"endMs")*fps/1000)))
    )).Where(w=>w.End>w.Start).OrderBy(w=>w.Start).ToArray();
-   var replayOnly=ReplayWindows(plan,total,fps).Concat(DomAnimationWindows(plan,total,fps)).OrderBy(w=>w.Start).ToArray(),noCutWindows=replayOnly.Where(w=>w.NoCut).ToArray(),cutProtected=protectedWindows.Concat(noCutWindows).OrderBy(w=>w.Start).ToArray();
+   var replayOnly=ReplayWindows(plan,total,fps).Concat(DomAnimationWindows(plan,total,fps)).OrderBy(w=>w.Start).ToArray();
+   var noCutWindows=replayOnly.Where(w=>w.NoCut).ToArray();
+   var cutProtected=protectedWindows.Concat(noCutWindows).OrderBy(w=>w.Start).ToArray();
    Func<int,bool> safeCut=frame=>!cutProtected.Any(w=>frame>w.Start&&frame<w.End);
    Func<int,int> snapCut=frame=>{
     foreach(var w in cutProtected)if(frame>w.Start&&frame<w.End)frame=frame-w.Start<=w.End-frame?w.Start:w.End;
