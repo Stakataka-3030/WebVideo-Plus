@@ -3,6 +3,17 @@
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
 
+### 内部版本 0.7.7 / 导出内核 0.6.7
+
+- 根据 0.6.6 实测侧车再次定位首个短句跳变：`blockedPrematureAutoNext=0` 证明 0.7.6 的 autoplay guard 没有命中；真正把该句提前结束的是 `5234ms` 的 `settle-nonhold`。对应 say 的 nominal duration 约 1221ms，但实际只运行约 68ms。这个时间差与 WebGAL `PerformController.goNextWhenOver` 在遇到 `blockingNext` 时每 100ms 重试完全吻合。
+- 根因是 Video+ Planner 为了防止自动播放跳过普通 `wait`，曾把普通 wait 同时强制改成 `blockingAuto=true` 和 `blockingNext=true`。在“前一句 `-notend -next` 与普通 wait 同一 forward”时，前一句结束后会因为这个人工 `blockingNext` 留下一个 100ms 的内部 continue 重试；wait 自己先结束并进入下一句后，这个旧重试才触发，于是 `continueSentence()` 把已经开始的新 say 结算掉。现在普通 wait **只额外阻塞 autoplay，不再人工阻塞 next**；`-nobreak` 仍完全使用 WebGAL 原生 blockingNext 语义。
+- 保留 0.7.6 的 autoplay 防御检查，但它不再被当成本问题主修复。
+- 多 Worker 策略进一步放宽：最小分段时长从 5s 降到 2.5s，累计 replay 预热阈值从成片时长的 60% 放宽到 150%。正确性相关 hard no-cut、语义 source-event 切点和 Live2D phase replay 不变；本次只减少性能启发式导致的过度降级。
+- 新增与实测短片相近的分段 smoke：约 11.4 秒、持续 Live2D、请求 8 Worker 时应能保留至少 3 个实际 Worker（若语义切点允许），而不是被固定 5 秒阈值压到 2。
+- 新增静态回归，明确禁止 Planner 再把普通 wait 改成 blockingNext。pipeline revision 更新为 `wait-stale-continue-0.7.7`，旧规划与分片缓存全部失效。
+
+
+
 ### 内部版本 0.7.6 / 导出内核 0.6.6
 
 - 根据 0.6.5 实测侧车重新定位“是歌词吗？！”仍然瞬间完成的问题：GPU 文字合成本身已经记录到逐帧 opacity，但该句在约 4 个输出帧后就被引擎 settle，说明剩余问题不在 DOM 捕获，而在自动推进时序。Planner 现在在 WebGAL autoplay 调用 next 时再次检查当前 perform 的 `blockingAuto`；只要当前对白仍阻塞自动播放，就拒绝这次过早 next，不记录控制事件，也不允许它提前结算当前 say。最终 renderer 对回放的 `__nativeNext` 同样执行该保护，避免旧规划中的过早 auto-next 再次打断当前对白。
