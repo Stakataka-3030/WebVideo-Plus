@@ -4,7 +4,7 @@
 
 [下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [0.5.3 发行说明](RELEASE_NOTES_0.5.3.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前源码版本：1.0.0（首个正式发布版；安装器内部版本 1.0.0.0，导出内核 0.5.3）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
+**当前源码版本：1.0.0（内部开发标识 0.5.24；安装器 Win32 版本 1.0.0.0，导出内核 0.5.5）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
 
 当前适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
 
@@ -24,16 +24,22 @@
 
 0.5.x 的默认导出使用 GPU Raw 管线：Pixi 按输出尺寸渲染，DOM/UI 通过三层缓存合入最终 framebuffer，再以 WebView2 SharedBuffer 把 RGBA 帧送入 FFmpeg。0.5.4 起，编码质量与具体硬件编码器分离，默认不再把非 NVIDIA 用户自动导向 RGB 真无损。
 
-导出面板提供四种编码模式：
+导出质量现在放在主导出界面，与分辨率、帧率同级，不需要展开高级设置：
 
-- **推荐 / 录屏级**：默认档。自动并行探测 NVIDIA NVENC、AMD AMF、Intel Quick Sync；可用时使用硬件 H.264，不可用时回退 CPU x264。质量目标接近高质量本地录屏，优先控制文件体积和导出吞吐。
-- **高质量 / 后期**：使用同一套自动编码器，但提高质量，适合需要进一步剪辑、调色或留档的成片。
-- **无损母版**：使用 `libx264rgb -crf 0` 的 RGB 真无损视频。文件体积可能非常大，仅建议需要像素级保真或特殊后期时使用；部分 Windows 自带播放器兼容性较差。
-- **传统 / 兼容模式**：保留旧 JPEG CapturePreview → H.264 路径，用于 GPU Raw 出现兼容问题时回退。
+- **推荐 / 高质量**：默认档。自动并行探测 NVIDIA NVENC、AMD AMF、Intel Quick Sync；可用时使用硬件 H.264，不可用时回退 CPU x264。适合大多数成片，兼顾高画质、较小体积和导出速度。
+- **超高质量**：使用同一套自动编码器，但进一步降低压缩损失，适合后期编辑或对压缩痕迹敏感的场景；文件会更大。
+- **完全无损**：使用 `libx264rgb -crf 0` 的 RGB 真无损视频，**文件可能特别大**；仅建议需要像素级保真或特殊后期时使用，部分 Windows 自带播放器兼容性较差。
+- **传统 / 兼容**：保留旧 JPEG CapturePreview → H.264 路径，用于 GPU Raw 出现兼容问题时回退，**导出速度明显变慢**。
 
 硬件编码器在任务开始前会做一次实际 FFmpeg 预检；导出过程中若硬编仍因驱动或设备问题失败，会保持原画质档自动回退 CPU x264，而不是回退到无损 x264rgb。
 
-导出工作缓存与任务历史已经分离。任务记录仍保存在 WebVideo+ 状态目录；分片视频、素材快照、混音 WAV 和 WebView2 profile 写入单独的**工作缓存目录**，可在导出面板的高级设置中修改。首次升级/安装时默认使用成片目录下的 `.webvideo-cache`。成功导出或时间分析完成后会自动删除重型工作缓存；失败或取消的任务保留必要分片和素材，以便继续重试；WebView2 profile 在每个规划/渲染进程结束后都会立即清理。 导出面板临时导入的音乐在创建任务时会复制到该任务自己的工作缓存，服务启动/退出时会回收不再被旧未完成任务引用的全局上传副本，避免 `stateDir/media` 长期积累。
+导出工作缓存与任务历史已经分离。安装器高级设置允许分别选择 **WebVideo+ 数据目录、导出工作缓存目录、安装缓存目录**；默认位置仍可直接使用。数据目录保存设置、任务历史、日志和 WebVideo+ 用户库，切换目录时会先停止服务、复制并校验内容，成功后再切换；工作缓存和安装缓存则对后续任务/下载生效。
+
+分片视频、素材快照、混音 WAV 和 WebView2 profile 写入工作缓存目录；默认使用成片目录下的 `.webvideo-cache`。成功导出或时间分析完成后会自动删除重型工作缓存，失败或取消任务保留必要分片以便重试；WebView2 profile 在规划/渲染进程结束后立即清理。临时导入音乐在建任务时复制到任务缓存，服务会回收不再使用的上传副本。
+
+安装/更新仍保留严格校验；若 Terre 文件、启动程序或历史安装记录与预期不一致，安装器不会直接锁死，而会提供显式的 **强制修复**。强制操作先建立事务性临时回滚副本，成功后立即删除。用户可选择是否长期保留另一份 Terre 原始文件恢复备份；该长期备份默认开启并放在所选 WebVideo+ 数据目录内，也可关闭。
+
+点击“卸载 WebVideo+”会弹出清理选项：默认勾选“删除 WebVideo+ 缓存和临时文件”，默认不勾“删除 WebVideo+ 配置和用户数据”。后者包括设置、任务历史、日志、自动备份、滤镜/角色映射/预制效果/AI 配置和长期恢复备份。两项都勾选可完整清理 WebVideo+ 产生的数据；**已导出的 MP4 与 WebGAL 游戏工程本身不会删除**。安装状态不一致时同样可以显式选择强制拆卸。
 
 并行数支持 1–32，但更多进程不一定更快。Planner 会按剧情安全点和 DOM workload 估算分配分片，且分片数不会超过有效 worker 数，避免额外 WebView2 冷启动。**1080p 是常规推荐档，1440p 适合需要更高输出分辨率的场景；4K 每帧像素量约为 1080p 的 4 倍，建议 2–4 worker。若原始背景、立绘或 Live2D 贴图本身不是 4K，通常不会获得更多真实细节。**
 
@@ -59,31 +65,31 @@
 
 当前 AI 附件固定使用 DSH 0.1.5-rc.1 与 pi-ai 0.85.1，并由 `package-lock.json` 锁定依赖；包含固定 Node 运行时。提供商目录支持常见 Key 服务自动带入地址，也可自定义 Responses、Chat Completions 或 Anthropic Messages 协议。
 
-Key 通过 Windows 当前用户 DPAPI 加密，存于 `%LOCALAPPDATA%/WebVideoPlus/ai/providers.json`，不会回显给页面。连接测试由用户手动触发，会发送简短请求并可能产生费用；模型列表读取成功不代表实际生成请求一定兼容。
+Key 通过 Windows 当前用户 DPAPI 加密，存于所选 **WebVideo+ 数据目录**下的 `user-data/ai/providers.json`；旧版 `%LOCALAPPDATA%/WebVideoPlus` 数据在首次使用新结构时会尽量导入，不会回显给页面。连接测试由用户手动触发，会发送简短请求并可能产生费用；模型列表读取成功不代表实际生成请求一定兼容。
 
 ## 安装与模块管理
 
 1. 从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 下载最新的 `WebVideo+-Setup-*.exe`。
 2. 运行安装器并选择已有 **Terre 4.6.4** 安装目录。
-3. 默认安装常用模块；在高级选项中可单独增删功能。灰选项目表示其他已选模块所需依赖。
+3. 默认安装常用模块；在高级选项中可单独增删功能，并可选择 WebVideo+ 数据目录、导出工作缓存、安装缓存以及是否保留长期 Terre 恢复备份。灰选项目表示其他已选模块所需依赖。
 4. 完成后照常启动 Terre。
 
 安装器会记录实际 Terre 主程序文件名，因此兼容 `WebGAL_Terre.exe`、Steam 版的 `WebGAL Terre.exe`，以及只存在空格/下划线/连字符差异的唯一匹配名称。
 
-模块拆卸会保留游戏、成片、历史备份和手动保存的库。关闭全部功能或使用“拆卸全部模块”可恢复原版入口。MyGO 为可选本机引擎，优先使用用户现有安装，不随本包捆绑角色素材或模型资源。
+卸载默认只清理缓存，是否同时删除 WebVideo+ 配置和用户数据由卸载弹窗单独选择；关闭全部功能或卸载可尽量恢复原版入口，安装记录不一致时可显式选择强制拆卸。MyGO 为可选本机引擎，优先使用用户现有安装，不随本包捆绑角色素材或模型资源。
 
 ## 数据与基线
 
 故事继续保存在 WebGAL 原有 TXT 中；批量操作前静默备份，不使用旧的 `.webvideo-plus/project.json`。
 
-- 项目备份：项目内 `.webvideo-plus/backups/`
-- 音乐配置：项目内 `video-project.json`
-- 所有游戏共用的角色表：`%LOCALAPPDATA%/WebVideoPlus/character-map/characters.json`
-- 手动滤镜：`%LOCALAPPDATA%/WebVideoPlus/filters/filters.json`
-- 手动预制效果：`%LOCALAPPDATA%/WebVideoPlus/preset-effects/effects.json`
-- Anogo 动作对应表：`%LOCALAPPDATA%/WebVideoPlus/anogo-actions/actions.json`
+- 项目备份：项目内 `.webvideo-plus/backups/`（完整卸载并选择删除用户数据时可一并清理）
+- 音乐配置：项目内 `video-project.json`（属于 WebGAL 项目内容，不随卸载删除）
+- 角色表、手动滤镜、预制效果、Anogo 动作表与 AI 配置：所选 WebVideo+ 数据目录下的 `user-data/`
+- 任务历史、设置与日志：所选 WebVideo+ 数据目录
+- 导出重型临时文件：所选导出工作缓存目录
+- 安装下载、解包和运行依赖缓存：所选安装缓存目录
 
-为保证 Terre 4.6.4 的补丁锚点可复现，仓库包含 `baseline/terre-4.6.4.js` 和 `baseline/local-baseline.json`。前者是固定 Terre 4.6.4 发布 bundle；后者保留建立基线时的校验元数据，其中 `baseHash` 会被当前构建脚本写入 `supportedOriginalBundleSha256`。`local-baseline.json` 中的旧 `kernel` 字段和旧文件哈希属于历史验证信息，不代表当前 WebVideo+ 内核版本；当前构建使用 `0.5.3`。
+为保证 Terre 4.6.4 的补丁锚点可复现，仓库包含 `baseline/terre-4.6.4.js` 和 `baseline/local-baseline.json`。前者是固定 Terre 4.6.4 发布 bundle；后者保留建立基线时的校验元数据，其中 `baseHash` 会被当前构建脚本写入 `supportedOriginalBundleSha256`。`local-baseline.json` 中的旧 `kernel` 字段和旧文件哈希属于历史验证信息，不代表当前 WebVideo+ 内核版本；当前构建以根目录 `version.json` 的 `kernelVersion` 为准。
 
 ## 许可证
 
