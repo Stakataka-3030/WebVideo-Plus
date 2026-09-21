@@ -17,7 +17,9 @@ globalThis.__exportEnsureDialogueObserver=()=>{
   const observer=new MutationObserver(records=>{
     for(const record of records){
       const target=record.target instanceof Element?record.target:record.target?.parentElement;
-      if(target?.closest?.('#textBoxMain')||record.addedNodes?.length||record.removedNodes?.length){
+      const nodes=[...(record.addedNodes||[]),...(record.removedNodes||[])];
+      const touchesBox=!!target?.closest?.('#textBoxMain')||nodes.some(node=>node instanceof Element&&(node.id==='textBoxMain'||node.querySelector?.('#textBoxMain')));
+      if(touchesBox){
         globalThis.__exportDialogueMutationSerial++;
         break;
       }
