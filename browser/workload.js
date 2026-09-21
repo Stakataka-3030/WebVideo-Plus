@@ -1,6 +1,6 @@
 // Data-only scheduling. Files, processes and browser lifecycle are owned by C#.
 globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,project,sceneName,fps})=>{
- const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],counts={},visualSources=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
+ const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],persistentReplay=[],counts={},visualSources=new Map(),activePersistentFigures=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
  const clean=(kind,name)=>String(name||'').replace(new RegExp('^\\.?/?game/'+kind+'/'),'');
  const physical=name=>decodeURIComponent(String(name||'').split(/[?#]/)[0]);
  const local=(kind,name)=>root.replaceAll('\\','/')+'/game/'+kind+'/'+physical(clean(kind,name));
@@ -40,6 +40,13 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    const position=['left','right','left13','right13','left14','right14'].find(k=>params[k])||'center',target=cmd==='changeBg'?'bg-main':params.id||'fig-'+position,key=cmd+':'+target,changed=visualSources.get(key)!==name;
    visualSources.set(key,name);
    if(changed&&(/\.(webm|mp4|mov|mkv)([?#].*)?$/i.test(name)||/[?&]type=video(?:&|$)/i.test(name)))videoCues.push({path:'/game/'+kind+'/'+physical(name),target,atMs:Math.round(cursor),durationMs:info(kind,name).durationMs});
+   if(cmd==='changeFigure'){
+    const old=activePersistentFigures.get(target);
+    if(old){old.endMs=cursor;persistentReplay.push(old);activePersistentFigures.delete(target);}
+    const gone=!name||name==='none';
+    const persistent=!gone&&(/\.(json|jsonl|wmdl)([?#].*)?$/i.test(name)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(name)||!!params.motion||!!params.animationFlag||!!params.blink||!!params.eyesOpen||!!params.eyesClose);
+    if(persistent)activePersistentFigures.set(target,{startMs:cursor,endMs:null,command:'changeFigure-runtime',line:range.start+1,hold:true,dormantRestorable:false});
+   }
   }
   if(cmd==='playVideo'){
    const m=info(kind,name);videoDuration=m.durationMs;
@@ -91,6 +98,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  const controlOrder=e=>e.command==='__singleLineEnd'?-4:e.command==='__settleNonHold'?-3:e.command==='__nativeNext'?-2:e.command==='__finishVideo'?-1:0;
  events.sort((a,b)=>a.atMs-b.atMs||controlOrder(a)-controlOrder(b));
  const fullDuration=timing?.durationSeconds??(Math.ceil(Math.max(cursor,...videoCues.filter(v=>v.target==='fullscreen').map(v=>v.atMs+v.durationMs))/1000)+1),fullDurationMs=fullDuration*1000;
+ for(const item of activePersistentFigures.values()){item.endMs=fullDurationMs;persistentReplay.push(item);}
  const replayWindows=[];
  const dynamicCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','playVideo','intro','pixiPerform']);
  const dormantHoldCommands=new Set(['setTransform','setTempAnimation','setAnimation']);
@@ -107,6 +115,10 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   }else end=hasStop?stop:start+duration;
   end=Math.min(fullDurationMs,end);
   if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command))});
+ }
+ for(const window of persistentReplay){
+  const start=Math.max(0,Number(window.startMs)||0),end=Math.min(fullDurationMs,Number(window.endMs)||0);
+  if(end>start+.01)replayWindows.push({...window,startMs:start,endMs:end});
  }
  return {project,sceneName,sourceLines:sourceLines.length,parsedStatements:parsed.sentenceList.length,counts,fullDuration,duration:fullDuration,fps,events,audio,videoCues,muteWindows,singleLineHints,replayWindows,extraAnimations:[...extraAnimations]};
 };
