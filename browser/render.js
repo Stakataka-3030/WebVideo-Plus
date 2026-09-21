@@ -10,12 +10,71 @@ globalThis.__exportInstallTextSettleGuard=textSettleEvent=>{
   };
   textSettleEvent.__webvideoTextSettleGuarded=true;
 };
-globalThis.__exportRestoredDialogueReady=()=>{
-  const stage=__wgProbe.stageManager.getCalculationStageState?.(),showText=String(stage?.showText??'');
-  if(!showText)return true;
-  const box=document.getElementById('textBoxMain');
-  return !!box&&box.querySelectorAll('span[id]').length>0;
+globalThis.__exportDialogueMutationSerial=0;
+globalThis.__exportDialogueObserver=null;
+globalThis.__exportEnsureDialogueObserver=()=>{
+  if(globalThis.__exportDialogueObserver)return;
+  const observer=new MutationObserver(records=>{
+    for(const record of records){
+      const target=record.target instanceof Element?record.target:record.target?.parentElement;
+      if(target?.closest?.('#textBoxMain')||record.addedNodes?.length||record.removedNodes?.length){
+        globalThis.__exportDialogueMutationSerial++;
+        break;
+      }
+    }
+  });
+  observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+  globalThis.__exportDialogueObserver=observer;
 };
+globalThis.__exportDialogueCharCount=text=>{
+  try{return __wgProbe.compileText(String(text??''),3).reduce((sum,item)=>sum+(item?.length??0),0);}
+  catch{return String(text??'').length;}
+};
+globalThis.__exportBeginDialogueTransition=()=>{
+  globalThis.__exportEnsureDialogueObserver();
+  globalThis.__exportDialoguePending={
+    serial:globalThis.__exportDialogueMutationSerial,
+    targetKey:null,
+    targetText:'',
+    targetCount:0
+  };
+};
+globalThis.__exportSetDialogueTarget=()=>{
+  const pending=globalThis.__exportDialoguePending;if(!pending)return;
+  const stage=__wgProbe.stageManager.getCalculationStageState?.();
+  pending.targetKey=String(stage?.currentDialogKey??'');
+  pending.targetText=String(stage?.showText??'');
+  pending.targetCount=globalThis.__exportDialogueCharCount(pending.targetText);
+};
+globalThis.__exportDialogueDomReady=()=>{
+  const pending=globalThis.__exportDialoguePending;
+  if(!pending)return true;
+  if(!pending.targetText)return true;
+  const stage=__wgProbe.stageManager.getCalculationStageState?.();
+  if(String(stage?.currentDialogKey??'')!==pending.targetKey||String(stage?.showText??'')!==pending.targetText)return false;
+  const box=document.getElementById('textBoxMain');if(!box)return false;
+  const count=box.querySelectorAll('span[id]').length;
+  return globalThis.__exportDialogueMutationSerial>pending.serial&&count>=pending.targetCount;
+};
+globalThis.__exportFinishDialogueTransition=()=>{
+  if(globalThis.__gpuDomState){
+    globalThis.__gpuDomState.dirty=true;
+    globalThis.__gpuDomState.dirtyReason='dialogue';
+  }
+  globalThis.__exportDialoguePending=null;
+  return true;
+};
+globalThis.__exportWaitDialogueDom=async()=>{
+  const pending=globalThis.__exportDialoguePending;if(!pending||globalThis.__exportDialogueDomReady())return true;
+  return await new Promise(resolve=>{
+    let done=false;
+    const finish=value=>{if(done)return;done=true;observer.disconnect();resolve(value);};
+    const observer=new MutationObserver(()=>{if(globalThis.__exportDialogueDomReady())finish(true);});
+    observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+    queueMicrotask(()=>{if(globalThis.__exportDialogueDomReady())finish(true);});
+  });
+};
+globalThis.__exportRestoredDialogueReady=()=>globalThis.__exportDialogueDomReady();
 globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50})=>{
   const pc=__wgProbe.core.gameplay.performController,arrange=pc.arrangeNewPerform;
   const dormantHoldCommands=new Set(['setAnimation','setTempAnimation','setTransform']);
@@ -56,12 +115,16 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
   __wgProbe.core.events.textSettle.on(markTextSettled);
 
   const runScriptEvent=e=>{
-    if(e.command==='say'&&globalThis.__gpuDomState){globalThis.__gpuDomState.textSettled=false;globalThis.__gpuDomState.settledMaskPrepared=false;}
-    if(e.command==='say')globalThis.__exportSetSpeechMode(e.mouthTarget,e.voiceControlled);
+    if(e.command==='say'){
+      globalThis.__exportBeginDialogueTransition();
+      if(globalThis.__gpuDomState){globalThis.__gpuDomState.textSettled=false;globalThis.__gpuDomState.settledMaskPrepared=false;}
+      globalThis.__exportSetSpeechMode(e.mouthTarget,e.voiceControlled);
+    }
     globalThis.__exportCurrentEvent=e;
     globalThis.__exportControlledSpeech=e.voiceControlled;
     try{__probeCommands['preview.command.run-snippet']({snippet:e.script});}
     finally{globalThis.__exportControlledSpeech=false;globalThis.__exportCurrentEvent=null;}
+    if(e.command==='say')globalThis.__exportSetDialogueTarget();
     if(!globalThis.__exportBatchCollecting)__wgProbe.stageManager.commit({applyPixiEffects:false});
   };
 
@@ -107,6 +170,10 @@ globalThis.__stepExportFrame=async({t,elapsed,batch,lips})=>{
     }else{__runExportEvent(event);i++;}
   }
   if(batch.length)await __pwClock.controller.runFor(0);
+  if(globalThis.__exportDialoguePending){
+    await globalThis.__exportWaitDialogueDom();
+    globalThis.__exportFinishDialogueTransition();
+  }
   if(batch.some(e=>e.loads))await __exportWaitForStageAssets();
   for(const a of document.getAnimations()){if(!__exportAnimations.has(a)){__exportAnimations.set(a,t);a.pause();}a.currentTime=Math.max(0,t-__exportAnimations.get(a));}
   const p=__wgProbe.core.gameplay.pixiStage;
