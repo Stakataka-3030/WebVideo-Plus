@@ -50,7 +50,7 @@ namespace NativeVideo {
     string root=J.S(request,"cacheRoot");if(!string.IsNullOrWhiteSpace(root)&&Files.Within(root,work)){Files.DeleteTree(root,work);return;}
     throw new IOException("工作缓存目录不在记录的缓存根目录内，未自动删除："+work);
    }
-   foreach(var name in new[]{"parts","planning","music-snapshot"}){string path=Path.Combine(work,name);if(Directory.Exists(path))Files.DeleteTree(work,path);}
+   foreach(var name in new[]{"parts","planning","music-snapshot","subtitle-snapshot"}){string path=Path.Combine(work,name);if(Directory.Exists(path))Files.DeleteTree(work,path);}
    foreach(var name in new[]{"audio.wav","concat.txt","mix.log"}){string path=Path.Combine(work,name);if(File.Exists(path))File.Delete(path);}
   }
   public static void DeleteAll(object request,string recordRoot,string recordDir){
