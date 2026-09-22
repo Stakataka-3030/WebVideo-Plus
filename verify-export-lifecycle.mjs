@@ -292,6 +292,12 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(renderSource.includes('currentApp.render();return value;'),'warmup step must actually render the Pixi stage so Live2D/WMDL advances');
   assert.ok(gpuRawSource.includes('domOverlay?"__webviewWarmupStep(":"__webviewStep("'),'GPU raw warmup must render the stage when DOM compositing suppresses normal per-step renders');
   assert.ok(gpuRawSource.includes('"warmupStageRenders",warmupStageRenders'),'GPU raw result must expose warmup stage-render diagnostics');
+  assert.ok(renderSource.includes('__gpuDomCapturePlan=()=>'),'DOM compositor must classify refresh scope before capture');
+  assert.ok(renderSource.includes('__gpuDomOverlayUpdateBase=async baseData=>'),'DOM compositor must support base-only texture refresh');
+  assert.ok(renderSource.includes("return (position==='absolute'||position==='fixed'||(props.length>0&&props.every(p=>paintOnly.has(p))))?'base':'full'"),'only isolated/paint-only animations may use base-only refresh');
+  assert.ok(gpuRawSource.includes('domCapturePlan=await browser.Eval("__gpuDomCapturePlan()")'),'GPU raw export must consume scoped DOM capture plans');
+  assert.ok(gpuRawSource.includes('domBaseOnlyRefreshCount++'),'base-only animation frames must avoid full textbox/atlas recapture');
+  assert.ok(gpuRawSource.includes('"domFullRefreshCount",domFullRefreshCount'),'DOM refresh scope diagnostics must be persisted');
 
   const coreSource=fs.readFileSync(path.join(root,'src','Core.cs'),'utf8');
   const uiSource=fs.readFileSync(path.join(root,'browser','export-component.js'),'utf8');
