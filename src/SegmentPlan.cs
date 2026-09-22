@@ -37,10 +37,6 @@ namespace NativeVideo {
    return result.Where(w=>w.End>w.Start).ToArray();
   }
 
-  static IEnumerable<int> Nearest(IEnumerable<int> values,int target,int min,int max,int limit){
-   return values.Where(v=>v>=min&&v<=max).OrderBy(v=>Math.Abs((long)v-target)).Take(limit);
-  }
-
   static int ReplayAnchor(int cut,int minWarmupFrames,ReplayWindow[] windows){
    int anchor=Math.Max(0,cut-minWarmupFrames);
    if(windows.Any(w=>w.Root&&w.Start<=cut&&w.End>anchor))return 0;
@@ -99,13 +95,19 @@ namespace NativeVideo {
    var replayWindows=replayOnly.Concat(protectedWindows).OrderBy(w=>w.Start).ToArray();
    Func<int,int> replayFor=cut=>ReplayAnchor(cut,minReplayWarmupFrames,replayWindows);
 
-   var events=J.A(J.Get(plan,"events")).Where(e=>J.N(e,"line")>0&&!J.S(e,"command").StartsWith("__")).ToList();
+   var allEvents=J.A(J.Get(plan,"events")).ToList();
+   var events=allEvents.Where(e=>J.N(e,"line")>0&&!J.S(e,"command").StartsWith("__")).ToList();
    var preferredCuts=events.Where(e=>J.S(e,"command")=="say"&&!Regex.IsMatch(J.S(e,"script"),@"^\s*:\s*;\s*$"))
     .Select(e=>(int)Math.Ceiling(J.N(e,"atMs")*fps/1000)).Where(frame=>frame>0&&frame<total).Distinct().OrderBy(frame=>frame).ToList();
    var eventCuts=events.Select(e=>(int)Math.Ceiling(J.N(e,"atMs")*fps/1000))
     .Where(frame=>frame>0&&frame<total).Distinct().OrderBy(frame=>frame).ToList();
-   var preferredCutSet=new HashSet<int>(preferredCuts);
-   diagnostics["semanticCutCount"]=eventCuts.Count;diagnostics["preferredDialogueCutCount"]=preferredCuts.Count;
+   var controlCuts=allEvents.Where(e=>J.S(e,"command").StartsWith("__")).Select(e=>(int)Math.Ceiling(J.N(e,"atMs")*fps/1000))
+    .Where(frame=>frame>0&&frame<total).Distinct().OrderBy(frame=>frame).ToList();
+   var protectedBoundaryCuts=cutProtected.Select(w=>w.End).Concat(strictSegmentCuts?softWindows.Select(w=>w.End):Enumerable.Empty<int>())
+    .Where(frame=>frame>0&&frame<total).Distinct().OrderBy(frame=>frame).ToList();
+   var preferredCutSet=new HashSet<int>(preferredCuts);var eventCutSet=new HashSet<int>(eventCuts);var controlCutSet=new HashSet<int>(controlCuts);var protectedBoundaryCutSet=new HashSet<int>(protectedBoundaryCuts);
+   var candidatePool=eventCuts.Concat(controlCuts).Concat(protectedBoundaryCuts).Where(frame=>frame>0&&frame<total).Distinct().OrderBy(frame=>frame).ToArray();
+   diagnostics["semanticCutCount"]=eventCuts.Count;diagnostics["preferredDialogueCutCount"]=preferredCuts.Count;diagnostics["controlCutCount"]=controlCuts.Count;diagnostics["protectedBoundaryCutCount"]=protectedBoundaryCuts.Count;diagnostics["candidatePoolCount"]=candidatePool.Length;diagnostics["plannerMode"]="global-safe-dp";
 
    var workload=J.A(J.Get(plan,"domWorkload")).Select(x=>new{Frame=Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(x,"atMs")*fps/1000))),Units=Math.Max(0,J.N(x,"units",1))}).OrderBy(x=>x.Frame).ToArray();
    var costPoints=new List<KeyValuePair<int,double>>();double cumulativeUnits=0;
@@ -129,47 +131,50 @@ namespace NativeVideo {
 
    double totalCost=costAt(total);bool replayRejectedAny=false;bool safeCutRejectedAny=false;
    var attemptRows=(List<object>)J.Get(diagnostics,"attempts");
-   for(int parts=workers;parts>=2;parts--){
-    var cuts=new List<int>();int lastCut=0;bool valid=true;int unsafeRejected=0;int softAvoided=0;int candidateCount=0;
-    for(int part=1;part<parts;part++){
-     int minFrame=lastCut+minSegmentFrames;int maxFrame=total-(parts-part)*minSegmentFrames;
-     if(maxFrame<minFrame){valid=false;break;}
-     double targetCost=part*totalCost/parts;
-     int targetFrame=(int)((long)part*total/parts);
-     var candidates=new List<int>();
-     candidates.AddRange(Nearest(preferredCuts,targetFrame,minFrame,maxFrame,16));
-     candidates.AddRange(Nearest(preferredCuts,minFrame,minFrame,maxFrame,6));
-     candidates.AddRange(Nearest(preferredCuts,maxFrame,minFrame,maxFrame,6));
-     candidates.AddRange(Nearest(eventCuts,targetFrame,minFrame,maxFrame,24));
-     candidates.AddRange(Nearest(eventCuts,minFrame,minFrame,maxFrame,8));
-     candidates.AddRange(Nearest(eventCuts,maxFrame,minFrame,maxFrame,8));
-     var distinct=candidates.Distinct().Where(candidate=>candidate>=minFrame&&candidate<=maxFrame&&candidate>lastCut&&candidate>0&&candidate<total).ToArray();
-     candidateCount+=distinct.Length;unsafeRejected+=distinct.Count(candidate=>!safeCut(candidate));
-     var safe=distinct.Where(safeCut).ToArray();
-     if(safe.Length==0){safeCutRejectedAny=true;valid=false;break;}
-     var preferred=safe.Where(candidate=>!softCut(candidate)).ToArray();
-     var usable=preferred.Length>0?preferred:safe;
-     if(preferred.Length>0)softAvoided+=safe.Length-preferred.Length;
-     var dialogueCuts=usable.Where(candidate=>preferredCutSet.Contains(candidate)).ToArray();
-     if(dialogueCuts.Length>0)usable=dialogueCuts;
-     int best=-1;double bestScore=double.MaxValue;
-     foreach(int candidate in usable){
-      int replay=replayFor(candidate);
-      double balance=Math.Abs(costAt(candidate)-targetCost);
-      double replayPenalty=Math.Max(0,costAt(candidate)-costAt(replay))*ReplayPenaltyWeight;
-      double score=balance+replayPenalty;
-      if(score<bestScore){best=candidate;bestScore=score;}
+   Func<int,int,bool,List<int>> planCuts=(parts,pass,outCuts)=>{
+    outCuts.Clear();int need=parts-1;if(need<=0)return true;
+    bool allowSoft=pass>0;
+    var pool=candidatePool.Where(frame=>safeCut(frame)&&(allowSoft||!softCut(frame))).ToArray();
+    if(pool.Length<need)return false;
+    int m=pool.Length;var previous=new double[m];var current=new double[m];var back=new int[need,m];
+    for(int i=0;i<m;i++){previous[i]=double.PositiveInfinity;current[i]=double.PositiveInfinity;for(int j=0;j<need;j++)back[j,i]=-1;}
+    Func<int,int,double> cutScore=(frame,part)=>{
+     double targetCost=part*totalCost/parts,balance=Math.Abs(costAt(frame)-targetCost);
+     int replay=replayFor(frame);double replayPenalty=Math.Max(0,costAt(frame)-costAt(replay))*ReplayPenaltyWeight;
+     double sourcePenalty=preferredCutSet.Contains(frame)?0:eventCutSet.Contains(frame)?totalCost*.002:controlCutSet.Contains(frame)?totalCost*.004:protectedBoundaryCutSet.Contains(frame)?totalCost*.006:totalCost*.01;
+     double softPenalty=softCut(frame)?totalCost*.25:0;
+     return balance+replayPenalty+sourcePenalty+softPenalty;
+    };
+    for(int i=0;i<m;i++){int frame=pool[i];if(frame<minSegmentFrames||frame>total-(parts-1)*minSegmentFrames)continue;previous[i]=cutScore(frame,1);}
+    for(int part=2;part<=need;part++){
+     for(int i=0;i<m;i++)current[i]=double.PositiveInfinity;
+     double bestPrev=double.PositiveInfinity;int bestPrevIndex=-1,pointer=0;
+     for(int i=0;i<m;i++){
+      int frame=pool[i],minFrame=part*minSegmentFrames,maxFrame=total-(parts-part)*minSegmentFrames;
+      while(pointer<m&&pool[pointer]<=frame-minSegmentFrames){if(previous[pointer]<bestPrev){bestPrev=previous[pointer];bestPrevIndex=pointer;}pointer++;}
+      if(frame<minFrame||frame>maxFrame||bestPrevIndex<0||double.IsInfinity(bestPrev))continue;
+      current[i]=bestPrev+cutScore(frame,part);back[part-1,i]=bestPrevIndex;
      }
-     if(best<0){valid=false;break;}
-     cuts.Add(best);lastCut=best;
+     var swap=previous;previous=current;current=swap;
     }
-    if(!valid){attemptRows.Add(J.O("parts",parts,"outcome","no-safe-cut","candidateCount",candidateCount,"unsafeRejected",unsafeRejected,"softAvoided",softAvoided));continue;}
+    double best=double.PositiveInfinity;int endIndex=-1;
+    for(int i=0;i<m;i++){if(total-pool[i]<minSegmentFrames)continue;if(previous[i]<best){best=previous[i];endIndex=i;}}
+    if(endIndex<0||double.IsInfinity(best))return false;
+    var selected=new int[need];int index=endIndex;
+    for(int part=need;part>=1;part--){selected[part-1]=pool[index];if(part>1){index=back[part-1,index];if(index<0)return false;}}
+    outCuts.AddRange(selected);return true;
+   };
+   for(int parts=workers;parts>=2;parts--){
+    var cuts=new List<int>();bool valid=planCuts(parts,0,cuts);bool usedSoftCuts=false;
+    if(!valid){cuts.Clear();valid=planCuts(parts,1,cuts);usedSoftCuts=valid;}
+    int candidateCount=candidatePool.Length,unsafeRejected=candidatePool.Count(candidate=>!safeCut(candidate)),safeCandidateCount=candidatePool.Count(safeCut),softCandidateCount=candidatePool.Count(candidate=>safeCut(candidate)&&softCut(candidate));
+    if(!valid){safeCutRejectedAny=true;attemptRows.Add(J.O("parts",parts,"outcome","no-safe-cut","candidateCount",candidateCount,"safeCandidateCount",safeCandidateCount,"unsafeRejected",unsafeRejected,"softCandidateCount",softCandidateCount,"usedSoftCuts",false));continue;}
     var ranges=buildRanges(cuts);
     long warmup=ranges.Sum(r=>(long)J.N(r,"warmupFrames"));
     double weightedReplayFrames=warmup*ReplayPenaltyWeight,maxWeightedReplayFrames=total*MaxWeightedReplayOverheadRatio;
     double rawReplayRatio=total>0?warmup/(double)total:0,weightedReplayRatio=total>0?weightedReplayFrames/total:0;
-    if(weightedReplayFrames>maxWeightedReplayFrames){replayRejectedAny=true;attemptRows.Add(J.O("parts",parts,"outcome","replay-overhead","warmupFrames",warmup,"rawReplayRatio",rawReplayRatio,"weightedReplayFrames",weightedReplayFrames,"weightedReplayRatio",weightedReplayRatio,"maxWeightedReplayFrames",maxWeightedReplayFrames,"candidateCount",candidateCount,"unsafeRejected",unsafeRejected,"softAvoided",softAvoided));continue;}
-    attemptRows.Add(J.O("parts",parts,"outcome","selected","warmupFrames",warmup,"rawReplayRatio",rawReplayRatio,"weightedReplayFrames",weightedReplayFrames,"weightedReplayRatio",weightedReplayRatio,"maxWeightedReplayFrames",maxWeightedReplayFrames,"candidateCount",candidateCount,"unsafeRejected",unsafeRejected,"softAvoided",softAvoided));
+    if(weightedReplayFrames>maxWeightedReplayFrames){replayRejectedAny=true;attemptRows.Add(J.O("parts",parts,"outcome","replay-overhead","warmupFrames",warmup,"rawReplayRatio",rawReplayRatio,"weightedReplayFrames",weightedReplayFrames,"weightedReplayRatio",weightedReplayRatio,"maxWeightedReplayFrames",maxWeightedReplayFrames,"candidateCount",candidateCount,"safeCandidateCount",safeCandidateCount,"unsafeRejected",unsafeRejected,"softCandidateCount",softCandidateCount,"usedSoftCuts",usedSoftCuts));continue;}
+    attemptRows.Add(J.O("parts",parts,"outcome","selected","warmupFrames",warmup,"rawReplayRatio",rawReplayRatio,"weightedReplayFrames",weightedReplayFrames,"weightedReplayRatio",weightedReplayRatio,"maxWeightedReplayFrames",maxWeightedReplayFrames,"candidateCount",candidateCount,"safeCandidateCount",safeCandidateCount,"unsafeRejected",unsafeRejected,"softCandidateCount",softCandidateCount,"usedSoftCuts",usedSoftCuts,"cuts",cuts.ToArray()));
     diagnostics["selectedParts"]=parts;
     diagnostics["reductionReason"]=parts<workers?ReductionReason(noCutWindows,protectedWindows,replayRejectedAny):parts<requestedWorkers?"duration-too-short":"";
     diagnostics["safeCutRejected"]=safeCutRejectedAny;
