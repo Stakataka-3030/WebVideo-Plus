@@ -243,12 +243,41 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const phase=plan.replayWindows.find(w=>w.command==='changeFigure-phase');
   assert.ok(phase,'persistent Live2D must carry a replay-only phase window');
   assert.equal(phase.startMs,0);
+  assert.equal(phase.replayStartMs,0);
   assert.equal(phase.endMs,60000);
   assert.equal(phase.noCut,false,'Live2D phase preservation must replay rather than forbid every cut');
   assert.equal(plan.softCutWindows.length,1);
   assert.equal(plan.softCutWindows[0].reason,'live2d-state-change');
   assert.equal(plan.softCutWindows[0].startMs,0);
   assert.equal(plan.softCutWindows[0].endMs,1000);
+  assert.equal(plan.livePhasePrerollMs,1000);
+  assert.equal(plan.strictSegmentCuts,false);
+
+  const switchedScript=['changeFigure:hero/model.json -id=hero -motion=idle;','hero:before;','changeFigure:hero/model.json -id=hero -motion=wave;','hero:after;'].join('\n');
+  const switchedParsed={sentenceList:[
+    cmd('changeFigure','hero/model.json',[{key:'id',value:'hero'},{key:'motion',value:'idle'}],0),
+    say('before',[],1),
+    cmd('changeFigure','hero/model.json',[{key:'id',value:'hero'},{key:'motion',value:'wave'}],2),
+    say('after',[],3)
+  ]};
+  const switchedTiming={durationSeconds:30,lineTimes:[0,1000,10000,12000],sourceEvents:[{index:0,forwardGroup:1},{index:1,forwardGroup:2},{index:2,forwardGroup:3},{index:3,forwardGroup:4}],controlEvents:[],performWindows:[
+    {command:'changeFigure',line:0,role:'primary',durationMs:300,hold:false,startMs:0,stopMs:300},
+    {command:'say',line:1,role:'primary',durationMs:800,hold:false,startMs:1000,stopMs:1800},
+    {command:'changeFigure',line:2,role:'primary',durationMs:300,hold:false,startMs:10000,stopMs:10300},
+    {command:'say',line:3,role:'primary',durationMs:800,hold:false,startMs:12000,stopMs:12800}
+  ],stageExitWindows:[]};
+  const switched=build({script:switchedScript,parsed:switchedParsed,media:{},animations:{},timing:switchedTiming,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
+  const phases=switched.replayWindows.filter(w=>w.command==='changeFigure-phase');
+  assert.equal(phases.length,2);
+  assert.equal(phases[0].startMs,0);
+  assert.equal(phases[0].endMs,10000);
+  assert.equal(phases[1].startMs,10000);
+  assert.equal(phases[1].replayStartMs,9000,'a restarted Live2D phase must replay one second of pre-state before the motion switch');
+  assert.equal(phases[1].noCut,false);
+
+  const strict=build({script:switchedScript,parsed:switchedParsed,media:{},animations:{},timing:switchedTiming,root:'C:/root',project:'P',sceneName:'start.txt',fps:60,strictSegmentCuts:true});
+  assert.equal(strict.strictSegmentCuts,true);
+  assert.ok(strict.replayWindows.filter(w=>w.command==='changeFigure-phase').every(w=>w.noCut===true),'strict mode must hard-protect active Live2D phases');
 }
 
 {
@@ -258,6 +287,10 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(uiSource.includes("notendVisualTail:true"),'export UI fallback settings must default notend visual tail on');
   assert.ok(uiSource.includes('平滑自定义引擎 -notend 连续对白过渡（推荐）'),'advanced settings must expose the notend visual-tail toggle');
   assert.ok(uiSource.includes("settings.notendVisualTail!==false"),'advanced checkbox must render checked unless explicitly disabled');
+  assert.ok(coreSource.includes('"strictSegmentCuts",false'),'backend settings must default strict segment cuts off');
+  assert.ok(uiSource.includes("strictSegmentCuts:false"),'export UI fallback settings must default strict segment cuts off');
+  assert.ok(uiSource.includes('严格切片模式（优先保证复杂演出连续性）'),'advanced settings must expose the strict seam mode');
+  assert.ok(uiSource.includes("settings.strictSegmentCuts"),'strict seam checkbox must bind to persisted settings');
 }
 
 console.log('Export lifecycle regression checks passed.');

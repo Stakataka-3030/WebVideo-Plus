@@ -1,5 +1,6 @@
 // Data-only scheduling. Files, processes and browser lifecycle are owned by C#.
-globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,project,sceneName,fps,allowDecorativePixiCuts=false})=>{
+globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,project,sceneName,fps,allowDecorativePixiCuts=false,strictSegmentCuts=false})=>{
+ const livePhasePrerollMs=1000;
  const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],softCutWindows=[],phaseReplay=[],exitReplay=[],counts={},visualSources=new Map(),figureIdentities=new Map(),activeLivePhases=new Map(),transitionStates=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
  const clean=(kind,name)=>String(name||'').replace(new RegExp('^\\.?/?game/'+kind+'/'),'');
  const physical=name=>decodeURIComponent(String(name||'').split(/[?#]/)[0]);
@@ -67,7 +68,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
      if(activePhase.endMs>activePhase.startMs)phaseReplay.push(activePhase);
      activeLivePhases.delete(target);
     }
-    if(liveRuntime&&!activeLivePhases.has(target))activeLivePhases.set(target,{startMs:Math.round(cursor),endMs:null,target,command:'changeFigure-phase',line:range.start+1,hold:true,dormantRestorable:false,rootReplay:false,noCut:false});
+    if(liveRuntime&&!activeLivePhases.has(target)){const phaseStart=Math.round(cursor);activeLivePhases.set(target,{startMs:phaseStart,endMs:null,replayStartMs:Math.max(0,phaseStart-livePhasePrerollMs),target,command:'changeFigure-phase',line:range.start+1,hold:true,dormantRestorable:false,rootReplay:false,noCut:!!strictSegmentCuts});}
     if(liveRuntime)softCutWindows.push({startMs:Math.round(cursor),endMs:Math.round(cursor+1000),reason:'live2d-state-change',target,line:range.start+1});
    }
    if(changed&&(/\.(webm|mp4|mov|mkv)([?#].*)?$/i.test(visualName)||/[?&]type=video(?:&|$)/i.test(visualName)))videoCues.push({path:'/game/'+kind+'/'+physical(visualName),target,atMs:Math.round(cursor),durationMs:info(kind,visualName).durationMs});
@@ -182,7 +183,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   const start=Math.max(0,Number(window.startMs)||0),end=Math.min(fullDurationMs,Number(window.endMs)||0);
   if(end>start+.01)replayWindows.push({...window,startMs:start,endMs:end});
  }
- return {project,sceneName,sourceLines:sourceLines.length,parsedStatements:parsed.sentenceList.length,counts,fullDuration,duration:fullDuration,fps,events,audio,videoCues,muteWindows,singleLineHints,softCutWindows,replayWindows,relaxedDecorativePixi,extraAnimations:[...extraAnimations]};
+ return {project,sceneName,sourceLines:sourceLines.length,parsedStatements:parsed.sentenceList.length,counts,fullDuration,duration:fullDuration,fps,events,audio,videoCues,muteWindows,singleLineHints,softCutWindows,replayWindows,relaxedDecorativePixi,strictSegmentCuts:!!strictSegmentCuts,livePhasePrerollMs,extraAnimations:[...extraAnimations]};
 };
 
 globalThis.__finishNativeTimeline=({result,pre,settings,playlist,range})=>{
