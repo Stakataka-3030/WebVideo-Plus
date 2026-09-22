@@ -3,6 +3,17 @@
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
 
+### 内部版本 0.7.9 / 导出内核 0.6.9
+
+- 修复关闭 Terre 后立即重新打开时偶发的导出服务失联。新的启动器不再只凭 \`lifecycle.lock\` 中的旧 PID 判断“已有实例可复用”，而会同时验证 Terre 实例标识与本地导出服务 \`/health\`，并进行短暂稳定性确认；旧实例已经进入退出阶段时会等待其完成清理，再由新实例接管。
+- 对仍存活但长时间不健康的旧 lifecycle 增加受控接管：先写入 stop 控制并等待旧 owner 退出，确认旧锁已释放后才启动新 backend/service，避免两个 lifecycle 同时争用同一 Terre 与 discovery 文件。
+- \`video-export-service.json\` 与 \`service-state.json\` 现在携带 service PID 和唯一 \`serviceId\`。服务正常退出以及 lifecycle 强制终止服务时，只清理由该服务自己拥有的 discovery/state，避免残留旧随机端口/token，也避免误删已经启动的新服务。
+- 新 lifecycle 获得锁后会清理确认已失效的旧 service discovery；导出前端把底层网络异常从裸 \`Failed to fetch\` 转换为明确的“无法连接本地导出服务”诊断，并指向 lifecycle/service 错误日志。
+- 增加生命周期静态回归检查，防止重新引入“PID 存活即直接 return”的旧路径，以及无所有权信息的 service discovery。
+
+
+
+
 ### 内部版本 0.7.8 / 导出内核 0.6.8
 
 - 修正 `-notend -next` 后接普通 `wait` 时的视觉收尾。0.6.7 已经消除了错误的 stale continuation，但实测仍可见前一句最后几个字尚在淡入时，下一句就立即替换。侧车显示该类短句的 say 自身在约 568ms 结束，而下一句恰好同一时刻开始，因此这是剩余的视觉时序问题，不再是异常 settle。

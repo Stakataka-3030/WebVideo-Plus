@@ -85,6 +85,22 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
 }
 
 
+{
+  const lifecycleSource=fs.readFileSync(path.join(root,'src','Lifecycle.cs'),'utf8');
+  assert.ok(lifecycleSource.includes('await ReuseExisting(config,state,control,oldPid)'),'relaunch must verify the old lifecycle instead of blindly opening a stale Terre URL');
+  assert.ok(lifecycleSource.includes('await ExistingReady(config)'),'existing lifecycle reuse must require both Terre identity and export-service health');
+  assert.ok(lifecycleSource.includes('restart-takeover'),'an unhealthy old lifecycle must be asked to stop before a new owner takes the lock');
+  assert.ok(lifecycleSource.includes('CleanupServiceFiles(terre,state,servicePid)'),'lifecycle shutdown must remove discovery owned by the service it killed');
+  assert.ok(!lifecycleSource.includes('if(Commands.Alive((int)J.N(old,"pid"))){NativeDialogs.Open'),'the old PID-only reuse path must not return');
+  const queueSource=fs.readFileSync(path.join(root,'src','QueueService.cs'),'utf8');
+  assert.ok(queueSource.includes('"serviceId",serviceId'),'service discovery must carry an ownership generation');
+  assert.ok(queueSource.includes('"pid",Process.GetCurrentProcess().Id'),'service discovery must identify its owning process');
+  assert.ok(queueSource.includes('RemoveOwnedServiceFile'),'graceful service shutdown must not leave stale discovery');
+  const exportSource=fs.readFileSync(path.join(root,'browser','export-component.js'),'utf8');
+  assert.ok(exportSource.includes('无法连接本地导出服务'),'native connection failures must not surface as a bare Failed to fetch');
+}
+
+
 const say=(content,args=[],startLine=0,endLine=startLine)=>({command:0,commandRaw:'',content,args,startLine,endLine,isLineBreakHolder:false});
 const cmd=(commandRaw,content,args=[],startLine=0,endLine=startLine)=>({command:99,commandRaw,content,args,startLine,endLine,isLineBreakHolder:false});
 const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startLine:line,endLine:line,isLineBreakHolder:true});
