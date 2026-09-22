@@ -43,6 +43,19 @@ assert.equal(context.__exportTextSettleApplies(null,'same',false),false);
 assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
 
 {
+  const previousProbe=context.__wgProbe,previousDocument=context.document,previousPending=context.__exportDialoguePending,previousSerial=context.__exportDialogueMutationSerial;
+  context.__wgProbe={stageManager:{getCalculationStageState:()=>({currentDialogKey:'dlg',showText:'abc'})}};
+  context.document={getElementById:id=>id==='textBoxMain'?{querySelectorAll:()=>[{},{},{}]}:null};
+  context.__exportDialoguePending={serial:7,targetKey:'dlg',targetText:'abc',targetCount:3};
+  context.__exportDialogueMutationSerial=7;
+  assert.equal(context.__exportDialogueDomReady(),false,'ordinary dialogue must still require a fresh TextBox mutation');
+  assert.equal(context.__exportDialogueDomReady(true),true,'prefix restore may accept a fully matching stable DOM without a new mutation');
+  context.__exportDialogueMutationSerial=8;
+  assert.equal(context.__exportDialogueDomReady(),true,'ordinary dialogue becomes ready after the tracked mutation');
+  context.__wgProbe=previousProbe;context.document=previousDocument;context.__exportDialoguePending=previousPending;context.__exportDialogueMutationSerial=previousSerial;
+}
+
+{
   const delivered=[],event={emit(message,id){delivered.push([message,id]);}};
   context.__exportInstallTextSettleGuard(event);
   context.__exportActiveSayToken=2;
@@ -67,11 +80,12 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   const prefixRestore=rendererSource.indexOf('globalThis.__exportPrefixRestore=true');
   const beginDialogue=rendererSource.indexOf('__exportBeginDialogueTransition()',prefixRestore);
   const syncScene=rendererSource.indexOf("preview.command.sync-scene",prefixRestore);
-  const domReady=rendererSource.indexOf('__exportWaitDialogueDom()',prefixRestore);
+  const setTarget=rendererSource.indexOf('__exportSetDialogueTarget()',syncScene);
+  const domReady=rendererSource.indexOf('__exportDialogueDomReady(true)',setTarget);
   const forceSettle=rendererSource.indexOf('__exportForceTextSettle=true',prefixRestore);
   assert.ok(domInstall>=0&&prefixRestore>=0&&domInstall<prefixRestore,'GPU DOM tracking must exist before prefix restore');
   assert.ok(beginDialogue>prefixRestore&&syncScene>beginDialogue,'prefix restore must arm dialogue mutation tracking before sync-scene');
-  assert.ok(domReady>syncScene&&forceSettle>domReady,'prefix restore must wait for actual dialogue DOM mutation before forced settle');
+  assert.ok(setTarget>syncScene&&domReady>setTarget&&forceSettle>domReady,'prefix restore must accept a fully matching stable dialogue DOM before forced settle');
   const timelineSource=fs.readFileSync(path.join(root,'browser','timeline.js'),'utf8');
   const waitOverride=timelineSource.match(/if\(command==='wait'&&params\.next!==true\)\{([\s\S]*?)\n\s*\}/)?.[1]||'';
   assert.ok(waitOverride.includes('blockingAuto'),'planner must keep ordinary wait from being skipped by autoplay');
@@ -80,6 +94,17 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   assert.ok(timelineSource.includes("policy.mode==='auto'&&pc.performList.some(p=>p.blockingAuto?.())"),'planner must reject autoplay next while dialogue still blocks auto');
   const renderSource=fs.readFileSync(path.join(root,'browser','render.js'),'utf8');
   assert.ok(renderSource.includes("timingMode==='auto'&&pc.performList.some(p=>p.blockingAuto?.())"),'renderer must ignore stale replayed auto-next while dialogue still blocks auto');
+  assert.ok(renderSource.includes('__exportDialogueDomReady=(allowStable=false)=>'),'dialogue readiness must distinguish normal playback from prefix stable-state recovery');
+  assert.ok(renderSource.includes('return !!allowStable||globalThis.__exportDialogueMutationSerial>pending.serial;'),'prefix stable-state recovery must not require a redundant DOM mutation');
+  assert.ok(renderSource.includes('await globalThis.__exportWaitDialogueDom();'),'normal say rendering must retain strict mutation synchronization');
+  const browserHostSource=fs.readFileSync(path.join(root,'src','BrowserHost.cs'),'utf8');
+  assert.ok(browserHostSource.includes('ScriptPreview(expression)'),'page-script timeouts must identify the expression that stalled');
+  assert.ok(browserHostSource.includes('Math.Min(5000,remaining)'),'state waits must bound each CDP evaluation instead of silently overrunning their own timeout');
+  const mainSource=fs.readFileSync(path.join(root,'src','Main.cs'),'utf8');
+  assert.ok(mainSource.includes('Console.SetError(new StreamWriter(Console.OpenStandardError(),utf8){AutoFlush=true})'),'native stderr must be emitted as explicit UTF-8');
+  const jobSource=fs.readFileSync(path.join(root,'src','JobRunner.cs'),'utf8');
+  assert.ok(jobSource.includes('Exception terminalRenderFailure=null'),'terminal non-hardware worker failures must be preserved');
+  assert.ok(jobSource.includes('if(terminalRenderFailure==null)terminalRenderFailure=e;renderCancel.Cancel();throw;'),'a worker that fails again after retry must cancel sibling workers immediately');
   const segmentSource=fs.readFileSync(path.join(root,'src','SegmentPlan.cs'),'utf8');
   const videoWorkflowSource=fs.readFileSync(path.join(root,'src','VideoWorkflow.cs'),'utf8');
   assert.ok(segmentSource.includes('var eventCuts=events.Select'),'segment planner must derive cuts from semantic events');

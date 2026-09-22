@@ -48,7 +48,7 @@ globalThis.__exportSetDialogueTarget=()=>{
   pending.targetText=String(stage?.showText??'');
   pending.targetCount=globalThis.__exportDialogueCharCount(pending.targetText);
 };
-globalThis.__exportDialogueDomReady=()=>{
+globalThis.__exportDialogueDomReady=(allowStable=false)=>{
   const pending=globalThis.__exportDialoguePending;
   if(!pending)return true;
   if(!pending.targetText)return true;
@@ -56,7 +56,8 @@ globalThis.__exportDialogueDomReady=()=>{
   if(String(stage?.currentDialogKey??'')!==pending.targetKey||String(stage?.showText??'')!==pending.targetText)return false;
   const box=document.getElementById('textBoxMain');if(!box)return false;
   const count=box.querySelectorAll('span[id]').length;
-  return globalThis.__exportDialogueMutationSerial>pending.serial&&count>=pending.targetCount;
+  if(count<pending.targetCount)return false;
+  return !!allowStable||globalThis.__exportDialogueMutationSerial>pending.serial;
 };
 globalThis.__exportFinishDialogueTransition=()=>{
   if(globalThis.__gpuDomState){
@@ -66,17 +67,18 @@ globalThis.__exportFinishDialogueTransition=()=>{
   globalThis.__exportDialoguePending=null;
   return true;
 };
-globalThis.__exportWaitDialogueDom=async()=>{
-  const pending=globalThis.__exportDialoguePending;if(!pending||globalThis.__exportDialogueDomReady())return true;
+globalThis.__exportWaitDialogueDom=async(options={})=>{
+  const allowStable=!!options?.allowStable;
+  const pending=globalThis.__exportDialoguePending;if(!pending||globalThis.__exportDialogueDomReady(allowStable))return true;
   return await new Promise(resolve=>{
     let done=false;
     const finish=value=>{if(done)return;done=true;observer.disconnect();resolve(value);};
-    const observer=new MutationObserver(()=>{if(globalThis.__exportDialogueDomReady())finish(true);});
+    const observer=new MutationObserver(()=>{if(globalThis.__exportDialogueDomReady(allowStable))finish(true);});
     observer.observe(document.body,{subtree:true,childList:true,characterData:true});
-    queueMicrotask(()=>{if(globalThis.__exportDialogueDomReady())finish(true);});
+    queueMicrotask(()=>{if(globalThis.__exportDialogueDomReady(allowStable))finish(true);});
   });
 };
-globalThis.__exportRestoredDialogueReady=()=>globalThis.__exportDialogueDomReady();
+globalThis.__exportRestoredDialogueReady=()=>globalThis.__exportDialogueDomReady(true);
 globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50})=>{
   const pc=__wgProbe.core.gameplay.performController,arrange=pc.arrangeNewPerform;
   const dormantHoldCommands=new Set(['setAnimation','setTempAnimation','setTransform']);

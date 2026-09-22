@@ -2,6 +2,16 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.24 / 导出内核 0.6.24
+
+- 修复多 Worker 接缝恢复中的确定性页面脚本超时。prefix `sync-scene` 完成后，如果 WebGAL 的 stage `currentDialogKey/showText` 与 TextBox 字符节点已经完整匹配，恢复流程现在允许直接接受这个稳定 DOM，不再强制要求 `__exportBeginDialogueTransition()` 之后必须额外观察到一次新的 MutationObserver 事件。
+- 普通播放中的 `say` 同步仍保持严格模式：`__exportWaitDialogueDom()` 仍要求新的 TextBox mutation，避免旧对白 DOM 被误认为新对白；只有 worker prefix restore 使用 stable-state 兜底。
+- prefix restore 不再在一个可能永久 pending 的 `__exportWaitDialogueDom()` Promise 上等待 5 秒，而改为宿主轮询 `__exportDialogueDomReady(true)`。即使后续仍遇到异常，也能明确区分“DOM 状态未就绪”和“页面脚本本身卡死”。
+- `BrowserHost.Eval` 的超时信息新增超时时间与被执行脚本的截断预览；`Wait` 的单次 CDP evaluate 最多等待 5 秒，避免一个状态检查反过来突破外层 wait 的总超时。
+- 原生进程 stdout/stderr 显式使用无 BOM UTF-8，修复 `页面脚本超时` 等中文异常在 runner.log 中被错误解码成乱码。
+- 任一分段在自动重试一次后仍失败时，现在立即取消同批其余 worker，并保留首个终止异常；不再让已经注定失败的任务继续把健康分段全部渲染完。
+- pipeline revision 更新为 `prefix-dialogue-stable-0.7.24`，旧分片缓存自动失效。
+
 ### 内部版本 0.7.23 / 导出内核 0.6.23
 
 - 修复 `VideoWorkflow.Segments()` 遗留的 `warmup > selected * 0.60` 原始 replay 上限。0.7.17 已将正式 Planner 的 replay 成本改为 `warmupFrames × 0.35` 并允许最多 150% 的加权成本，但外层故事范围/选区裁剪仍按原始 warmup 的 60% 再次降 Worker，导致同一份计划在 `SegmentPlan` 已成功选择 8 段后又被错误压到 3 段。
