@@ -466,6 +466,8 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(renderSource.includes("state.introTextContainer=new PIXI.Container()"),'intro text must have a dedicated Pixi layer above the generic DOM base');
   assert.ok(renderSource.includes("state.container.setChildIndex(state.baseSprite"),'intro mode must restore DOM z-order so the full-screen intro overlays the dialogue box');
   assert.ok(renderSource.includes("introEntry?Math.max"),'intro atlas entries must follow their real CSS opacity even when dialogue text is settled');
+  assert.ok(renderSource.includes('opacity:1!important;}#root [data-gpu-atlas-unclip="1"]'),'text atlas capture must force complete glyph opacity without disabling CSS animation');
+  assert.ok(!renderSource.includes('opacity:1!important;animation:none!important;}#root [data-gpu-atlas-unclip="1"]'),'text atlas capture must not cancel WebGAL per-character CSS animations; recreating them can cause one-frame text flashes');
 
   const uiSource=fs.readFileSync(path.join(root,'browser','export-component.js'),'utf8');
   assert.ok(coreSource.includes('"notendVisualTail",true'),'backend settings must default notend visual tail on');

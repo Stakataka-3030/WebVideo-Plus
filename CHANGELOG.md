@@ -2,6 +2,13 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.44 / 导出内核 0.6.37
+
+- 修复 GPU DOM 逐字文字 atlas 在完整 DOM 刷新时偶发“单字先完整闪现 1 帧、随后消失并重新淡入”的问题。atlas 捕获此前为了抓取完整字形会临时给字符节点设置 `animation:none!important`；捕获结束移除该规则后，浏览器会重建 WebGAL 的逐字 CSS Animation，新动画又已经错过本帧固定时钟的 pause/seek，因此下一输出帧会从动画起点重新开始。
+- atlas 捕获现在只临时强制 `opacity:1!important`，不再修改任何 `animation-*` 属性；仍然可以缓存完整字形，同时保持原 CSS Animation 对象与时间轴连续。新增生命周期回归断言，禁止 atlas 路径重新引入 `animation:none`。
+- pipeline revision 更新为 `text-atlas-animation-preserve-0.7.44`，旧规划与分片缓存自动失效。
+
+
 ### 内部版本 0.7.43 / 导出内核 0.6.36
 
 - “导入与导出”新增三个独立入口：**导出舞台**、**导出对话框**、**仅音轨**，继续复用现有导出任务、故事范围、精确选区、进度与缓存机制。
