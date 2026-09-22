@@ -45,6 +45,15 @@ public class SetupEngine {
   if(!File.Exists(Path.Combine(destination,"ready"))){Extract(archive,destination);File.WriteAllText(Path.Combine(destination,"ready"),InstallerBuild.PayloadHash);}
   return payload;
  }
+ public void CleanupPayloadArtifacts(){
+  string archive=Path.Combine(Root,"payload-"+InstallerBuild.PayloadHash+".zip"),packages=Path.Combine(Root,"packages"),destination=Path.Combine(packages,InstallerBuild.PayloadHash.Substring(0,16));Exception last=null;
+  for(int attempt=0;attempt<4;attempt++){
+   last=null;try{if(File.Exists(archive))File.Delete(archive);}catch(Exception e){last=e;}try{if(Directory.Exists(destination))Directory.Delete(destination,true);}catch(Exception e){last=e;}
+   if(!File.Exists(archive)&&!Directory.Exists(destination)){try{if(Directory.Exists(packages)&&!Directory.EnumerateFileSystemEntries(packages).Any())Directory.Delete(packages);}catch{}return;}
+   System.Threading.Thread.Sleep(100*(attempt+1));
+  }
+  Report("临时安装 payload 未能完全清理"+(last==null?"":"："+last.Message));
+ }
  public void Extract(string archive,string destination){
   Directory.CreateDirectory(destination);string boundary=Path.GetFullPath(destination)+Path.DirectorySeparatorChar;int n=0;
   using(var zip=ZipFile.OpenRead(archive))foreach(var entry in zip.Entries){Check();string target=Path.GetFullPath(Path.Combine(destination,entry.FullName));if(!target.StartsWith(boundary,StringComparison.OrdinalIgnoreCase))throw new Exception("压缩包路径校验失败");if(entry.Name.Length==0){Directory.CreateDirectory(target);continue;}Directory.CreateDirectory(Path.GetDirectoryName(target));entry.ExtractToFile(target,true);if(++n%80==0)Report("正在解压组件… "+n+" / "+zip.Entries.Count,(int)(100L*n/zip.Entries.Count));}
@@ -228,9 +237,9 @@ public class SetupForm:Form {
   Uri address;if(!Uri.TryCreate(url.Text,UriKind.Absolute,out address)||!new[]{"localhost","127.0.0.1"}.Contains(address.Host)){MessageBox.Show(this,"请填写本机 Terre 地址，例如 http://localhost:3001。","请核对地址");return;}
   string t=Path.GetFullPath(terre.Text),g=Path.GetFullPath(games.Text),o=Path.GetFullPath(output.Text),u=url.Text;bool launch=start.Checked;SetBusy(true);
   try{plan=await Task.Run(()=>engine.Inspect(engine.ExtractPayload()));bool consent=plan.Downloads.Count==0;if(!consent){var text="需要下载并安装以下组件：\n\n"+string.Join("\n",plan.Downloads.Select(x=>"• "+x))+"\n\n安装到扩展专用目录：\n"+engine.Root+"\n\n不会更改系统 PATH。下载缓存会保留以便重试。是否同意下载并继续安装？";consent=MessageBox.Show(this,text,"允许安装缺失的运行组件？",MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)==DialogResult.Yes;}if(!consent){status.Text="已取消，未下载或安装依赖。";return;}await Task.Run(()=>{engine.EnsureRuntimes(plan,true);engine.Install(plan,t,g,o,u,launch);});RefreshInstallation(true);MessageBox.Show(this,(updating?"更新":"安装")+"完成。以后正常启动 Terre，导出组件会一起启动。",updating?"更新完成":"安装完成");}
-  catch(Exception e){engine.Report("安装未完成："+e.Message);MessageBox.Show(this,e.Message+"\n\n可点击“打开日志”查看详情；重新安装会复用下载缓存。","安装未完成");}finally{SetBusy(false);}
+  catch(Exception e){engine.Report("安装未完成："+e.Message);MessageBox.Show(this,e.Message+"\n\n可点击“打开日志”查看详情；重新安装会复用下载缓存。","安装未完成");}finally{engine.CleanupPayloadArtifacts();SetBusy(false);}
  }
- async Task Uninstall(){SetBusy(true);try{string wrapper=Path.Combine(terre.Text,"video-export-wrapper.json");if(!File.Exists(wrapper))throw new Exception("此目录没有找到导出组件的安装记录");var cfg=new JavaScriptSerializer().Deserialize<Dictionary<string,string>>(File.ReadAllText(wrapper));if(MessageBox.Show(this,"卸载这份 Terre 的导出挂载？原程序将还原，视频和任务记录保留。","卸载挂载",MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)!=DialogResult.Yes)return;string target=terre.Text;await Task.Run(()=>{string payload=engine.ExtractPayload();engine.Run(Path.Combine(payload,"WebGAL.Video.exe"),new[]{"uninstall","--terre-dir",target,"--state-dir",Path.GetDirectoryName(cfg["config"])},"",payload);});status.Text="已卸载挂载，视频和任务记录保留。";}catch(Exception e){MessageBox.Show(this,e.Message,"卸载未完成");}finally{SetBusy(false);}}
+ async Task Uninstall(){SetBusy(true);try{string wrapper=Path.Combine(terre.Text,"video-export-wrapper.json");if(!File.Exists(wrapper))throw new Exception("此目录没有找到导出组件的安装记录");var cfg=new JavaScriptSerializer().Deserialize<Dictionary<string,string>>(File.ReadAllText(wrapper));if(MessageBox.Show(this,"卸载这份 Terre 的导出挂载？原程序将还原，视频和任务记录保留。","卸载挂载",MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)!=DialogResult.Yes)return;string target=terre.Text;await Task.Run(()=>{string payload=engine.ExtractPayload();engine.Run(Path.Combine(payload,"WebGAL.Video.exe"),new[]{"uninstall","--terre-dir",target,"--state-dir",Path.GetDirectoryName(cfg["config"])},"",payload);});status.Text="已卸载挂载，视频和任务记录保留。";}catch(Exception e){MessageBox.Show(this,e.Message,"卸载未完成");}finally{engine.CleanupPayloadArtifacts();SetBusy(false);}}
 }
 public static class InstallerMain {
  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool SetProcessDPIAware();
