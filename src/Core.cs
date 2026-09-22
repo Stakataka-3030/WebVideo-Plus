@@ -86,10 +86,11 @@ namespace NativeVideo {
    else throw new ArgumentException("不支持的视频编码器："+codec);
    args.AddRange(new[]{"-pix_fmt","yuv420p","-color_range","tv","-colorspace","bt709","-color_primaries","bt709","-color_trc","iec61966-2-1"});
   }
-  static async Task Probe(string codec,string mode,int width,int height,int fps){
-   var args=new List<string>{"-v","error","-f","lavfi","-i","color=c=black:s="+width+"x"+height+":r="+fps,"-frames:v","1","-vf",codec=="x264rgb"?"format=rgb24":codec=="x264"?"format=yuv420p":"format=nv12"};AddEncoderArgs(args,codec,mode);args.AddRange(new[]{"-f","null","-"});await Commands.Run("ffmpeg",args,null,15000);
+  static async Task Probe(string codec,string mode,int width,int height,int fps,int frames=1,bool fullPipeline=false){
+   string filter=fullPipeline?"format=rgba,"+Filter(codec):codec=="x264rgb"?"format=rgb24":codec=="x264"?"format=yuv420p":"format=nv12";
+   var args=new List<string>{"-v","error","-f","lavfi","-i","color=c=black:s="+width+"x"+height+":r="+fps,"-frames:v",Math.Max(1,frames).ToString(CultureInfo.InvariantCulture),"-vf",filter};AddEncoderArgs(args,codec,mode);args.AddRange(new[]{"-f","null","-"});await Commands.Run("ffmpeg",args,null,frames>1?30000:15000);
   }
-  public static async Task<bool> Available(string codec){codec=(codec??"").ToLowerInvariant();lock(gate){bool cached;if(availability.TryGetValue(codec,out cached))return cached;}bool ok=false;try{await Probe(codec,codec=="x264rgb"?"lossless":"recommended",64,64,30);ok=true;}catch{}lock(gate)availability[codec]=ok;return ok;}
+  public static async Task<bool> Available(string codec){codec=(codec??"").ToLowerInvariant();lock(gate){bool cached;if(availability.TryGetValue(codec,out cached))return cached;}bool ok=false;try{await Probe(codec,codec=="x264rgb"?"lossless":"recommended",640,360,30);ok=true;}catch{}lock(gate)availability[codec]=ok;return ok;}
   public static async Task<string> ResolveCodec(string mode,string preferred=""){
    mode=NormalizeMode(mode);if(mode=="traditional")return "";if(mode=="lossless")return "x264rgb";
    preferred=(preferred??"").ToLowerInvariant();if(preferred!=""){if(!new[]{"nvenc","amf","qsv","x264"}.Contains(preferred))throw new ArgumentException("指定编码器无效："+preferred);if(await Available(preferred))return preferred;return "x264";}
@@ -99,7 +100,11 @@ namespace NativeVideo {
   public static IOException EncoderError(string codec,string message){return new IOException((IsHardware(codec)?UnavailableMarker+" 当前硬件编码器 "+codec+" 无法继续，WebVideo+ 将尝试回退到 CPU H.264。\n":"")+message);}
   public static async Task<string> CheckRequest(object request){
    if(J.B(request,"analysisOnly")||!J.B(request,"gpuRawExport"))return null;string codec=J.S(request,"gpuRawCodec"),mode=J.S(request,"gpuRawMode",J.S(J.Get(request,"settings"),"gpuRawMode","recommended"));if(!IsHardware(codec))return null;var settings=J.Get(request,"settings");
-   try{await Probe(codec,mode,(int)J.N(settings,"width",1920),(int)J.N(settings,"height",1080),(int)J.N(settings,"fps",30));return null;}catch(Exception error){return error.Message;}
+   try{await Probe(codec,mode,(int)J.N(settings,"width",1920),(int)J.N(settings,"height",1080),(int)J.N(settings,"fps",30),3,true);return null;}catch(Exception error){return error.Message;}
+  }
+  public static async Task<string> CheckConcurrentRequest(object request,int parallel){
+   if(parallel<=1||J.B(request,"analysisOnly")||!J.B(request,"gpuRawExport"))return null;string codec=J.S(request,"gpuRawCodec"),mode=J.S(request,"gpuRawMode",J.S(J.Get(request,"settings"),"gpuRawMode","recommended"));if(!IsHardware(codec))return null;var settings=J.Get(request,"settings");int width=(int)J.N(settings,"width",1920),height=(int)J.N(settings,"height",1080),fps=(int)J.N(settings,"fps",30),count=Math.Max(2,Math.Min(32,parallel));
+   try{var probes=Enumerable.Range(0,count).Select(_=>Probe(codec,mode,width,height,fps,8,true)).ToArray();await Task.WhenAll(probes);return null;}catch(Exception error){return "并发硬件编码预检失败（"+count+" 路 "+codec+"，"+width+"x"+height+" @ "+fps+"fps）："+error.Message;}
   }
   public static Task<string> Resolve(string mode){return Task.FromResult(NormalizeMode(mode));}
  }
