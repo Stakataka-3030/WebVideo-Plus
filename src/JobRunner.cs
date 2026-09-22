@@ -9,7 +9,7 @@ namespace NativeVideo {
    if(samples.Count==0||elapsed-samples.Last().Key>=.75)samples.Enqueue(new KeyValuePair<double,int>(elapsed,frames));
    while(samples.Count>0&&elapsed-samples.Peek().Key>12)samples.Dequeue();
    if(elapsed-firstProgress<4||samples.Count<4)return null;
-   var first=samples.Peek(),last=samples.Last();double span=last.Key-first.Key;int delta=last.Value-first.Value,minFrames=Math.Max(fps*2,Math.Max(10,total/400));
+   var first=samples.Peek();var last=samples.Last();double span=last.Key-first.Key;int delta=last.Value-first.Value,minFrames=Math.Max(fps*2,Math.Max(10,total/400));
    if(span<4||delta<minFrames)return null;double instant=delta/span;if(instant<=.01)return null;
    rate=rate<=0?instant:rate*.65+instant*.35;return Math.Max(0,(total-frames)/rate);
   }
