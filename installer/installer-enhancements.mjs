@@ -77,6 +77,7 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
   string full=Path.GetFullPath(value),marker=Path.Combine(full,".webvideo-install-cache");bool existed=Directory.Exists(full),hadEntries=existed&&Directory.EnumerateFileSystemEntries(full).Any();Directory.CreateDirectory(full);
   if(!File.Exists(marker)){var ownership=new Dictionary<string,object>{{"owner","WebVideo+"},{"schemaVersion",1},{"safeRecursiveCleanup",!hadEntries},{"createdAt",DateTime.UtcNow.ToString("o")}};File.WriteAllText(marker,new JavaScriptSerializer().Serialize(ownership),Encoding.UTF8);}
  }
+ void CleanupPayloadCaches(){engine.CleanupPayloadArtifacts();engine.CleanupStalePayloadArtifacts();string defaultRoot=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGALVideoExporter");try{if(Directory.Exists(defaultRoot)&&!SamePath(engine.Root,defaultRoot))new SetupEngine(defaultRoot,Report).CleanupStalePayloadArtifacts();}catch(Exception e){engine.Report("历史默认安装缓存清理未完成："+e.Message);}}
  string[] SelectedModules(){return ModuleCatalog.Advanced.Where(id=>moduleBoxes[id].CheckState==CheckState.Checked).Concat(aiModule.Checked?new[]{"generativeAI"}:new string[0]).ToArray();}
 `);
 
@@ -95,7 +96,7 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
    catch(Exception first){if(!first.Message.Contains("[FORCE_AVAILABLE]"))throw;var choice=MessageBox.Show(this,first.Message.Replace("[FORCE_AVAILABLE]","").Trim()+"\\n\\n是否强制修复？\\n安装器会先创建事务性临时回滚副本，操作成功后立即删除。强制修复会尽量完成变更，但无法安全合并的外部修改可能被恢复为已知原版基线。","检测到安装状态不一致",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2);if(choice!=DialogResult.Yes)throw;forceInstall=true;}
    if(forceInstall)await Task.Run(()=>engine.Install(plan,t,g,o,u,d,w,ic,keep,true,launch));
    if(loadedInstallCacheFromConfig&&!String.IsNullOrWhiteSpace(loadedInstallCachePath)&&!String.Equals(Path.GetFullPath(loadedInstallCachePath).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar),Path.GetFullPath(ic).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar),StringComparison.OrdinalIgnoreCase)){var oldCacheEngine=new SetupEngine(loadedInstallCachePath,Report);oldCacheEngine.CleanupInstallCache(true,false);}loadedInstallCachePath=ic;loadedInstallCacheFromConfig=true;loadedModulesPath="";RefreshInstallation(true);MessageBox.Show(this,(updating?"更新 / 修复":"安装")+"完成。",updating?"操作完成":"安装完成");
-  }catch(Exception e){engine.Report("安装未完成："+e.Message);MessageBox.Show(this,e.Message.Replace("[FORCE_AVAILABLE]","").Trim()+"\\n\\n可点击“打开日志”查看详情。","安装未完成");}finally{engine.CleanupPayloadArtifacts();SetBusy(false);}
+  }catch(Exception e){engine.Report("安装未完成："+e.Message);MessageBox.Show(this,e.Message.Replace("[FORCE_AVAILABLE]","").Trim()+"\\n\\n可点击“打开日志”查看详情。","安装未完成");}finally{CleanupPayloadCaches();SetBusy(false);}
  }`);
 
  between(' async Task Uninstall(){','\n}\npublic static class InstallerMain',` bool ShowUninstallOptions(out bool deleteCache,out bool deleteData){bool selectedCache=true,selectedData=false;using(var f=new Form{Text="卸载 WebVideo+",ClientSize=new Size(610,330),FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,StartPosition=FormStartPosition.CenterParent,Font=Font,BackColor=BackColor}){
@@ -111,7 +112,7 @@ export function applyInstallerEnhancements(source,{productVersion,internalVersio
    bool forceUninstall=false;try{await Task.Run(()=>runForce(false));}catch(Exception first){if(!first.Message.Contains("[FORCE_AVAILABLE]"))throw;var choice=MessageBox.Show(this,first.Message.Replace("[FORCE_AVAILABLE]","").Trim()+"\\n\\n是否强制拆卸？\\n安装器会先创建事务性临时回滚副本并尽量恢复 Terre；强制拆卸可能用已知原版基线替换不一致文件。","检测到安装状态不一致",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2);if(choice!=DialogResult.Yes)throw;forceUninstall=true;}
    if(forceUninstall)await Task.Run(()=>runForce(true));
    engine.CleanupInstallCache(deleteCache,deleteData);string defaultInstallCache=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGALVideoExporter");if(!String.Equals(Path.GetFullPath(ic).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar),Path.GetFullPath(defaultInstallCache).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar),StringComparison.OrdinalIgnoreCase)){var defaultEngine=new SetupEngine(defaultInstallCache,Report);defaultEngine.CleanupInstallCache(deleteCache,deleteData);}loadedModulesPath="";status.Text=deleteCache&&deleteData?"WebVideo+ 已完整卸载，缓存和用户数据已清理。":"WebVideo+ 已卸载。已导出的 MP4 和 WebGAL 游戏工程保留。";RefreshInstallation(false);MessageBox.Show(this,status.Text,"卸载完成");
-  }catch(Exception e){MessageBox.Show(this,e.Message.Replace("[FORCE_AVAILABLE]","").Trim(),"卸载未完成");}finally{engine.CleanupPayloadArtifacts();SetBusy(false);}}
+  }catch(Exception e){MessageBox.Show(this,e.Message.Replace("[FORCE_AVAILABLE]","").Trim(),"卸载未完成");}finally{CleanupPayloadCaches();SetBusy(false);}}
 `);
 
  return s;

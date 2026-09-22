@@ -442,4 +442,19 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(uiSource.includes("settings.strictSegmentCuts"),'strict seam checkbox must bind to persisted settings');
 }
 
+
+{
+  const installerBase=fs.readFileSync(path.join(root,'installer','Installer.base.cs'),'utf8');
+  const installerEnhancements=fs.readFileSync(path.join(root,'installer','installer-enhancements.mjs'),'utf8');
+  assert.ok(installerBase.includes('public void CleanupStalePayloadArtifacts()'),'installer must garbage-collect payloads left by older versions');
+  assert.ok(installerBase.includes('name.Length!=76'),'legacy payload ZIP cleanup must require the exact SHA-256 filename shape');
+  assert.ok(installerBase.includes('IsPayloadHash(name,16)'),'legacy package cleanup must require a 16-hex package directory');
+  assert.ok(installerBase.includes('Path.Combine(directory,"webgal-"+"native-exporter")'),'legacy package cleanup must recognize the pre-WebVideo+ payload root without configure-time rewriting');
+  assert.ok(installerBase.includes('File.Exists(marker)||File.Exists(registry)'),'custom cache roots must have WebVideo+ ownership evidence before historical GC');
+  assert.equal((installerBase.match(/engine\.CleanupStalePayloadArtifacts\(\);SetBusy\(false\)/g)||[]).length,2,'base installer install and uninstall finalizers must run historical payload GC');
+  assert.ok(installerEnhancements.includes('void CleanupPayloadCaches()'),'enhanced installer must centralize current and historical payload cleanup');
+  assert.ok(installerEnhancements.includes('new SetupEngine(defaultRoot,Report).CleanupStalePayloadArtifacts()'),'custom install-cache users must also clean the legacy default cache');
+  assert.equal((installerEnhancements.match(/finally\{CleanupPayloadCaches\(\);SetBusy\(false\);\}/g)||[]).length,2,'enhanced install and uninstall finalizers must run payload cleanup');
+}
+
 console.log('Export lifecycle regression checks passed.');
