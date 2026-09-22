@@ -288,6 +288,8 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
 {
   const renderSource=fs.readFileSync(path.join(root,'browser','render.js'),'utf8');
   const gpuRawSource=fs.readFileSync(path.join(root,'src','GpuRawExport.cs'),'utf8');
+  const coreSource=fs.readFileSync(path.join(root,'src','Core.cs'),'utf8');
+  const jobSource=fs.readFileSync(path.join(root,'src','JobRunner.cs'),'utf8');
   assert.ok(renderSource.includes('__webviewWarmupStep=async frame=>'),'GPU raw warmup must expose a stage-rendering step');
   assert.ok(renderSource.includes('currentApp.render();return value;'),'warmup step must actually render the Pixi stage so Live2D/WMDL advances');
   assert.ok(gpuRawSource.includes('domOverlay?"__webviewWarmupStep(":"__webviewStep("'),'GPU raw warmup must render the stage when DOM compositing suppresses normal per-step renders');
@@ -298,13 +300,18 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(gpuRawSource.includes('domCapturePlan=await browser.Eval("__gpuDomCapturePlan()")'),'GPU raw export must consume scoped DOM capture plans');
   assert.ok(gpuRawSource.includes('domBaseOnlyRefreshCount++'),'base-only animation frames must avoid full textbox/atlas recapture');
   assert.ok(gpuRawSource.includes('"domFullRefreshCount",domFullRefreshCount'),'DOM refresh scope diagnostics must be persisted');
+  assert.ok(coreSource.includes('Probe(codec,codec=="x264rgb"?"lossless":"recommended",640,360,30)'),'hardware capability detection must not use the old tiny 64x64 probe');
+  assert.ok(coreSource.includes('CheckConcurrentRequest(object request,int parallel)'),'hardware encoders must be checked at the planned worker concurrency');
+  assert.ok(coreSource.includes('Enumerable.Range(0,count).Select(_=>Probe(codec,mode,width,height,fps,8,true))'),'concurrency preflight must overlap real target-size encoder sessions');
+  assert.ok(jobSource.includes('"encoder-preflight"'),'jobs must expose hardware concurrency preflight before rendering');
+  assert.ok(jobSource.includes('renderCancel.Cancel()'),'runtime hardware encoder failure must cancel sibling workers immediately');
+  assert.ok(jobSource.includes('7200000,renderCancel.Token'),'worker processes must receive fail-fast cancellation');
   assert.ok(renderSource.includes("data-gpu-intro-text"),'intro fade text must be separable from the generic base DOM texture');
   assert.ok(renderSource.includes("handledIntroOpacitySamples"),'intro opacity animations must be handled without per-frame Page.captureScreenshot');
   assert.ok(renderSource.includes("state.introTextContainer=new PIXI.Container()"),'intro text must have a dedicated Pixi layer above the generic DOM base');
   assert.ok(renderSource.includes("state.container.setChildIndex(state.baseSprite"),'intro mode must restore DOM z-order so the full-screen intro overlays the dialogue box');
   assert.ok(renderSource.includes("introEntry?Math.max"),'intro atlas entries must follow their real CSS opacity even when dialogue text is settled');
 
-  const coreSource=fs.readFileSync(path.join(root,'src','Core.cs'),'utf8');
   const uiSource=fs.readFileSync(path.join(root,'browser','export-component.js'),'utf8');
   assert.ok(coreSource.includes('"notendVisualTail",true'),'backend settings must default notend visual tail on');
   assert.ok(uiSource.includes("notendVisualTail:true"),'export UI fallback settings must default notend visual tail on');

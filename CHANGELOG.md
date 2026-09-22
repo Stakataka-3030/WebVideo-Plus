@@ -2,6 +2,16 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.22 / 导出内核 0.6.22
+
+- 修复硬件编码器探测与运行时回退造成的整轮重跑。实测 0.6.21 在 RTX 4060 + Intel 核显机器上自动选择了 QSV；8 个 Worker 中部分 QSV 会话初始化失败，但 JobRunner 使用 `Task.WhenAll` 等待其余 Worker 全部结束后才看到异常，约 450 秒后才切到 CPU x264，从而把已经完成的一整轮渲染全部作废。
+- 推荐编码器的轻量能力探测从 64×64 @ 30fps 改为 640×360 @ 30fps。极小尺寸本身可能不被某些硬件 H.264 编码路径接受，不能代表目标 720p/1080p/4K 是否可用；NVENC → AMF → QSV 的优先级保持不变，因此 NVIDIA 机器不会再因为异常小的探测尺寸轻易误落到 QSV。
+- 单路任务预检现在使用与正式 GPU Raw 更接近的 `RGBA → vflip/scale → NV12` 过滤链，并连续编码 3 帧，而不是只验证一个已是 NV12 的 lavfi 黑帧。
+- 分段完成、已知 `effectiveWorkers` 后新增并发硬件编码预检：按目标分辨率、帧率、画质档同时启动与实际 Worker 数相同的短编码会话。若 QSV/NVENC/AMF 在该并发度下无法全部初始化，会在正式渲染前直接回退 CPU x264，并复用已经完成的 planning，而不是几分钟后才重跑。
+- 运行时仍保留硬件编码回退作为第二道保险，但改为 fail-fast：任一 Worker 报 `[ENCODER_UNAVAILABLE]` 或硬件兼容错误时，立即取消同批其余 Worker 的子进程；不再等待成功的长分段全部跑完才触发回退。
+- 导出状态新增 `encoder-preflight` 阶段与 `encoderPreflightWorkers`，可直接看到实际检查了多少路并发硬件编码。pipeline revision 更新为 `encoder-preflight-failfast-0.7.22`。
+
+
 ### 内部版本 0.7.21 / 导出内核 0.6.21
 
 - 根据 0.6.20 实测继续处理长故事末段性能与全屏文字（`intro`）层级错误。0.6.20 已将最后一段的 DOM 截图从 5358 张降到 1494 张，其中 1288 次走 base-only；但该段仍有约 101 秒 `Page.captureScreenshot`、39 秒 PNG 解码/纹理上传，持续 intro 淡入区间仍会掉到约 8 fps。
