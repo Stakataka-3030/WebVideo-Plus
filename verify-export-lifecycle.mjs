@@ -198,6 +198,9 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   assert.ok(queueSource.includes('RemoveOwnedServiceFile'),'graceful service shutdown must not leave stale discovery');
   const exportSource=fs.readFileSync(path.join(root,'browser','export-component.js'),'utf8');
   assert.ok(exportSource.includes('无法连接本地导出服务'),'native connection failures must not surface as a bare Failed to fetch');
+  assert.ok(exportSource.includes('_stageClockAnchorMs'),'export stage timers must retain a client-side clock anchor independent of backend status cadence');
+  assert.ok(exportSource.includes('setInterval(()=>setClockNow(Date.now()),500)'),'export UI must repaint its elapsed timer independently of /api/jobs polling');
+  assert.ok(exportSource.includes('format(liveStageElapsed(job))'),'running job stage elapsed display must use the independent client-side clock');
 }
 
 
