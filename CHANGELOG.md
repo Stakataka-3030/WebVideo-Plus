@@ -2,6 +2,17 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.20 / 导出内核 0.6.20
+
+- 针对长故事末段持续 DOM animation 将导出拖到约 2–4 fps 的情况，拆分 GPU DOM 刷新范围。此前任意有限 DOM 动画只要发生一帧变化，就会固定串行截取 base、textbox、final text 和 text atlas（通常 4 张完整 PNG），再全部解码上传到 Pixi；实测样例最后一段 1337 次刷新产生 5358 张 DOM 截图，单次刷新约四张。
+- 新增 `__gpuDomCapturePlan`。持续动画如果目标与 TextBox 无祖先/后代关系，且元素为 absolute/fixed 或动画属性仅属于 opacity/transform/filter/background/color/shadow 等局部绘制属性，则判定为 `base` 刷新；TextBox 内部、TextBox 祖先、可能影响布局的动画仍保持 `full`，不牺牲画面一致性。
+- 新增 `__gpuDomOverlayUpdateBase`：base-only 动画帧只截取一张透明 base PNG，并只替换 Pixi 的 base texture；已有 textbox、final text、atlas、逐字 opacity mask 全部复用。普通对白 mutation、结构变化和无法证明局部安全的动画继续走原四层完整刷新。
+- 视频元素同样按与 TextBox 的关系决定 base/full；初始帧仍强制 full，因此 base-only 路径不会在 overlay 尚未建立时工作。若运行时发现 base overlay 未初始化，会回退完整刷新。
+- 结果与进度诊断新增 `domFullRefreshCount`、`domBaseOnlyRefreshCount`、最后一次 `domCapturePlan`；JS stats 新增 base/full animation/video sample 与 refresh 计数及最后触发元素/属性，方便继续定位剩余的持续动画热点。
+- 这项优化不会让 CDP `Page.captureScreenshot` 本身变成 60 fps：OBS/WGC 是直接抓 Windows/DXGI 合成表面，不经过“PNG 编码 → base64 IPC → Image.decode → 再上传 GPU”的往返。本版先把常见持续动画从每帧约 4 次截图降到 1 次；要接近 OBS 级吞吐仍需要后续改为 compositor/surface capture 或把可识别动画完全搬到 Pixi/GPU 侧。
+- pipeline revision 更新为 `layered-dom-refresh-0.7.20`。
+
+
 ### 内部版本 0.7.19 / 导出内核 0.6.19
 
 - 修复导出刚进入渲染阶段时“预计剩余几万分钟，随后快速下降”的假 ETA。旧公式直接用 `renderStart.Elapsed × (remaining / completed)`，把浏览器启动、页面导航、状态恢复以及 Live2D phase warmup 的前置耗时全部摊到最开始的极少数输出帧上；第一批帧越少，外推结果越夸张。
