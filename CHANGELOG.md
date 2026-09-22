@@ -2,6 +2,17 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.16 / 导出内核 0.6.16
+
+- 在 0.7.14 已修复“warmup 逻辑推进但 Live2D/Pixi 未实际 render”的基础上，恢复 0.7.5 的 Live2D / WMDL phase-origin replay，但不恢复 0.7.12 的额外 1 秒前置回放。
+- 普通模式会持续跟踪每个 Live2D/WMDL 目标当前 phase：模型建立、模型替换、显式 `motion` 或 `animationFlag` 变化会开启新的 phase。若 Worker 切点位于该 phase 内，`replayFrame` 回退到这个 phase 的真实起点，再由 0.7.14 的 `__webviewWarmupStep` 对每个预热帧真实 render Pixi stage。这样无论动作在切点前已经运行 68 帧还是更久，都按完整相位重放到切点，而不是只从固定 1 秒 warmup 后开始。
+- 相邻 motion phase 不会无条件串回更早历史：phase 1 的结束点等于 phase 2 的起点，现有 ReplayAnchor 的严格重叠判断会在 phase 2 起点停止。因此切点位于第二个 motion 时只从第二个 motion 起点重放。
+- 严格切片模式继续保留：同样的 phase window 在严格模式下标记为 hard no-cut；安全切点不足时降低 Worker，不进行跨阶段切片。
+- 保留 0.7.14 的 `warmupStageRenders` 诊断。正常跨 Live2D phase 的第二 Worker 应同时看到 `replayKinds` 含 `changeFigure-phase`，且 `warmupStageRenders == warmupFrames`（GPU Raw + DOM 合成开启时）。
+- 新增原生 segment smoke 与 JS 回归：覆盖持续 Live2D phase replay、多个 motion phase 只回到当前 phase 起点、短片并行不被无关 hard no-cut 过度压缩，以及严格模式退回安全单段。
+- pipeline revision 更新为 `live2d-phase-render-replay-0.7.16`，旧规划与分片缓存自动失效。
+
+
 ### 内部版本 0.7.15 / 导出内核 0.6.15
 
 - 修复 Terre 在系统浏览器原本未运行时拉起 Chrome 等默认浏览器后，关闭 Terre 会把整个浏览器一并结束的问题。根因是 Terre 生命周期此前复用了导出 Worker 的 `process-guard`，从而让 Terre 后端及它新启动的浏览器继承了 `KILL_ON_JOB_CLOSE` Job Object；生命周期结束时浏览器也会被 Windows 一起回收。

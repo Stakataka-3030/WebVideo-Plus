@@ -245,7 +245,11 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const plan=build({script,parsed,media:{},animations:{},timing,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
   assert.equal(plan.replayWindows.some(w=>w.noCut&&w.startMs===0&&w.endMs>=60000),false);
   assert.equal(plan.replayWindows.some(w=>w.command==='changeFigure-runtime'),false);
-  assert.equal(plan.replayWindows.some(w=>w.command==='changeFigure-phase'),false,'default mode must not replay Live2D from a phase origin');
+  const phase=plan.replayWindows.find(w=>w.command==='changeFigure-phase');
+  assert.ok(phase,'persistent Live2D must carry a replay-only phase window');
+  assert.equal(phase.startMs,0);
+  assert.equal(phase.endMs,60000);
+  assert.equal(phase.noCut,false,'normal mode must replay Live2D phase state without forbidding every cut');
   assert.equal(plan.softCutWindows.length,1);
   assert.equal(plan.softCutWindows[0].reason,'live2d-state-change');
   assert.equal(plan.softCutWindows[0].startMs,0);
@@ -266,7 +270,13 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
     {command:'say',line:3,role:'primary',durationMs:800,hold:false,startMs:12000,stopMs:12800}
   ],stageExitWindows:[]};
   const switched=build({script:switchedScript,parsed:switchedParsed,media:{},animations:{},timing:switchedTiming,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
-  assert.equal(switched.replayWindows.some(w=>w.command==='changeFigure-phase'),false,'normal mode must keep the 0.7.1-style stage restore instead of phase replay');
+  const phases=switched.replayWindows.filter(w=>w.command==='changeFigure-phase');
+  assert.equal(phases.length,2);
+  assert.equal(phases[0].startMs,0);
+  assert.equal(phases[0].endMs,10000);
+  assert.equal(phases[1].startMs,10000);
+  assert.equal(phases[1].endMs,30000);
+  assert.ok(phases.every(w=>w.noCut===false),'normal mode phase windows must be replay-only, not hard no-cut');
 
   const strict=build({script:switchedScript,parsed:switchedParsed,media:{},animations:{},timing:switchedTiming,root:'C:/root',project:'P',sceneName:'start.txt',fps:60,strictSegmentCuts:true});
   assert.equal(strict.strictSegmentCuts,true);
