@@ -298,6 +298,11 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(gpuRawSource.includes('domCapturePlan=await browser.Eval("__gpuDomCapturePlan()")'),'GPU raw export must consume scoped DOM capture plans');
   assert.ok(gpuRawSource.includes('domBaseOnlyRefreshCount++'),'base-only animation frames must avoid full textbox/atlas recapture');
   assert.ok(gpuRawSource.includes('"domFullRefreshCount",domFullRefreshCount'),'DOM refresh scope diagnostics must be persisted');
+  assert.ok(renderSource.includes("data-gpu-intro-text"),'intro fade text must be separable from the generic base DOM texture');
+  assert.ok(renderSource.includes("handledIntroOpacitySamples"),'intro opacity animations must be handled without per-frame Page.captureScreenshot');
+  assert.ok(renderSource.includes("state.introTextContainer=new PIXI.Container()"),'intro text must have a dedicated Pixi layer above the generic DOM base');
+  assert.ok(renderSource.includes("state.container.setChildIndex(state.baseSprite"),'intro mode must restore DOM z-order so the full-screen intro overlays the dialogue box');
+  assert.ok(renderSource.includes("introEntry?Math.max"),'intro atlas entries must follow their real CSS opacity even when dialogue text is settled');
 
   const coreSource=fs.readFileSync(path.join(root,'src','Core.cs'),'utf8');
   const uiSource=fs.readFileSync(path.join(root,'browser','export-component.js'),'utf8');
