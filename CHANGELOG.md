@@ -2,6 +2,12 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.40 / 导出内核 0.6.34
+
+- 修复 0.7.38 Terre PID handoff 生命周期补丁在旧 .NET Framework C# 编译器上的构建失败。项目仍使用 `Framework64/v4.0.30319/csc.exe`；该编译器对应的 C# 语言级别不允许在 `finally` 块中直接使用 `await`，因此新增的 stale service sweep 会导致 Native component build 失败。
+- 生命周期 `finally` 中的最终 stale sweep 改为同步等待既有异步清理任务，并保持 best-effort 异常隔离；正常主循环和服务重启路径仍继续异步 `await`，运行语义不变。
+- 本次仅为编译器兼容修复，导出内核保持 `0.6.34`，Live2D/Cubism2 0.7.39 接缝修复不变。
+
 ### 内部版本 0.7.39 / 导出内核 0.6.34
 
 - 根据多 Worker 成片逐帧复核继续修复 Cubism2 接缝跳变。用户录屏在接缝前后连续两帧中出现人物眼睛、头部与躯干同时换姿态，确认不是普通眨眼，而是后一个 Worker 恢复后当前 Live2D motion 相位与前一 Worker 不一致。

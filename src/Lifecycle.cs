@@ -106,7 +106,7 @@ namespace NativeVideo {
     }
    }catch(Exception e){log(J.O("phase","failed","message",e.Message));throw;}
    finally{
-    string stoppingServiceId=ServiceIdFor(terre,state);if(service!=null){try{if(!service.HasExited){service.Kill();service.WaitForExit(3000);}}catch{}try{service.Dispose();}catch{}}CleanupServiceFiles(terre,state,servicePid,stoppingServiceId);await CleanupStaleServiceFiles(config,state);
+    string stoppingServiceId=ServiceIdFor(terre,state);if(service!=null){try{if(!service.HasExited){service.Kill();service.WaitForExit(3000);}}catch{}try{service.Dispose();}catch{}}CleanupServiceFiles(terre,state,servicePid,stoppingServiceId);try{CleanupStaleServiceFiles(config,state).GetAwaiter().GetResult();}catch{}
     if(stopBackend&&Commands.Alive(backendPid)){using(var p=Process.Start(new ProcessStartInfo("taskkill.exe","/PID "+backendPid+" /F"){UseShellExecute=false,CreateNoWindow=true})){p.WaitForExit(5000);}}
     if(backendProcess!=null)backendProcess.Dispose();
     if(lockHandle!=null){lockHandle.Dispose();lockHandle=null;}if(File.Exists(lockFile)&&J.N(J.TryRead(lockFile),"pid")==Process.GetCurrentProcess().Id)try{File.Delete(lockFile);}catch{}
