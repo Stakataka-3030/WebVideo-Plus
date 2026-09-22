@@ -25,6 +25,7 @@ assert.equal(typeof context.__exportDialogueDomReady,'function');
 assert.equal(typeof context.__exportDialogueDomSnapshot,'function');
 assert.equal(typeof context.__exportLive2DLifetimeAt,'function');
 assert.equal(typeof context.__exportResolveCubism2Idle,'function');
+assert.equal(typeof context.__exportCubism2MotionEpoch,'function');
 assert.equal(typeof context.__exportCubism2QueueTimingKeys,'function');
 assert.equal(typeof context.__exportRebaseCubism2QueueEntry,'function');
 assert.equal(typeof context.__exportWaitDialogueDom,'function');
@@ -58,6 +59,10 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   const loop=context.__exportResolveCubism2Idle([{index:4,durationMs:1200,loop:true}],6100,'loop');
   assert.equal(loop.index,4);
   assert.equal(loop.offsetMs,100,'looping idle motion must seek by modulo without inventing a new random motion');
+  const epochLifetime={motionEvents:[{atMs:0,group:'idle',index:0},{atMs:10000,group:'wave',index:0},{atMs:20000,group:'',index:0}]};
+  assert.equal(context.__exportCubism2MotionEpoch(epochLifetime,9999)?.group,'idle');
+  assert.equal(context.__exportCubism2MotionEpoch(epochLifetime,15000)?.group,'wave');
+  assert.equal(context.__exportCubism2MotionEpoch(epochLifetime,25000)?.group,'');
   const fakeEntry={available:true,finished:false,a:-1,b:-1,c:-1,id:7};
   const fakeMotion={updateParam:function(model,entry){if(!entry.available||entry.finished)return;if(entry.a<0){entry.a=1;entry.b=1;if(entry.c<0)entry.c=2;}}};
   const keys=context.__exportCubism2QueueTimingKeys(fakeMotion,fakeEntry);
@@ -353,7 +358,9 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.equal(plan.live2dLifetimes[0].target,'hero');
   assert.equal(plan.live2dLifetimes[0].startMs,0);
   assert.equal(plan.live2dLifetimes[0].endMs,60000);
-  assert.equal(plan.live2dLifetimes[0].hasExplicitMotion,true,'an explicit -motion must disable pure auto-idle seeking for this lifetime');
+  assert.equal(plan.live2dLifetimes[0].motionEvents.length,1,'explicit -motion must be recorded as a seekable epoch inside the same model lifetime');
+  assert.equal(plan.live2dLifetimes[0].motionEvents[0].group,'idle');
+  assert.equal(plan.live2dLifetimes[0].motionEvents[0].atMs,0);
   assert.equal(context.__exportLive2DLifetimeAt(plan.live2dLifetimes,'hero',30000)?.startMs,0);
   assert.equal(context.__exportLive2DLifetimeAt(plan.live2dLifetimes,'hero',60000),null,'lifetime end is exclusive');
   assert.equal(plan.softCutWindows.length,1);
@@ -371,7 +378,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   ],stageExitWindows:[]};
   const autoPlan=build({script:autoScript,parsed:autoParsed,media:{},animations:{},timing:autoTiming,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
   assert.equal(autoPlan.live2dLifetimes.length,1);
-  assert.equal(autoPlan.live2dLifetimes[0].hasExplicitMotion,false,'plain Cubism2/Live2D figures must remain eligible for deterministic auto-idle seeking');
+  assert.equal(autoPlan.live2dLifetimes[0].motionEvents.length,0,'plain Cubism2/Live2D figures start directly on the deterministic auto-idle timeline');
 
   const switchedScript=['changeFigure:hero/model.json -id=hero -motion=idle;','hero:before;','changeFigure:hero/model.json -id=hero -motion=wave;','hero:after;'].join('\n');
   const switchedParsed={sentenceList:[
@@ -391,6 +398,10 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.equal(switched.live2dLifetimes.length,1,'motion changes must not restart the underlying Live2D model lifetime');
   assert.equal(switched.live2dLifetimes[0].startMs,0);
   assert.equal(switched.live2dLifetimes[0].endMs,30000);
+  assert.equal(switched.live2dLifetimes[0].motionEvents.length,2,'motion changes must be retained as epochs without restarting the model lifetime');
+  assert.equal(switched.live2dLifetimes[0].motionEvents[0].group,'idle');
+  assert.equal(switched.live2dLifetimes[0].motionEvents[1].group,'wave');
+  assert.equal(switched.live2dLifetimes[0].motionEvents[1].atMs,10000);
 
   const strict=build({script:switchedScript,parsed:switchedParsed,media:{},animations:{},timing:switchedTiming,root:'C:/root',project:'P',sceneName:'start.txt',fps:60,strictSegmentCuts:true});
   assert.equal(strict.strictSegmentCuts,true);
@@ -407,13 +418,15 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(renderSource.includes('breath.__webVideoAbsoluteModelAge=true'),'Cubism4 breath must be rebound to absolute model age for seam continuity');
   assert.ok(renderSource.includes('breath._currentTime=ageSeconds-delta;'),'breath phase compensation must allow the first tick to land exactly on model age');
   assert.ok(renderSource.includes('manager.__webVideoDeterministicIdle=true'),'Cubism2 auto-idle must use model-local deterministic seeking');
-  assert.ok(renderSource.includes('manager.__webVideoIdleEntriesPromise=Promise.all'),'Cubism2 idle duration metadata must be built once per model instead of rescanning every idle transition');
+  assert.ok(renderSource.includes('manager.__webVideoMotionEntries||(manager.__webVideoMotionEntries=new Map())'),'Cubism2 motion metadata must be cached per group and model');
+  assert.ok(renderSource.includes('globalThis.__exportSeekCubism2Current=seekCubism2State'),'Cubism2 restore must expose immediate current-motion seeking');
+  assert.ok(renderSource.includes('if(lifetime)await seekCubism2State(manager,queue,target,lifetime,nowMs)'),'a newly bound/restored Cubism2 model must seek its current motion immediately, not wait for the next random-idle request');
   assert.ok(renderSource.includes('__exportRebaseCubism2QueueEntry'),'Cubism2 motion queue entries must be rebased so restored workers resume the same idle phase');
   assert.ok(renderSource.includes('entry[keys.start]=start;entry[keys.fade]=start;entry[keys.end]=end'),'obfuscated Cubism2 core timing fields must be rebased without hardcoding private field names');
-  assert.ok(renderSource.includes('lifetime.hasExplicitMotion'),'explicit user motions must opt out of synthetic auto-idle schedule seeking');
+  assert.ok(renderSource.includes('__exportCubism2MotionEpoch(lifetime,nowMs)'),'explicit user motions must be restored from their absolute motion epoch instead of opting out of seeking');
   assert.ok(renderSource.includes('__exportCurrentSimulationMs=Number(t)||0'),'every export frame must publish its absolute simulation time before Live2D advances');
-  assert.ok(renderSource.includes('if(live2dBindingPending){bindLive2DDeterminism();live2dBindingPending=false;}'),'Live2D hook discovery must run once on the initial restored frame, not scan the full stage every frame');
-  assert.ok(renderSource.includes("if(batch.some(e=>e.loads)){await __exportWaitForStageAssets();bindLive2DDeterminism();live2dBindingPending=false;}"),'Live2D hook discovery must rerun only after resource-loading events can create a model');
+  assert.ok(renderSource.includes('if(live2dBindingPending){await bindLive2DDeterminism();live2dBindingPending=false;}'),'Live2D hook discovery and immediate motion seek must complete once on the initial restored frame before rendering advances');
+  assert.ok(renderSource.includes("if(batch.some(e=>e.loads)){await __exportWaitForStageAssets();await bindLive2DDeterminism();live2dBindingPending=false;}"),'Live2D hook discovery must rerun only after resource-loading events can create a model and must finish before the frame is captured');
   assert.ok(!renderSource.includes('__exportCurrentSimulationMs=Number(t)||0;\n  bindLive2DDeterminism();'),'the hot per-frame path must not rescan all Live2D stage objects');
   assert.ok(renderSource.includes('__exportLive2DLifetimeAt'),'renderer must resolve the active model lifetime without replaying from model birth');
   assert.ok(segmentSource.includes('Live2DPhysicsWarmupSeconds=1d'),'Live2D physics must use a bounded warmup instead of whole-lifetime replay');

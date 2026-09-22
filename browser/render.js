@@ -149,6 +149,15 @@ globalThis.__exportResolveCubism2Idle=(entries,ageMs,key)=>{
   }
   return null;
 };
+globalThis.__exportCubism2MotionEpoch=(lifetime,timeMs)=>{
+  const time=Number(timeMs);if(!lifetime||!Number.isFinite(time))return null;
+  let best=null;
+  for(const event of Array.isArray(lifetime.motionEvents)?lifetime.motionEvents:[]){
+    const at=Number(event?.atMs);if(!Number.isFinite(at)||at>time+.01)continue;
+    if(!best||at>=Number(best.atMs))best=event;
+  }
+  return best;
+};
 globalThis.__exportCubism2QueueTimingKeys=(motion,entry)=>{
   if(!motion||!entry||typeof motion.updateParam!=='function')return null;
   const source=Function.prototype.toString.call(motion.updateParam),ordered=[],seen=new Set();
@@ -179,7 +188,54 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
   globalThis.__exportCurrentSimulationMs=Math.max(0,Number(firstSimulationFrame)||0)*1000/Math.max(1,Number(fps)||1);
   const deterministicLive2D=new WeakSet();
   let live2dBindingPending=true;
-  const bindLive2DDeterminism=()=>{
+  const cubism2Entries=async(manager,group)=>{
+    if(!group)return [];
+    const cache=manager.__webVideoMotionEntries||(manager.__webVideoMotionEntries=new Map());
+    if(!cache.has(group))cache.set(group,(async()=>{
+      const defs=manager.definitions?.[group];if(!Array.isArray(defs)||!defs.length)return [];
+      return (await Promise.all(defs.map(async(_,index)=>{
+        const motion=await manager.loadMotion(group,index);if(!motion)return null;
+        const duration=Number(motion.getDurationMSec?.()),loopDuration=Number(motion.getLoopDurationMSec?.()),loop=!(duration>0)&&loopDuration>0,span=duration>0?duration:loopDuration;
+        return Number.isFinite(span)&&span>0?{index,durationMs:span,loop,motion}:null;
+      }))).filter(Boolean);
+    })());
+    return await cache.get(group);
+  };
+  const resolveCubism2State=async(manager,target,lifetime,nowMs)=>{
+    if(!lifetime||!Number.isFinite(Number(nowMs)))return null;
+    const epoch=globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);
+    let idleStart=Number(lifetime.startMs)||0;
+    if(epoch){
+      const group=String(epoch.group??'');
+      if(group){
+        const entries=await cubism2Entries(manager,group),index=Number.isInteger(Number(epoch.index))?Number(epoch.index):0,selected=entries.find(x=>x.index===index);
+        if(!selected)return null;
+        const elapsed=Math.max(0,Number(nowMs)-Number(epoch.atMs));
+        if(selected.loop)return {kind:'explicit',group,index,priority:Number(epoch.priority)||3,offsetMs:elapsed%selected.durationMs,durationMs:selected.durationMs,loop:true,motion:selected.motion,originMs:Number(epoch.atMs)};
+        if(elapsed<selected.durationMs)return {kind:'explicit',group,index,priority:Number(epoch.priority)||3,offsetMs:elapsed,durationMs:selected.durationMs,loop:false,motion:selected.motion,originMs:Number(epoch.atMs)};
+        idleStart=Number(epoch.atMs)+selected.durationMs;
+      }else idleStart=Number(epoch.atMs);
+    }
+    const group=manager.groups?.idle,entries=await cubism2Entries(manager,group);
+    const scheduleKey=target+'|'+Number(lifetime.startMs)+'|'+String(lifetime.source||'')+'|'+idleStart;
+    const state=globalThis.__exportResolveCubism2Idle(entries,Math.max(0,Number(nowMs)-idleStart),scheduleKey);
+    if(!state)return null;
+    const selected=entries.find(x=>x.index===state.index);if(!selected)return null;
+    return {...state,kind:'idle',group,priority:1,motion:selected.motion,originMs:idleStart};
+  };
+  const seekCubism2State=async(manager,queue,target,lifetime,nowMs)=>{
+    const state=await resolveCubism2State(manager,target,lifetime,nowMs);if(!state)return false;
+    manager.stopAllMotions?.();
+    const ok=await manager.startMotion(state.group,state.index,state.priority);if(!ok)return false;
+    const after=Array.from(queue.motions||[]),entry=after[after.length-1];
+    const coreNow=typeof UtSystem!=='undefined'&&typeof UtSystem.getUserTimeMSec==='function'?Number(UtSystem.getUserTimeMSec()):Number(Date.now());
+    const rebased=globalThis.__exportRebaseCubism2QueueEntry(state.motion,entry,coreNow,state);
+    if(!rebased&&typeof state.motion?.setOffsetMSec==='function')state.motion.setOffsetMSec(Math.max(0,Math.round(state.offsetMs)));
+    manager.__webVideoIdleSeekLast={target,startMs:Number(lifetime.startMs),group:state.group,index:state.index,offsetMs:state.offsetMs,kind:state.kind,originMs:state.originMs,rebased};
+    return true;
+  };
+  globalThis.__exportSeekCubism2Current=seekCubism2State;
+  const bindLive2DDeterminism=async()=>{
     const stage=__wgProbe.core.gameplay.pixiStage,objects=stage?.getAllStageObj?.()||stage?.figureObjects||[];
     for(const obj of objects){
       if(obj?.sourceType!=='live2d')continue;
@@ -205,31 +261,19 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
           const originalRandom=manager.startRandomMotion.bind(manager);
           manager.startRandomMotion=async(group,priority)=>{
             const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
-            if(group!==manager.groups?.idle||!lifetime||lifetime.hasExplicitMotion)return originalRandom(group,priority);
+            if(group!==manager.groups?.idle||!lifetime)return originalRandom(group,priority);
             if(manager.__webVideoIdleSeekPending)return manager.__webVideoIdleSeekPending;
             const task=(async()=>{
-              const defs=manager.definitions?.[group];if(!Array.isArray(defs)||!defs.length)return originalRandom(group,priority);
-              if(!manager.__webVideoIdleEntriesPromise)manager.__webVideoIdleEntriesPromise=Promise.all(defs.map(async(_,index)=>{
-                const motion=await manager.loadMotion(group,index);if(!motion)return null;
-                const duration=Number(motion.getDurationMSec?.()),loopDuration=Number(motion.getLoopDurationMSec?.()),loop=!(duration>0)&&loopDuration>0,span=duration>0?duration:loopDuration;
-                return Number.isFinite(span)&&span>0?{index,durationMs:span,loop,motion}:null;
-              })).then(items=>items.filter(Boolean));
-              const entries=await manager.__webVideoIdleEntriesPromise;
-              const ageMs=Math.max(0,nowMs-Number(lifetime.startMs)),scheduleKey=target+'|'+Number(lifetime.startMs)+'|'+String(lifetime.source||''),state=globalThis.__exportResolveCubism2Idle(entries,ageMs,scheduleKey);
-              if(!state)return originalRandom(group,priority);
-              const selected=entries.find(x=>x.index===state.index);if(!selected)return originalRandom(group,priority);
-              const before=new Set(Array.from(queue.motions||[])),ok=await manager.startMotion(group,state.index,priority);if(!ok)return false;
-              const after=Array.from(queue.motions||[]),entry=[...after].reverse().find(x=>!before.has(x))||after[after.length-1];
-              const coreNow=typeof UtSystem!=='undefined'&&typeof UtSystem.getUserTimeMSec==='function'?Number(UtSystem.getUserTimeMSec()):Number(Date.now());
-              const rebased=globalThis.__exportRebaseCubism2QueueEntry(selected.motion,entry,coreNow,state);
-              if(!rebased&&typeof selected.motion.setOffsetMSec==='function')selected.motion.setOffsetMSec(Math.max(0,Math.round(state.offsetMs)));
-              manager.__webVideoIdleSeekLast={target,startMs:Number(lifetime.startMs),index:state.index,offsetMs:state.offsetMs,step:state.step,rebased};
-              return true;
+              const state=await resolveCubism2State(manager,target,lifetime,nowMs);
+              if(!state||state.kind!=='idle')return originalRandom(group,priority);
+              return await seekCubism2State(manager,queue,target,lifetime,nowMs);
             })();
             manager.__webVideoIdleSeekPending=task;
             try{return await task;}finally{manager.__webVideoIdleSeekPending=null;}
           };
           manager.__webVideoDeterministicIdle=true;
+          const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+          if(lifetime)await seekCubism2State(manager,queue,target,lifetime,nowMs);
         }
       }
     }
@@ -317,7 +361,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
   globalThis.__exportApplyLip=l=>{if(globalThis.__mygoApplyLip){__mygoApplyLip(l);return;}if(!l.active&&!controlled.has(l.target))return;if(l.active){if(!controlled.has(l.target))states.delete(l.target);controlled.add(l.target);levels.set(l.target,l.value);}else{controlled.delete(l.target);levels.delete(l.target);if(l.target===globalThis.__exportCurrentSimulatedTarget)return;}const p=__wgProbe.core.gameplay.pixiStage,obj=p.getStageObjByKey(l.target);if(!obj)return;globalThis.__exportWritingVoice=true;try{p.setModelMouthY(l.target,l.active?50+50*l.value:0);}finally{globalThis.__exportWritingVoice=false;}if(obj.sourceType==='live2d'){for(const model of obj.pixiContainer?.children||[]){const inner=model.internalModel;if(inner&&!bound.has(inner)){bound.add(inner);inner.on('beforeModelUpdate',()=>{if(!levels.has(l.target))return;const value=levels.get(l.target),core=inner.coreModel;core.setParamFloat?.('PARAM_MOUTH_OPEN_Y',value);core.setParameterValueById?.('ParamMouthOpenY',value);});}}}if(obj.sourceType==='img'){const state=l.value>.6?'open':l.value>.2?'half_open':'closed',s=__wgProbe.stageManager.getCalculationStageState(),item=s.figureAssociatedAnimation.find(x=>x.targetId===l.target),key=state==='half_open'?'halfOpen':state==='closed'?'close':'open',url=item?.mouthAnimation?.[key],cacheKey=obj.uuid+':'+url;if(url&&states.get(l.target)!==cacheKey){states.set(l.target,cacheKey);p.performMouthSyncAnimation(l.target,item,state,'center');}}};
 globalThis.__stepExportFrame=async({t,elapsed,batch,lips})=>{
   globalThis.__exportCurrentSimulationMs=Number(t)||0;
-  if(live2dBindingPending){bindLive2DDeterminism();live2dBindingPending=false;}
+  if(live2dBindingPending){await bindLive2DDeterminism();live2dBindingPending=false;}
   if(elapsed>0)await __pwClock.controller.runFor(elapsed);
   for(let i=0;i<batch.length;){
     const event=batch[i];
@@ -332,7 +376,7 @@ globalThis.__stepExportFrame=async({t,elapsed,batch,lips})=>{
     await globalThis.__exportWaitDialogueDom();
     globalThis.__exportFinishDialogueTransition();
   }
-  if(batch.some(e=>e.loads)){await __exportWaitForStageAssets();bindLive2DDeterminism();live2dBindingPending=false;}
+  if(batch.some(e=>e.loads)){await __exportWaitForStageAssets();await bindLive2DDeterminism();live2dBindingPending=false;}
   for(const a of document.getAnimations()){if(!__exportAnimations.has(a)){__exportAnimations.set(a,t);a.pause();}a.currentTime=Math.max(0,t-__exportAnimations.get(a));}
   const p=__wgProbe.core.gameplay.pixiStage;
   for(const l of lips)__exportApplyLip(l);

@@ -2,6 +2,16 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.39 / 导出内核 0.6.34
+
+- 根据多 Worker 成片逐帧复核继续修复 Cubism2 接缝跳变。用户录屏在接缝前后连续两帧中出现人物眼睛、头部与躯干同时换姿态，确认不是普通眨眼，而是后一个 Worker 恢复后当前 Live2D motion 相位与前一 Worker 不一致。
+- 修复 0.7.31–0.7.35 deterministic idle 方案的两个缺口：此前 hook 只接管“以后发生的 `startRandomMotion()`”，但 prefix restore 创建 Cubism2 模型时 WebGAL 已经先启动当前 motion；另外只要脚本出现过显式 `-motion`，整个 lifetime 会被排除在 seek 之外。因此恢复段仍可能从 motion 第 0ms 开始。
+- Planning 现在在每个真实 `live2dLifetime` 内记录 `motionEvents`，包含显式 motion 的绝对开始时间、group、index 与优先级；motion 变化继续不会重建模型 lifetime。
+- Cubism2 hook 改为异步绑定，并在模型首次绑定/恢复完成的当下立即解析绝对状态：若显式 motion 仍在播放，直接 seek 到该 motion 的正确毫秒偏移；若显式 motion 已结束，则从其结束时刻开始计算确定性的 auto-idle 序列；空 motion 事件则把该时刻视作新的 auto-idle 起点。循环 motion 按周期取模。
+- seek 会先清掉 prefix restore 已经启动但相位错误的 queue motion，再启动目标 group/index，并复用既有 MotionQueueEnt start/fade/end 时间回拨，使第一张正式帧前就落到正确相位；不再等待“下一次随机 idle”才纠正。资源加载后的重新绑定同样会 await 完成后再允许该帧进入捕获。
+- motion 时长元数据由原先仅缓存 idle 扩展为按 group 的 per-model Promise Map；正常连续帧仍不扫描舞台，1 秒 bounded warmup 与 0.7.35 的性能优化保持不变。
+- lifecycle 回归新增显式 motion epoch、motion 切换不重启 lifetime、恢复时立即 seek、异步绑定必须在帧捕获前完成等检查。pipeline revision 更新为 `cubism2-motion-seek-0.7.39`，旧分片缓存自动失效。
+
 ### 内部版本 0.7.38 / 导出内核 0.6.33
 
 - 修复 MyGO 等 Terre 分发版重启后前端提示“无法连接本地导出服务”的生命周期问题。用户诊断包显示 lifecycle 与 QueueService 均能正常启动，但最初 `Process.Start()` 返回的 Terre PID 会在几十秒内退出并把监听端口交棒给另一个长期进程；旧逻辑使用 `while (Commands.Alive(backendPid))`，因此错误地把 launcher PID 退出当成 Terre 已关闭，并在 `finally` 中主动杀掉 Video+ service。
