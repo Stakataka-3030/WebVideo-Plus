@@ -209,12 +209,12 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
             if(manager.__webVideoIdleSeekPending)return manager.__webVideoIdleSeekPending;
             const task=(async()=>{
               const defs=manager.definitions?.[group];if(!Array.isArray(defs)||!defs.length)return originalRandom(group,priority);
-              const entries=[];
-              for(let index=0;index<defs.length;index++){
-                const motion=await manager.loadMotion(group,index);if(!motion)continue;
+              if(!manager.__webVideoIdleEntriesPromise)manager.__webVideoIdleEntriesPromise=Promise.all(defs.map(async(_,index)=>{
+                const motion=await manager.loadMotion(group,index);if(!motion)return null;
                 const duration=Number(motion.getDurationMSec?.()),loopDuration=Number(motion.getLoopDurationMSec?.()),loop=!(duration>0)&&loopDuration>0,span=duration>0?duration:loopDuration;
-                if(Number.isFinite(span)&&span>0)entries.push({index,durationMs:span,loop,motion});
-              }
+                return Number.isFinite(span)&&span>0?{index,durationMs:span,loop,motion}:null;
+              })).then(items=>items.filter(Boolean));
+              const entries=await manager.__webVideoIdleEntriesPromise;
               const ageMs=Math.max(0,nowMs-Number(lifetime.startMs)),scheduleKey=target+'|'+Number(lifetime.startMs)+'|'+String(lifetime.source||''),state=globalThis.__exportResolveCubism2Idle(entries,ageMs,scheduleKey);
               if(!state)return originalRandom(group,priority);
               const selected=entries.find(x=>x.index===state.index);if(!selected)return originalRandom(group,priority);

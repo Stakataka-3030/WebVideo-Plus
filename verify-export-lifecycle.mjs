@@ -396,6 +396,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(renderSource.includes('breath.__webVideoAbsoluteModelAge=true'),'Cubism4 breath must be rebound to absolute model age for seam continuity');
   assert.ok(renderSource.includes('breath._currentTime=ageSeconds-delta;'),'breath phase compensation must allow the first tick to land exactly on model age');
   assert.ok(renderSource.includes('manager.__webVideoDeterministicIdle=true'),'Cubism2 auto-idle must use model-local deterministic seeking');
+  assert.ok(renderSource.includes('manager.__webVideoIdleEntriesPromise=Promise.all'),'Cubism2 idle duration metadata must be built once per model instead of rescanning every idle transition');
   assert.ok(renderSource.includes('__exportRebaseCubism2QueueEntry'),'Cubism2 motion queue entries must be rebased so restored workers resume the same idle phase');
   assert.ok(renderSource.includes('entry[keys.start]=start;entry[keys.fade]=start;entry[keys.end]=end'),'obfuscated Cubism2 core timing fields must be rebased without hardcoding private field names');
   assert.ok(renderSource.includes('lifetime.hasExplicitMotion'),'explicit user motions must opt out of synthetic auto-idle schedule seeking');

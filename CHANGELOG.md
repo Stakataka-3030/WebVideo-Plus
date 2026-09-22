@@ -2,6 +2,11 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.35 / 导出内核 0.6.32
+
+- 继续收敛 0.7.31 Cubism2 deterministic idle 的运行时成本。每个模型的 idle motion 时长/循环元数据现在只构建一次并缓存为 Promise，首次加载使用并行 `Promise.all`；后续每次自动 idle 切换直接复用缓存，不再重新遍历整个 idle 定义表并逐个 await。
+- 与 0.7.34 的关键性能修复配套：Live2D 舞台扫描已从每帧热路径移除，额外 3 秒 warmup 已撤回。pipeline revision 更新为 `live2d-bind-on-load-0.7.35`。
+
 ### 内部版本 0.7.34 / 导出内核 0.6.31
 
 - 修复 0.7.29–0.7.32 Live2D 接缝方案带来的明显性能回退。此前 `bindLive2DDeterminism()` 被放进每帧热路径，即使模型已经通过 WeakSet 完成绑定，仍会每帧重新枚举舞台对象并遍历 Live2D children；长片与多人物场景会持续损失渲染吞吐。
