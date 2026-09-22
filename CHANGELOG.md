@@ -3,6 +3,17 @@
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
 
+### 内部版本 0.7.8 / 导出内核 0.6.8
+
+- 修正 `-notend -next` 后接普通 `wait` 时的视觉收尾。0.6.7 已经消除了错误的 stale continuation，但实测仍可见前一句最后几个字尚在淡入时，下一句就立即替换。侧车显示该类短句的 say 自身在约 568ms 结束，而下一句恰好同一时刻开始，因此这是剩余的视觉时序问题，不再是异常 settle。
+- 仅对“`say -notend -next`，中间可穿过若干 `-next` 非对白指令，最终落到一个普通 wait”这一明确链路增加 Video+ 视觉下限。下限使用该 say 原 nominal duration 加上 WebGAL 当前 `textAnimationDuration / 2`；对应 wait 的实际规划 duration 同步提升到至少同一值。这样最后字符能完成主要淡入，又不会给所有 `-notend` 统一增加额外停顿。
+- 如果原 wait 本身已经更长，则完全保留原值；如果 `-next` 链中间出现另一条 say，则不会把上一句的视觉下限错误传递过去。
+- 最终 sidecar 的 `timelineDiagnostics` 新增 `visualNotendWaitFloors`，记录原 say 时长、视觉下限和对应 wait 行号，便于继续核对特殊脚本。
+- 新增回归测试，覆盖与本次实测一致的“say -notend -next → changeFigure -next → wait”链，以及“中间出现新 say 时不得继承旧 visual floor”的反例。
+- pipeline revision 更新为 `notend-visual-floor-0.7.8`，旧规划与分片缓存全部失效。
+
+
+
 ### 内部版本 0.7.7 / 导出内核 0.6.7
 
 - 根据 0.6.6 实测侧车再次定位首个短句跳变：`blockedPrematureAutoNext=0` 证明 0.7.6 的 autoplay guard 没有命中；真正把该句提前结束的是 `5234ms` 的 `settle-nonhold`。对应 say 的 nominal duration 约 1221ms，但实际只运行约 68ms。这个时间差与 WebGAL `PerformController.goNextWhenOver` 在遇到 `blockingNext` 时每 100ms 重试完全吻合。
