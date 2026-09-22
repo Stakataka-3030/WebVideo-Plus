@@ -2,6 +2,15 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.27 / 导出内核 0.6.26
+
+- 给普通 `say` 的 DOM 同步增加 2.5 秒真实墙钟上限，但不改变正常情况下的严格判定。绝大多数对白仍要求 target stage、TextBox mutation 与字符 DOM 数量全部满足后立即继续。
+- 只有严格等待超时且 **stage 的 `currentDialogKey/showText` 已确认仍是当前目标对白，同时本轮确实观察到 TextBox mutation** 时，才允许把 `span[id]` / 逻辑字符计数不一致视为 DOM 形态差异并降级继续。这覆盖零宽空格、富文本、emoji/组合字符和自定义主题可能造成的节点计数差异，而不会掩盖真正的对白状态错位。
+- 如果等待超时后 stage key/text 仍不匹配，则继续抛出硬错误；不会为了兼容特殊字符而放松真正的状态一致性检查。
+- 超时/降级诊断现在记录 target/stage/DOM 文本摘要、字符数、`span[id]` / `.Textelement_start` 数量、mutation serial，以及前三者的 Unicode code point 序列。U+200B 等不可见字符可以直接从诊断中识别。
+- bounded wait 使用 Playwright clock embedder 的真实 wall-clock timer，不受导出虚拟时间冻结影响；GPU DOM 结果的 `dialogueWaitDiagnostics` 会保留降级记录。
+- pipeline revision 更新为 `dialogue-wait-bounded-0.7.27`，旧分片缓存自动失效。
+
 ### 内部版本 0.7.26 / 导出内核 0.6.25
 
 - 根据 0.6.24 用户实测继续修复多 Worker prefix restore。新日志已经明确证明失败不再是 Promise 卡死，而是部分接缝在 `sync-scene` 已完成后，连续 5 秒仍无法满足 `__exportDialogueDomReady(true)`；失败稳定发生在第 3、4、6、7 段，说明 `span[id]` 数量 / TextBox DOM 形态不能作为 worker 恢复正确性的硬前置条件。

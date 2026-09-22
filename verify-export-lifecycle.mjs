@@ -65,6 +65,24 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
 }
 
 {
+  const previousProbe=context.__wgProbe,previousDocument=context.document,previousPending=context.__exportDialoguePending,previousSerial=context.__exportDialogueMutationSerial,previousClock=context.__pwClock,previousMutationObserver=context.MutationObserver,previousDiagnostics=context.__exportDialogueWaitDiagnostics;
+  context.MutationObserver=class{observe(){}disconnect(){}};
+  context.__pwClock={controller:{_embedder:{setTimeout:(fn,ms)=>{const timer=setTimeout(fn,ms);return()=>clearTimeout(timer);}}}};
+  context.__wgProbe={stageManager:{getCalculationStageState:()=>({currentDialogKey:'dlg',showText:'a\u200bb'})}};
+  context.document={body:{},getElementById:id=>id==='textBoxMain'?{querySelectorAll:()=>[{}],textContent:'ab'}:null};
+  context.__exportDialoguePending={serial:10,targetKey:'dlg',targetText:'a\u200bb',targetCount:3};
+  context.__exportDialogueMutationSerial=11;context.__exportDialogueWaitDiagnostics=[];context.__exportCurrentFrame=42;
+  assert.equal(await context.__exportWaitDialogueDom({timeoutMs:5}),false,'matching stage plus a real TextBox mutation may fall back when special text makes span counting disagree');
+  assert.equal(context.__exportDialogueWaitDiagnostics.length,1);
+  assert.equal(context.__exportDialogueWaitDiagnostics[0].outcome,'fallback');
+  assert.ok(context.__exportDialogueWaitDiagnostics[0].targetCodePoints.includes('U+200B'),'fallback diagnostics must expose zero-width code points');
+  context.__wgProbe={stageManager:{getCalculationStageState:()=>({currentDialogKey:'other',showText:'other'})}};
+  context.__exportDialoguePending={serial:20,targetKey:'dlg',targetText:'abc',targetCount:3};context.__exportDialogueMutationSerial=21;
+  await assert.rejects(()=>context.__exportWaitDialogueDom({timeoutMs:5}),/对白 DOM 同步超时/,'stage mismatch must remain a hard failure');
+  context.__wgProbe=previousProbe;context.document=previousDocument;context.__exportDialoguePending=previousPending;context.__exportDialogueMutationSerial=previousSerial;context.__pwClock=previousClock;context.MutationObserver=previousMutationObserver;context.__exportDialogueWaitDiagnostics=previousDiagnostics;
+}
+
+{
   const delivered=[],event={emit(message,id){delivered.push([message,id]);}};
   context.__exportInstallTextSettleGuard(event);
   context.__exportActiveSayToken=2;
@@ -109,6 +127,11 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   assert.ok(renderSource.includes('__exportDialogueDomReady=(allowStable=false)=>'),'dialogue readiness must distinguish normal playback from prefix stable-state recovery');
   assert.ok(renderSource.includes('return !!allowStable||globalThis.__exportDialogueMutationSerial>pending.serial;'),'prefix stable-state recovery must not require a redundant DOM mutation');
   assert.ok(renderSource.includes('await globalThis.__exportWaitDialogueDom();'),'normal say rendering must retain strict mutation synchronization');
+  assert.ok(renderSource.includes('timeoutMs=Number.isFinite(configured)?Math.max(0,configured):2500'),'normal dialogue synchronization must have a bounded 2.5s wall-clock wait');
+  assert.ok(renderSource.includes("fallback=!allowStable&&mutationObserved&&stageMatches"),'dialogue wait fallback must require both the target stage and a real tracked TextBox mutation');
+  assert.ok(renderSource.includes("new Error('对白 DOM 同步超时：'+JSON.stringify(diagnostic))"),'stage mismatches must remain fatal after the bounded wait');
+  assert.ok(renderSource.includes('targetCodePoints:codePoints(targetText)'),'dialogue diagnostics must expose invisible/special code points');
+  assert.ok(renderSource.includes('dialogueWaitDiagnostics:globalThis.__exportDialogueWaitDiagnostics||[]'),'GPU DOM results must retain dialogue wait fallback diagnostics');
   const browserHostSource=fs.readFileSync(path.join(root,'src','BrowserHost.cs'),'utf8');
   assert.ok(browserHostSource.includes('ScriptPreview(expression)'),'page-script timeouts must identify the expression that stalled');
   assert.ok(browserHostSource.includes('Math.Min(5000,remaining)'),'state waits must bound each CDP evaluation instead of silently overrunning their own timeout');

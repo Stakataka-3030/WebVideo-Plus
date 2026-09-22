@@ -12,6 +12,7 @@ globalThis.__exportInstallTextSettleGuard=textSettleEvent=>{
 };
 globalThis.__exportDialogueMutationSerial=0;
 globalThis.__exportDialogueObserver=null;
+globalThis.__exportDialogueWaitDiagnostics=[];
 globalThis.__exportEnsureDialogueObserver=()=>{
   if(globalThis.__exportDialogueObserver)return;
   const observer=new MutationObserver(records=>{
@@ -61,22 +62,29 @@ globalThis.__exportDialogueDomReady=(allowStable=false)=>{
 };
 globalThis.__exportDialogueDomSnapshot=()=>{
   const pending=globalThis.__exportDialoguePending,stage=__wgProbe.stageManager.getCalculationStageState?.(),box=document.getElementById('textBoxMain');
-  const stageKey=String(stage?.currentDialogKey??''),stageText=String(stage?.showText??''),spanCount=box?.querySelectorAll?.('span[id]')?.length||0,textElementCount=box?.querySelectorAll?.('.Textelement_start')?.length||0;
+  const stageKey=String(stage?.currentDialogKey??''),stageText=String(stage?.showText??''),targetText=String(pending?.targetText??''),boxText=String(box?.textContent??''),spanCount=box?.querySelectorAll?.('span[id]')?.length||0,textElementCount=box?.querySelectorAll?.('.Textelement_start')?.length||0;
+  const preview=text=>String(text??'').slice(0,240),codePoints=text=>[...String(text??'')].slice(0,120).map(ch=>'U+'+ch.codePointAt(0).toString(16).toUpperCase().padStart(4,'0'));
   return {
     pending:!!pending,
     targetKeyMatches:!pending||stageKey===String(pending.targetKey??''),
-    targetTextMatches:!pending||stageText===String(pending.targetText??''),
+    targetTextMatches:!pending||stageText===targetText,
     targetCount:Number(pending?.targetCount)||0,
-    targetTextLength:String(pending?.targetText??'').length,
+    targetTextLength:targetText.length,
     stageTextLength:stageText.length,
     boxPresent:!!box,
     spanCount,
     textElementCount,
-    boxTextLength:String(box?.textContent??'').length,
+    boxTextLength:boxText.length,
     mutationSerial:Number(globalThis.__exportDialogueMutationSerial)||0,
     pendingSerial:Number(pending?.serial)||0,
     readyStrict:globalThis.__exportDialogueDomReady(false),
-    readyStable:globalThis.__exportDialogueDomReady(true)
+    readyStable:globalThis.__exportDialogueDomReady(true),
+    targetText:preview(targetText),
+    stageText:preview(stageText),
+    boxText:preview(boxText),
+    targetCodePoints:codePoints(targetText),
+    stageCodePoints:codePoints(stageText),
+    boxCodePoints:codePoints(boxText)
   };
 };
 globalThis.__exportFinishDialogueTransition=()=>{
@@ -88,14 +96,26 @@ globalThis.__exportFinishDialogueTransition=()=>{
   return true;
 };
 globalThis.__exportWaitDialogueDom=async(options={})=>{
-  const allowStable=!!options?.allowStable;
+  const allowStable=!!options?.allowStable,configured=Number(options?.timeoutMs),timeoutMs=Number.isFinite(configured)?Math.max(0,configured):2500;
   const pending=globalThis.__exportDialoguePending;if(!pending||globalThis.__exportDialogueDomReady(allowStable))return true;
-  return await new Promise(resolve=>{
-    let done=false;
-    const finish=value=>{if(done)return;done=true;observer.disconnect();resolve(value);};
-    const observer=new MutationObserver(()=>{if(globalThis.__exportDialogueDomReady(allowStable))finish(true);});
+  return await new Promise((resolve,reject)=>{
+    let done=false,cancelTimeout=()=>{};
+    const finish=(value,error=null)=>{if(done)return;done=true;observer.disconnect();try{cancelTimeout();}catch{}if(error)reject(error);else resolve(value);};
+    const check=()=>{if(globalThis.__exportDialogueDomReady(allowStable))finish(true);};
+    const observer=new MutationObserver(check);
     observer.observe(document.body,{subtree:true,childList:true,characterData:true});
-    queueMicrotask(()=>{if(globalThis.__exportDialogueDomReady(allowStable))finish(true);});
+    const onTimeout=()=>{
+      if(globalThis.__exportDialogueDomReady(allowStable)){finish(true);return;}
+      const snapshot=globalThis.__exportDialogueDomSnapshot(),mutationObserved=snapshot.mutationSerial>snapshot.pendingSerial,stageMatches=snapshot.targetKeyMatches&&snapshot.targetTextMatches,fallback=!allowStable&&mutationObserved&&stageMatches;
+      const diagnostic={frame:Number(globalThis.__exportCurrentFrame??-1),timeoutMs,mutationObserved,stageMatches,outcome:fallback?'fallback':'error',...snapshot};
+      globalThis.__exportDialogueWaitDiagnostics.push(diagnostic);
+      if(fallback){finish(false);return;}
+      finish(false,new Error('对白 DOM 同步超时：'+JSON.stringify(diagnostic)));
+    };
+    const realSetTimeout=globalThis.__pwClock?.controller?._embedder?.setTimeout;
+    if(typeof realSetTimeout==='function')cancelTimeout=realSetTimeout(onTimeout,timeoutMs);
+    else{const timer=setTimeout(onTimeout,timeoutMs);cancelTimeout=()=>clearTimeout(timer);}
+    queueMicrotask(check);
   });
 };
 globalThis.__exportRestoredDialogueReady=()=>globalThis.__exportDialogueDomReady(true);
@@ -282,7 +302,7 @@ globalThis.__gpuDomPositionAtlasPage=page=>{
   document.documentElement.getBoundingClientRect();return true;
 };
 
-globalThis.__gpuDomStats=()=>{const state=globalThis.__gpuDomState;return state?{captures:state.captures,dirtyReason:state.dirtyReason,textEntries:state.textEntries?.length||0,textboxPresent:!!state.textboxRoot,atlasActive:!!state.atlasActive,atlasPages:state.atlasPlan?.pages||0,...state.stats}:null;};
+globalThis.__gpuDomStats=()=>{const state=globalThis.__gpuDomState;return state?{captures:state.captures,dirtyReason:state.dirtyReason,textEntries:state.textEntries?.length||0,textboxPresent:!!state.textboxRoot,atlasActive:!!state.atlasActive,atlasPages:state.atlasPlan?.pages||0,dialogueWaitDiagnostics:globalThis.__exportDialogueWaitDiagnostics||[],...state.stats}:null;};
 globalThis.__gpuDomBeginCapture=mode=>{const state=globalThis.__gpuDomState||(__gpuDomInstall(),globalThis.__gpuDomState),atlasMatch=/^atlas:(\d+)$/.exec(String(mode||''));state.suppress=true;if(atlasMatch){try{state.observer?.disconnect();state.atlasObserverPaused=true;}catch{}}state.textboxRoot=state.getTextboxRoot();state.markTextElements();
 // Snapshot before capture CSS changes inheritance. Keep hidden descendants hidden,
 // including template stroke layers, without suppressing explicitly visible children.
