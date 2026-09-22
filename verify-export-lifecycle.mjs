@@ -484,6 +484,10 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
 {
   const installerBase=fs.readFileSync(path.join(root,'installer','Installer.base.cs'),'utf8');
   const installerEnhancements=fs.readFileSync(path.join(root,'installer','installer-enhancements.mjs'),'utf8');
+  assert.ok(installerBase.includes('var outputClosed=new ManualResetEventSlim(false),errorClosed=new ManualResetEventSlim(false)'),'installer process runner must track redirected stream EOF separately from direct child exit');
+  assert.ok(installerBase.includes('if(!outputClosed.Wait(1000))try{p.CancelOutputRead();}catch{}'),'installer stdout drain must be bounded when a launched descendant inherits the pipe');
+  assert.ok(installerBase.includes('if(!errorClosed.Wait(1000))try{p.CancelErrorRead();}catch{}'),'installer stderr drain must be bounded when a launched descendant inherits the pipe');
+  assert.ok(!installerBase.includes('}p.WaitForExit();if(p.ExitCode!=0)'),'installer must not use an unbounded post-exit WaitForExit after async redirection');
   assert.ok(installerBase.includes('public void CleanupStalePayloadArtifacts()'),'installer must garbage-collect payloads left by older versions');
   assert.ok(installerBase.includes('name.Length!=76'),'legacy payload ZIP cleanup must require the exact SHA-256 filename shape');
   assert.ok(installerBase.includes('IsPayloadHash(name,16)'),'legacy package cleanup must require a 16-hex package directory');
