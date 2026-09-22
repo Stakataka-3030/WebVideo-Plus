@@ -108,7 +108,7 @@ namespace NativeVideo {
    };
 
    var replayWindows=replayOnly.Concat(protectedWindows).OrderBy(w=>w.Start).ToArray();
-   Func<int,bool> live2dActive=cut=>live2dLifetimes.Any(w=>cut>w.Start&&cut<=w.End);
+   Func<int,bool> live2dActive=cut=>live2dLifetimes.Any(w=>cut>w.Start&&cut<w.End);
    Func<int,int> replayFor=cut=>ReplayAnchor(cut,live2dActive(cut)?live2dPhysicsWarmupFrames:minReplayWarmupFrames,replayWindows);
 
    var allEvents=J.A(J.Get(plan,"events")).ToList();

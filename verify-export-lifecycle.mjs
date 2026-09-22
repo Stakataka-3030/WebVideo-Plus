@@ -353,6 +353,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const gpuRawSource=fs.readFileSync(path.join(root,'src','GpuRawExport.cs'),'utf8');
   const coreSource=fs.readFileSync(path.join(root,'src','Core.cs'),'utf8');
   const jobSource=fs.readFileSync(path.join(root,'src','JobRunner.cs'),'utf8');
+  const segmentSource=fs.readFileSync(path.join(root,'src','SegmentPlan.cs'),'utf8');
   assert.ok(renderSource.includes('__webviewWarmupStep=async frame=>'),'GPU raw warmup must expose a stage-rendering step');
   assert.ok(renderSource.includes('breath.__webVideoAbsoluteModelAge=true'),'Cubism4 breath must be rebound to absolute model age for seam continuity');
   assert.ok(renderSource.includes('__exportCurrentSimulationMs=Number(t)||0'),'every export frame must publish its absolute simulation time before Live2D advances');
