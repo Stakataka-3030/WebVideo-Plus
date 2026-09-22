@@ -59,6 +59,26 @@ globalThis.__exportDialogueDomReady=(allowStable=false)=>{
   if(count<pending.targetCount)return false;
   return !!allowStable||globalThis.__exportDialogueMutationSerial>pending.serial;
 };
+globalThis.__exportDialogueDomSnapshot=()=>{
+  const pending=globalThis.__exportDialoguePending,stage=__wgProbe.stageManager.getCalculationStageState?.(),box=document.getElementById('textBoxMain');
+  const stageKey=String(stage?.currentDialogKey??''),stageText=String(stage?.showText??''),spanCount=box?.querySelectorAll?.('span[id]')?.length||0,textElementCount=box?.querySelectorAll?.('.Textelement_start')?.length||0;
+  return {
+    pending:!!pending,
+    targetKeyMatches:!pending||stageKey===String(pending.targetKey??''),
+    targetTextMatches:!pending||stageText===String(pending.targetText??''),
+    targetCount:Number(pending?.targetCount)||0,
+    targetTextLength:String(pending?.targetText??'').length,
+    stageTextLength:stageText.length,
+    boxPresent:!!box,
+    spanCount,
+    textElementCount,
+    boxTextLength:String(box?.textContent??'').length,
+    mutationSerial:Number(globalThis.__exportDialogueMutationSerial)||0,
+    pendingSerial:Number(pending?.serial)||0,
+    readyStrict:globalThis.__exportDialogueDomReady(false),
+    readyStable:globalThis.__exportDialogueDomReady(true)
+  };
+};
 globalThis.__exportFinishDialogueTransition=()=>{
   if(globalThis.__gpuDomState){
     globalThis.__gpuDomState.dirty=true;

@@ -2,6 +2,18 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.26 / 导出内核 0.6.25
+
+- 根据 0.6.24 用户实测继续修复多 Worker prefix restore。新日志已经明确证明失败不再是 Promise 卡死，而是部分接缝在 `sync-scene` 已完成后，连续 5 秒仍无法满足 `__exportDialogueDomReady(true)`；失败稳定发生在第 3、4、6、7 段，说明 `span[id]` 数量 / TextBox DOM 形态不能作为 worker 恢复正确性的硬前置条件。
+- prefix restore 现在只对稳定 TextBox DOM 做 750ms 的短暂机会性等待；超时仅记录诊断，不再终止 worker。随后仍通过强制 `textSettle` 同步 WebGAL TextBox 与 GPU DOM 状态，再继续 warmup。普通播放中的 `say` 仍保留严格的 DOM mutation 等待，不降低逐帧对白同步要求。
+- 新增 `__exportDialogueDomSnapshot()`，记录 stage/target 是否匹配、TextBox 是否存在、`span[id]` 与 `.Textelement_start` 数量、目标字符数、mutation serial 及 strict/stable ready 状态；每个非首段写入 `restore-dialogue.json`，以后可以直接解释不同主题/富文本/隐藏文本框为何未满足旧判定。
+- 保留 0.6.24 的终止失败 fail-fast：分段重试后仍失败会立即取消兄弟 worker，不再浪费整轮渲染时间。
+- pipeline revision 更新为 `prefix-dialogue-softwait-0.7.26`，旧分片缓存自动失效。
+
+### 内部版本 0.7.25 / 导出内核 0.6.24
+
+- 安装器在安装、更新与卸载流程结束后主动清理当前 payload ZIP 和解包目录，并带短暂重试；修复安装器临时 payload 未正确删除的问题。该版本未修改导出内核。
+
 ### 内部版本 0.7.24 / 导出内核 0.6.24
 
 - 修复多 Worker 接缝恢复中的确定性页面脚本超时。prefix `sync-scene` 完成后，如果 WebGAL 的 stage `currentDialogKey/showText` 与 TextBox 字符节点已经完整匹配，恢复流程现在允许直接接受这个稳定 DOM，不再强制要求 `__exportBeginDialogueTransition()` 之后必须额外观察到一次新的 MutationObserver 事件。
