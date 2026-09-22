@@ -2,6 +2,16 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.13 / 导出内核 0.6.13
+
+- 回退 0.7.5 引入、0.7.12 又继续强化的 Live2D / WMDL `phase replay`。实测表明接缝处的动作重置不是 fading 窗口不足，而是“从最近一次 motion phase 起点重新真实重放”本身会让部分模型在新 Worker 中回到原始姿态再开始动作。
+- 普通模式恢复到 0.7.1 / 0.7.2 的策略：Worker 使用 WebGAL fast-preview / stage state 恢复当前立绘与 motion 配置，只保留局部 replay warmup 和状态变化后的 soft-cut 避让；不再为持续 Live2D 生成 `changeFigure-phase` replay window，也不会把 `replayFrame` 拉回 motion 起点。
+- 保留 0.7.5 之后与本问题无关的改进：语义 source-event 切点、对白动画 hard no-cut、DOM/文字接缝修复、worker 诊断等均不回退。
+- “严格切片模式”继续保留，但只在用户显式开启时跟踪 Live2D phase，并将其作为 hard no-cut；普通模式完全不使用 phase replay。
+- 新增回归检查，明确默认模式不得生成 `changeFigure-phase` replay window，语义分段 smoke 也要求非严格模式不得回退到故事起点。
+- pipeline revision 更新为 `revert-live2d-phase-replay-0.7.13`，旧规划与分片缓存自动失效。
+
+
 ### 内部版本 0.7.12 / 导出内核 0.6.12
 
 - 修复多 Worker 接缝处 Live2D / WMDL motion 切换可能出现的动作重置：每个 Live2D phase 现在记录独立的 `replayStartMs`，默认在 phase 起点前额外真实预热 1 秒，再执行 motion / animationFlag 状态切换。这样不会把相邻 phase 无限制串成整段历史重放，同时给 motion fading 与 physics 留出前态稳定时间。
