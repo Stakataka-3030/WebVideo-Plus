@@ -290,6 +290,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const gpuRawSource=fs.readFileSync(path.join(root,'src','GpuRawExport.cs'),'utf8');
   const coreSource=fs.readFileSync(path.join(root,'src','Core.cs'),'utf8');
   const jobSource=fs.readFileSync(path.join(root,'src','JobRunner.cs'),'utf8');
+  const videoWorkflowSource=fs.readFileSync(path.join(root,'src','VideoWorkflow.cs'),'utf8');
   assert.ok(renderSource.includes('__webviewWarmupStep=async frame=>'),'GPU raw warmup must expose a stage-rendering step');
   assert.ok(renderSource.includes('currentApp.render();return value;'),'warmup step must actually render the Pixi stage so Live2D/WMDL advances');
   assert.ok(gpuRawSource.includes('domOverlay?"__webviewWarmupStep(":"__webviewStep("'),'GPU raw warmup must render the stage when DOM compositing suppresses normal per-step renders');
@@ -306,6 +307,9 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(jobSource.includes('"encoder-preflight"'),'jobs must expose hardware concurrency preflight before rendering');
   assert.ok(jobSource.includes('renderCancel.Cancel()'),'runtime hardware encoder failure must cancel sibling workers immediately');
   assert.ok(jobSource.includes('7200000,renderCancel.Token'),'worker processes must receive fail-fast cancellation');
+  assert.ok(videoWorkflowSource.includes('weightedWarmup=warmup*SegmentPlan.ReplayCostWeight'),'range replay guard must use the same weighted replay cost as the planner');
+  assert.ok(videoWorkflowSource.includes('bool selectedRange=start>0'),'full-story export must bypass the selected-range replay guard');
+  assert.ok(!videoWorkflowSource.includes('warmup>selected*.60'),'legacy raw 60% replay cap must not survive');
   assert.ok(renderSource.includes("data-gpu-intro-text"),'intro fade text must be separable from the generic base DOM texture');
   assert.ok(renderSource.includes("handledIntroOpacitySamples"),'intro opacity animations must be handled without per-frame Page.captureScreenshot');
   assert.ok(renderSource.includes("state.introTextContainer=new PIXI.Container()"),'intro text must have a dedicated Pixi layer above the generic DOM base');

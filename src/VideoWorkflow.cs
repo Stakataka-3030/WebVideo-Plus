@@ -42,13 +42,13 @@ namespace NativeVideo {
      ranges[i]["index"]=i;int first=Math.Max(start,(int)J.N(ranges[i],"startFrame"));int last=Math.Min(end,(int)J.N(ranges[i],"endFrame"));int replay=Math.Max(0,Math.Min(first,(int)J.N(ranges[i],"replayFrame")));
      ranges[i]["startFrame"]=first;ranges[i]["endFrame"]=last;ranges[i]["replayFrame"]=replay;ranges[i]["warmupFrames"]=Math.Max(0,first-replay);
     }
-    long warmup=ranges.Sum(r=>(long)J.N(r,"warmupFrames"));
-    if(ranges.Length>1&&warmup>selected*.60){rangeReduction="range-replay-overhead";attempts.Add(J.O("scopeAttemptWorkers",attempt,"outcome","range-replay-overhead","warmupFrames",warmup,"selectedFrames",selected));continue;}
+    long warmup=ranges.Sum(r=>(long)J.N(r,"warmupFrames"));double weightedWarmup=warmup*SegmentPlan.ReplayCostWeight,weightedReplayRatio=weightedWarmup/selected;bool selectedRange=start>0;
+    if(selectedRange&&ranges.Length>1&&weightedWarmup>selected*.60){rangeReduction="range-replay-overhead";attempts.Add(J.O("scopeAttemptWorkers",attempt,"outcome","range-replay-overhead","warmupFrames",warmup,"rawReplayRatio",warmup/(double)selected,"replayCostWeight",SegmentPlan.ReplayCostWeight,"weightedReplayFrames",weightedWarmup,"weightedReplayRatio",weightedReplayRatio,"maxWeightedReplayFrames",selected*.60,"selectedFrames",selected));continue;}
     string reason=J.S(plannerDiagnostics,"reductionReason");
     if(ranges.Length<Math.Min(requested,attempt)&&reason=="")reason="insufficient-safe-cuts";
     if(ranges.Length<requested&&reason==""&&start>0)reason="selected-range-boundary";
     if(rangeReduction!="")reason=rangeReduction;
-    var diagnostics=J.O("schemaVersion",1,"requestedWorkers",requested,"effectiveWorkers",ranges.Length,"reductionReason",ranges.Length<requested?reason:"","selectedStartFrame",start,"selectedEndFrame",end,"selectedFrames",selected,"replayOverheadFrames",warmup,"attempts",attempts.ToArray(),"planner",plannerDiagnostics??J.O());
+    var diagnostics=J.O("schemaVersion",1,"requestedWorkers",requested,"effectiveWorkers",ranges.Length,"reductionReason",ranges.Length<requested?reason:"","selectedStartFrame",start,"selectedEndFrame",end,"selectedFrames",selected,"replayOverheadFrames",warmup,"rawReplayRatio",warmup/(double)selected,"replayCostWeight",SegmentPlan.ReplayCostWeight,"weightedReplayFrames",weightedWarmup,"weightedReplayRatio",weightedReplayRatio,"rangeReplayGuardApplied",selectedRange,"maxRangeWeightedReplayRatio",.60,"attempts",attempts.ToArray(),"planner",plannerDiagnostics??J.O());
     J.D(plan)["segmentDiagnostics"]=diagnostics;
     return ranges;
    }

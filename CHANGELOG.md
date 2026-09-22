@@ -2,6 +2,16 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.23 / 导出内核 0.6.23
+
+- 修复 `VideoWorkflow.Segments()` 遗留的 `range-replay-overhead` raw 60% 限制与 0.7.17 之后的加权 replay 模型互相冲突。实测长故事中，内层 Planner 已成功选出 8 Worker，raw warmup 约 177%，但按统一的 0.35 成本权重仅约 62%；旧外层仍直接用 raw warmup 与 60% 比较，连续拒绝 8/7/6/5/4 Worker，最终错误降到 3 Worker。
+- 完整故事（`startFrame == 0`）不再应用“选区 replay”二次限流。完整导出的 replay 成本已经由 `SegmentPlan` 的 weighted replay cap 统一约束，外层不得再用另一套更严阈值覆盖规划器结果。
+- 对真正从故事中段开始的选区/场景范围仍保留 replay 防护，但改为与 Planner 共用 `SegmentPlan.ReplayCostWeight = 0.35`：只有“加权 warmup > 所选成片帧数的 60%”时才逐步降低 Worker，不再把 cheap warmup 帧当成完整输出帧等价计费。
+- segment diagnostics 新增 `rawReplayRatio`、`replayCostWeight`、`weightedReplayFrames`、`weightedReplayRatio`、`rangeReplayGuardApplied` 与 `maxRangeWeightedReplayRatio`；每次因选区 replay 降 Worker 的 attempt 也记录相同指标。
+- 新增 15 分钟持续 Live2D phase 的完整故事回归：该用例 raw warmup 明确超过旧 60% 外层阈值，但 `VideoWorkflow.Segments(..., workers=8)` 必须保留 8 Worker，且不得报告 `range-replay-overhead`。
+- pipeline revision 更新为 `range-replay-weighted-0.7.23`。
+
+
 ### 内部版本 0.7.22 / 导出内核 0.6.22
 
 - 修复硬件编码器探测与运行时回退造成的整轮重跑。实测 0.6.21 在 RTX 4060 + Intel 核显机器上自动选择了 QSV；8 个 Worker 中部分 QSV 会话初始化失败，但 JobRunner 使用 `Task.WhenAll` 等待其余 Worker 全部结束后才看到异常，约 450 秒后才切到 CPU x264，从而把已经完成的一整轮渲染全部作废。
