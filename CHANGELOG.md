@@ -2,6 +2,16 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.12 / 导出内核 0.6.12
+
+- 修复多 Worker 接缝处 Live2D / WMDL motion 切换可能出现的动作重置：每个 Live2D phase 现在记录独立的 `replayStartMs`，默认在 phase 起点前额外真实预热 1 秒，再执行 motion / animationFlag 状态切换。这样不会把相邻 phase 无限制串成整段历史重放，同时给 motion fading 与 physics 留出前态稳定时间。
+- 分段器将 Live2D phase 从普通重放窗口的传递闭包中单独处理：当前 phase 仍会从自己的 replay anchor 重放，但不会因为 anchor 落入上一个 phase 而递归回退到更早的 motion 起点。旧规划没有 `replayStartMs` 时继续按 phase 起点处理。
+- 导出高级设置新增“严格切片模式（优先保证复杂演出连续性）”，默认关闭。开启后持续 Live2D / WMDL phase 作为 hard no-cut，状态变化后的 soft window 也按硬保护处理；安全切点不足时自动降低实际 Worker 数，不用错误接缝换并行度。
+- sidecar / segment diagnostics 新增 `strictSegmentCuts` 与 `livePhasePrerollMs`，Worker 降级原因可显示“严格模式下持续 Live2D / WMDL”。CLI 同步支持 `--strict-segment-cuts true|false`。
+- 新增回归检查，覆盖 phase pre-roll、motion 切换后的 1 秒前态重放、严格模式 hard no-cut、前后端默认值与高级设置入口。
+- pipeline revision 更新为 `live2d-phase-preroll-strict-cuts-0.7.12`，旧规划与分片缓存自动失效。
+
+
 
 ### 内部版本 0.7.11 / 导出内核 0.6.11
 
