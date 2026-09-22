@@ -2,6 +2,11 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.28 / 导出内核 0.6.26
+
+- 修复 0.7.27 新增的生命周期回归测试夹具。`verify-export-lifecycle.mjs` 通过 `vm.createContext` 加载浏览器渲染脚本，但测试上下文此前只注入 `console`；新增的 bounded dialogue wait 用例首次真正执行 `queueMicrotask(check)`，因此在 Node VM 中会触发 `ReferenceError: queueMicrotask is not defined`，导致构建阶段误报 `Export lifecycle regression checks failed`。
+- 测试 VM 现在显式注入 Node 的 `queueMicrotask`、`setTimeout` 与 `clearTimeout`。这只修复测试环境与浏览器环境的 API 差异，不改变 0.6.26 导出内核逻辑。
+
 ### 内部版本 0.7.27 / 导出内核 0.6.26
 
 - 给普通 `say` 的 DOM 同步增加 2.5 秒真实墙钟上限，但不改变正常情况下的严格判定。绝大多数对白仍要求 target stage、TextBox mutation 与字符 DOM 数量全部满足后立即继续。
