@@ -124,7 +124,7 @@ namespace NativeVideo {
     return frames.Take(frames.Count-1).Select((start,i)=>{
      int end=frames[i+1];int replay=start==0?0:replayFor(start);int warmup=Math.Max(0,start-replay);
      double estimate=Math.Max(0,costAt(end)-costAt(start))+Math.Max(0,costAt(start)-costAt(replay));
-     var replayKinds=replayWindows.Where(w=>start>0&&w.Start<start&&w.End>replay).Select(w=>w.Kind).Distinct().ToArray();
+     var replayKinds=replayWindows.Where(w=>start>0&&w.ReplayStart<start&&w.End>replay).Select(w=>w.Kind).Distinct().ToArray();
      return J.O("index",i,"startFrame",start,"endFrame",end,"replayFrame",replay,"warmupFrames",warmup,"estimatedCost",estimate,"replayKinds",replayKinds);
     }).ToArray();
    };
