@@ -43,16 +43,17 @@ namespace NativeVideo {
      ranges[i]["startFrame"]=first;ranges[i]["endFrame"]=last;ranges[i]["replayFrame"]=replay;ranges[i]["warmupFrames"]=Math.Max(0,first-replay);
     }
     long warmup=ranges.Sum(r=>(long)J.N(r,"warmupFrames"));
-    if(ranges.Length>1&&warmup>selected*.60){rangeReduction="range-replay-overhead";attempts.Add(J.O("scopeAttemptWorkers",attempt,"outcome","range-replay-overhead","warmupFrames",warmup,"selectedFrames",selected));continue;}
+    double rawReplayRatio=selected>0?warmup/(double)selected:0,weightedReplayFrames=warmup*SegmentPlan.ReplayPenaltyWeight,weightedReplayRatio=selected>0?weightedReplayFrames/selected:0,maxWeightedReplayFrames=selected*SegmentPlan.MaxWeightedReplayOverheadRatio;
+    if(ranges.Length>1&&weightedReplayFrames>maxWeightedReplayFrames){rangeReduction="range-replay-overhead";attempts.Add(J.O("scopeAttemptWorkers",attempt,"outcome","range-replay-overhead","warmupFrames",warmup,"rawReplayRatio",rawReplayRatio,"weightedReplayFrames",weightedReplayFrames,"weightedReplayRatio",weightedReplayRatio,"maxWeightedReplayFrames",maxWeightedReplayFrames,"replayCostWeight",SegmentPlan.ReplayPenaltyWeight,"maxWeightedReplayOverheadRatio",SegmentPlan.MaxWeightedReplayOverheadRatio,"selectedFrames",selected));continue;}
     string reason=J.S(plannerDiagnostics,"reductionReason");
     if(ranges.Length<Math.Min(requested,attempt)&&reason=="")reason="insufficient-safe-cuts";
     if(ranges.Length<requested&&reason==""&&start>0)reason="selected-range-boundary";
     if(rangeReduction!="")reason=rangeReduction;
-    var diagnostics=J.O("schemaVersion",1,"requestedWorkers",requested,"effectiveWorkers",ranges.Length,"reductionReason",ranges.Length<requested?reason:"","selectedStartFrame",start,"selectedEndFrame",end,"selectedFrames",selected,"replayOverheadFrames",warmup,"attempts",attempts.ToArray(),"planner",plannerDiagnostics??J.O());
+    var diagnostics=J.O("schemaVersion",1,"requestedWorkers",requested,"effectiveWorkers",ranges.Length,"reductionReason",ranges.Length<requested?reason:"","selectedStartFrame",start,"selectedEndFrame",end,"selectedFrames",selected,"replayOverheadFrames",warmup,"rawReplayRatio",rawReplayRatio,"weightedReplayFrames",weightedReplayFrames,"weightedReplayRatio",weightedReplayRatio,"replayCostWeight",SegmentPlan.ReplayPenaltyWeight,"maxWeightedReplayOverheadRatio",SegmentPlan.MaxWeightedReplayOverheadRatio,"maxWeightedReplayFrames",maxWeightedReplayFrames,"attempts",attempts.ToArray(),"planner",plannerDiagnostics??J.O());
     J.D(plan)["segmentDiagnostics"]=diagnostics;
     return ranges;
    }
-   J.D(plan)["segmentDiagnostics"]=J.O("schemaVersion",1,"requestedWorkers",requested,"effectiveWorkers",0,"reductionReason",rangeReduction==""?"insufficient-safe-cuts":rangeReduction,"selectedStartFrame",start,"selectedEndFrame",end,"selectedFrames",selected,"attempts",attempts.ToArray());
+   J.D(plan)["segmentDiagnostics"]=J.O("schemaVersion",1,"requestedWorkers",requested,"effectiveWorkers",0,"reductionReason",rangeReduction==""?"insufficient-safe-cuts":rangeReduction,"selectedStartFrame",start,"selectedEndFrame",end,"selectedFrames",selected,"replayCostWeight",SegmentPlan.ReplayPenaltyWeight,"maxWeightedReplayOverheadRatio",SegmentPlan.MaxWeightedReplayOverheadRatio,"attempts",attempts.ToArray());
    return new Dictionary<string,object>[0];
   }
   static double Number(object track,string key,double fallback,double min,double max){double n=fallback;if(J.D(track).ContainsKey(key)&&!double.TryParse(Convert.ToString(J.Get(track,key),System.Globalization.CultureInfo.InvariantCulture),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out n))throw new ArgumentException("音乐参数必须为数字："+key);if(double.IsNaN(n)||double.IsInfinity(n)||n<min||n>max)throw new ArgumentException("音乐参数无效："+key);return n;}

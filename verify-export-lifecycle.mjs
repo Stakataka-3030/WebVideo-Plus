@@ -81,8 +81,13 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   const renderSource=fs.readFileSync(path.join(root,'browser','render.js'),'utf8');
   assert.ok(renderSource.includes("timingMode==='auto'&&pc.performList.some(p=>p.blockingAuto?.())"),'renderer must ignore stale replayed auto-next while dialogue still blocks auto');
   const segmentSource=fs.readFileSync(path.join(root,'src','SegmentPlan.cs'),'utf8');
+  const videoWorkflowSource=fs.readFileSync(path.join(root,'src','VideoWorkflow.cs'),'utf8');
   assert.ok(segmentSource.includes('var eventCuts=events.Select'),'segment planner must derive cuts from semantic events');
   assert.ok(!segmentSource.includes('new List<int>{snapCut(targetFrame),snapCut(minFrame),snapCut(maxFrame)}'),'segment planner must not inject arbitrary midpoint/min/max frame cuts');
+  assert.ok(segmentSource.includes('public const double ReplayPenaltyWeight=.35d,MaxWeightedReplayOverheadRatio=1.50d'),'scope planning must share the canonical replay-cost policy');
+  assert.ok(videoWorkflowSource.includes('weightedReplayFrames=warmup*SegmentPlan.ReplayPenaltyWeight'),'scope replay limits must use weighted warmup cost');
+  assert.ok(videoWorkflowSource.includes('weightedReplayFrames>maxWeightedReplayFrames'),'scope replay rejection must use the weighted cap');
+  assert.ok(!videoWorkflowSource.includes('warmup>selected*.60'),'legacy raw 60% replay cap must not return');
 }
 
 
