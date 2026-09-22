@@ -1,3 +1,22 @@
+globalThis.__exportNotendVisualDuration=(duration,textAnimation)=>Math.max(0,Number(duration)||0)+Math.max(0,Number(textAnimation)||0)/2;
+globalThis.__exportFindChainedWaitIndex=(sentences,index)=>{
+  const list=Array.isArray(sentences)?sentences:[],current=list[index];
+  if(!current)return -1;
+  const currentParams=Object.fromEntries((current.args||[]).map(a=>[a.key,a.value]));
+  if(currentParams.next!==true)return -1;
+  for(let i=index+1;i<list.length;i++){
+    const item=list[i];
+    if(!item||item.isLineBreakHolder)continue;
+    const command=item.command===0?'say':item.commandRaw;
+    if(command==='comment')continue;
+    const params=Object.fromEntries((item.args||[]).map(a=>[a.key,a.value]));
+    if(command==='say')return -1;
+    if(command==='wait'&&params.next!==true)return i;
+    if(params.next===true)continue;
+    return -1;
+  }
+  return -1;
+};
 globalThis.__createNativeTimeline=async({script,policy})=>{
   await __reportNativePlan({phase:"initializing",checkpoint:"timeline-entry"});
   const w=__wgProbe,core=w.core,pc=core.gameplay.performController,clock=__pwClock.controller,embed=clock._embedder,nativeTimer=embed.setTimeout.bind(embed);
@@ -49,7 +68,7 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
     return outer&&outer.children.length===1?outer.firstElementChild:null;
   };
 
-  const events=[],elastic=[],controlEvents=[],performWindows=[];
+  const events=[],elastic=[],controlEvents=[],performWindows=[],visualNotendWaitFloors=[],waitVisualFloors=new Map();
   let origin=null,lastCommand='',lastParams={},lastLine=0,done=false,finishedAt=0,manualTimer=null,hintTimer=null,hintError='';
   let forwardGroupCounter=0,openForwardGroup=0;
   const nowMs=()=>origin===null?0:performance.now()-origin;
@@ -147,8 +166,20 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
   pc.arrangeNewPerform=function(perform,s,...rest){
     const params=Object.fromEntries(s.args.map(a=>[a.key,a.value]));
     const command=s.command===0?'say':s.commandRaw;
+    const sentenceList=core.sceneManager.sceneData.currentScene?.sentenceList||[],sentenceIndex=sentenceList.indexOf(s);
+    if(command==='say'&&params.notend===true&&params.next===true){
+      const waitIndex=globalThis.__exportFindChainedWaitIndex(sentenceList,sentenceIndex);
+      if(waitIndex>=0){
+        const originalDuration=Math.max(0,Number(perform.duration)||0),visualDuration=globalThis.__exportNotendVisualDuration(originalDuration,w.textAnimation(policy.textSpeed));
+        perform.duration=Math.max(originalDuration,visualDuration);
+        waitVisualFloors.set(waitIndex,Math.max(waitVisualFloors.get(waitIndex)||0,visualDuration));
+        visualNotendWaitFloors.push({sayLine:sentenceIndex,waitLine:waitIndex,originalSayMs:originalDuration,visualMs:visualDuration});
+      }
+    }
     if(command==='wait'&&params.next!==true){
       perform.blockingAuto=()=>true;
+      const floor=waitVisualFloors.get(sentenceIndex);
+      if(Number.isFinite(floor)&&floor>Number(perform.duration||0))perform.duration=floor;
     }
     if(policy.mode==='manual'&&s.command===0&&perform.performName!=='vocal-play'&&!perform.isHoldOn&&!params.notend){
       const n=w.compileText(s.content,3).reduce((sum,a)=>sum+a.length,0);
@@ -209,5 +240,5 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
   yieldChannel.port1.close();
   yieldChannel.port2.close();
   if(!done)throw new Error('播放时序规划超时，场景可能含等待交互的指令');
-  return {events,elastic,controlEvents,performWindows,stageExitWindows,domWorkload,blockedPrematureAutoNext,durationMs:origin===null?0:finishedAt-origin,options:w.store.getState().userData.optionData};
+  return {events,elastic,controlEvents,performWindows,stageExitWindows,domWorkload,blockedPrematureAutoNext,visualNotendWaitFloors,durationMs:origin===null?0:finishedAt-origin,options:w.store.getState().userData.optionData};
 };
