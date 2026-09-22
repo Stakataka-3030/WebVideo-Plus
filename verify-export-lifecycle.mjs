@@ -444,7 +444,10 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(renderSource.includes("if(batch.some(e=>e.loads)){await __exportWaitForStageAssets();await bindLive2DDeterminism();live2dBindingPending=false;}"),'Live2D hook discovery must rerun only after resource-loading events can create a model and must finish before the frame is captured');
   assert.ok(!renderSource.includes('__exportCurrentSimulationMs=Number(t)||0;\n  bindLive2DDeterminism();'),'the hot per-frame path must not rescan all Live2D stage objects');
   assert.ok(renderSource.includes('__exportLive2DLifetimeAt'),'renderer must resolve the active model lifetime without replaying from model birth');
-  assert.ok(segmentSource.includes('Live2DPhysicsWarmupSeconds=1d'),'Live2D physics must use a bounded warmup instead of whole-lifetime replay');
+  assert.ok(renderSource.includes('__exportLive2DDiagnostics'),'renderer must expose Live2D restore diagnostics for seam analysis');
+  assert.ok(gpuRawSource.includes('"live2dDiagnostics",live2dDiagnostics'),'GPU raw part results must persist Live2D restore diagnostics');
+  assert.ok(jobSource.includes('"live2dDiagnostics",J.Get(p,"live2dDiagnostics")'),'final sidecar renderParts must retain Live2D restore diagnostics');
+  assert.ok(segmentSource.includes('Live2DPhysicsWarmupSeconds=3d'),'Live2D physics must use a bounded multi-second warmup instead of whole-lifetime replay');
   assert.ok(segmentSource.includes('live2dActive(cut)?live2dPhysicsWarmupFrames:minReplayWarmupFrames'),'only cuts inside an active Live2D lifetime need the longer physics warmup');
   assert.ok(renderSource.includes('currentApp.render();return value;'),'warmup step must actually render the Pixi stage so Live2D/WMDL advances');
   assert.ok(gpuRawSource.includes('domOverlay?"__webviewWarmupStep(":"__webviewStep("'),'GPU raw warmup must render the stage when DOM compositing suppresses normal per-step renders');

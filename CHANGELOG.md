@@ -2,6 +2,14 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.47 / 导出内核 0.6.39
+
+- 根据 0.6.37 用户成片重新定位 Live2D 接缝。用户报告约 7:50 的跳变对应实际分段边界 `28430 / 60 = 473.833s`（7:53.833）：前一分片在 28430 结束，后一分片从 28430 开始，而两条 Live2D lifetime 均从 24781 帧持续跨过该切点；切点本身没有 Live2D state-change，下一次状态变化要到 28579 帧。确认剩余跳变来自同一模型在新 worker 的历史状态恢复，而非脚本主动换动作。
+- Cubism2 2.1 `PhysicsHair` 是显式历史积分系统：保存粒子位置、速度、加速度、上一帧位置及上一更新时间；新实例第一次 update 只初始化时间并返回。其积分还会把小于 33ms 的步长抬到 33ms，因此 60fps 下仅 1 秒 warmup 不能保证持续 motion 驱动的物理状态已经收敛到前一 worker 的轨道。
+- Live2D physics bounded warmup 从 1 秒恢复为 3 秒，但继续保持 0.7.34 之后的关键性能优化：不恢复从模型出生点全量 replay，也不重新引入逐帧全舞台 Live2D 扫描。按本次 8 worker / 1270.5 秒成片的实际切段估算，隐藏 replay 由约 10.4 秒增加到约 21.9 秒，且分布在并行 worker 中，远小于旧 whole-lifetime replay 的成本。
+- 新增 per-part Live2D 恢复诊断：记录每个 Live2D child 的 runtime 类型、motion seek 的 group/index/offset/rebaseMode、Cubism2 physics hair 数量以及 blink 当前状态；同时记录 `firstSimulationFrame` 与实际 warmupFrames。最终 sidecar JSON 的 `renderParts[].live2dDiagnostics` 会保留这些信息，后续若仍有 seam 可以直接确认是 motion rebase、physics 还是 blink。
+- pipeline revision 更新为 `layer-alpha-live2d-physics-0.7.47`，旧分片缓存自动失效。同步修正 BUILDING.md 中此前落后的内部版本标记。
+
 ### 内部版本 0.7.46 / 导出内核 0.6.38
 
 - WebVideo+ 页“导入与导出”分组补齐 **导出舞台 / 导出对话框 / 仅音轨** 三个入口，与 Terre 导出页顶部入口复用同一个 `webvideo:open-export` 事件和 `exportKind` 参数，不复制导出实现。

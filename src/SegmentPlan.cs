@@ -1,7 +1,7 @@
 using System;using System.IO;using System.Linq;using System.Collections.Generic;using System.Text.RegularExpressions;
 namespace NativeVideo {
  public static class SegmentPlan {
-  const double DomRefreshFrameCost=12d,MinSegmentSeconds=2.5d,MinReplayWarmupSeconds=1d,Live2DPhysicsWarmupSeconds=1d;
+  const double DomRefreshFrameCost=12d,MinSegmentSeconds=2.5d,MinReplayWarmupSeconds=1d,Live2DPhysicsWarmupSeconds=3d;
   public const double ReplayPenaltyWeight=.35d,MaxWeightedReplayOverheadRatio=1.50d;
   sealed class ReplayWindow {
    public int Start;public int End;public bool Root;public bool NoCut;public string Kind;

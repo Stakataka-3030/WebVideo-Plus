@@ -306,6 +306,19 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
   };
   globalThis.__exportBindLive2DDeterminism=bindLive2DDeterminism;
   globalThis.__exportRequestLive2DBind=()=>{live2dBindingPending=true;};
+  globalThis.__exportLive2DDiagnostics=()=>{
+    const stage=__wgProbe.core.gameplay.pixiStage,objects=stage?.getAllStageObj?.()||stage?.figureObjects||[],rows=[];
+    for(const obj of objects){
+      if(obj?.sourceType!=='live2d')continue;
+      const target=String(obj.key??''),children=obj.pixiContainer?.children||[];
+      for(let index=0;index<children.length;index++){
+        const inner=children[index]?.internalModel;if(!inner)continue;
+        const manager=inner.motionManager,blink=inner.eyeBlink,physics=inner.physics;
+        rows.push({target,index,runtime:inner.breath?'cubism4':'cubism2',motionSeek:manager?.__webVideoIdleSeekLast?{...manager.__webVideoIdleSeekLast}:null,physicsHairs:Array.isArray(physics?.physicsHairs)?physics.physicsHairs.length:0,eyeBlink:blink?{state:Number(blink.eyeState),value:Number(blink.eyeParamValue),nextMs:Number(blink.nextBlinkTimeLeft)}:null});
+      }
+    }
+    return rows;
+  };
 
   pc.arrangeNewPerform=function(perform,script,...rest){
     const current=globalThis.__exportCurrentEvent,command=script.command===0?'say':script.commandRaw;
