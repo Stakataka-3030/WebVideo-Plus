@@ -356,6 +356,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const segmentSource=fs.readFileSync(path.join(root,'src','SegmentPlan.cs'),'utf8');
   assert.ok(renderSource.includes('__webviewWarmupStep=async frame=>'),'GPU raw warmup must expose a stage-rendering step');
   assert.ok(renderSource.includes('breath.__webVideoAbsoluteModelAge=true'),'Cubism4 breath must be rebound to absolute model age for seam continuity');
+  assert.ok(renderSource.includes('breath._currentTime=ageSeconds-delta;'),'breath phase compensation must allow the first tick to land exactly on model age');
   assert.ok(renderSource.includes('__exportCurrentSimulationMs=Number(t)||0'),'every export frame must publish its absolute simulation time before Live2D advances');
   assert.ok(renderSource.includes('__exportLive2DLifetimeAt'),'renderer must resolve the active model lifetime without replaying from model birth');
   assert.ok(segmentSource.includes('Live2DPhysicsWarmupSeconds=3d'),'Live2D physics must use a bounded warmup instead of whole-lifetime replay');

@@ -2,6 +2,13 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.30 / 导出内核 0.6.28
+
+- 对 0.7.29 的 Live2D 接缝修复做提交后校正。Cubism4 breath wrapper 现在允许在调用原始 `updateParameters(core, dt)` 前把 `_currentTime` 暂时设为 `modelAge - dt`，而不把该预补偿值截到 0；原函数加回本帧 `dt` 后恰好落在当前 `modelAge`，因此人物刚出现的第一个 tick 也不会比连续播放提前一帧呼吸相位。
+- Live2D lifetime 的 physics warmup 判定统一使用半开区间 `[start, end)`：人物恰好在切点被移除时，后一个分段不再无意义地增加 3 秒 physics warmup。
+- 修复新增回归断言所在 block 漏声明 `segmentSource` 的测试夹具错误，并新增 breathe 预补偿精确落点检查。
+- pipeline revision 更新为 `live2d-seam-continuity-0.7.30`，最终版本为内部 0.7.30 / 导出内核 0.6.28。
+
 ### 内部版本 0.7.29 / 导出内核 0.6.27
 
 - 修复多 Worker 切段处 Live2D/WMDL 人物呼吸相位出现轻微跳变的问题。此前 Cubism4 的 `CubismBreath` 使用模型实例内部 `_currentTime += dt` 累积相位；后续 Worker 通过 prefix restore 重建模型后，该内部时间从 0 重新开始，因此即使画面脚本状态相同，接缝前后的 `PARAM_BREATH` 也可能处于不同相位。

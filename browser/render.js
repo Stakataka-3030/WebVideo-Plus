@@ -154,7 +154,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
           const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs),delta=Math.max(0,Number(dt)||0);
           if(lifetime&&Number.isFinite(nowMs)){
             const ageSeconds=Math.max(0,(nowMs-Number(lifetime.startMs))/1000);
-            breath._currentTime=Math.max(0,ageSeconds-delta);
+            breath._currentTime=ageSeconds-delta;
           }
           return original(core,dt);
         };
