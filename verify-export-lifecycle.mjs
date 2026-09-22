@@ -493,4 +493,25 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.equal((installerEnhancements.match(/finally\{CleanupPayloadCaches\(\);SetBusy\(false\);\}/g)||[]).length,2,'enhanced install and uninstall finalizers must run payload cleanup');
 }
 
+{
+  const uiSource=fs.readFileSync(path.join(root,'browser','export-component.js'),'utf8');
+  const menuSource=fs.readFileSync(path.join(root,'browser','menu-actions.js'),'utf8');
+  const layerSource=fs.readFileSync(path.join(root,'src','LayerExport.cs'),'utf8');
+  const queueSource=fs.readFileSync(path.join(root,'src','QueueService.cs'),'utf8');
+  const jobSource=fs.readFileSync(path.join(root,'src','JobRunner.cs'),'utf8');
+  new vm.Script(uiSource,{filename:'export-component.js'});
+  new vm.Script(menuSource,{filename:'menu-actions.js'});
+  assert.ok(menuSource.includes("text:'导出舞台'")&&menuSource.includes("exportKind:'stage'"),'import/export menu must expose the stage export entry');
+  assert.ok(menuSource.includes("text:'导出对话框'")&&menuSource.includes("exportKind:'dialog'"),'import/export menu must expose the dialog export entry');
+  assert.ok(menuSource.includes("text:'仅音轨'")&&menuSource.includes("exportKind:'audio'"),'import/export menu must expose the WebGAL audio-only entry');
+  assert.ok(uiSource.includes("includeBackground:exportKind==='stage'?includeBackground:true"),'stage export must submit its background toggle');
+  assert.ok(uiSource.includes('ProRes 4444 MOV'),'transparent layer exports must explain their alpha-capable output');
+  assert.ok(queueSource.includes('fullExport&&J.B(d,"useMusicTimeline",true)'),'non-full exports must not snapshot WebVideo+ export music');
+  assert.ok(queueSource.includes('var subtitle=fullExport?SubtitleWorkflow.Snapshot'),'non-full exports must not run subtitle post-processing');
+  assert.ok(layerSource.includes('SuppressBackgroundSource'),'backgroundless stage export must rewrite only the temporary source copy');
+  assert.ok(layerSource.includes('"prores_ks"')&&layerSource.includes('"yuva444p10le"'),'transparent layer exports must use an alpha-capable encoder');
+  assert.ok(layerSource.includes('ExportAudio(object timing,object bounds'),'audio-only export must reuse the planned WebGAL audio timeline');
+  assert.ok(jobSource.includes('LayerExport.IsAudio(request)')&&jobSource.includes('"webgal-audio"'),'job runner must short-circuit video rendering for audio-only exports');
+}
+
 console.log('Export lifecycle regression checks passed.');

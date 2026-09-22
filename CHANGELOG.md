@@ -2,6 +2,15 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.43 / 导出内核 0.6.36
+
+- “导入与导出”新增三个独立入口：**导出舞台**、**导出对话框**、**仅音轨**，继续复用现有导出任务、故事范围、精确选区、进度与缓存机制。
+- 导出舞台只保留 WebGAL 舞台。可关闭背景；关闭时仅在临时导出快照中把 `changeBg` 的背景资源改为内置透明像素，原命令参数和时序保留，用户工程不被修改。含背景继续走现有 GPU Raw；透明舞台输出带 Alpha 的 ProRes 4444 MOV。
+- 导出对话框复用现有 DOM 捕获链路，隐藏 Pixi 舞台与效果背景，只保留 WebGAL 实际渲染的对话框、角色名、文字、富文本及其他 DOM UI，并输出带 Alpha 的 ProRes 4444 MOV。
+- 仅音轨直接复用 WebGAL workload 生成的 BGM、语音、音效与视频原声时间线，输出 48 kHz PCM WAV；服务端强制绕过 WebVideo+ 的导出音乐、BGM 替换与字幕后处理。
+- 新增分层导出回归检查；透明视频路径兼容当前 .NET Framework 旧 C# 编译器。同步修正既有严格 Live2D `segment-smoke` 的过期测试夹具，只补上当前切段器读取的 `live2dLifetimes`，不改变运行时切段算法。
+- 保留 0.7.42 新增的 Cubism2 queue timing runtime probe；pipeline revision 更新为 `cubism2-queue-probe-layer-export-0.7.43`，避免旧规划/分片缓存跨导出模式复用。
+
 ### 内部版本 0.7.42 / 导出内核 0.6.35
 
 - 根据最新接缝录屏继续定位 Cubism2 motion 相位恢复。约 8.67 秒处右侧 Live2D 在相邻两帧间发生约 35px 的人物轮廓横向位移，左侧人物和舞台背景没有同幅度位移，确认仍是单个模型内部 motion 状态跳变，不是 NVENC 关键帧、整张舞台 transform 或单纯眨眼。
