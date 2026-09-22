@@ -27,6 +27,7 @@ assert.equal(typeof context.__exportLive2DLifetimeAt,'function');
 assert.equal(typeof context.__exportResolveCubism2Idle,'function');
 assert.equal(typeof context.__exportCubism2MotionEpoch,'function');
 assert.equal(typeof context.__exportCubism2QueueTimingKeys,'function');
+assert.equal(typeof context.__exportProbeCubism2QueueTimingKeys,'function');
 assert.equal(typeof context.__exportRebaseCubism2QueueEntry,'function');
 assert.equal(typeof context.__exportWaitDialogueDom,'function');
 assert.equal(typeof context.__exportNotendVisualDuration,'function');
@@ -73,6 +74,15 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   assert.equal(fakeEntry.a,3750);
   assert.equal(fakeEntry.b,3750);
   assert.equal(fakeEntry.c,6750);
+  const wrappedEntry={available:true,finished:false,a:-1,b:-1,c:-1,id:9};
+  const originalUpdate=(model,entry)=>{if(!entry.available||entry.finished)return;if(entry.a<0){entry.a=5000;entry.b=5000;if(entry.c<0)entry.c=8000;}};
+  const wrappedMotion={updateParam:function(model,entry){originalUpdate(model,entry);if(entry.finished)return;}};
+  assert.equal(context.__exportCubism2QueueTimingKeys(wrappedMotion,wrappedEntry),null,'patched Live2DMotion.updateParam must reproduce the wrapper case where source inspection cannot see private queue fields');
+  assert.equal(context.__exportRebaseCubism2QueueEntry(wrappedMotion,wrappedEntry,5000,{offsetMs:1250,durationMs:3000,loop:false},{}),true,'runtime queue probing must recover timing fields hidden behind patch-motion wrapper');
+  assert.equal(context.__exportRebaseCubism2QueueEntry.lastMode,'probe');
+  assert.equal(wrappedEntry.a,3750);
+  assert.equal(wrappedEntry.b,3750);
+  assert.equal(wrappedEntry.c,6750);
 }
 
 {
@@ -423,9 +433,11 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(renderSource.includes('manager.__webVideoDeterministicIdle=true'),'Cubism2 auto-idle must use model-local deterministic seeking');
   assert.ok(renderSource.includes('manager.__webVideoMotionEntries||(manager.__webVideoMotionEntries=new Map())'),'Cubism2 motion metadata must be cached per group and model');
   assert.ok(renderSource.includes('globalThis.__exportSeekCubism2Current=seekCubism2State'),'Cubism2 restore must expose immediate current-motion seeking');
-  assert.ok(renderSource.includes('if(lifetime)await seekCubism2State(manager,queue,target,lifetime,nowMs)'),'a newly bound/restored Cubism2 model must seek its current motion immediately, not wait for the next random-idle request');
+  assert.ok(renderSource.includes('if(lifetime)await seekCubism2State(manager,queue,inner.coreModel,target,lifetime,nowMs)'),'a newly bound/restored Cubism2 model must seek its current motion immediately, not wait for the next random-idle request');
   assert.ok(renderSource.includes('__exportRebaseCubism2QueueEntry'),'Cubism2 motion queue entries must be rebased so restored workers resume the same idle phase');
-  assert.ok(renderSource.includes('entry[keys.start]=start;entry[keys.fade]=start;entry[keys.end]=end'),'obfuscated Cubism2 core timing fields must be rebased without hardcoding private field names');
+  assert.ok(renderSource.includes('__exportProbeCubism2QueueTimingKeys'),'patched Cubism2 motion wrappers must fall back to runtime queue timing discovery');
+  assert.ok(renderSource.includes('for(const key of probed.starts)entry[key]=start'),'runtime queue probing must rebase all start/fade timestamps discovered from the real entry');
+  assert.ok(renderSource.includes("lastMode='probe'"),'Cubism2 seam diagnostics must reveal when runtime queue probing handled an obfuscated core');
   assert.ok(renderSource.includes('__exportCubism2MotionEpoch(lifetime,nowMs)'),'explicit user motions must be restored from their absolute motion epoch instead of opting out of seeking');
   assert.ok(renderSource.includes('__exportCurrentSimulationMs=Number(t)||0'),'every export frame must publish its absolute simulation time before Live2D advances');
   assert.ok(renderSource.includes('if(live2dBindingPending){await bindLive2DDeterminism();live2dBindingPending=false;}'),'Live2D hook discovery and immediate motion seek must complete once on the initial restored frame before rendering advances');

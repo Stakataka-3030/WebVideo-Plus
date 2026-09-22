@@ -168,15 +168,41 @@ globalThis.__exportCubism2QueueTimingKeys=(motion,entry)=>{
   const negative=ordered.filter(key=>typeof entry[key]==='number'&&entry[key]<0);
   return negative.length>=3?{start:negative[0],fade:negative[1],end:negative[2]}:null;
 };
-globalThis.__exportRebaseCubism2QueueEntry=(motion,entry,coreNow,state)=>{
+globalThis.__exportProbeCubism2QueueTimingKeys=(motion,entry,coreModel,coreNow)=>{
+  if(!motion||!entry||!coreModel||typeof motion.updateParam!=='function'||!Number.isFinite(Number(coreNow)))return null;
+  const before={};
+  for(const key of Object.keys(entry))if(typeof entry[key]==='number'&&Number.isFinite(entry[key]))before[key]=entry[key];
+  try{motion.updateParam(coreModel,entry);}catch{return null;}
+  const starts=[],ends=[],now=Number(coreNow);
+  for(const key of Object.keys(before)){
+    const from=Number(before[key]),to=Number(entry[key]);
+    if(!(from<0)||!Number.isFinite(to)||to<0)continue;
+    if(Math.abs(to-now)<=1000)starts.push(key);
+    else if(to>now+1)ends.push({key,value:to});
+  }
+  if(starts.length<2)return null;
+  ends.sort((a,b)=>a.value-b.value);
+  return {starts,end:ends[0]?.key??null};
+};
+globalThis.__exportRebaseCubism2QueueEntry=(motion,entry,coreNow,state,coreModel=null)=>{
+  globalThis.__exportRebaseCubism2QueueEntry.lastMode='';
   if(!entry||!Number.isFinite(Number(coreNow))||!state)return false;
   const start=Number(coreNow)-Number(state.offsetMs||0),end=state.loop?-1:start+Number(state.durationMs||0);
   if(typeof entry.setStartTimeMSec==='function'){
-    entry.setStartTimeMSec(start);entry.setFadeInStartTimeMSec?.(start);entry.setEndTimeMSec?.(end);return true;
+    entry.setStartTimeMSec(start);entry.setFadeInStartTimeMSec?.(start);entry.setEndTimeMSec?.(end);
+    globalThis.__exportRebaseCubism2QueueEntry.lastMode='public';return true;
   }
   const keys=globalThis.__exportCubism2QueueTimingKeys(motion,entry);
-  if(!keys)return false;
-  entry[keys.start]=start;entry[keys.fade]=start;entry[keys.end]=end;return true;
+  if(keys){
+    entry[keys.start]=start;entry[keys.fade]=start;entry[keys.end]=end;
+    globalThis.__exportRebaseCubism2QueueEntry.lastMode='source';return true;
+  }
+  const probed=globalThis.__exportProbeCubism2QueueTimingKeys(motion,entry,coreModel,coreNow);
+  if(!probed)return false;
+  for(const key of probed.starts)entry[key]=start;
+  if(probed.end)entry[probed.end]=end;
+  if(typeof motion.updateParam==='function')try{motion.updateParam(coreModel,entry);}catch{}
+  globalThis.__exportRebaseCubism2QueueEntry.lastMode='probe';return true;
 };
 globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50,live2dLifetimes=[]})=>{
   const pc=__wgProbe.core.gameplay.performController,arrange=pc.arrangeNewPerform;
@@ -195,7 +221,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
       const defs=manager.definitions?.[group];if(!Array.isArray(defs)||!defs.length)return [];
       return (await Promise.all(defs.map(async(_,index)=>{
         const motion=await manager.loadMotion(group,index);if(!motion)return null;
-        const duration=Number(motion.getDurationMSec?.()),loopDuration=Number(motion.getLoopDurationMSec?.()),loop=!(duration>0)&&loopDuration>0,span=duration>0?duration:loopDuration;
+        const duration=Number(motion.getDurationMSec?.()),loopDuration=Number(motion.getLoopDurationMSec?.()),declaredLoop=typeof motion.isLoop==='function'?motion.isLoop():null,loop=declaredLoop===true||(!(duration>0)&&loopDuration>0),span=loop&&loopDuration>0?loopDuration:(duration>0?duration:loopDuration);
         return Number.isFinite(span)&&span>0?{index,durationMs:span,loop,motion}:null;
       }))).filter(Boolean);
     })());
@@ -223,15 +249,15 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     const selected=entries.find(x=>x.index===state.index);if(!selected)return null;
     return {...state,kind:'idle',group,priority:1,motion:selected.motion,originMs:idleStart};
   };
-  const seekCubism2State=async(manager,queue,target,lifetime,nowMs)=>{
+  const seekCubism2State=async(manager,queue,coreModel,target,lifetime,nowMs)=>{
     const state=await resolveCubism2State(manager,target,lifetime,nowMs);if(!state)return false;
     manager.stopAllMotions?.();
     const ok=await manager.startMotion(state.group,state.index,state.priority);if(!ok)return false;
     const after=Array.from(queue.motions||[]),entry=after[after.length-1];
     const coreNow=typeof UtSystem!=='undefined'&&typeof UtSystem.getUserTimeMSec==='function'?Number(UtSystem.getUserTimeMSec()):Number(Date.now());
-    const rebased=globalThis.__exportRebaseCubism2QueueEntry(state.motion,entry,coreNow,state);
+    const rebased=globalThis.__exportRebaseCubism2QueueEntry(state.motion,entry,coreNow,state,coreModel);
     if(!rebased&&typeof state.motion?.setOffsetMSec==='function')state.motion.setOffsetMSec(Math.max(0,Math.round(state.offsetMs)));
-    manager.__webVideoIdleSeekLast={target,startMs:Number(lifetime.startMs),group:state.group,index:state.index,offsetMs:state.offsetMs,kind:state.kind,originMs:state.originMs,rebased};
+    manager.__webVideoIdleSeekLast={target,startMs:Number(lifetime.startMs),group:state.group,index:state.index,offsetMs:state.offsetMs,kind:state.kind,originMs:state.originMs,rebased,rebaseMode:String(globalThis.__exportRebaseCubism2QueueEntry.lastMode||'')};
     return true;
   };
   globalThis.__exportSeekCubism2Current=seekCubism2State;
@@ -266,14 +292,14 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
             const task=(async()=>{
               const state=await resolveCubism2State(manager,target,lifetime,nowMs);
               if(!state||state.kind!=='idle')return originalRandom(group,priority);
-              return await seekCubism2State(manager,queue,target,lifetime,nowMs);
+              return await seekCubism2State(manager,queue,inner.coreModel,target,lifetime,nowMs);
             })();
             manager.__webVideoIdleSeekPending=task;
             try{return await task;}finally{manager.__webVideoIdleSeekPending=null;}
           };
           manager.__webVideoDeterministicIdle=true;
           const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
-          if(lifetime)await seekCubism2State(manager,queue,target,lifetime,nowMs);
+          if(lifetime)await seekCubism2State(manager,queue,inner.coreModel,target,lifetime,nowMs);
         }
       }
     }

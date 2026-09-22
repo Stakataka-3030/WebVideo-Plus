@@ -2,6 +2,15 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.42 / 导出内核 0.6.35
+
+- 根据最新接缝录屏继续定位 Cubism2 motion 相位恢复。约 8.67 秒处右侧 Live2D 在相邻两帧间发生约 35px 的人物轮廓横向位移，左侧人物和舞台背景没有同幅度位移，确认仍是单个模型内部 motion 状态跳变，不是 NVENC 关键帧、整张舞台 transform 或单纯眨眼。
+- 修复 0.7.32–0.7.39 queue timing 字段探测的根本兼容漏洞。WebGAL 使用的 pixi-live2d-display-webgal 会在 `patch-motion.ts` 中包装 `Live2DMotion.prototype.updateParam`；因此运行时 `motion.updateParam.toString()` 只看得到 wrapper 对 `originalUpdateParam.call(...)` 与 `entry.isFinished()` 的调用，无法再看见 Cubism2 core 内部被混淆的 start / fade-in start / end 私有字段。旧源码解析路径在这类真实运行时会返回 null，导致已经计算出的 seek offset 无法真正写入 queue。
+- 新增真实 queue entry 动态探测 fallback：启动目标 motion 后先记录 entry 中初始为负数的数值字段，让当前 core 的 `updateParam` 初始化一次，再观察哪些字段被写成当前 core 时间以及 motion 结束时间。两个被初始化为当前时间的字段作为 start/fade-in start，一并回拨到目标 offset；非循环 motion 同时回拨探测到的 end 字段。随后再执行一次 updateParam，使第一张正式捕获帧前模型参数已经处于目标相位。
+- 公开 setter 路径与旧源码解析路径仍优先保留；只有两者都不可用时才使用 runtime probe。诊断 `__webVideoIdleSeekLast.rebaseMode` 会记录 `public/source/probe`，以后可以直接确认实际命中了哪条兼容路径。
+- Cubism2 motion 元数据同时优先读取 `motion.isLoop()`（若该 core 暴露），再回退到 duration / loopDuration 语义，避免某些变体对循环 motion 的 duration 表现不同。
+- 回归新增与上游 `patch-motion.ts` 同形的 wrapper 测试，明确要求源码解析失败时 runtime probe 仍能把模拟 queue 的 5000ms 起点回拨到 3750ms，并把结束时间同步到 6750ms。pipeline revision 更新为 `cubism2-queue-probe-0.7.42`，旧分片缓存自动失效。
+
 ### 内部版本 0.7.41 / 导出内核 0.6.34
 
 - 修复 0.7.40 生命周期构建兼容修复后遗留的回归测试误报。旧断言把 shutdown 清理实现写死为 `CleanupServiceFiles(...);await CleanupStaleServiceFiles(...)`，而 0.7.40 为兼容 C# 5 已将 finally 中的 await 改为同步等待，因此即使实际仍按“删除 owned discovery → stale sweep”顺序执行也会错误触发 `Export lifecycle regression checks failed`。
