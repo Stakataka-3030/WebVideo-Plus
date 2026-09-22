@@ -2,6 +2,11 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.41 / 导出内核 0.6.34
+
+- 修复 0.7.40 生命周期构建兼容修复后遗留的回归测试误报。旧断言把 shutdown 清理实现写死为 `CleanupServiceFiles(...);await CleanupStaleServiceFiles(...)`，而 0.7.40 为兼容 C# 5 已将 finally 中的 await 改为同步等待，因此即使实际仍按“删除 owned discovery → stale sweep”顺序执行也会错误触发 `Export lifecycle regression checks failed`。
+- 回归测试现在限定在 `finally` 区域内按源码位置验证两步清理的先后关系，不再依赖具体的 await / 同步等待语法。运行时 lifecycle、Cubism2 0.7.39 motion seek 与导出内核均不变，因此 kernel 保持 `0.6.34`。
+
 ### 内部版本 0.7.40 / 导出内核 0.6.34
 
 - 修复 0.7.38 Terre PID handoff 生命周期补丁在旧 .NET Framework C# 编译器上的构建失败。项目仍使用 `Framework64/v4.0.30319/csc.exe`；该编译器对应的 C# 语言级别不允许在 `finally` 块中直接使用 `await`，因此新增的 stale service sweep 会导致 Native component build 失败。
