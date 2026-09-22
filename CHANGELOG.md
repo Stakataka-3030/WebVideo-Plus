@@ -2,6 +2,17 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.18 / 导出内核 0.6.18
+
+- 修复 0.7.17 之后长故事仍可能提示“安全切点不足”并停在 4 Worker 的另一层限制。旧 Planner 虽然只允许语义安全切点，但候选集合几乎只来自 source-event 时间；如果大量 `-next` / `-notend` / 连续对白使 source event 落在上一条 say 的 hard no-cut 窗口内，就会把这些事件全部判为 unsafe，即使几百毫秒后已经存在完全安全的 perform 结束边界。
+- 安全候选现在增加真实运行时控制边界（`__settleNonHold`、`__nativeNext`、`__singleLineEnd`、`__finishVideo` 等）以及 hard no-cut / 单行提示窗口的结束帧。仍然绝不在保护窗口内部切片；新增的是“保护结束后的第一处确定安全边界”，不是重新允许任意中点帧。
+- 分段选择从逐段贪心改为全局动态规划。旧算法可能前几段各自选了局部最优切点，却把后续剩余区间逼到没有候选，然后直接把整个目标 Worker 数判为失败；新算法会一次联合选择全部 `N-1` 个切点，保证最小段长和最后一段可行，再在可行方案中综合 workload 平衡、Live2D replay 成本和切点类型评分。
+- 普通模式仍优先避开 Live2D soft window；只有完全找不到无 soft-cut 的全局方案时才允许使用 soft boundary。对白 source boundary 仍具有最高偏好，其次是其它 source event、运行时 control boundary，最后才是保护窗口结束边界。
+- diagnostics 新增 `plannerMode=global-safe-dp`、`controlCutCount`、`protectedBoundaryCutCount`、`candidatePoolCount`，每次尝试记录 `safeCandidateCount`、`softCandidateCount`、`usedSoftCuts` 和最终 `cuts`。因此以后“安全切点不足”只应表示在 hard no-cut 规则下确实无法凑出请求段数，而不再是候选采样或贪心路径造成的假不足。
+- 新增 15 分钟密集保护窗口回归：7 个理想 source event 全部故意落在 say hard no-cut 内，旧算法没有可用 source cut；新算法必须使用这些窗口结束后的安全边界保持 8 Worker。0.7.16 的 Live2D phase-origin replay、0.7.14 的真实 Pixi warmup render 和 0.7.17 的加权 replay cap 均保持不变。
+- pipeline revision 更新为 `global-safe-cut-dp-0.7.18`。
+
+
 ### 内部版本 0.7.17 / 导出内核 0.6.17
 
 - 修正 0.7.16 完整 Live2D phase replay 带来的长故事并行度回退。此前 replay 安全阈值直接按“预热帧总数”限制为成片帧数的 150%；若一个 Live2D phase 从故事开头持续到结尾，均匀切成 N 段时累计 warmup 约为 `(N-1)/2` 个完整故事长度，因此该硬阈值在数学上会把这类工程固定压到最多约 4 段。
