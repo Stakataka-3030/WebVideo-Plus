@@ -38,7 +38,7 @@ namespace NativeVideo {
   public static bool SingleLineHint(string command,object sentence,Dictionary<string,object> args){if(command!="choose"||J.N(args,"defaultChoose",-1)!=1||J.B(args,"next"))return false;var options=Regex.Split(J.S(sentence,"content"),@"(?<!\\)\|");if(options.Length!=1)return false;var nodes=Regex.Split(options[0],@"(?<!\\):");return nodes.Length==2&&Regex.IsMatch(nodes[1].Trim(),@"^__wvp_hint_[A-Za-z0-9_]+$");}
   public static bool ConvertibleSingleChoose(string command,object sentence,Dictionary<string,object> args){if(command!="choose"||args.ContainsKey("wvpHint")||J.B(args,"next")||args.Keys.Any(key=>key!="defaultChoose"))return false;var options=Regex.Split(J.S(sentence,"content"),@"(?<!\\)\|");if(options.Length!=1||options[0].Contains("->"))return false;var nodes=Regex.Split(options[0],@"(?<!\\):");return nodes.Length==2&&!string.IsNullOrWhiteSpace(nodes[0])&&!string.IsNullOrWhiteSpace(nodes[1]);}
   void CheckJson(object text,bool array,int line,string label){try{object value=text is string?J.Parse((string)text):text;if(array?!(value is object[]):!(value is Dictionary<string,object>))throw new Exception(array?"应为动画帧数组":"应为对象");}catch(Exception e){Add("syntax",line,label,"参数无法解析："+e.Message);}}
-  public object Scan(object parsed){
+  public object Scan(object parsed,bool ignoreStageBackground=false){
    Parsed=parsed;
    var lines=Regex.Split(Script,"\r?\n");
    var sentences=J.A(J.Get(parsed,"sentenceList"));
@@ -64,7 +64,7 @@ namespace NativeVideo {
     if(cmd=="setTransform"||cmd=="setTempAnimation")CheckJson(J.Get(s,"content"),cmd=="setTempAnimation",line,cmd);
     if(p.ContainsKey("transform"))CheckJson(p["transform"],false,line,"transform");
     double wait;if(cmd=="wait"&&(!double.TryParse(J.S(s,"content"),out wait)||wait<0))Add("syntax",line,"wait","等待时长需要是非负毫秒数");
-    if(mapping.ContainsKey(cmd))Ref(mapping[cmd],J.S(s,"content"),line,skip);
+    if(mapping.ContainsKey(cmd)&&!(ignoreStageBackground&&cmd=="changeBg"))Ref(mapping[cmd],J.S(s,"content"),line,skip);
     if(cmd=="changeFigure"){
      var value=J.S(s,"content");
      if(Regex.IsMatch(value,@"\.(skel|mkv)([?#].*)?$",RegexOptions.IgnoreCase)||value.Contains("type=spine"))Add("unsupported",line,value,"当前不支持此立绘格式");
