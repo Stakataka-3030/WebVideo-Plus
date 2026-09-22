@@ -12,7 +12,7 @@ vm.createContext(context);
 for(const name of ['workload.js','timeline.js','render.js','finish-timeline.js']){
   const source=fs.readFileSync(path.join(root,'browser',name),'utf8');
   new vm.Script(source,{filename:name});
-  if(name==='workload.js'||name==='render.js')vm.runInContext(source,context,{filename:name});
+  if(name==='workload.js'||name==='timeline.js'||name==='render.js')vm.runInContext(source,context,{filename:name});
 }
 const build=context.__buildNativeWorkload,finish=context.__finishNativeTimeline;
 assert.equal(typeof build,'function');
@@ -23,6 +23,20 @@ assert.equal(typeof context.__exportBeginDialogueTransition,'function');
 assert.equal(typeof context.__exportSetDialogueTarget,'function');
 assert.equal(typeof context.__exportDialogueDomReady,'function');
 assert.equal(typeof context.__exportWaitDialogueDom,'function');
+assert.equal(typeof context.__exportNotendVisualDuration,'function');
+assert.equal(typeof context.__exportFindChainedWaitIndex,'function');
+assert.equal(context.__exportNotendVisualDuration(567.918,950),1042.918);
+{
+  const chain=[
+    {command:0,commandRaw:'',args:[{key:'notend',value:true},{key:'next',value:true}],isLineBreakHolder:false},
+    {command:99,commandRaw:'changeFigure',args:[{key:'next',value:true}],isLineBreakHolder:false},
+    {command:99,commandRaw:'wait',args:[],isLineBreakHolder:false},
+    {command:0,commandRaw:'',args:[],isLineBreakHolder:false}
+  ];
+  assert.equal(context.__exportFindChainedWaitIndex(chain,0),2,'notend-next chain must find its terminal wait');
+  const overwritten=[chain[0],{command:0,commandRaw:'',args:[{key:'next',value:true}],isLineBreakHolder:false},chain[2]];
+  assert.equal(context.__exportFindChainedWaitIndex(overwritten,0),-1,'a later say must prevent applying the old line visual floor');
+}
 assert.equal(context.__exportTextSettleApplies('old','new',false),false);
 assert.equal(context.__exportTextSettleApplies('same','same',false),true);
 assert.equal(context.__exportTextSettleApplies(null,'same',false),false);
@@ -139,6 +153,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
         {command:'setTransform',line:0,role:'primary',durationMs:5000,hold:true,startMs:0,stopMs:3000}
       ],
       stageExitWindows:[{target:'hero-off',startMs:500,stopMs:2000}],
+      visualNotendWaitFloors:[{sayLine:4,waitLine:6,originalSayMs:567.918,visualMs:1042.918}],
       durationMs:3000
     },
     pre:{parsedStatements:2},
@@ -152,6 +167,8 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.equal(timing.performWindows[2].stopMs,5000);
   assert.equal(timing.stageExitWindows[0].startMs,500);
   assert.equal(timing.stageExitWindows[0].stopMs,2000);
+  assert.equal(timing.visualNotendWaitFloors.length,1);
+  assert.equal(timing.visualNotendWaitFloors[0].visualMs,1042.918);
 }
 
 {
