@@ -2,6 +2,16 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.45 / 导出内核 0.6.38
+
+- WebVideo+ 页“导入与导出”分组补齐 **导出舞台 / 导出对话框 / 仅音轨** 三个入口，与 Terre 导出页顶部入口复用同一个 `webvideo:open-export` 事件和 `exportKind` 参数，不复制导出实现。
+- 分层导出的高级设置按模式重新裁剪：仅音轨隐藏视频 GPU/Alpha/Live2D/Pixi 切段项；对话框保留文字过渡与 GPU 偏好，但隐藏舞台专用切段项；舞台保留 Live2D/Pixi 切段项。舞台含背景重新显示导出质量选择；透明舞台/对话框固定 ProRes 4444。
+- 透明模式新增“透明 Alpha 捕获”：默认 **GPU RGBA（推荐）**，兼容模式保留原逐帧浏览器 PNG 截图。设置写入统一导出设置并在后端校验。
+- 透明舞台快路径直接从 Pixi/WebGL framebuffer 通过 WebView2 SharedBuffer 读取 RGBA，再送入 ProRes 4444；不再每帧做 `Page.captureScreenshot → PNG → image2pipe`。
+- 透明对话框复用现有 GPU DOM overlay：仅当 DOM/有限动画/视频画面实际变化时更新截图纹理，每帧则临时只渲染 DOM overlay 后直接 SharedBuffer 读取 RGBA。为避免舞台缩放污染，overlay 在读回帧内临时脱离 stage 以 1:1 渲染，再恢复原索引。
+- WebGL context 使用 premultiplied alpha 时，SharedBuffer RGBA 在送入 ProRes 前按查表方式反预乘，避免透明边缘发黑；若 WebGL context 无 Alpha 或 DOM-only GPU 渲染接口不可用，会自动回退逐帧截图兼容路径。
+- pipeline revision 更新为 `layer-alpha-fast-0.7.45`，避免旧透明分片缓存跨新 Alpha 捕获路径复用。
+
 ### 内部版本 0.7.44 / 导出内核 0.6.37
 
 - 修复 GPU DOM 逐字文字 atlas 在完整 DOM 刷新时偶发“单字先完整闪现 1 帧、随后消失并重新淡入”的问题。atlas 捕获此前为了抓取完整字形会临时给字符节点设置 `animation:none!important`；捕获结束移除该规则后，浏览器会重建 WebGAL 的逐字 CSS Animation，新动画又已经错过本帧固定时钟的 pause/seek，因此下一输出帧会从动画起点重新开始。
