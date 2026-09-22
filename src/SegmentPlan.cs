@@ -131,7 +131,7 @@ namespace NativeVideo {
 
    double totalCost=costAt(total);bool replayRejectedAny=false;bool safeCutRejectedAny=false;
    var attemptRows=(List<object>)J.Get(diagnostics,"attempts");
-   Func<int,int,bool,List<int>> planCuts=(parts,pass,outCuts)=>{
+   Func<int,int,List<int>,bool> planCuts=(parts,pass,outCuts)=>{
     outCuts.Clear();int need=parts-1;if(need<=0)return true;
     bool allowSoft=pass>0;
     var pool=candidatePool.Where(frame=>safeCut(frame)&&(allowSoft||!softCut(frame))).ToArray();
