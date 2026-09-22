@@ -55,11 +55,25 @@ namespace NativeVideo {
   public static async Task Run(){
    string configFile=Files.Full(App.Arg("--config")),backend=Files.Full(App.Arg("--backend"));var config=J.D(J.Read(configFile));string terre=Path.GetDirectoryName(backend),state=J.S(config,"stateDir");Directory.CreateDirectory(state);config["terreDir"]=terre;config["sourcePackageRoot"]=Files.Root;Commands.RuntimePath=J.S(config,"runtimePath");
    string environmentPort=Environment.GetEnvironmentVariable("WEBGAL_PORT");int portValue;if(int.TryParse(environmentPort,out portValue)){var address=new UriBuilder(J.S(config,"terreUrl")){Port=portValue+1};config["terreUrl"]=address.Uri.ToString();var alt=new UriBuilder(address.Uri){Host=address.Host=="localhost"?"127.0.0.1":"localhost"};config["allowedOrigins"]=new[]{address.Uri.GetLeftPart(UriPartial.Authority),alt.Uri.GetLeftPart(UriPartial.Authority)};}
-   string lockFile=Path.Combine(state,"lifecycle.lock"),control=Path.Combine(state,"lifecycle-control.json"),logFile=Path.Combine(state,"lifecycle.log"),session=Path.Combine(state,"runtime-session.json");Action<object> log=o=>Files.Append(logFile,o);
-   var old=J.TryRead(lockFile);int oldPid=(int)J.N(old,"pid");if(Commands.Alive(oldPid)&&await ReuseExisting(config,state,control,oldPid))return;if(Commands.Alive(oldPid))throw new IOException("旧 Terre 实例仍在退出，请稍后重试。");if(File.Exists(lockFile))File.Delete(lockFile);
-   using(var f=new FileStream(lockFile,FileMode.CreateNew,FileAccess.Write,FileShare.Read)){var bytes=Files.Utf8.GetBytes(J.Text(J.O("pid",Process.GetCurrentProcess().Id,"instanceId",J.S(config,"instanceId"),"startedAt",DateTime.UtcNow.ToString("o"))));f.Write(bytes,0,bytes.Length);}
-   if(File.Exists(control))File.Delete(control);await CleanupStaleServiceFiles(config,state);J.Write(session,config);Process backendProcess=null,service=null;int backendPid=0,restarts=0,servicePid=0;bool stopBackend=false;
+   string lockFile=Path.Combine(state,"lifecycle.lock"),control=Path.Combine(state,"lifecycle-control.json"),logFile=Path.Combine(state,"lifecycle.log"),session=Path.Combine(state,"runtime-session.json");Action<object> log=o=>{try{Files.Append(logFile,o);}catch{}};
+   FileStream lockHandle=null;
+   for(int attempt=0;attempt<80&&lockHandle==null;attempt++){
+    var old=J.TryRead(lockFile);int oldPid=(int)J.N(old,"pid");
+    if(Commands.Alive(oldPid)){
+     if(await ReuseExisting(config,state,control,oldPid))return;
+     if(Commands.Alive(oldPid))throw new IOException("旧 Terre 实例仍在退出，请稍后重试。");
+     await Task.Delay(50);continue;
+    }
+    if(File.Exists(lockFile))try{File.Delete(lockFile);}catch(IOException){await Task.Delay(100);continue;}
+    try{
+     lockHandle=new FileStream(lockFile,FileMode.CreateNew,FileAccess.ReadWrite,FileShare.Read);
+     var bytes=Files.Utf8.GetBytes(J.Text(J.O("pid",Process.GetCurrentProcess().Id,"instanceId",J.S(config,"instanceId"),"startedAt",DateTime.UtcNow.ToString("o"))));lockHandle.Write(bytes,0,bytes.Length);lockHandle.Flush();
+    }catch(IOException){if(lockHandle!=null){lockHandle.Dispose();lockHandle=null;}await Task.Delay(100);}
+   }
+   if(lockHandle==null)throw new IOException("无法取得 Terre 生命周期锁，请稍后重试。");
+   Process backendProcess=null,service=null;int backendPid=0,restarts=0,servicePid=0;bool stopBackend=false;
    try{
+    if(File.Exists(control))File.Delete(control);await CleanupStaleServiceFiles(config,state);J.Write(session,config);
     bool attach=false;try{var identity=await Integration.LocalGet(new Uri(new Uri(J.S(config,"terreUrl")),"/assets/video-export-instance.json").ToString());attach=J.S(identity,"id")==J.S(config,"instanceId");}catch{}
     if(attach){int port=new Uri(J.S(config,"terreUrl")).Port;var net=(await Commands.Run("netstat",new[]{"-ano","-p","tcp"},null,10000)).Text;foreach(var line in net.Split('\n')){var p=System.Text.RegularExpressions.Regex.Split(line.Trim(),@"\s+");if(p.Length>=5&&p[0]=="TCP"&&p[1].EndsWith(":"+port)&&p[3]=="LISTENING"){backendPid=int.Parse(p[4]);break;}}if(backendPid==0)throw new IOException("无法确认这份 Terre 的监听进程");}
     else{int at=Array.IndexOf(App.Args,"--");var args=at<0?new string[0]:App.Args.Skip(at+1).ToArray();backendProcess=Process.Start(new ProcessStartInfo(backend,string.Join(" ",args.Select(Commands.Quote))){WorkingDirectory=terre,UseShellExecute=false,CreateNoWindow=J.B(config,"hideBackendWindow")});backendPid=backendProcess.Id;}
@@ -76,7 +90,9 @@ namespace NativeVideo {
    finally{
     if(service!=null){try{if(!service.HasExited)service.Kill();}catch{}try{service.Dispose();}catch{}}CleanupServiceFiles(terre,state,servicePid);
     if(stopBackend&&Commands.Alive(backendPid)){using(var p=Process.Start(new ProcessStartInfo("taskkill.exe","/PID "+backendPid+" /T /F"){UseShellExecute=false,CreateNoWindow=true})){p.WaitForExit(5000);}}
-    if(backendProcess!=null)backendProcess.Dispose();if(File.Exists(lockFile)&&J.N(J.TryRead(lockFile),"pid")==Process.GetCurrentProcess().Id)File.Delete(lockFile);log(J.O("at",DateTime.UtcNow.ToString("o"),"phase","stopped"));
+    if(backendProcess!=null)backendProcess.Dispose();
+    if(lockHandle!=null){lockHandle.Dispose();lockHandle=null;}if(File.Exists(lockFile)&&J.N(J.TryRead(lockFile),"pid")==Process.GetCurrentProcess().Id)try{File.Delete(lockFile);}catch{}
+    log(J.O("at",DateTime.UtcNow.ToString("o"),"phase","stopped"));
    }
   }
  }

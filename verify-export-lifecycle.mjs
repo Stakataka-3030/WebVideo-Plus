@@ -90,6 +90,8 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   assert.ok(lifecycleSource.includes('await ReuseExisting(config,state,control,oldPid)'),'relaunch must verify the old lifecycle instead of blindly opening a stale Terre URL');
   assert.ok(lifecycleSource.includes('await ExistingReady(config)'),'existing lifecycle reuse must require both Terre identity and export-service health');
   assert.ok(lifecycleSource.includes('restart-takeover'),'an unhealthy old lifecycle must be asked to stop before a new owner takes the lock');
+  assert.ok(lifecycleSource.includes('FileShare.Read'),'the lifecycle lock must remain open without delete sharing while its owner is alive');
+  assert.ok(lifecycleSource.includes('FileMode.CreateNew'),'lifecycle ownership must be acquired atomically after stale-owner cleanup');
   assert.ok(lifecycleSource.includes('CleanupServiceFiles(terre,state,servicePid)'),'lifecycle shutdown must remove discovery owned by the service it killed');
   assert.ok(!lifecycleSource.includes('if(Commands.Alive((int)J.N(old,"pid"))){NativeDialogs.Open'),'the old PID-only reuse path must not return');
   const queueSource=fs.readFileSync(path.join(root,'src','QueueService.cs'),'utf8');

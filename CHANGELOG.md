@@ -3,12 +3,20 @@
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
 
+### 内部版本 0.7.10 / 导出内核 0.6.10
+
+- 进一步收紧重启接管时的并发边界：`lifecycle.lock` 现在由当前 lifecycle 在整个存活期持续持有文件句柄，并禁止其他进程删除该锁；不再是“写完 PID 就立即关闭句柄”的松散标记。
+- 新启动实例通过 `FileMode.CreateNew` 原子取得所有权；如果两个启动请求同时等待同一个旧实例退出，只有一个能够获得锁，另一个会重新读取新的 owner 并进入健康复用/等待流程，避免 TOCTOU 下误删刚创建的新锁并启动两个 lifecycle。
+- 锁持有覆盖 backend/service 的完整生命周期；退出时先完成服务与 backend 清理，再释放并删除仅属于当前 PID 的锁文件。增加相应静态回归检查。
+
+
+
 ### 内部版本 0.7.9 / 导出内核 0.6.9
 
-- 修复关闭 Terre 后立即重新打开时偶发的导出服务失联。新的启动器不再只凭 \`lifecycle.lock\` 中的旧 PID 判断“已有实例可复用”，而会同时验证 Terre 实例标识与本地导出服务 \`/health\`，并进行短暂稳定性确认；旧实例已经进入退出阶段时会等待其完成清理，再由新实例接管。
+- 修复关闭 Terre 后立即重新打开时偶发的导出服务失联。新的启动器不再只凭 `lifecycle.lock` 中的旧 PID 判断“已有实例可复用”，而会同时验证 Terre 实例标识与本地导出服务 `/health`，并进行短暂稳定性确认；旧实例已经进入退出阶段时会等待其完成清理，再由新实例接管。
 - 对仍存活但长时间不健康的旧 lifecycle 增加受控接管：先写入 stop 控制并等待旧 owner 退出，确认旧锁已释放后才启动新 backend/service，避免两个 lifecycle 同时争用同一 Terre 与 discovery 文件。
-- \`video-export-service.json\` 与 \`service-state.json\` 现在携带 service PID 和唯一 \`serviceId\`。服务正常退出以及 lifecycle 强制终止服务时，只清理由该服务自己拥有的 discovery/state，避免残留旧随机端口/token，也避免误删已经启动的新服务。
-- 新 lifecycle 获得锁后会清理确认已失效的旧 service discovery；导出前端把底层网络异常从裸 \`Failed to fetch\` 转换为明确的“无法连接本地导出服务”诊断，并指向 lifecycle/service 错误日志。
+- `video-export-service.json` 与 `service-state.json` 现在携带 service PID 和唯一 `serviceId`。服务正常退出以及 lifecycle 强制终止服务时，只清理由该服务自己拥有的 discovery/state，避免残留旧随机端口/token，也避免误删已经启动的新服务。
+- 新 lifecycle 获得锁后会清理确认已失效的旧 service discovery；导出前端把底层网络异常从裸 `Failed to fetch` 转换为明确的“无法连接本地导出服务”诊断，并指向 lifecycle/service 错误日志。
 - 增加生命周期静态回归检查，防止重新引入“PID 存活即直接 return”的旧路径，以及无所有权信息的 service discovery。
 
 
