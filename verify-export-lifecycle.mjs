@@ -25,6 +25,8 @@ assert.equal(typeof context.__exportDialogueDomReady,'function');
 assert.equal(typeof context.__exportDialogueDomSnapshot,'function');
 assert.equal(typeof context.__exportLive2DLifetimeAt,'function');
 assert.equal(typeof context.__exportResolveCubism2Idle,'function');
+assert.equal(typeof context.__exportCubism2QueueTimingKeys,'function');
+assert.equal(typeof context.__exportRebaseCubism2QueueEntry,'function');
 assert.equal(typeof context.__exportWaitDialogueDom,'function');
 assert.equal(typeof context.__exportNotendVisualDuration,'function');
 assert.equal(typeof context.__exportFindChainedWaitIndex,'function');
@@ -56,6 +58,14 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   const loop=context.__exportResolveCubism2Idle([{index:4,durationMs:1200,loop:true}],6100,'loop');
   assert.equal(loop.index,4);
   assert.equal(loop.offsetMs,100,'looping idle motion must seek by modulo without inventing a new random motion');
+  const fakeEntry={available:true,finished:false,a:-1,b:-1,c:-1,id:7};
+  const fakeMotion={updateParam:function(model,entry){if(!entry.available||entry.finished)return;if(entry.a<0){entry.a=1;entry.b=1;if(entry.c<0)entry.c=2;}}};
+  const keys=context.__exportCubism2QueueTimingKeys(fakeMotion,fakeEntry);
+  assert.deepEqual(keys,{start:'a',fade:'b',end:'c'},'obfuscated Cubism2 timing fields must be inferred from updateParam access order');
+  assert.equal(context.__exportRebaseCubism2QueueEntry(fakeMotion,fakeEntry,5000,{offsetMs:1250,durationMs:3000,loop:false}),true);
+  assert.equal(fakeEntry.a,3750);
+  assert.equal(fakeEntry.b,3750);
+  assert.equal(fakeEntry.c,6750);
 }
 
 {
@@ -384,8 +394,8 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(renderSource.includes('breath.__webVideoAbsoluteModelAge=true'),'Cubism4 breath must be rebound to absolute model age for seam continuity');
   assert.ok(renderSource.includes('breath._currentTime=ageSeconds-delta;'),'breath phase compensation must allow the first tick to land exactly on model age');
   assert.ok(renderSource.includes('manager.__webVideoDeterministicIdle=true'),'Cubism2 auto-idle must use model-local deterministic seeking');
-  assert.ok(renderSource.includes('entry.setStartTimeMSec(start)'),'Cubism2 motion queue entries must be rebased so restored workers resume the same idle phase');
-  assert.ok(renderSource.includes('entry.setFadeInStartTimeMSec?.(start)'),'Cubism2 restored idle fade-in phase must advance together with the motion');
+  assert.ok(renderSource.includes('__exportRebaseCubism2QueueEntry'),'Cubism2 motion queue entries must be rebased so restored workers resume the same idle phase');
+  assert.ok(renderSource.includes('entry[keys.start]=start;entry[keys.fade]=start;entry[keys.end]=end'),'obfuscated Cubism2 core timing fields must be rebased without hardcoding private field names');
   assert.ok(renderSource.includes('lifetime.hasExplicitMotion'),'explicit user motions must opt out of synthetic auto-idle schedule seeking');
   assert.ok(renderSource.includes('__exportCurrentSimulationMs=Number(t)||0'),'every export frame must publish its absolute simulation time before Live2D advances');
   assert.ok(renderSource.includes('__exportLive2DLifetimeAt'),'renderer must resolve the active model lifetime without replaying from model birth');

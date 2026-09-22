@@ -2,6 +2,13 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.32 / 导出内核 0.6.30
+
+- 完成 0.7.31 Cubism2 idle seek 的运行时兼容补丁。Cubism2 C++ API 文档虽然提供 `MotionQueueEnt.setStartTimeMSec/setFadeInStartTimeMSec/setEndTimeMSec`，常见 Web 版 core 会把这些 setter 与内部字段混淆，不能假设方法名仍存在。
+- 导出器现在从当前 motion 的可见 `updateParam` JavaScript 函数体中按访问顺序动态识别 queue entry 上三个初始为负数的时间字段（start / fade-in start / end），再写入连续播放应有的绝对时间；因此不需要写死 `_$z2`、`_$bs`、`_$Do` 等某一版 core 的私有混淆名。
+- 若某个 core 恰好仍保留公开 setter，则继续优先使用公开 API；无法识别时间字段时才退回 `setOffsetMSec`（若存在），否则保持原引擎行为，不因兼容探测失败终止导出。
+- 回归新增混淆字段动态识别与 queue entry 时间回拨测试。pipeline revision 更新为 `cubism2-idle-seek-0.7.32`。
+
 ### 内部版本 0.7.31 / 导出内核 0.6.29
 
 - 根据用户素材确认接缝人物主要为 Cubism2 后补充真正对应的连续性修复。Cubism2 的内建 `PARAM_BREATH` 本身按绝对 `now` 计算，因此 0.7.29/0.7.30 的 Cubism4 breathe 相位校正不会作用于 Cubism2；Cubism2 更可能出现的是自动 `idle` motion 在新 Worker 重建模型后重新随机选择并从第 0ms 开始，视觉上表现为“随机呼吸/身体轻微起伏”在切段处跳一下。
