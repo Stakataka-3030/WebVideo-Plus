@@ -75,6 +75,7 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   const timelineSource=fs.readFileSync(path.join(root,'browser','timeline.js'),'utf8');
   const waitOverride=timelineSource.match(/if\(command==='wait'&&params\.next!==true\)\{([\s\S]*?)\n\s*\}/)?.[1]||'';
   assert.ok(waitOverride.includes('blockingAuto'),'planner must keep ordinary wait from being skipped by autoplay');
+  assert.ok(timelineSource.includes("policy.notendVisualTail!==false&&command==='say'"),'notend visual tail must be controlled by an explicit default-on planner setting');
   assert.ok(!waitOverride.includes('blockingNext'),'planner must not turn ordinary wait into blockingNext; that creates stale goNextWhenOver retries');
   assert.ok(timelineSource.includes("policy.mode==='auto'&&pc.performList.some(p=>p.blockingAuto?.())"),'planner must reject autoplay next while dialogue still blocks auto');
   const renderSource=fs.readFileSync(path.join(root,'browser','render.js'),'utf8');
@@ -248,6 +249,15 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.equal(plan.softCutWindows[0].reason,'live2d-state-change');
   assert.equal(plan.softCutWindows[0].startMs,0);
   assert.equal(plan.softCutWindows[0].endMs,1000);
+}
+
+{
+  const coreSource=fs.readFileSync(path.join(root,'src','Core.cs'),'utf8');
+  const uiSource=fs.readFileSync(path.join(root,'browser','export-component.js'),'utf8');
+  assert.ok(coreSource.includes('"notendVisualTail",true'),'backend settings must default notend visual tail on');
+  assert.ok(uiSource.includes("notendVisualTail:true"),'export UI fallback settings must default notend visual tail on');
+  assert.ok(uiSource.includes('平滑 -notend 连续对白过渡（推荐）'),'advanced settings must expose the notend visual-tail toggle');
+  assert.ok(uiSource.includes("settings.notendVisualTail!==false"),'advanced checkbox must render checked unless explicitly disabled');
 }
 
 console.log('Export lifecycle regression checks passed.');
