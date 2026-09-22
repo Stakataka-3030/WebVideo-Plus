@@ -240,17 +240,11 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const plan=build({script,parsed,media:{},animations:{},timing,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
   assert.equal(plan.replayWindows.some(w=>w.noCut&&w.startMs===0&&w.endMs>=60000),false);
   assert.equal(plan.replayWindows.some(w=>w.command==='changeFigure-runtime'),false);
-  const phase=plan.replayWindows.find(w=>w.command==='changeFigure-phase');
-  assert.ok(phase,'persistent Live2D must carry a replay-only phase window');
-  assert.equal(phase.startMs,0);
-  assert.equal(phase.replayStartMs,0);
-  assert.equal(phase.endMs,60000);
-  assert.equal(phase.noCut,false,'Live2D phase preservation must replay rather than forbid every cut');
+  assert.equal(plan.replayWindows.some(w=>w.command==='changeFigure-phase'),false,'default mode must not replay Live2D from a phase origin');
   assert.equal(plan.softCutWindows.length,1);
   assert.equal(plan.softCutWindows[0].reason,'live2d-state-change');
   assert.equal(plan.softCutWindows[0].startMs,0);
   assert.equal(plan.softCutWindows[0].endMs,1000);
-  assert.equal(plan.livePhasePrerollMs,1000);
   assert.equal(plan.strictSegmentCuts,false);
 
   const switchedScript=['changeFigure:hero/model.json -id=hero -motion=idle;','hero:before;','changeFigure:hero/model.json -id=hero -motion=wave;','hero:after;'].join('\n');
@@ -267,17 +261,13 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
     {command:'say',line:3,role:'primary',durationMs:800,hold:false,startMs:12000,stopMs:12800}
   ],stageExitWindows:[]};
   const switched=build({script:switchedScript,parsed:switchedParsed,media:{},animations:{},timing:switchedTiming,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
-  const phases=switched.replayWindows.filter(w=>w.command==='changeFigure-phase');
-  assert.equal(phases.length,2);
-  assert.equal(phases[0].startMs,0);
-  assert.equal(phases[0].endMs,10000);
-  assert.equal(phases[1].startMs,10000);
-  assert.equal(phases[1].replayStartMs,9000,'a restarted Live2D phase must replay one second of pre-state before the motion switch');
-  assert.equal(phases[1].noCut,false);
+  assert.equal(switched.replayWindows.some(w=>w.command==='changeFigure-phase'),false,'normal mode must keep the 0.7.1-style stage restore instead of phase replay');
 
   const strict=build({script:switchedScript,parsed:switchedParsed,media:{},animations:{},timing:switchedTiming,root:'C:/root',project:'P',sceneName:'start.txt',fps:60,strictSegmentCuts:true});
   assert.equal(strict.strictSegmentCuts,true);
-  assert.ok(strict.replayWindows.filter(w=>w.command==='changeFigure-phase').every(w=>w.noCut===true),'strict mode must hard-protect active Live2D phases');
+  const strictPhases=strict.replayWindows.filter(w=>w.command==='changeFigure-phase');
+  assert.equal(strictPhases.length,2);
+  assert.ok(strictPhases.every(w=>w.noCut===true),'strict mode must hard-protect active Live2D phases');
 }
 
 {

@@ -3,17 +3,16 @@ namespace NativeVideo {
  public static class SegmentPlan {
   const double DomRefreshFrameCost=12d,MinSegmentSeconds=2.5d,MinReplayWarmupSeconds=1d,ReplayPenaltyWeight=.35d,MaxReplayOverheadRatio=1.50d;
   sealed class ReplayWindow {
-   public int Start;public int End;public int ReplayStart;public bool Root;public bool NoCut;public string Kind;
-   public ReplayWindow(int start,int end,bool root=false,bool noCut=false,string kind="perform",int replayStart=-1){Start=start;End=end;ReplayStart=replayStart<0?start:Math.Max(0,Math.Min(start,replayStart));Root=root;NoCut=noCut;Kind=kind??"perform";}
+   public int Start;public int End;public bool Root;public bool NoCut;public string Kind;
+   public ReplayWindow(int start,int end,bool root=false,bool noCut=false,string kind="perform"){Start=start;End=end;Root=root;NoCut=noCut;Kind=kind??"perform";}
   }
 
   static ReplayWindow[] ReplayWindows(object plan,int total,int fps){
-   return J.A(J.Get(plan,"replayWindows")).Select(w=>{
-    int start=Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(w,"startMs")*fps/1000)));
-    int end=Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(w,"endMs")*fps/1000)));
-    int replayStart=J.Get(w,"replayStartMs")==null?start:Math.Max(0,Math.Min(start,(int)Math.Floor(J.N(w,"replayStartMs")*fps/1000)));
-    return new ReplayWindow(start,end,J.B(w,"rootReplay"),J.B(w,"noCut"),J.S(w,"command","perform"),replayStart);
-   }).Where(w=>w.End>w.Start).OrderBy(w=>w.Start).ToArray();
+   return J.A(J.Get(plan,"replayWindows")).Select(w=>new ReplayWindow(
+    Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(w,"startMs")*fps/1000))),
+    Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(w,"endMs")*fps/1000))),
+    J.B(w,"rootReplay"),J.B(w,"noCut"),J.S(w,"command","perform")
+   )).Where(w=>w.End>w.Start).OrderBy(w=>w.Start).ToArray();
   }
 
   static ReplayWindow[] SoftCutWindows(object plan,int total,int fps){
@@ -44,11 +43,10 @@ namespace NativeVideo {
 
   static int ReplayAnchor(int cut,int minWarmupFrames,ReplayWindow[] windows){
    int anchor=Math.Max(0,cut-minWarmupFrames);
-   foreach(var phase in windows.Where(w=>w.Kind=="changeFigure-phase"&&w.Start<=cut&&w.End>cut))anchor=Math.Min(anchor,phase.ReplayStart);
-   if(windows.Any(w=>w.Kind!="changeFigure-phase"&&w.Root&&w.Start<=cut&&w.End>anchor))return 0;
+   if(windows.Any(w=>w.Root&&w.Start<=cut&&w.End>anchor))return 0;
    for(int i=windows.Length-1;i>=0;i--){
-    var w=windows[i];if(w.Kind=="changeFigure-phase"||w.Start>=anchor)continue;
-    if(w.End>anchor)anchor=Math.Min(anchor,w.ReplayStart);
+    var w=windows[i];if(w.Start>=anchor)continue;
+    if(w.End>anchor)anchor=w.Start;
    }
    return Math.Max(0,Math.Min(cut,anchor));
   }
@@ -89,7 +87,7 @@ namespace NativeVideo {
    diagnostics["hardNoCutWindows"]=noCutWindows.Select(w=>(object)J.O("startFrame",w.Start,"endFrame",w.End,"kind",w.Kind)).ToArray();
    diagnostics["protectedHintWindows"]=protectedWindows.Length;
    diagnostics["softCutWindows"]=softWindows.Select(w=>(object)J.O("startFrame",w.Start,"endFrame",w.End,"kind",w.Kind)).ToArray();
-   diagnostics["relaxedDecorativePixi"]=J.Get(plan,"relaxedDecorativePixi")??new object[0];diagnostics["strictSegmentCuts"]=strictSegmentCuts;diagnostics["livePhasePrerollMs"]=J.N(plan,"livePhasePrerollMs",1000);
+   diagnostics["relaxedDecorativePixi"]=J.Get(plan,"relaxedDecorativePixi")??new object[0];diagnostics["strictSegmentCuts"]=strictSegmentCuts;
    Func<int,bool> strictSoftCut=frame=>strictSegmentCuts&&softWindows.Any(w=>frame>=w.Start&&frame<w.End);
    Func<int,bool> safeCut=frame=>!cutProtected.Any(w=>frame>w.Start&&frame<w.End)&&!strictSoftCut(frame);
    Func<int,bool> softCut=frame=>softWindows.Any(w=>frame>w.Start&&frame<w.End);
@@ -124,7 +122,7 @@ namespace NativeVideo {
     return frames.Take(frames.Count-1).Select((start,i)=>{
      int end=frames[i+1];int replay=start==0?0:replayFor(start);int warmup=Math.Max(0,start-replay);
      double estimate=Math.Max(0,costAt(end)-costAt(start))+Math.Max(0,costAt(start)-costAt(replay));
-     var replayKinds=replayWindows.Where(w=>start>0&&w.ReplayStart<start&&w.End>replay).Select(w=>w.Kind).Distinct().ToArray();
+     var replayKinds=replayWindows.Where(w=>start>0&&w.Start<start&&w.End>replay).Select(w=>w.Kind).Distinct().ToArray();
      return J.O("index",i,"startFrame",start,"endFrame",end,"replayFrame",replay,"warmupFrames",warmup,"estimatedCost",estimate,"replayKinds",replayKinds);
     }).ToArray();
    };
