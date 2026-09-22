@@ -64,11 +64,15 @@ namespace NativeVideo {
      if(Commands.Alive(oldPid))throw new IOException("旧 Terre 实例仍在退出，请稍后重试。");
      await Task.Delay(50);continue;
     }
-    if(File.Exists(lockFile))try{File.Delete(lockFile);}catch(IOException){await Task.Delay(100);continue;}
+    bool deleteLockFailed=false;
+    if(File.Exists(lockFile))try{File.Delete(lockFile);}catch(IOException){deleteLockFailed=true;}
+    if(deleteLockFailed){await Task.Delay(100);continue;}
+    bool createLockFailed=false;
     try{
      lockHandle=new FileStream(lockFile,FileMode.CreateNew,FileAccess.ReadWrite,FileShare.Read);
      var bytes=Files.Utf8.GetBytes(J.Text(J.O("pid",Process.GetCurrentProcess().Id,"instanceId",J.S(config,"instanceId"),"startedAt",DateTime.UtcNow.ToString("o"))));lockHandle.Write(bytes,0,bytes.Length);lockHandle.Flush();
-    }catch(IOException){if(lockHandle!=null){lockHandle.Dispose();lockHandle=null;}await Task.Delay(100);}
+    }catch(IOException){if(lockHandle!=null){lockHandle.Dispose();lockHandle=null;}createLockFailed=true;}
+    if(createLockFailed)await Task.Delay(100);
    }
    if(lockHandle==null)throw new IOException("无法取得 Terre 生命周期锁，请稍后重试。");
    Process backendProcess=null,service=null;int backendPid=0,restarts=0,servicePid=0;bool stopBackend=false;
