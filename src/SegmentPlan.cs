@@ -1,7 +1,7 @@
 using System;using System.IO;using System.Linq;using System.Collections.Generic;using System.Text.RegularExpressions;
 namespace NativeVideo {
  public static class SegmentPlan {
-  const double DomRefreshFrameCost=12d,MinSegmentSeconds=2.5d,MinReplayWarmupSeconds=1d,ReplayPenaltyWeight=.35d,MaxReplayOverheadRatio=1.50d;
+  const double DomRefreshFrameCost=12d,MinSegmentSeconds=2.5d,MinReplayWarmupSeconds=1d,ReplayPenaltyWeight=.35d,MaxWeightedReplayOverheadRatio=1.50d;
   sealed class ReplayWindow {
    public int Start;public int End;public bool Root;public bool NoCut;public string Kind;
    public ReplayWindow(int start,int end,bool root=false,bool noCut=false,string kind="perform"){Start=start;End=end;Root=root;NoCut=noCut;Kind=kind??"perform";}
@@ -61,7 +61,7 @@ namespace NativeVideo {
 
   public static Dictionary<string,object>[] Create(object plan,int total,int fps,int workers){
    int requestedWorkers=Math.Max(1,workers);
-   var diagnostics=J.O("schemaVersion",1,"requestedWorkers",requestedWorkers,"totalFrames",total,"fps",fps,"attempts",new List<object>());
+   var diagnostics=J.O("schemaVersion",1,"requestedWorkers",requestedWorkers,"totalFrames",total,"fps",fps,"replayCostWeight",ReplayPenaltyWeight,"maxWeightedReplayOverheadRatio",MaxWeightedReplayOverheadRatio,"attempts",new List<object>());
    J.D(plan)["segmentPlanAttempt"]=diagnostics;
    if(total<=0){diagnostics["selectedParts"]=0;diagnostics["reductionReason"]="empty";return new Dictionary<string,object>[0];}
    workers=Math.Max(1,Math.Min(workers,total));
@@ -166,8 +166,10 @@ namespace NativeVideo {
     if(!valid){attemptRows.Add(J.O("parts",parts,"outcome","no-safe-cut","candidateCount",candidateCount,"unsafeRejected",unsafeRejected,"softAvoided",softAvoided));continue;}
     var ranges=buildRanges(cuts);
     long warmup=ranges.Sum(r=>(long)J.N(r,"warmupFrames"));
-    if(warmup>total*MaxReplayOverheadRatio){replayRejectedAny=true;attemptRows.Add(J.O("parts",parts,"outcome","replay-overhead","warmupFrames",warmup,"maxWarmupFrames",total*MaxReplayOverheadRatio,"candidateCount",candidateCount,"unsafeRejected",unsafeRejected,"softAvoided",softAvoided));continue;}
-    attemptRows.Add(J.O("parts",parts,"outcome","selected","warmupFrames",warmup,"candidateCount",candidateCount,"unsafeRejected",unsafeRejected,"softAvoided",softAvoided));
+    double weightedReplayFrames=warmup*ReplayPenaltyWeight,maxWeightedReplayFrames=total*MaxWeightedReplayOverheadRatio;
+    double rawReplayRatio=total>0?warmup/(double)total:0,weightedReplayRatio=total>0?weightedReplayFrames/total:0;
+    if(weightedReplayFrames>maxWeightedReplayFrames){replayRejectedAny=true;attemptRows.Add(J.O("parts",parts,"outcome","replay-overhead","warmupFrames",warmup,"rawReplayRatio",rawReplayRatio,"weightedReplayFrames",weightedReplayFrames,"weightedReplayRatio",weightedReplayRatio,"maxWeightedReplayFrames",maxWeightedReplayFrames,"candidateCount",candidateCount,"unsafeRejected",unsafeRejected,"softAvoided",softAvoided));continue;}
+    attemptRows.Add(J.O("parts",parts,"outcome","selected","warmupFrames",warmup,"rawReplayRatio",rawReplayRatio,"weightedReplayFrames",weightedReplayFrames,"weightedReplayRatio",weightedReplayRatio,"maxWeightedReplayFrames",maxWeightedReplayFrames,"candidateCount",candidateCount,"unsafeRejected",unsafeRejected,"softAvoided",softAvoided));
     diagnostics["selectedParts"]=parts;
     diagnostics["reductionReason"]=parts<workers?ReductionReason(noCutWindows,protectedWindows,replayRejectedAny):parts<requestedWorkers?"duration-too-short":"";
     diagnostics["safeCutRejected"]=safeCutRejectedAny;
