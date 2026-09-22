@@ -24,6 +24,7 @@ assert.equal(typeof context.__exportSetDialogueTarget,'function');
 assert.equal(typeof context.__exportDialogueDomReady,'function');
 assert.equal(typeof context.__exportDialogueDomSnapshot,'function');
 assert.equal(typeof context.__exportLive2DLifetimeAt,'function');
+assert.equal(typeof context.__exportResolveCubism2Idle,'function');
 assert.equal(typeof context.__exportWaitDialogueDom,'function');
 assert.equal(typeof context.__exportNotendVisualDuration,'function');
 assert.equal(typeof context.__exportFindChainedWaitIndex,'function');
@@ -43,6 +44,19 @@ assert.equal(context.__exportTextSettleApplies('old','new',false),false);
 assert.equal(context.__exportTextSettleApplies('same','same',false),true);
 assert.equal(context.__exportTextSettleApplies(null,'same',false),false);
 assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
+
+{
+  const entries=[{index:0,durationMs:1000,loop:false},{index:1,durationMs:1500,loop:false},{index:2,durationMs:800,loop:false}];
+  const a=context.__exportResolveCubism2Idle(entries,0,'hero|0|model.json');
+  const b=context.__exportResolveCubism2Idle(entries,4250,'hero|0|model.json');
+  const b2=context.__exportResolveCubism2Idle(entries,4250,'hero|0|model.json');
+  assert.ok(a&&b);
+  assert.deepEqual(b,b2,'Cubism2 idle lookup must be deterministic for the same model age');
+  assert.ok(b.offsetMs>=0&&b.offsetMs<b.durationMs,'Cubism2 idle seek must land inside the selected motion');
+  const loop=context.__exportResolveCubism2Idle([{index:4,durationMs:1200,loop:true}],6100,'loop');
+  assert.equal(loop.index,4);
+  assert.equal(loop.offsetMs,100,'looping idle motion must seek by modulo without inventing a new random motion');
+}
 
 {
   const previousProbe=context.__wgProbe,previousDocument=context.document,previousPending=context.__exportDialoguePending,previousSerial=context.__exportDialogueMutationSerial;
@@ -316,6 +330,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.equal(plan.live2dLifetimes[0].target,'hero');
   assert.equal(plan.live2dLifetimes[0].startMs,0);
   assert.equal(plan.live2dLifetimes[0].endMs,60000);
+  assert.equal(plan.live2dLifetimes[0].hasExplicitMotion,true,'an explicit -motion must disable pure auto-idle seeking for this lifetime');
   assert.equal(context.__exportLive2DLifetimeAt(plan.live2dLifetimes,'hero',30000)?.startMs,0);
   assert.equal(context.__exportLive2DLifetimeAt(plan.live2dLifetimes,'hero',60000),null,'lifetime end is exclusive');
   assert.equal(plan.softCutWindows.length,1);
@@ -323,6 +338,17 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.equal(plan.softCutWindows[0].startMs,0);
   assert.equal(plan.softCutWindows[0].endMs,1000);
   assert.equal(plan.strictSegmentCuts,false);
+
+  const autoScript=['changeFigure:hero/model.json -id=autoHero;','autoHero:one;','autoHero:two;'].join('\n');
+  const autoParsed={sentenceList:[cmd('changeFigure','hero/model.json',[{key:'id',value:'autoHero'}],0),say('one',[],1),say('two',[],2)]};
+  const autoTiming={durationSeconds:20,lineTimes:[0,1000,10000],sourceEvents:[{index:0,forwardGroup:1},{index:1,forwardGroup:2},{index:2,forwardGroup:3}],controlEvents:[],performWindows:[
+    {command:'changeFigure',line:0,role:'primary',durationMs:300,hold:false,startMs:0,stopMs:300},
+    {command:'say',line:1,role:'primary',durationMs:800,hold:false,startMs:1000,stopMs:1800},
+    {command:'say',line:2,role:'primary',durationMs:800,hold:false,startMs:10000,stopMs:10800}
+  ],stageExitWindows:[]};
+  const autoPlan=build({script:autoScript,parsed:autoParsed,media:{},animations:{},timing:autoTiming,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
+  assert.equal(autoPlan.live2dLifetimes.length,1);
+  assert.equal(autoPlan.live2dLifetimes[0].hasExplicitMotion,false,'plain Cubism2/Live2D figures must remain eligible for deterministic auto-idle seeking');
 
   const switchedScript=['changeFigure:hero/model.json -id=hero -motion=idle;','hero:before;','changeFigure:hero/model.json -id=hero -motion=wave;','hero:after;'].join('\n');
   const switchedParsed={sentenceList:[
@@ -357,6 +383,10 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(renderSource.includes('__webviewWarmupStep=async frame=>'),'GPU raw warmup must expose a stage-rendering step');
   assert.ok(renderSource.includes('breath.__webVideoAbsoluteModelAge=true'),'Cubism4 breath must be rebound to absolute model age for seam continuity');
   assert.ok(renderSource.includes('breath._currentTime=ageSeconds-delta;'),'breath phase compensation must allow the first tick to land exactly on model age');
+  assert.ok(renderSource.includes('manager.__webVideoDeterministicIdle=true'),'Cubism2 auto-idle must use model-local deterministic seeking');
+  assert.ok(renderSource.includes('entry.setStartTimeMSec(start)'),'Cubism2 motion queue entries must be rebased so restored workers resume the same idle phase');
+  assert.ok(renderSource.includes('entry.setFadeInStartTimeMSec?.(start)'),'Cubism2 restored idle fade-in phase must advance together with the motion');
+  assert.ok(renderSource.includes('lifetime.hasExplicitMotion'),'explicit user motions must opt out of synthetic auto-idle schedule seeking');
   assert.ok(renderSource.includes('__exportCurrentSimulationMs=Number(t)||0'),'every export frame must publish its absolute simulation time before Live2D advances');
   assert.ok(renderSource.includes('__exportLive2DLifetimeAt'),'renderer must resolve the active model lifetime without replaying from model birth');
   assert.ok(segmentSource.includes('Live2DPhysicsWarmupSeconds=3d'),'Live2D physics must use a bounded warmup instead of whole-lifetime replay');

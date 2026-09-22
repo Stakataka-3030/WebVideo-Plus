@@ -66,7 +66,8 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
      if(activeLifetime.endMs>activeLifetime.startMs)live2dLifetimes.push(activeLifetime);
      activeLiveLifetimes.delete(target);
     }
-    if(liveRuntime&&!activeLiveLifetimes.has(target))activeLiveLifetimes.set(target,{startMs:Math.round(cursor),endMs:null,target,source:visualName,position,bounds:nextBounds,line:range.start+1});
+    if(liveRuntime&&!activeLiveLifetimes.has(target))activeLiveLifetimes.set(target,{startMs:Math.round(cursor),endMs:null,target,source:visualName,position,bounds:nextBounds,line:range.start+1,hasExplicitMotion:params.motion!==undefined});
+    const currentLifetime=activeLiveLifetimes.get(target);if(currentLifetime&&params.motion!==undefined)currentLifetime.hasExplicitMotion=true;
     if(gone)figureIdentities.delete(target);else figureIdentities.set(target,{name:visualName,position,bounds:nextBounds,liveRuntime});
     if(liveRuntime)softCutWindows.push({startMs:Math.round(cursor),endMs:Math.round(cursor+1000),reason:'live2d-state-change',target,line:range.start+1});
    }

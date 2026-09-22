@@ -2,6 +2,15 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.31 / 导出内核 0.6.29
+
+- 根据用户素材确认接缝人物主要为 Cubism2 后补充真正对应的连续性修复。Cubism2 的内建 `PARAM_BREATH` 本身按绝对 `now` 计算，因此 0.7.29/0.7.30 的 Cubism4 breathe 相位校正不会作用于 Cubism2；Cubism2 更可能出现的是自动 `idle` motion 在新 Worker 重建模型后重新随机选择并从第 0ms 开始，视觉上表现为“随机呼吸/身体轻微起伏”在切段处跳一下。
+- 对没有显式 `-motion` 命令的 Cubism2 lifetime 启用模型局部确定性 idle 时间线。序列仍会在多个 idle motion 之间变化，不会固定成同一个姿势；选择仅由 target、lifetime 起点、模型来源和 idle 序号确定，因此所有 Worker 对同一个模型年龄得到同一条随机序列。
+- 新 Worker 不再为了得到正确 idle 姿态回放模型全部历史。导出器会读取已加载 Cubism2 motion 的 `getDurationMSec()/getLoopDurationMSec()`，用模型年龄快速算出当前应播放的 idle 及其毫秒偏移；一小时模型通常只需几百次纯数值迭代。若 motion 是循环动作，则直接按循环周期取模。
+- 启动目标 idle 后优先通过 Cubism2 `MotionQueueEnt.setStartTimeMSec/setFadeInStartTimeMSec/setEndTimeMSec` 把 motion queue 的动作相位、淡入相位和结束时间一起回拨到连续播放应处的位置；运行时缺少这些公开方法时退回 `AMotion.setOffsetMSec`，而不是硬失败。
+- 为避免改变用户显式动作语义，只要某个 lifetime 出现过 `-motion`，该 lifetime 就不使用合成的 auto-idle 时间线，继续走原引擎动作恢复/有限 warmup。Cubism4 的绝对 model-age breathe 修复与 3 秒 physics warmup继续保留。
+- 回归新增确定性 idle schedule、循环 idle 取模、显式 motion 自动退出、纯 auto-idle lifetime 识别，以及 Cubism2 motion queue 相位重定位检查。pipeline revision 更新为 `cubism2-idle-seek-0.7.31`。
+
 ### 内部版本 0.7.30 / 导出内核 0.6.28
 
 - 对 0.7.29 的 Live2D 接缝修复做提交后校正。Cubism4 breath wrapper 现在允许在调用原始 `updateParameters(core, dt)` 前把 `_currentTime` 暂时设为 `modelAge - dt`，而不把该预补偿值截到 0；原函数加回本帧 `dt` 后恰好落在当前 `modelAge`，因此人物刚出现的第一个 tick 也不会比连续播放提前一帧呼吸相位。
