@@ -2,6 +2,13 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.34 / 导出内核 0.6.31
+
+- 修复 0.7.29–0.7.32 Live2D 接缝方案带来的明显性能回退。此前 `bindLive2DDeterminism()` 被放进每帧热路径，即使模型已经通过 WeakSet 完成绑定，仍会每帧重新枚举舞台对象并遍历 Live2D children；长片与多人物场景会持续损失渲染吞吐。
+- Live2D hook 发现现在只在两个时机运行：每个 Worker 的首个恢复帧一次，以及包含资源加载事件（如 `changeFigure`）完成并等待资产就绪后一次。普通连续帧不再扫描整个舞台；Cubism4 breathe 与 Cubism2 deterministic idle 的已绑定 hook 仍逐帧正常工作。
+- 撤回额外的 3 秒 Live2D physics warmup，恢复到原有 1 秒 replay warmup。Cubism2 接缝的核心修复依靠 idle motion 相位直接定位，不需要用额外 2 秒逐帧渲染换连续性；因此每个非首段不再额外多跑约 `2 × fps` 个隐藏帧。
+- 回归新增热路径禁止逐帧 Live2D 全舞台扫描、仅首帧/加载后重新绑定，以及 1 秒 warmup 成本检查。pipeline revision 更新为 `live2d-bind-on-load-0.7.34`。
+
 ### 内部版本 0.7.33 / 导出内核 0.6.30
 
 - 修复 0.7.32 新增 Cubism2 motion queue 回归测试的 Node VM 跨 realm 断言问题。浏览器脚本在 `vm.createContext` 中返回的普通对象具有 VM realm 原型，而 `node:assert/strict` 下的 `deepEqual` 实际按 deep-strict 语义比较原型，因此即使 `{start:'a',fade:'b',end:'c'}` 字段完全正确也会误判失败并触发 `Export lifecycle regression checks failed`。

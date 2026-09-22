@@ -400,8 +400,11 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(renderSource.includes('entry[keys.start]=start;entry[keys.fade]=start;entry[keys.end]=end'),'obfuscated Cubism2 core timing fields must be rebased without hardcoding private field names');
   assert.ok(renderSource.includes('lifetime.hasExplicitMotion'),'explicit user motions must opt out of synthetic auto-idle schedule seeking');
   assert.ok(renderSource.includes('__exportCurrentSimulationMs=Number(t)||0'),'every export frame must publish its absolute simulation time before Live2D advances');
+  assert.ok(renderSource.includes('if(live2dBindingPending){bindLive2DDeterminism();live2dBindingPending=false;}'),'Live2D hook discovery must run once on the initial restored frame, not scan the full stage every frame');
+  assert.ok(renderSource.includes("if(batch.some(e=>e.loads)){await __exportWaitForStageAssets();bindLive2DDeterminism();live2dBindingPending=false;}"),'Live2D hook discovery must rerun only after resource-loading events can create a model');
+  assert.ok(!renderSource.includes('__exportCurrentSimulationMs=Number(t)||0;\n  bindLive2DDeterminism();'),'the hot per-frame path must not rescan all Live2D stage objects');
   assert.ok(renderSource.includes('__exportLive2DLifetimeAt'),'renderer must resolve the active model lifetime without replaying from model birth');
-  assert.ok(segmentSource.includes('Live2DPhysicsWarmupSeconds=3d'),'Live2D physics must use a bounded warmup instead of whole-lifetime replay');
+  assert.ok(segmentSource.includes('Live2DPhysicsWarmupSeconds=1d'),'Live2D physics must use a bounded warmup instead of whole-lifetime replay');
   assert.ok(segmentSource.includes('live2dActive(cut)?live2dPhysicsWarmupFrames:minReplayWarmupFrames'),'only cuts inside an active Live2D lifetime need the longer physics warmup');
   assert.ok(renderSource.includes('currentApp.render();return value;'),'warmup step must actually render the Pixi stage so Live2D/WMDL advances');
   assert.ok(gpuRawSource.includes('domOverlay?"__webviewWarmupStep(":"__webviewStep("'),'GPU raw warmup must render the stage when DOM compositing suppresses normal per-step renders');
