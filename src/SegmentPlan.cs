@@ -1,7 +1,7 @@
 using System;using System.IO;using System.Linq;using System.Collections.Generic;using System.Text.RegularExpressions;
 namespace NativeVideo {
  public static class SegmentPlan {
-  const double DomRefreshFrameCost=12d,MinSegmentSeconds=2.5d,MinReplayWarmupSeconds=1d;
+  const double DomRefreshFrameCost=12d,MinSegmentSeconds=2.5d,MinReplayWarmupSeconds=1d,Live2DPhysicsWarmupSeconds=3d;
   public const double ReplayPenaltyWeight=.35d,MaxWeightedReplayOverheadRatio=1.50d;
   sealed class ReplayWindow {
    public int Start;public int End;public bool Root;public bool NoCut;public string Kind;
@@ -13,6 +13,14 @@ namespace NativeVideo {
     Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(w,"startMs")*fps/1000))),
     Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(w,"endMs")*fps/1000))),
     J.B(w,"rootReplay"),J.B(w,"noCut"),J.S(w,"command","perform")
+   )).Where(w=>w.End>w.Start).OrderBy(w=>w.Start).ToArray();
+  }
+
+  static ReplayWindow[] Live2DLifetimes(object plan,int total,int fps){
+   return J.A(J.Get(plan,"live2dLifetimes")).Select(w=>new ReplayWindow(
+    Math.Max(0,Math.Min(total,(int)Math.Floor(J.N(w,"startMs")*fps/1000))),
+    Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(w,"endMs")*fps/1000))),
+    false,false,"live2d-lifetime"
    )).Where(w=>w.End>w.Start).OrderBy(w=>w.Start).ToArray();
   }
 
@@ -48,9 +56,9 @@ namespace NativeVideo {
    return Math.Max(0,Math.Min(cut,anchor));
   }
 
-  static string ReductionReason(ReplayWindow[] noCutWindows,ReplayWindow[] protectedWindows,bool replayRejected){
+  static string ReductionReason(ReplayWindow[] noCutWindows,ReplayWindow[] protectedWindows,ReplayWindow[] strictLive2dWindows,bool replayRejected){
    if(replayRejected)return "replay-overhead";
-   if(noCutWindows.Any(w=>w.Kind=="changeFigure-phase"))return "strict-live2d-active";
+   if(strictLive2dWindows.Length>0)return "strict-live2d-active";
    if(noCutWindows.Any(w=>w.Kind=="pixiPerform"))return "pixi-perform-active";
    if(protectedWindows.Length>0)return "protected-hint";
    return "insufficient-safe-cuts";
@@ -64,6 +72,7 @@ namespace NativeVideo {
    workers=Math.Max(1,Math.Min(workers,total));
    int minSegmentFrames=Math.Max(1,(int)Math.Ceiling(fps*MinSegmentSeconds));
    int minReplayWarmupFrames=Math.Max(1,(int)Math.Ceiling(fps*MinReplayWarmupSeconds));
+   int live2dPhysicsWarmupFrames=Math.Max(minReplayWarmupFrames,(int)Math.Ceiling(fps*Live2DPhysicsWarmupSeconds));
    int durationCap=Math.Max(1,total/minSegmentFrames);
    workers=Math.Min(workers,durationCap);
    diagnostics["durationWorkerCap"]=durationCap;
@@ -78,11 +87,16 @@ namespace NativeVideo {
     false,false,"single-line-hint"
    )).Where(w=>w.End>w.Start).OrderBy(w=>w.Start).ToArray();
    var replayOnly=ReplayWindows(plan,total,fps).Concat(DomAnimationWindows(plan,total,fps)).OrderBy(w=>w.Start).ToArray();
+   var live2dLifetimes=Live2DLifetimes(plan,total,fps);
    var softWindows=SoftCutWindows(plan,total,fps);bool strictSegmentCuts=J.B(plan,"strictSegmentCuts",false);
    var noCutWindows=replayOnly.Where(w=>w.NoCut).ToArray();
-   var cutProtected=protectedWindows.Concat(noCutWindows).OrderBy(w=>w.Start).ToArray();
+   var strictLive2dWindows=strictSegmentCuts?live2dLifetimes:new ReplayWindow[0];
+   var cutProtected=protectedWindows.Concat(noCutWindows).Concat(strictLive2dWindows).OrderBy(w=>w.Start).ToArray();
    diagnostics["hardNoCutWindows"]=noCutWindows.Select(w=>(object)J.O("startFrame",w.Start,"endFrame",w.End,"kind",w.Kind)).ToArray();
    diagnostics["protectedHintWindows"]=protectedWindows.Length;
+   diagnostics["live2dLifetimeWindows"]=live2dLifetimes.Select(w=>(object)J.O("startFrame",w.Start,"endFrame",w.End,"kind",w.Kind)).ToArray();
+   diagnostics["live2dPhysicsWarmupFrames"]=live2dPhysicsWarmupFrames;
+   diagnostics["live2dPhysicsWarmupSeconds"]=live2dPhysicsWarmupFrames/(double)fps;
    diagnostics["softCutWindows"]=softWindows.Select(w=>(object)J.O("startFrame",w.Start,"endFrame",w.End,"kind",w.Kind)).ToArray();
    diagnostics["relaxedDecorativePixi"]=J.Get(plan,"relaxedDecorativePixi")??new object[0];diagnostics["strictSegmentCuts"]=strictSegmentCuts;
    Func<int,bool> strictSoftCut=frame=>strictSegmentCuts&&softWindows.Any(w=>frame>=w.Start&&frame<w.End);
@@ -94,7 +108,8 @@ namespace NativeVideo {
    };
 
    var replayWindows=replayOnly.Concat(protectedWindows).OrderBy(w=>w.Start).ToArray();
-   Func<int,int> replayFor=cut=>ReplayAnchor(cut,minReplayWarmupFrames,replayWindows);
+   Func<int,bool> live2dActive=cut=>live2dLifetimes.Any(w=>cut>w.Start&&cut<=w.End);
+   Func<int,int> replayFor=cut=>ReplayAnchor(cut,live2dActive(cut)?live2dPhysicsWarmupFrames:minReplayWarmupFrames,replayWindows);
 
    var allEvents=J.A(J.Get(plan,"events")).ToList();
    var events=allEvents.Where(e=>J.N(e,"line")>0&&!J.S(e,"command").StartsWith("__")).ToList();
@@ -125,7 +140,7 @@ namespace NativeVideo {
     return frames.Take(frames.Count-1).Select((start,i)=>{
      int end=frames[i+1];int replay=start==0?0:replayFor(start);int warmup=Math.Max(0,start-replay);
      double estimate=Math.Max(0,costAt(end)-costAt(start))+Math.Max(0,costAt(start)-costAt(replay));
-     var replayKinds=replayWindows.Where(w=>start>0&&w.Start<start&&w.End>replay).Select(w=>w.Kind).Distinct().ToArray();
+     var replayKinds=replayWindows.Where(w=>start>0&&w.Start<start&&w.End>replay).Select(w=>w.Kind).Concat(live2dActive(start)?new[]{"live2d-physics"}:new string[0]).Distinct().ToArray();
      return J.O("index",i,"startFrame",start,"endFrame",end,"replayFrame",replay,"warmupFrames",warmup,"estimatedCost",estimate,"replayKinds",replayKinds);
     }).ToArray();
    };
@@ -177,7 +192,7 @@ namespace NativeVideo {
     if(weightedReplayFrames>maxWeightedReplayFrames){replayRejectedAny=true;attemptRows.Add(J.O("parts",parts,"outcome","replay-overhead","warmupFrames",warmup,"rawReplayRatio",rawReplayRatio,"weightedReplayFrames",weightedReplayFrames,"weightedReplayRatio",weightedReplayRatio,"maxWeightedReplayFrames",maxWeightedReplayFrames,"candidateCount",candidateCount,"safeCandidateCount",safeCandidateCount,"unsafeRejected",unsafeRejected,"softCandidateCount",softCandidateCount,"usedSoftCuts",usedSoftCuts));continue;}
     attemptRows.Add(J.O("parts",parts,"outcome","selected","warmupFrames",warmup,"rawReplayRatio",rawReplayRatio,"weightedReplayFrames",weightedReplayFrames,"weightedReplayRatio",weightedReplayRatio,"maxWeightedReplayFrames",maxWeightedReplayFrames,"candidateCount",candidateCount,"safeCandidateCount",safeCandidateCount,"unsafeRejected",unsafeRejected,"softCandidateCount",softCandidateCount,"usedSoftCuts",usedSoftCuts,"cuts",cuts.ToArray()));
     diagnostics["selectedParts"]=parts;
-    diagnostics["reductionReason"]=parts<workers?ReductionReason(noCutWindows,protectedWindows,replayRejectedAny):parts<requestedWorkers?"duration-too-short":"";
+    diagnostics["reductionReason"]=parts<workers?ReductionReason(noCutWindows,protectedWindows,strictLive2dWindows,replayRejectedAny):parts<requestedWorkers?"duration-too-short":"";
     diagnostics["safeCutRejected"]=safeCutRejectedAny;
     diagnostics["replayRejected"]=replayRejectedAny;
     return ranges;
@@ -186,7 +201,7 @@ namespace NativeVideo {
    diagnostics["selectedParts"]=1;
    diagnostics["safeCutRejected"]=safeCutRejectedAny;
    diagnostics["replayRejected"]=replayRejectedAny;
-   diagnostics["reductionReason"]=workers>1?ReductionReason(noCutWindows,protectedWindows,replayRejectedAny):requestedWorkers>workers?"duration-too-short":ReductionReason(noCutWindows,protectedWindows,replayRejectedAny);
+   diagnostics["reductionReason"]=workers>1?ReductionReason(noCutWindows,protectedWindows,strictLive2dWindows,replayRejectedAny):requestedWorkers>workers?"duration-too-short":ReductionReason(noCutWindows,protectedWindows,strictLive2dWindows,replayRejectedAny);
    return new[]{J.O("index",0,"startFrame",0,"endFrame",total,"replayFrame",0,"warmupFrames",0,"estimatedCost",costAt(total),"replayKinds",new object[0])};
   }
  }

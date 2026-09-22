@@ -2,6 +2,15 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.29 / 导出内核 0.6.27
+
+- 修复多 Worker 切段处 Live2D/WMDL 人物呼吸相位出现轻微跳变的问题。此前 Cubism4 的 `CubismBreath` 使用模型实例内部 `_currentTime += dt` 累积相位；后续 Worker 通过 prefix restore 重建模型后，该内部时间从 0 重新开始，因此即使画面脚本状态相同，接缝前后的 `PARAM_BREATH` 也可能处于不同相位。
+- Planning 现在记录真正的 `live2dLifetimes`：只有人物首次创建、资源/位置/bounds 身份变化或人物移除才开始/结束一个 lifetime；`motion`、`expression`、`blink`、`focus` 等参数更新不再被误当成模型重新出生。
+- 导出渲染器只对 Cubism4 的 breath 累积器做局部注入：每帧按 `modelAge = 当前模拟时间 - lifetime.startMs` 校正 `_currentTime`，随后仍调用原始 `updateParameters`。呼吸仍按原周期连续变化，不会固定姿势，也不改变显式 motion/expression；Cubism2 原本已按绝对 `now` 计算自然呼吸，因此不额外改写。
+- 普通模式不再把整个 Live2D lifetime 作为 replay window。切点处若人物仍存活，只固定回放最近 3 秒用于 Live2D physics/pose 等真正带历史的状态收敛；人物持续一小时也不会因此强制从人物出现处重放。严格切片模式仍会把活动中的 Live2D lifetime 作为硬保护区，保持其“正确性优先、允许降并行”的原语义。
+- 保留现有全局确定性随机机制，本版不重写随机 idle / blink 的语义，避免为了修呼吸接缝而改变模型自身的随机动作分布。后续若仍观察到随机 idle/眨眼在接缝处换轨，可在独立补丁中按模型局部状态处理。
+- 生命周期回归新增：长驻 Live2D 不再产生全寿命 replay、motion 切换不重启 lifetime、lifetime 结束点采用半开区间、渲染器必须按绝对模型年龄校正 Cubism4 breathe、SegmentPlan 必须使用有界 Live2D physics warmup。pipeline revision 更新为 `live2d-seam-continuity-0.7.29`，旧分片缓存自动失效。
+
 ### 内部版本 0.7.28 / 导出内核 0.6.26
 
 - 修复 0.7.27 新增的生命周期回归测试夹具。`verify-export-lifecycle.mjs` 通过 `vm.createContext` 加载浏览器渲染脚本，但测试上下文此前只注入 `console`；新增的 bounded dialogue wait 用例首次真正执行 `queueMicrotask(check)`，因此在 Node VM 中会触发 `ReferenceError: queueMicrotask is not defined`，导致构建阶段误报 `Export lifecycle regression checks failed`。

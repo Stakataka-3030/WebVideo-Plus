@@ -1,6 +1,6 @@
 // Data-only scheduling. Files, processes and browser lifecycle are owned by C#.
 globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,project,sceneName,fps,allowDecorativePixiCuts=false,strictSegmentCuts=false})=>{
- const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],softCutWindows=[],phaseReplay=[],exitReplay=[],counts={},visualSources=new Map(),figureIdentities=new Map(),activeLivePhases=new Map(),transitionStates=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
+ const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],softCutWindows=[],live2dLifetimes=[],exitReplay=[],counts={},visualSources=new Map(),figureIdentities=new Map(),activeLiveLifetimes=new Map(),transitionStates=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
  const clean=(kind,name)=>String(name||'').replace(new RegExp('^\\.?/?game/'+kind+'/'),'');
  const physical=name=>decodeURIComponent(String(name||'').split(/[?#]/)[0]);
  const local=(kind,name)=>root.replaceAll('\\','/')+'/game/'+kind+'/'+physical(clean(kind,name));
@@ -59,15 +59,15 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    }
    visualSources.set(key,visualName);
    if(cmd==='changeFigure'){
-    if(gone)figureIdentities.delete(target);else figureIdentities.set(target,{name:visualName,position,bounds:nextBounds});
     const liveRuntime=!gone&&(/\.(json|jsonl|wmdl)([?#].*)?$/i.test(visualName)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(visualName)||!!params.motion||!!params.skin||!!params.expression||!!params.blink||!!params.focus||!!params.animationFlag||!!params.eyesOpen||!!params.eyesClose);
-    const activePhase=activeLivePhases.get(target),restartPhase=liveRuntime&&(!activePhase||changed||params.motion!==undefined||params.animationFlag!==undefined);
-    if(activePhase&&(gone||!liveRuntime||restartPhase)){
-     activePhase.endMs=Math.round(cursor);
-     if(activePhase.endMs>activePhase.startMs)phaseReplay.push(activePhase);
-     activeLivePhases.delete(target);
+    const activeLifetime=activeLiveLifetimes.get(target);
+    if(activeLifetime&&(gone||!liveRuntime||changed)){
+     activeLifetime.endMs=Math.round(cursor);
+     if(activeLifetime.endMs>activeLifetime.startMs)live2dLifetimes.push(activeLifetime);
+     activeLiveLifetimes.delete(target);
     }
-    if(liveRuntime&&!activeLivePhases.has(target))activeLivePhases.set(target,{startMs:Math.round(cursor),endMs:null,target,command:'changeFigure-phase',line:range.start+1,hold:true,dormantRestorable:false,rootReplay:false,noCut:!!strictSegmentCuts});
+    if(liveRuntime&&!activeLiveLifetimes.has(target))activeLiveLifetimes.set(target,{startMs:Math.round(cursor),endMs:null,target,source:visualName,position,bounds:nextBounds,line:range.start+1});
+    if(gone)figureIdentities.delete(target);else figureIdentities.set(target,{name:visualName,position,bounds:nextBounds,liveRuntime});
     if(liveRuntime)softCutWindows.push({startMs:Math.round(cursor),endMs:Math.round(cursor+1000),reason:'live2d-state-change',target,line:range.start+1});
    }
    if(changed&&(/\.(webm|mp4|mov|mkv)([?#].*)?$/i.test(visualName)||/[?&]type=video(?:&|$)/i.test(visualName)))videoCues.push({path:'/game/'+kind+'/'+physical(visualName),target,atMs:Math.round(cursor),durationMs:info(kind,visualName).durationMs});
@@ -131,14 +131,11 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  events.sort((a,b)=>a.atMs-b.atMs||controlOrder(a)-controlOrder(b));
  const fullDuration=timing?.durationSeconds??(Math.ceil(Math.max(cursor,...videoCues.filter(v=>v.target==='fullscreen').map(v=>v.atMs+v.durationMs))/1000)+1),fullDurationMs=fullDuration*1000;
  const replayWindows=[];
- for(const phase of activeLivePhases.values()){
-  phase.endMs=Math.round(fullDurationMs);
-  if(phase.endMs>phase.startMs)phaseReplay.push(phase);
+ for(const lifetime of activeLiveLifetimes.values()){
+  lifetime.endMs=Math.round(fullDurationMs);
+  if(lifetime.endMs>lifetime.startMs)live2dLifetimes.push(lifetime);
  }
- for(const phase of phaseReplay){
-  const start=Math.max(0,Number(phase.startMs)||0),end=Math.min(fullDurationMs,Number(phase.endMs)||0);
-  if(end>start+.01)replayWindows.push({...phase,startMs:start,endMs:end});
- }
+ live2dLifetimes.sort((a,b)=>a.startMs-b.startMs||String(a.target).localeCompare(String(b.target)));
  const dynamicCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','playVideo','intro','pixiPerform']);
  const dormantHoldCommands=new Set(['setTransform','setTempAnimation','setAnimation']);
  const decorativePixiNames=new Set(['rain','snow','heavySnow','cherryBlossoms']),relaxedDecorativePixi=[];
@@ -182,7 +179,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   const start=Math.max(0,Number(window.startMs)||0),end=Math.min(fullDurationMs,Number(window.endMs)||0);
   if(end>start+.01)replayWindows.push({...window,startMs:start,endMs:end});
  }
- return {project,sceneName,sourceLines:sourceLines.length,parsedStatements:parsed.sentenceList.length,counts,fullDuration,duration:fullDuration,fps,events,audio,videoCues,muteWindows,singleLineHints,softCutWindows,replayWindows,relaxedDecorativePixi,strictSegmentCuts:!!strictSegmentCuts,extraAnimations:[...extraAnimations]};
+ return {project,sceneName,sourceLines:sourceLines.length,parsedStatements:parsed.sentenceList.length,counts,fullDuration,duration:fullDuration,fps,events,audio,videoCues,muteWindows,singleLineHints,softCutWindows,live2dLifetimes,replayWindows,relaxedDecorativePixi,strictSegmentCuts:!!strictSegmentCuts,extraAnimations:[...extraAnimations]};
 };
 
 globalThis.__finishNativeTimeline=({result,pre,settings,playlist,range})=>{

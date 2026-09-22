@@ -119,12 +119,50 @@ globalThis.__exportWaitDialogueDom=async(options={})=>{
   });
 };
 globalThis.__exportRestoredDialogueReady=()=>globalThis.__exportDialogueDomReady(true);
-globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50})=>{
+globalThis.__exportLive2DLifetimeAt=(lifetimes,target,timeMs)=>{
+  const key=String(target??''),time=Number(timeMs);if(!Number.isFinite(time))return null;
+  let best=null;
+  for(const item of Array.isArray(lifetimes)?lifetimes:[]){
+    if(String(item?.target??'')!==key)continue;
+    const start=Number(item?.startMs),end=Number(item?.endMs);
+    if(!Number.isFinite(start)||time<start-.01||(Number.isFinite(end)&&time>=end-.01))continue;
+    if(!best||start>Number(best.startMs))best=item;
+  }
+  return best;
+};
+globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50,live2dLifetimes=[]})=>{
   const pc=__wgProbe.core.gameplay.performController,arrange=pc.arrangeNewPerform;
   const dormantHoldCommands=new Set(['setAnimation','setTempAnimation','setTransform']);
   globalThis.__exportCurrentEvent=null;
   globalThis.__exportBatchCollecting=false;
   globalThis.__exportInstallTextSettleGuard(__wgProbe.core.events.textSettle);
+  globalThis.__exportLive2DLifetimes=Array.isArray(live2dLifetimes)?live2dLifetimes:[];
+  globalThis.__exportCurrentSimulationMs=Math.max(0,Number(firstSimulationFrame)||0)*1000/Math.max(1,Number(fps)||1);
+  const deterministicLive2D=new WeakSet();
+  const bindLive2DDeterminism=()=>{
+    const stage=__wgProbe.core.gameplay.pixiStage,objects=stage?.getAllStageObj?.()||stage?.figureObjects||[];
+    for(const obj of objects){
+      if(obj?.sourceType!=='live2d')continue;
+      const target=String(obj.key??'');
+      for(const model of obj.pixiContainer?.children||[]){
+        const inner=model?.internalModel;if(!inner||deterministicLive2D.has(inner))continue;
+        deterministicLive2D.add(inner);
+        const breath=inner.breath;
+        if(!breath||typeof breath.updateParameters!=='function'||typeof breath._currentTime!=='number')continue;
+        const original=breath.updateParameters.bind(breath);
+        breath.updateParameters=(core,dt)=>{
+          const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs),delta=Math.max(0,Number(dt)||0);
+          if(lifetime&&Number.isFinite(nowMs)){
+            const ageSeconds=Math.max(0,(nowMs-Number(lifetime.startMs))/1000);
+            breath._currentTime=Math.max(0,ageSeconds-delta);
+          }
+          return original(core,dt);
+        };
+        breath.__webVideoAbsoluteModelAge=true;
+      }
+    }
+  };
+  globalThis.__exportBindLive2DDeterminism=bindLive2DDeterminism;
 
   pc.arrangeNewPerform=function(perform,script,...rest){
     const current=globalThis.__exportCurrentEvent,command=script.command===0?'say':script.commandRaw;
@@ -205,6 +243,8 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
   const controlled=new Set(),states=new Map(),levels=new Map(),bound=new WeakSet();
   globalThis.__exportApplyLip=l=>{if(globalThis.__mygoApplyLip){__mygoApplyLip(l);return;}if(!l.active&&!controlled.has(l.target))return;if(l.active){if(!controlled.has(l.target))states.delete(l.target);controlled.add(l.target);levels.set(l.target,l.value);}else{controlled.delete(l.target);levels.delete(l.target);if(l.target===globalThis.__exportCurrentSimulatedTarget)return;}const p=__wgProbe.core.gameplay.pixiStage,obj=p.getStageObjByKey(l.target);if(!obj)return;globalThis.__exportWritingVoice=true;try{p.setModelMouthY(l.target,l.active?50+50*l.value:0);}finally{globalThis.__exportWritingVoice=false;}if(obj.sourceType==='live2d'){for(const model of obj.pixiContainer?.children||[]){const inner=model.internalModel;if(inner&&!bound.has(inner)){bound.add(inner);inner.on('beforeModelUpdate',()=>{if(!levels.has(l.target))return;const value=levels.get(l.target),core=inner.coreModel;core.setParamFloat?.('PARAM_MOUTH_OPEN_Y',value);core.setParameterValueById?.('ParamMouthOpenY',value);});}}}if(obj.sourceType==='img'){const state=l.value>.6?'open':l.value>.2?'half_open':'closed',s=__wgProbe.stageManager.getCalculationStageState(),item=s.figureAssociatedAnimation.find(x=>x.targetId===l.target),key=state==='half_open'?'halfOpen':state==='closed'?'close':'open',url=item?.mouthAnimation?.[key],cacheKey=obj.uuid+':'+url;if(url&&states.get(l.target)!==cacheKey){states.set(l.target,cacheKey);p.performMouthSyncAnimation(l.target,item,state,'center');}}};
 globalThis.__stepExportFrame=async({t,elapsed,batch,lips})=>{
+  globalThis.__exportCurrentSimulationMs=Number(t)||0;
+  bindLive2DDeterminism();
   if(elapsed>0)await __pwClock.controller.runFor(elapsed);
   for(let i=0;i<batch.length;){
     const event=batch[i];
@@ -220,6 +260,7 @@ globalThis.__stepExportFrame=async({t,elapsed,batch,lips})=>{
     globalThis.__exportFinishDialogueTransition();
   }
   if(batch.some(e=>e.loads))await __exportWaitForStageAssets();
+  bindLive2DDeterminism();
   for(const a of document.getAnimations()){if(!__exportAnimations.has(a)){__exportAnimations.set(a,t);a.pause();}a.currentTime=Math.max(0,t-__exportAnimations.get(a));}
   const p=__wgProbe.core.gameplay.pixiStage;
   for(const l of lips)__exportApplyLip(l);

@@ -23,6 +23,7 @@ assert.equal(typeof context.__exportBeginDialogueTransition,'function');
 assert.equal(typeof context.__exportSetDialogueTarget,'function');
 assert.equal(typeof context.__exportDialogueDomReady,'function');
 assert.equal(typeof context.__exportDialogueDomSnapshot,'function');
+assert.equal(typeof context.__exportLive2DLifetimeAt,'function');
 assert.equal(typeof context.__exportWaitDialogueDom,'function');
 assert.equal(typeof context.__exportNotendVisualDuration,'function');
 assert.equal(typeof context.__exportFindChainedWaitIndex,'function');
@@ -310,11 +311,13 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const plan=build({script,parsed,media:{},animations:{},timing,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
   assert.equal(plan.replayWindows.some(w=>w.noCut&&w.startMs===0&&w.endMs>=60000),false);
   assert.equal(plan.replayWindows.some(w=>w.command==='changeFigure-runtime'),false);
-  const phase=plan.replayWindows.find(w=>w.command==='changeFigure-phase');
-  assert.ok(phase,'persistent Live2D must carry a replay-only phase window');
-  assert.equal(phase.startMs,0);
-  assert.equal(phase.endMs,60000);
-  assert.equal(phase.noCut,false,'normal mode must replay Live2D phase state without forbidding every cut');
+  assert.equal(plan.replayWindows.some(w=>w.command==='changeFigure-phase'),false,'normal mode must not replay from a long-lived Live2D birth point');
+  assert.equal(plan.live2dLifetimes.length,1);
+  assert.equal(plan.live2dLifetimes[0].target,'hero');
+  assert.equal(plan.live2dLifetimes[0].startMs,0);
+  assert.equal(plan.live2dLifetimes[0].endMs,60000);
+  assert.equal(context.__exportLive2DLifetimeAt(plan.live2dLifetimes,'hero',30000)?.startMs,0);
+  assert.equal(context.__exportLive2DLifetimeAt(plan.live2dLifetimes,'hero',60000),null,'lifetime end is exclusive');
   assert.equal(plan.softCutWindows.length,1);
   assert.equal(plan.softCutWindows[0].reason,'live2d-state-change');
   assert.equal(plan.softCutWindows[0].startMs,0);
@@ -335,19 +338,14 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
     {command:'say',line:3,role:'primary',durationMs:800,hold:false,startMs:12000,stopMs:12800}
   ],stageExitWindows:[]};
   const switched=build({script:switchedScript,parsed:switchedParsed,media:{},animations:{},timing:switchedTiming,root:'C:/root',project:'P',sceneName:'start.txt',fps:60});
-  const phases=switched.replayWindows.filter(w=>w.command==='changeFigure-phase');
-  assert.equal(phases.length,2);
-  assert.equal(phases[0].startMs,0);
-  assert.equal(phases[0].endMs,10000);
-  assert.equal(phases[1].startMs,10000);
-  assert.equal(phases[1].endMs,30000);
-  assert.ok(phases.every(w=>w.noCut===false),'normal mode phase windows must be replay-only, not hard no-cut');
+  assert.equal(switched.replayWindows.some(w=>w.command==='changeFigure-phase'),false);
+  assert.equal(switched.live2dLifetimes.length,1,'motion changes must not restart the underlying Live2D model lifetime');
+  assert.equal(switched.live2dLifetimes[0].startMs,0);
+  assert.equal(switched.live2dLifetimes[0].endMs,30000);
 
   const strict=build({script:switchedScript,parsed:switchedParsed,media:{},animations:{},timing:switchedTiming,root:'C:/root',project:'P',sceneName:'start.txt',fps:60,strictSegmentCuts:true});
   assert.equal(strict.strictSegmentCuts,true);
-  const strictPhases=strict.replayWindows.filter(w=>w.command==='changeFigure-phase');
-  assert.equal(strictPhases.length,2);
-  assert.ok(strictPhases.every(w=>w.noCut===true),'strict mode must hard-protect active Live2D phases');
+  assert.equal(strict.live2dLifetimes.length,1,'strict mode uses the same model lifetime metadata; SegmentPlan decides whether to hard-protect it');
 }
 
 {
@@ -356,6 +354,11 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const coreSource=fs.readFileSync(path.join(root,'src','Core.cs'),'utf8');
   const jobSource=fs.readFileSync(path.join(root,'src','JobRunner.cs'),'utf8');
   assert.ok(renderSource.includes('__webviewWarmupStep=async frame=>'),'GPU raw warmup must expose a stage-rendering step');
+  assert.ok(renderSource.includes('breath.__webVideoAbsoluteModelAge=true'),'Cubism4 breath must be rebound to absolute model age for seam continuity');
+  assert.ok(renderSource.includes('__exportCurrentSimulationMs=Number(t)||0'),'every export frame must publish its absolute simulation time before Live2D advances');
+  assert.ok(renderSource.includes('__exportLive2DLifetimeAt'),'renderer must resolve the active model lifetime without replaying from model birth');
+  assert.ok(segmentSource.includes('Live2DPhysicsWarmupSeconds=3d'),'Live2D physics must use a bounded warmup instead of whole-lifetime replay');
+  assert.ok(segmentSource.includes('live2dActive(cut)?live2dPhysicsWarmupFrames:minReplayWarmupFrames'),'only cuts inside an active Live2D lifetime need the longer physics warmup');
   assert.ok(renderSource.includes('currentApp.render();return value;'),'warmup step must actually render the Pixi stage so Live2D/WMDL advances');
   assert.ok(gpuRawSource.includes('domOverlay?"__webviewWarmupStep(":"__webviewStep("'),'GPU raw warmup must render the stage when DOM compositing suppresses normal per-step renders');
   assert.ok(gpuRawSource.includes('"warmupStageRenders",warmupStageRenders'),'GPU raw result must expose warmup stage-render diagnostics');
