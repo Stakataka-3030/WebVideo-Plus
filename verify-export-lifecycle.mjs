@@ -25,7 +25,7 @@ assert.equal(typeof context.__exportDialogueDomReady,'function');
 assert.equal(typeof context.__exportWaitDialogueDom,'function');
 assert.equal(typeof context.__exportNotendVisualDuration,'function');
 assert.equal(typeof context.__exportFindChainedWaitIndex,'function');
-assert.equal(context.__exportNotendVisualDuration(567.918,950),1042.918);
+assert.ok(Math.abs(context.__exportNotendVisualDuration(567.918,950)-1042.918)<1e-9);
 {
   const chain=[
     {command:0,commandRaw:'',args:[{key:'notend',value:true},{key:'next',value:true}],isLineBreakHolder:false},
@@ -168,7 +168,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.equal(timing.stageExitWindows[0].startMs,500);
   assert.equal(timing.stageExitWindows[0].stopMs,2000);
   assert.equal(timing.visualNotendWaitFloors.length,1);
-  assert.equal(timing.visualNotendWaitFloors[0].visualMs,1042.918);
+  assert.ok(Math.abs(Number(timing.visualNotendWaitFloors[0].visualMs)-1042.918)<1e-9);
 }
 
 {
