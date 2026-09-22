@@ -2,6 +2,17 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.21 / 导出内核 0.6.21
+
+- 根据 0.6.20 实测继续处理长故事末段性能与全屏文字（`intro`）层级错误。0.6.20 已将最后一段的 DOM 截图从 5358 张降到 1494 张，其中 1288 次走 base-only；但该段仍有约 101 秒 `Page.captureScreenshot`、39 秒 PNG 解码/纹理上传，持续 intro 淡入区间仍会掉到约 8 fps。
+- 新诊断明确最后的持续动画全部来自全屏文字的 CSS opacity 淡入：`lastAnimation.className=_fadeIn_...`、`properties=["opacity"]`，共 6257 个 animation sample。WebGAL/MyGO 的 `introContainer` 本身位于 z-index 11，而普通文本框位于 z-index 6；Video+ 旧 DOM 合成却固定把 generic base texture 放在文本框下面，因此全屏文字出现时缓存的对话框仍被画在最上层。
+- 对只含 opacity 动画的 `intro` 行启用现有文字 atlas 快路径：将每一行静态字形只捕获一次，逐帧直接读取浏览器计算后的 opacity 并在 Pixi sprite 上更新 alpha。这样 fadeIn 不再每一帧触发 `Page.captureScreenshot`；slide/typing/pixelate/reveal 等含 transform/filter/clip/尺寸变化的 intro 动画仍保留原捕获路径。
+- 新增独立 `introTextContainer`。intro 活动时 generic base（包含 intro 背景）按真实 DOM 层级放到普通 textbox 上方，intro 文字 atlas 再放在 base 上方；intro 结束后恢复正常的 base → textbox 顺序。默认黑色全屏文字因此会真正遮住旧对话框，半透明背景也按捕获到的 alpha 正常覆盖。
+- base DOM 截图会排除已经进入 intro atlas 的文字，避免同一行同时烘焙在 base texture 和 atlas 中。intro atlas 的 opacity 不受普通对白 `textSettled` 强制 1 的逻辑影响。
+- 诊断新增 `handledIntroOpacitySamples`、`introActiveFrames`、`introAtlasEntries`。预期同一 15 分钟样例的最后 Worker 中 `baseOnlyRefreshes` 将从约 1288 显著下降，而这些 intro opacity sample 转入 atlas 逐帧 alpha 更新。
+- pipeline revision 更新为 `intro-overlay-atlas-0.7.21`。
+
+
 ### 内部版本 0.7.20 / 导出内核 0.6.20
 
 - 针对长故事末段持续 DOM animation 将导出拖到约 2–4 fps 的情况，拆分 GPU DOM 刷新范围。此前任意有限 DOM 动画只要发生一帧变化，就会固定串行截取 base、textbox、final text 和 text atlas（通常 4 张完整 PNG），再全部解码上传到 Pixi；实测样例最后一段 1337 次刷新产生 5358 张 DOM 截图，单次刷新约四张。
