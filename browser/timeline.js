@@ -166,7 +166,7 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
   pc.arrangeNewPerform=function(perform,s,...rest){
     const params=Object.fromEntries(s.args.map(a=>[a.key,a.value]));
     const command=s.command===0?'say':s.commandRaw;
-    const sentenceList=core.sceneManager.sceneData.currentScene?.sentenceList||[],sentenceIndex=sentenceList.indexOf(s);
+    const sentenceList=core.sceneManager.sceneData.currentScene?.sentenceList||[],listedIndex=sentenceList.indexOf(s),sentenceIndex=listedIndex>=0?listedIndex:core.sceneManager.sceneData.currentSentenceId;
     if(command==='say'&&params.notend===true&&params.next===true){
       const waitIndex=globalThis.__exportFindChainedWaitIndex(sentenceList,sentenceIndex);
       if(waitIndex>=0){
