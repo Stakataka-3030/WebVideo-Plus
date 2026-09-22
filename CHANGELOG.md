@@ -2,6 +2,11 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.33 / 导出内核 0.6.30
+
+- 修复 0.7.32 新增 Cubism2 motion queue 回归测试的 Node VM 跨 realm 断言问题。浏览器脚本在 `vm.createContext` 中返回的普通对象具有 VM realm 原型，而 `node:assert/strict` 下的 `deepEqual` 实际按 deep-strict 语义比较原型，因此即使 `{start:'a',fade:'b',end:'c'}` 字段完全正确也会误判失败并触发 `Export lifecycle regression checks failed`。
+- 回归改为逐字段比较 `start/fade/end`，继续验证混淆字段推断结果，同时不再依赖跨 realm 对象原型一致性。运行时导出逻辑与导出内核不变，因此 kernel 继续保持 `0.6.30`。
+
 ### 内部版本 0.7.32 / 导出内核 0.6.30
 
 - 完成 0.7.31 Cubism2 idle seek 的运行时兼容补丁。Cubism2 C++ API 文档虽然提供 `MotionQueueEnt.setStartTimeMSec/setFadeInStartTimeMSec/setEndTimeMSec`，常见 Web 版 core 会把这些 setter 与内部字段混淆，不能假设方法名仍存在。
