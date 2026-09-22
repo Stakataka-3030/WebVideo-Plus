@@ -2,6 +2,16 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.17 / 导出内核 0.6.17
+
+- 修正 0.7.16 完整 Live2D phase replay 带来的长故事并行度回退。此前 replay 安全阈值直接按“预热帧总数”限制为成片帧数的 150%；若一个 Live2D phase 从故事开头持续到结尾，均匀切成 N 段时累计 warmup 约为 `(N-1)/2` 个完整故事长度，因此该硬阈值在数学上会把这类工程固定压到最多约 4 段。
+- replay/warmup 帧与正式输出帧成本并不等价：0.7.14 起 warmup 只推进逻辑并真实 render Pixi stage，不做 DOM capture、GPU readback、宿主拷贝、编码和写盘。Planner 原本在候选打分里已经使用 `ReplayPenaltyWeight = 0.35` 表示这种成本差异，但最终 hard cap 却仍按原始帧数计算；现在 hard cap 也统一使用同一 0.35 权重。
+- 150% 阈值现在解释为“加权 replay 成本上限”。持续单一 Live2D phase、8 个均匀 Worker 的原始 warmup 约为成片 350%，加权后约 122.5%，因此在语义安全切点足够时可以保留 8 段；更极端的 Worker 数仍会因加权 replay 成本过高而自动降低。
+- 只调整性能启发式，不改变 0.7.16 的正确性链路：切点仍回到当前 Live2D phase 起点，GPU Raw + DOM 模式仍逐帧真实 render warmup，严格模式 hard no-cut、对白 hard no-cut 和语义切点规则均保持。
+- segment diagnostics 的每次尝试新增 `rawReplayRatio`、`weightedReplayFrames`、`weightedReplayRatio`、`maxWeightedReplayFrames`，顶层记录 `replayCostWeight` 与 `maxWeightedReplayOverheadRatio`，方便判断实际降并行究竟是安全切点不足还是加权 replay 成本过高。
+- 新增 15 分钟持续 Live2D phase 的 8 Worker 原生 smoke；该用例的原始 warmup 明确超过旧 150% 帧数阈值，但新加权模型必须保留 8 段。pipeline revision 更新为 `weighted-replay-overhead-0.7.17`。
+
+
 ### 内部版本 0.7.16 / 导出内核 0.6.16
 
 - 在 0.7.14 已修复“warmup 逻辑推进但 Live2D/Pixi 未实际 render”的基础上，恢复 0.7.5 的 Live2D / WMDL phase-origin replay，但不恢复 0.7.12 的额外 1 秒前置回放。
