@@ -487,7 +487,8 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
 {
   const installerBase=fs.readFileSync(path.join(root,'installer','Installer.base.cs'),'utf8');
   const installerEnhancements=fs.readFileSync(path.join(root,'installer','installer-enhancements.mjs'),'utf8');
-  assert.ok(installerBase.includes('var outputClosed=new ManualResetEventSlim(false),errorClosed=new ManualResetEventSlim(false)'),'installer process runner must track redirected stream EOF separately from direct child exit');
+  assert.ok(installerBase.includes('var outputClosed=new ManualResetEventSlim(false);var errorClosed=new ManualResetEventSlim(false)'),'installer process runner must track redirected stream EOF with C# 5-compatible separate local declarations');
+  assert.ok(!installerBase.includes('var outputClosed=new ManualResetEventSlim(false),errorClosed=new ManualResetEventSlim(false)'),'installer must not use an implicit var declaration with multiple declarators');
   assert.ok(installerBase.includes('if(!outputClosed.Wait(1000))try{p.CancelOutputRead();}catch{}'),'installer stdout drain must be bounded when a launched descendant inherits the pipe');
   assert.ok(installerBase.includes('if(!errorClosed.Wait(1000))try{p.CancelErrorRead();}catch{}'),'installer stderr drain must be bounded when a launched descendant inherits the pipe');
   assert.ok(!installerBase.includes('}p.WaitForExit();if(p.ExitCode!=0)'),'installer must not use an unbounded post-exit WaitForExit after async redirection');
