@@ -271,6 +271,13 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
 }
 
 {
+  const renderSource=fs.readFileSync(path.join(root,'browser','render.js'),'utf8');
+  const gpuRawSource=fs.readFileSync(path.join(root,'src','GpuRawExport.cs'),'utf8');
+  assert.ok(renderSource.includes('__webviewWarmupStep=async frame=>'),'GPU raw warmup must expose a stage-rendering step');
+  assert.ok(renderSource.includes('currentApp.render();return value;'),'warmup step must actually render the Pixi stage so Live2D/WMDL advances');
+  assert.ok(gpuRawSource.includes('domOverlay?"__webviewWarmupStep(":"__webviewStep("'),'GPU raw warmup must render the stage when DOM compositing suppresses normal per-step renders');
+  assert.ok(gpuRawSource.includes('"warmupStageRenders",warmupStageRenders'),'GPU raw result must expose warmup stage-render diagnostics');
+
   const coreSource=fs.readFileSync(path.join(root,'src','Core.cs'),'utf8');
   const uiSource=fs.readFileSync(path.join(root,'browser','export-component.js'),'utf8');
   assert.ok(coreSource.includes('"notendVisualTail",true'),'backend settings must default notend visual tail on');

@@ -2,6 +2,15 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.14 / 导出内核 0.6.14
+
+- 根据 0.6.13 实测重新定位多 Worker 接缝处的 Live2D/WMDL 动作重置。该样例第二段从 frame 342 输出、从 frame 274 预热，replayKinds 只有 say，已确认 0.7.13 不再发生 `changeFigure-phase` 回放；但成片 frame 342 仍直接回到模型初始动作并重新播放，因此上一轮 phase replay 不是根因。
+- 根因在 GPU Raw + DOM 合成的 warmup：`__stepExportFrame` 在 `__gpuDomState` 存在时会跳过 `app.render()`，而分片预热此前只调用 `__webviewStep`。于是逻辑时钟虽然从 replayFrame 推进到了 startFrame，Live2D/WMDL 的 Pixi 模型却没有经历对应的逐帧 render/update；新 Worker 第一张真正输出的帧才开始渲染模型，视觉上就表现为“切点回原始姿态，然后动作重新播放”。
+- 新增 `__webviewWarmupStep`：在正常逻辑步进后强制执行一次 Pixi stage render。GPU Raw 在 DOM 合成开启时，所有 replay/warmup 帧改用该路径；这些帧仍不截图、不编码、不上传 DOM，只用于让 Live2D/WMDL、physics 与 Pixi 运行时真正推进到切点状态。
+- `gpuRawDom=false` 时保持原路径，避免重复 render。结果侧车新增 `warmupStageRenders`，可直接确认本次 Worker 预热实际执行了多少次舞台渲染。
+- 新增静态回归，禁止再次出现“warmup 只推进逻辑时钟但不 render Pixi stage”的状态。pipeline revision 更新为 `render-live2d-warmup-0.7.14`，旧分片缓存自动失效。
+
+
 ### 内部版本 0.7.13 / 导出内核 0.6.13
 
 - 回退 0.7.5 引入、0.7.12 又继续强化的 Live2D / WMDL `phase replay`。实测表明接缝处的动作重置不是 fading 窗口不足，而是“从最近一次 motion phase 起点重新真实重放”本身会让部分模型在新 Worker 中回到原始姿态再开始动作。
