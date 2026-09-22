@@ -2,6 +2,15 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.38 / 导出内核 0.6.33
+
+- 修复 MyGO 等 Terre 分发版重启后前端提示“无法连接本地导出服务”的生命周期问题。用户诊断包显示 lifecycle 与 QueueService 均能正常启动，但最初 `Process.Start()` 返回的 Terre PID 会在几十秒内退出并把监听端口交棒给另一个长期进程；旧逻辑使用 `while (Commands.Alive(backendPid))`，因此错误地把 launcher PID 退出当成 Terre 已关闭，并在 `finally` 中主动杀掉 Video+ service。
+- lifecycle 现在在已记录 backend PID 消失时先重新读取 `/assets/video-export-instance.json` 校验当前 `instanceId`，再通过实际 Terre 端口的 LISTENING PID 接管新后端。PID handoff 最多允许 8 秒窗口，成功时记录 `backend-adopted`；只有实例身份和监听进程都无法恢复时才认为 Terre 真正退出。
+- attach/reuse 同样不再把历史 `backendPid` 死亡本身视为 takeover 依据，避免新旧 launcher 交接窗口把仍健康的 Terre 实例误停。
+- 修复 service discovery 清理的 PID 层级错误。`Commands.Start()` 返回的是 `process-guard.exe` PID，而 `video-export-service.json / service-state.json` 记录的是真正 QueueService PID；旧 `CleanupOwned` 因两者不相等会留下死亡端口。现在强制清理优先按唯一 `serviceId` 所有权删除，并在 guard 结束后再次执行健康性 stale sweep。
+- `lifecycle.json` 新增 `serviceGuardPid`，同时保留 discovery 中的实际 `servicePid/serviceId`，以后日志可直接区分 guard 与 QueueService 本体。
+- 新增 lifecycle 回归断言，禁止恢复为“原始 backend PID 一死就结束”的实现，并要求 PID 接管、serviceId 清理和 stale sweep 均存在。
+
 ### 内部版本 0.7.36 / 导出内核 0.6.32
 
 - 修复导出任务“本阶段已用”计时被后端状态写入/轮询返回节奏阻塞的问题。任务状态仍由 `/api/jobs` 提供可信的阶段、帧数、百分比与 ETA；纯计时显示改为以前一次服务端 `stageElapsedSeconds` 为基准，由导出面板自己的 500 ms 时钟独立外推。即使某一轮规划、编码或状态请求暂时没有返回，秒数仍会持续刷新，不会伪造业务进度。
