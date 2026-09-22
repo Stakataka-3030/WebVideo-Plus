@@ -232,25 +232,66 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     const epoch=globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);
     let idleStart=Number(lifetime.startMs)||0;
     if(epoch){
+      const epochTime=Math.round(Math.ceil(Number(epoch.atMs)*fps/1000-.000001)*1000/fps);
       const group=String(epoch.group??'');
       if(group){
         const entries=await cubism2Entries(manager,group),index=Number.isInteger(Number(epoch.index))?Number(epoch.index):0,selected=entries.find(x=>x.index===index);
         if(!selected)return null;
-        const elapsed=Math.max(0,Number(nowMs)-Number(epoch.atMs));
+        const elapsed=Math.max(0,Math.round(nowMs)-epochTime);
         if(selected.loop)return {kind:'explicit',group,index,priority:Number(epoch.priority)||3,offsetMs:elapsed%selected.durationMs,durationMs:selected.durationMs,loop:true,motion:selected.motion,originMs:Number(epoch.atMs)};
         if(elapsed<selected.durationMs)return {kind:'explicit',group,index,priority:Number(epoch.priority)||3,offsetMs:elapsed,durationMs:selected.durationMs,loop:false,motion:selected.motion,originMs:Number(epoch.atMs)};
-        idleStart=Number(epoch.atMs)+selected.durationMs;
-      }else idleStart=Number(epoch.atMs);
+        idleStart=epochTime+selected.durationMs;
+      }else idleStart=epochTime;
     }
     const group=manager.groups?.idle,entries=await cubism2Entries(manager,group);
     const scheduleKey=target+'|'+Number(lifetime.startMs)+'|'+String(lifetime.source||'')+'|'+idleStart;
-    const state=globalThis.__exportResolveCubism2Idle(entries,Math.max(0,Number(nowMs)-idleStart),scheduleKey);
+    const state=globalThis.__exportResolveCubism2Idle(entries,Math.max(0,Math.round(nowMs)-idleStart),scheduleKey);
     if(!state)return null;
     const selected=entries.find(x=>x.index===state.index);if(!selected)return null;
     return {...state,kind:'idle',group,priority:1,motion:selected.motion,originMs:idleStart};
   };
+  // Rebuild only saved motion parameters for a completed non-looping motion.
+  // Do not restart a static model or replay rendered frames from its birth.
+  const restoreCompletedCubism2Motion=async(manager,core,target,lifetime,nowMs)=>{
+    if(!lifetime||typeof MotionQueueManager==='undefined'||typeof UtSystem==='undefined')return false;
+    const idleDefs=manager.definitions?.[manager.groups?.idle];if(Array.isArray(idleDefs)&&idleDefs.length)return false;
+    const epochs=(lifetime.motionEvents||[]).filter(e=>Number(e.atMs)<=nowMs+.01).sort((a,b)=>Number(a.atMs)-Number(b.atMs));
+    if(!epochs.length||!epochs[epochs.length-1].group)return false;
+    const motions=[];
+    for(const epoch of epochs){const entries=await cubism2Entries(manager,String(epoch.group||'')),selected=entries.find(e=>e.index===(Number(epoch.index)||0));if(epoch.group&&!selected)return false;motions.push({epoch,selected});}
+    const last=motions[motions.length-1];if(!last.selected||last.selected.loop||nowMs<Number(last.epoch.atMs)+last.selected.durationMs)return false;
+    const seen=new WeakSet();
+    const findDefinitions=(obj,depth=0)=>{if(!obj||typeof obj!=='object'||seen.has(obj)||depth>4)return null;seen.add(obj);if(Array.isArray(obj)){if(obj.length&&obj.every(x=>x&&typeof x.getDefaultValue==='function'&&typeof x.getParamID==='function'))return obj;return null;}for(const value of Object.values(obj)){const found=findDefinitions(value,depth+1);if(found)return found;}return null;};
+    const definitions=findDefinitions(core.getModelImpl?.());if(!definitions)return false;
+    const context=core.getModelContext(),values=new Map(),touched=new Set();
+    const indexOf=id=>typeof id==='number'?id:core.getParamIndex(String(id));
+    const put=(index,value)=>{const v=Math.max(context.getParamMin(index),Math.min(context.getParamMax(index),Number(value)||0));values.set(index,Math.fround(v));touched.add(index);};
+    for(const def of definitions)put(indexOf(def.getParamID()),def.getDefaultValue());
+    for(const param of manager.settings?.initParams||[])put(indexOf(param.id),param.value);
+    const proxyContext={getParamFloat:index=>values.get(index)||0,getParamMin:index=>context.getParamMin(index),getParamMax:index=>context.getParamMax(index)};
+    const proxy={getParamIndex:indexOf,getParamFloat:id=>values.get(indexOf(id))||0,getModelContext:()=>proxyContext,setParamFloat:(id,value,weight=1)=>{const index=indexOf(id),old=values.get(index)||0;put(index,old*(1-weight)+Number(value)*weight);}};
+    const queue=new MotionQueueManager(),originalTime=UtSystem.getUserTimeMSec;let replayNow=0,replayFrames=0;
+    try{
+      UtSystem.getUserTimeMSec=()=>replayNow;
+      for(let i=0;i<motions.length;i++){
+        const {epoch,selected}=motions[i];queue.stopAllMotions();if(!selected)continue;
+        const motion=Object.assign(Object.create(Object.getPrototypeOf(selected.motion)),selected.motion);
+        const first=Math.ceil(Number(epoch.atMs)*fps/1000-.000001),next=i+1<motions.length?Math.ceil(Number(motions[i+1].epoch.atMs)*fps/1000-.000001):Math.floor(nowMs*fps/1000)+1;
+        queue.startMotion(motion);
+        for(let frame=first;frame<next;frame++){
+          replayNow=Math.round(frame*1000/fps);queue.updateParam(proxy);replayFrames++;
+          if(queue.isFinished())break;
+          if(replayFrames>200000)throw new Error('Cubism2 completed-motion replay exceeded bound');
+        }
+      }
+    }finally{UtSystem.getUserTimeMSec=originalTime;queue.stopAllMotions();}
+    manager.stopAllMotions?.();for(const index of touched)core.setParamFloat(index,values.get(index));core.saveParam();
+    manager.__webVideoIdleSeekLast={target,startMs:Number(lifetime.startMs),group:String(last.epoch.group),index:last.selected.index,kind:'completed',originMs:Number(last.epoch.atMs),offsetMs:last.selected.durationMs,rebased:true,rebaseMode:'terminal-replay',replayFrames};
+    return true;
+  };
+
   const seekCubism2State=async(manager,queue,coreModel,target,lifetime,nowMs)=>{
-    const state=await resolveCubism2State(manager,target,lifetime,nowMs);if(!state)return false;
+    const state=await resolveCubism2State(manager,target,lifetime,nowMs);if(!state)return await restoreCompletedCubism2Motion(manager,coreModel,target,lifetime,nowMs);
     manager.stopAllMotions?.();
     const ok=await manager.startMotion(state.group,state.index,state.priority);if(!ok)return false;
     const after=Array.from(queue.motions||[]),entry=after[after.length-1];
@@ -281,6 +322,12 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
             return original(core,dt);
           };
           breath.__webVideoAbsoluteModelAge=true;
+        }
+        // Cubism2 has an implicit breath oscillator even without a motion/idle group.
+        if(!breath&&typeof inner.updateNaturalMovements==='function'){
+          inner.__webVideoAbsoluteNaturalAge=true;
+          const originalNatural=inner.updateNaturalMovements.bind(inner);
+          inner.updateNaturalMovements=(dt,time)=>{const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);return originalNatural(dt,lifetime?Math.max(0,nowMs-Number(lifetime.startMs)):time);};
         }
         const manager=inner.motionManager,queue=manager?.queueManager;
         if(!breath&&manager&&queue&&typeof manager.startRandomMotion==='function'&&typeof manager.loadMotion==='function'){
@@ -314,7 +361,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
       for(let index=0;index<children.length;index++){
         const inner=children[index]?.internalModel;if(!inner)continue;
         const manager=inner.motionManager,blink=inner.eyeBlink,physics=inner.physics;
-        rows.push({target,index,runtime:inner.breath?'cubism4':'cubism2',motionSeek:manager?.__webVideoIdleSeekLast?{...manager.__webVideoIdleSeekLast}:null,physicsHairs:Array.isArray(physics?.physicsHairs)?physics.physicsHairs.length:0,eyeBlink:blink?{state:Number(blink.eyeState),value:Number(blink.eyeParamValue),nextMs:Number(blink.nextBlinkTimeLeft)}:null});
+        rows.push({target,index,runtime:inner.breath?'cubism4':'cubism2',motionSeek:manager?.__webVideoIdleSeekLast?{...manager.__webVideoIdleSeekLast}:null,naturalAgeAligned:!!inner.__webVideoAbsoluteNaturalAge,physicsHairs:Array.isArray(physics?.physicsHairs)?physics.physicsHairs.length:0,eyeBlink:blink?{state:Number(blink.eyeState),value:Number(blink.eyeParamValue),nextMs:Number(blink.nextBlinkTimeLeft)}:null});
       }
     }
     return rows;
@@ -400,8 +447,9 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
   globalThis.__exportApplyLip=l=>{if(globalThis.__mygoApplyLip){__mygoApplyLip(l);return;}if(!l.active&&!controlled.has(l.target))return;if(l.active){if(!controlled.has(l.target))states.delete(l.target);controlled.add(l.target);levels.set(l.target,l.value);}else{controlled.delete(l.target);levels.delete(l.target);if(l.target===globalThis.__exportCurrentSimulatedTarget)return;}const p=__wgProbe.core.gameplay.pixiStage,obj=p.getStageObjByKey(l.target);if(!obj)return;globalThis.__exportWritingVoice=true;try{p.setModelMouthY(l.target,l.active?50+50*l.value:0);}finally{globalThis.__exportWritingVoice=false;}if(obj.sourceType==='live2d'){for(const model of obj.pixiContainer?.children||[]){const inner=model.internalModel;if(inner&&!bound.has(inner)){bound.add(inner);inner.on('beforeModelUpdate',()=>{if(!levels.has(l.target))return;const value=levels.get(l.target),core=inner.coreModel;core.setParamFloat?.('PARAM_MOUTH_OPEN_Y',value);core.setParameterValueById?.('ParamMouthOpenY',value);});}}}if(obj.sourceType==='img'){const state=l.value>.6?'open':l.value>.2?'half_open':'closed',s=__wgProbe.stageManager.getCalculationStageState(),item=s.figureAssociatedAnimation.find(x=>x.targetId===l.target),key=state==='half_open'?'halfOpen':state==='closed'?'close':'open',url=item?.mouthAnimation?.[key],cacheKey=obj.uuid+':'+url;if(url&&states.get(l.target)!==cacheKey){states.set(l.target,cacheKey);p.performMouthSyncAnimation(l.target,item,state,'center');}}};
 globalThis.__stepExportFrame=async({t,elapsed,batch,lips})=>{
   globalThis.__exportCurrentSimulationMs=Number(t)||0;
-  if(live2dBindingPending){await bindLive2DDeterminism();live2dBindingPending=false;}
+  // Queue timestamps and motion phase must describe the same (already advanced) frame.
   if(elapsed>0)await __pwClock.controller.runFor(elapsed);
+  if(live2dBindingPending){await bindLive2DDeterminism();live2dBindingPending=false;}
   for(let i=0;i<batch.length;){
     const event=batch[i];
     if(!String(event.command||'').startsWith('__')&&Number.isInteger(event.forwardGroup)){
