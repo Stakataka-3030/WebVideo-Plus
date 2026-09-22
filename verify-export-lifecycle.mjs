@@ -256,7 +256,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   const uiSource=fs.readFileSync(path.join(root,'browser','export-component.js'),'utf8');
   assert.ok(coreSource.includes('"notendVisualTail",true'),'backend settings must default notend visual tail on');
   assert.ok(uiSource.includes("notendVisualTail:true"),'export UI fallback settings must default notend visual tail on');
-  assert.ok(uiSource.includes('平滑 -notend 连续对白过渡（推荐）'),'advanced settings must expose the notend visual-tail toggle');
+  assert.ok(uiSource.includes('平滑自定义引擎 -notend 连续对白过渡（推荐）'),'advanced settings must expose the notend visual-tail toggle');
   assert.ok(uiSource.includes("settings.notendVisualTail!==false"),'advanced checkbox must render checked unless explicitly disabled');
 }
 
