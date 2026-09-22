@@ -53,7 +53,7 @@ namespace NativeVideo {
    string stateFile=Path.Combine(state,"service-state.json");var oldState=J.TryRead(stateFile);int pid=(int)J.N(oldState,"pid");if(pid>0&&!Commands.Alive(pid))try{File.Delete(stateFile);}catch{}
   }
   public static async Task Run(){
-   string configFile=Files.Full(App.Arg("--config")),backend=Files.Full(App.Arg("--backend"));var config=J.D(J.Read(configFile));string terre=Path.GetDirectoryName(backend),state=J.S(config,"stateDir");Directory.CreateDirectory(state);config["terreDir"]=terre;config["sourcePackageRoot"]=Files.Root;Commands.RuntimePath=J.S(config,"runtimePath");
+   string configFile=Files.Full(App.Arg("--config")),backend=Files.Full(App.Arg("--backend"));var config=J.D(J.Read(configFile));string terre=Path.GetDirectoryName(backend),state=J.S(config,"stateDir");Directory.CreateDirectory(state);config["terreDir"]=terre;config["sourcePackageRoot"]=Files.Root;Commands.RuntimePath=J.S(config,"runtimePath");int wrapperPid;if(!int.TryParse(App.Arg("--wrapper-pid","0"),out wrapperPid))wrapperPid=0;
    string environmentPort=Environment.GetEnvironmentVariable("WEBGAL_PORT");int portValue;if(int.TryParse(environmentPort,out portValue)){var address=new UriBuilder(J.S(config,"terreUrl")){Port=portValue+1};config["terreUrl"]=address.Uri.ToString();var alt=new UriBuilder(address.Uri){Host=address.Host=="localhost"?"127.0.0.1":"localhost"};config["allowedOrigins"]=new[]{address.Uri.GetLeftPart(UriPartial.Authority),alt.Uri.GetLeftPart(UriPartial.Authority)};}
    string lockFile=Path.Combine(state,"lifecycle.lock"),control=Path.Combine(state,"lifecycle-control.json"),logFile=Path.Combine(state,"lifecycle.log"),session=Path.Combine(state,"runtime-session.json");Action<object> log=o=>{try{Files.Append(logFile,o);}catch{}};
    FileStream lockHandle=null;
@@ -83,17 +83,18 @@ namespace NativeVideo {
     else{int at=Array.IndexOf(App.Args,"--");var args=at<0?new string[0]:App.Args.Skip(at+1).ToArray();backendProcess=Process.Start(new ProcessStartInfo(backend,string.Join(" ",args.Select(Commands.Quote))){WorkingDirectory=terre,UseShellExecute=false,CreateNoWindow=J.B(config,"hideBackendWindow")});backendPid=backendProcess.Id;}
     log(J.O("at",DateTime.UtcNow.ToString("o"),"phase",attach?"attached":"backend-started","backendPid",backendPid));
     while(Commands.Alive(backendPid)){
+     if(wrapperPid>0&&!Commands.Alive(wrapperPid)){stopBackend=true;log(J.O("at",DateTime.UtcNow.ToString("o"),"phase","wrapper-exited","wrapperPid",wrapperPid));break;}
      if(J.S(J.TryRead(control),"action")=="stop"){stopBackend=true;break;}
      if(service==null||service.HasExited){
       if(service!=null){int exitedPid=servicePid;service.Dispose();service=null;CleanupServiceFiles(terre,state,exitedPid);if(restarts++>=3)throw new IOException("导出服务连续启动失败，请查看 service-error.log");}
       service=Commands.Start(Files.Exe,new[]{"service","--config",session,"--error-log",Path.Combine(state,"service-error.log")});servicePid=service.Id;service.OutputDataReceived+=(s,e)=>{if(e.Data!=null)Files.Append(Path.Combine(state,"service.log"),J.O("message",e.Data));};service.ErrorDataReceived+=(s,e)=>{if(e.Data!=null)Files.Append(Path.Combine(state,"service.log"),J.O("error",e.Data));};service.BeginOutputReadLine();service.BeginErrorReadLine();log(J.O("at",DateTime.UtcNow.ToString("o"),"phase","service-started","pid",servicePid));
      }
-     J.Write(Path.Combine(state,"lifecycle.json"),J.O("pid",Process.GetCurrentProcess().Id,"wrapperPid",int.Parse(App.Arg("--wrapper-pid","0")),"backendPid",backendPid,"servicePid",servicePid,"terreDir",terre,"terreUrl",J.S(config,"terreUrl"),"version",VersionInfo.Kernel,"updatedAt",DateTime.UtcNow.ToString("o")));await Task.Delay(500);
+     J.Write(Path.Combine(state,"lifecycle.json"),J.O("pid",Process.GetCurrentProcess().Id,"wrapperPid",wrapperPid,"backendPid",backendPid,"servicePid",servicePid,"terreDir",terre,"terreUrl",J.S(config,"terreUrl"),"version",VersionInfo.Kernel,"updatedAt",DateTime.UtcNow.ToString("o")));await Task.Delay(500);
     }
    }catch(Exception e){log(J.O("phase","failed","message",e.Message));throw;}
    finally{
     if(service!=null){try{if(!service.HasExited)service.Kill();}catch{}try{service.Dispose();}catch{}}CleanupServiceFiles(terre,state,servicePid);
-    if(stopBackend&&Commands.Alive(backendPid)){using(var p=Process.Start(new ProcessStartInfo("taskkill.exe","/PID "+backendPid+" /T /F"){UseShellExecute=false,CreateNoWindow=true})){p.WaitForExit(5000);}}
+    if(stopBackend&&Commands.Alive(backendPid)){using(var p=Process.Start(new ProcessStartInfo("taskkill.exe","/PID "+backendPid+" /F"){UseShellExecute=false,CreateNoWindow=true})){p.WaitForExit(5000);}}
     if(backendProcess!=null)backendProcess.Dispose();
     if(lockHandle!=null){lockHandle.Dispose();lockHandle=null;}if(File.Exists(lockFile)&&J.N(J.TryRead(lockFile),"pid")==Process.GetCurrentProcess().Id)try{File.Delete(lockFile);}catch{}
     log(J.O("at",DateTime.UtcNow.ToString("o"),"phase","stopped"));

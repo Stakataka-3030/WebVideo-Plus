@@ -2,6 +2,14 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.15 / 导出内核 0.6.15
+
+- 修复 Terre 在系统浏览器原本未运行时拉起 Chrome 等默认浏览器后，关闭 Terre 会把整个浏览器一并结束的问题。根因是 Terre 生命周期此前复用了导出 Worker 的 `process-guard`，从而让 Terre 后端及它新启动的浏览器继承了 `KILL_ON_JOB_CLOSE` Job Object；生命周期结束时浏览器也会被 Windows 一起回收。
+- Terre 生命周期现在直接启动原生 lifecycle，不再进入导出 Worker 的 kill-on-close Job Object；导出 Worker 自身仍继续使用 `process-guard`，其 Chromium/WebView2 子进程隔离与异常清理行为不变。
+- 为保留异常退出清理，lifecycle 继续监视 `wrapperPid`；若 Terre 启动器异常消失，会主动结束生命周期。同时停止 Terre 后端时不再使用 `taskkill /T` 递归杀整个子进程树，只终止 Terre 后端根进程，避免误伤已经被用户用于其他页面的外部浏览器。
+- 新增静态回归检查，确保 Terre launcher 不再接入 `process-guard`、wrapper 失联仍能触发收尾，并禁止生命周期恢复 `/T /F` 的递归进程树终止。
+
+
 ### 内部版本 0.7.14 / 导出内核 0.6.14
 
 - 根据 0.6.13 实测重新定位多 Worker 接缝处的 Live2D/WMDL 动作重置。该样例第二段从 frame 342 输出、从 frame 274 预热，replayKinds 只有 say，已确认 0.7.13 不再发生 `changeFigure-phase` 回放；但成片 frame 342 仍直接回到模型初始动作并重新播放，因此上一轮 phase replay 不是根因。

@@ -87,7 +87,12 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
 
 
 {
+  const launcherSource=fs.readFileSync(path.join(root,'launcher','TerreLauncher.cs'),'utf8');
+  assert.ok(launcherSource.includes('new ProcessStartInfo(native'),'Terre lifecycle must launch outside the export-worker kill-on-close job');
+  assert.ok(!launcherSource.includes('process-guard.exe'),'Terre lifecycle must not inherit the export-worker process guard');
   const lifecycleSource=fs.readFileSync(path.join(root,'src','Lifecycle.cs'),'utf8');
+  assert.ok(lifecycleSource.includes('wrapperPid>0&&!Commands.Alive(wrapperPid)'),'unguarded lifecycle must still stop when its wrapper disappears');
+  assert.ok(!lifecycleSource.includes('/T /F'),'Terre shutdown must not recursively kill browser descendants');
   assert.ok(lifecycleSource.includes('await ReuseExisting(config,state,control,oldPid)'),'relaunch must verify the old lifecycle instead of blindly opening a stale Terre URL');
   assert.ok(lifecycleSource.includes('await ExistingReady(config)'),'existing lifecycle reuse must require both Terre identity and export-service health');
   assert.ok(lifecycleSource.includes('restart-takeover'),'an unhealthy old lifecycle must be asked to stop before a new owner takes the lock');
