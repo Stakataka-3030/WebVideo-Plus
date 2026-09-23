@@ -29,7 +29,7 @@ namespace NativeVideo {
    if(modules.Contains("projectCore")){
     source=Once(source,"jsxRuntimeExports.jsx(WebVideoTimelineHost,{})]","jsxRuntimeExports.jsx(WebVideoTimelineHost,{}),jsxRuntimeExports.jsx(WebVideoToolsHost,{})]");
     foreach(var name in new[]{"project-core.js","project-bridge.js","tools-host.js"})prefix+=File.ReadAllText(Path.Combine(Files.Root,"features/core",name)).Replace("__WEBVIDEO_MODULES__",J.Text(modules))+"\n";
-    foreach(var feature in ModuleCatalog.Selectable.Where(m=>!new[]{"timelineNavigator","timelineSelector","exporter","subtitles","compactGameTools"}.Contains(m)&&modules.Contains(m)))prefix+=File.ReadAllText(Path.Combine(Files.Root,"features/modules",feature+".js"))+"\n";
+    foreach(var feature in ModuleCatalog.Selectable.Where(m=>!new[]{"timelineNavigator","timelineSelector","exporter","layerExport","subtitles","compactGameTools"}.Contains(m)&&modules.Contains(m)))prefix+=File.ReadAllText(Path.Combine(Files.Root,"features/modules",feature+".js"))+"\n";
     prefix+="(()=>{const s=document.createElement('style');s.textContent="+J.Text(File.ReadAllText(Path.Combine(Files.Root,"features/core/tools.css")))+";document.head.appendChild(s);})();\n";
    }
    if(ModuleCatalog.NeedsKernel(modules)){
