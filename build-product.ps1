@@ -27,7 +27,7 @@ $taskCompiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.ex
 if($LASTEXITCODE -ne 0){throw 'Timeline build failed'}
 & node (Join-Path $taskRoot 'configure-installer.mjs') @taskNodeArgs
 if($LASTEXITCODE -ne 0){throw 'Installer configuration failed'}
-& $taskCompiler /nologo /target:exe /platform:x64 /optimize+ /main:NativeVideo.App ('/out:'+(Join-Path $taskRoot 'package/WebVideoPlus.Manager.exe')) /r:System.Web.Extensions.dll /r:System.Net.Http.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll (Join-Path $taskRoot 'src/Core.cs') (Join-Path $taskRoot 'src/Integration.cs') (Join-Path $taskRoot 'manager/ManagerMain.cs') (Join-Path $taskRoot 'manager/ProductIntegration.cs') (Join-Path $taskRoot 'manager/ModuleCatalog.cs')
+& $taskCompiler /nologo /target:exe /platform:x64 /optimize+ /main:NativeVideo.App ('/win32icon:'+(Join-Path $taskRoot 'WebVideo+_icon.ico')) ('/out:'+(Join-Path $taskRoot 'package/WebVideoPlus.Manager.exe')) /r:System.Web.Extensions.dll /r:System.Net.Http.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll (Join-Path $taskRoot 'src/Core.cs') (Join-Path $taskRoot 'src/Integration.cs') (Join-Path $taskRoot 'manager/ManagerMain.cs') (Join-Path $taskRoot 'manager/ProductIntegration.cs') (Join-Path $taskRoot 'manager/ModuleCatalog.cs')
 if($LASTEXITCODE -ne 0){throw 'Product manager build failed'}
 & node (Join-Path $taskRoot 'build-feature-assets.mjs') @taskNodeArgs
 if($LASTEXITCODE -ne 0){throw 'Feature assets failed'}
@@ -70,7 +70,7 @@ $taskInstallerLabel=$taskBuildLabel
 $taskInstaller=Join-Path $taskRoot ('dist/WebVideo+-Setup-'+$taskInstallerLabel+'.exe')
 $taskInstallerConfig=$taskInstaller+'.config'
 if(Test-Path $taskInstallerConfig){Remove-Item -LiteralPath $taskInstallerConfig -Force}
-& $taskCompiler /nologo /target:winexe /platform:x64 /optimize+ /main:InstallerMain ('/win32manifest:'+(Join-Path $taskRoot 'native.manifest')) ('/out:'+$taskInstaller) /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll ('/resource:'+$taskArchive+',payload.zip') (Join-Path $taskRoot 'installer/Installer.cs') $taskGenerated (Join-Path $taskRoot 'manager/ModuleCatalog.cs')
+& $taskCompiler /nologo /target:winexe /platform:x64 /optimize+ /main:InstallerMain ('/win32manifest:'+(Join-Path $taskRoot 'native.manifest')) ('/win32icon:'+(Join-Path $taskRoot 'WebVideo+_icon.ico')) ('/out:'+$taskInstaller) /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll ('/resource:'+$taskArchive+',payload.zip') (Join-Path $taskRoot 'installer/Installer.cs') $taskGenerated (Join-Path $taskRoot 'manager/ModuleCatalog.cs')
 if($LASTEXITCODE -ne 0){throw 'Installer build failed'}
 $taskHash+'  '+(Split-Path -Leaf $taskArchive) | Set-Content -LiteralPath ($taskArchive+'.sha256') -Encoding ascii
 if($InternalBuild){Write-Output ('Internal build '+$taskInternalVersion+' complete; product upgrade version remains '+$taskProductVersion+'.')}elseif($Fast){Write-Output 'Fast development build complete. Run a normal build before release.'}
