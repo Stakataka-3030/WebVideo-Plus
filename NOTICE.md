@@ -10,7 +10,7 @@
 - **Anogo**：`anogo-actions.factory.json` 中的默认动作词表来自 A-kirami/anogo，继续适用其 AGPL-3.0 来源与许可；WebVideo+ 自行实现的 Anogo 导入适配代码采用 MPL-2.0。完整 Anogo 创作工具并不随 WebVideo+ 捆绑。
 - **js-yaml**：随包使用 4.1.1 压缩版本，保留 MIT 许可。
 - **webgal-skill / 演出参考资料**：`xxSak1xx/webgal-skill` 仓库采用 MIT 许可证；其中演出资料同时明确感谢北风的猫5306。WebVideo+ 对这些资料的引用、整理和兼容性修正不会消除原始署名或其他权利。
-- **Playwright / Electron**：仅属于早期自动化与导出原型的历史来源。当前 0.4.10.2 导出核心使用 C# + WebView2，不捆绑这两个运行时；仓库中保留的相关 LICENSE/NOTICE 用于来源和许可溯源。
+- **Playwright / Electron**：仅属于早期自动化与导出原型的历史来源。当前 1.0.0 导出核心使用 C# + WebView2，不捆绑这两个运行时；仓库中保留的相关 LICENSE/NOTICE 用于来源和许可溯源。
 - **社区与项目数据**：角色名称、角色 ID、商标和其他事实/标识不因收录而成为 WebVideo+ 的专有内容。对社区提供或另有归属的条目，MPL-2.0 仅覆盖 WebVideo+ 有权许可的原创选择、结构、整理和新增内容。
 
 各项第三方来源与运行关系见 [`licenses/THIRD-PARTY.md`](licenses/THIRD-PARTY.md)；按路径和材料划分的许可范围见 [`LICENSES.md`](LICENSES.md)；许可文本见 `licenses/` 和 `vendor/js-yaml-LICENSE`。
