@@ -17,7 +17,7 @@ This scope statement is intended to make the repository's mixed provenance expli
 | `character-map.factory.json`, `filter-presets.factory.json`, and other project datasets containing factual names/IDs or contributor-supplied entries | MPL-2.0 for WebVideo+ original selection, schema, arrangement, and additions; third-party rights reserved where applicable | Names, trademarks, fictional characters, and separately attributed contributor material are not relicensed merely by inclusion in the dataset. |
 | Files under `licenses/` | Their named upstream licenses/notices | These files are copies of third-party license/notice texts and are not relicensed by the root MPL-2.0 license. |
 | WebView2, FFmpeg, Node.js, DeepSeek Harness / DSH, pi-ai and other packaged/runtime dependencies | Their respective upstream licenses | See `NOTICE.md`, `licenses/THIRD-PARTY.md`, package lockfiles, and license files shipped with dependencies. |
-| Playwright / Electron references | Historical/research provenance only | Current 0.4.10.2 runtime does not bundle these runtimes; retained license/notice files document historical provenance. |
+| Playwright / Electron references | Historical/research provenance only | Current 1.0.0 runtime does not bundle these runtimes; retained license/notice files document historical provenance. |
 
 ## MPL notice
 
@@ -29,6 +29,6 @@ The repository-level `LICENSE` and this file provide that notice for covered fil
 
 ## Released versions
 
-The MPL-2.0 grant applies to WebVideo+ original code in the 0.4.10 series, including the original portions corresponding to the published `v0.4.10.2` release. The published tag predates the repository-level license files, so the tag snapshot itself does not contain them; the license grant and exception map are maintained here on `main`. Future release tags should include `LICENSE` and `LICENSES.md` directly.
+The MPL-2.0 grant applies to WebVideo+ original code across the released series, including the original portions corresponding to `v0.4.10.2` and the 1.0.0 release line. The `v0.4.10.2` tag predates the repository-level license files, so that historical tag snapshot itself does not contain them; current release tags should include `LICENSE`, `LICENSES.md`, `NOTICE.md`, and the third-party notices shipped by the build.
 
 For source and executable redistribution, preserve the notices and source-availability requirements of MPL-2.0 and any additional obligations of the separately licensed material listed above.
