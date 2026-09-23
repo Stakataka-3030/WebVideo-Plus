@@ -516,11 +516,12 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   new vm.Script(menuSource,{filename:'menu-actions.js'});
   new vm.Script(toolbarSource,{filename:'toolbar.js'});
   assert.ok(menuSource.includes("text:'导出舞台'")&&menuSource.includes("exportKind:'stage'"),'import/export menu must expose the stage export entry');
+  assert.ok(menuSource.includes("modules.includes('layerExport')"),'import/export menu must gate layered export entries behind layerExport');
   assert.ok(menuSource.includes("text:'导出对话框'")&&menuSource.includes("exportKind:'dialog'"),'import/export menu must expose the dialog export entry');
   assert.ok(menuSource.includes("text:'仅音轨'")&&menuSource.includes("exportKind:'audio'"),'import/export menu must expose the WebGAL audio-only entry');
-  assert.ok(toolbarSource.includes("['exporter','导出舞台','stage','exportStage']"),'WebVideo+ ribbon must expose the stage export entry');
-  assert.ok(toolbarSource.includes("['exporter','导出对话框','dialog','exportDialog']"),'WebVideo+ ribbon must expose the dialog export entry');
-  assert.ok(toolbarSource.includes("['exporter','仅音轨','audio','exportAudio']"),'WebVideo+ ribbon must expose the audio-only export entry');
+  assert.ok(toolbarSource.includes("['layerExport','导出舞台','stage','exportStage']"),'WebVideo+ ribbon must gate the stage export entry behind layerExport');
+  assert.ok(toolbarSource.includes("['layerExport','导出对话框','dialog','exportDialog']"),'WebVideo+ ribbon must gate the dialog export entry behind layerExport');
+  assert.ok(toolbarSource.includes("['layerExport','仅音轨','audio','exportAudio']"),'WebVideo+ ribbon must gate the audio-only export entry behind layerExport');
   assert.ok(toolbarSource.includes("exportKind:exportKinds[id]"),'WebVideo+ export entries must reuse the shared exporter event');
   assert.ok(uiSource.includes("includeBackground:exportKind==='stage'?includeBackground:true"),'stage export must submit its background toggle');
   assert.ok(uiSource.includes('compressedVideoExport?pipelineField():null'),'stage-with-background export must retain quality controls');
