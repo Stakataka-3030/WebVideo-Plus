@@ -1,6 +1,6 @@
 # 上游与第三方来源
 
-本文件记录 WebVideo+ 0.4.10 / 安装器 0.4.10.2 当前实际使用或随包保留的主要第三方来源。**WebVideo+ 原创部分的主许可证为 MPL-2.0**；根目录 [`LICENSES.md`](../LICENSES.md) 负责按路径和材料划分 MPL-2.0、AGPL-3.0、MIT 与其他上游许可证的范围。更细的传递依赖仍以各上游项目自己的包清单和许可为准。
+本文件记录 WebVideo+ 1.0.0 当前实际使用、构建时提取或随包保留的主要第三方来源。**WebVideo+ 原创部分的主许可证为 MPL-2.0**；根目录 [`LICENSES.md`](../LICENSES.md) 负责按路径和材料划分 MPL-2.0、AGPL-3.0、MIT 与其他上游许可证的范围。更细的传递依赖仍以各上游项目自己的包清单和许可为准。
 
 ## 当前运行与构建依赖
 
@@ -26,7 +26,7 @@ React、Fluent UI、IconPark、TanStack Virtual、Zustand、Monaco Editor、Pixi
 
 - **`xxSak1xx/webgal-skill`**：早期工作流、助手提示词和演出特效资料的重要参考来源。该仓库采用 MIT 许可证；其中 `references/effects-library.md` 同时明确感谢北风的猫5306。WebVideo+ 对相关资料的整理、分类和兼容性修正保留原始署名，不把已归属内容重新声明为 WebVideo+ 独占作品。
 - **`floatDreamWithSong/webgal-tools`**：早期资产扫描与场景读写方案研究参考；当前发布包不依赖其 MCP 服务。
-- **Playwright / Electron**：曾用于早期浏览器自动化、捕获与导出原型。**当前 0.4.10.2 导出核心使用 C# + WebView2，不捆绑 Playwright 或 Electron 运行时。** 仓库中保留的相关 LICENSE/NOTICE 文件用于历史来源和许可溯源，不表示它们仍是当前运行依赖。
+- **Playwright / Electron**：曾用于早期浏览器自动化、捕获与导出原型。**当前 1.0.0 导出核心使用 C# + WebView2，不捆绑 Playwright 或 Electron 运行时。** 仓库中保留的相关 LICENSE/NOTICE 文件用于历史来源和许可溯源，不表示它们仍是当前运行依赖。
 
 ## 社区与项目数据
 
