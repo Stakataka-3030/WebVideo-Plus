@@ -2,6 +2,14 @@
 
 ## 1.0.0 / 安装器内部版本 1.0.0.0
 
+### 内部版本 0.7.50 / 导出内核 0.6.40
+
+- 完成 1.0.0 发布收尾：正式构建的 `product.json` 标记为 stable，不再沿用 experimental 状态。
+- 正式构建写入包内 `version.json` 时移除 `productInternalVersion`；只有显式 `-InternalBuild` / `-InternalVersion` 构建才携带内部版本与 internal channel 元数据。
+- WebVideoPlus.Manager.exe 与 WebVideo+-Setup-*.exe 统一嵌入 `WebVideo+_icon.ico`，使管理器、安装器及由其派生的 Windows 图标显示一致。
+- README、BUILDING、许可说明与发布入口同步到 1.0.0 / 内部 0.7.50 / 导出内核 0.6.40，并新增 1.0.0 发行说明。
+- 修复 README 中两处误写成字面量 `\n` 的换行，清理发布页展示瑕疵。
+
 ### 内部版本 0.7.49 / 导出内核 0.6.40
 
 - 修复 Cubism2 分片恢复的时钟错位：先推进本帧离线时钟再 rebase motion，并按实际帧执行的整数毫秒计算 motion 起点和当前相位。
