@@ -515,6 +515,13 @@ globalThis.__gpuDomPrepareTextAtlas=()=>{
       if(ancestor===state.textboxRoot)break;
     }
   }
+  // A wrapped dialogue may be split between atlas screenshots. Capture its
+  // text at the original position so later -concat refreshes cannot shift
+  // only the characters assigned to one atlas page.
+  if(supported){
+    const dialogueRows=new Set(entries.filter(entry=>!entry.element.hasAttribute('data-gpu-intro-text')).map(entry=>Math.round(entry.rect.top*2)/2));
+    if(dialogueRows.size>1)supported=false;
+  }
   if(!supported){
     for(const element of elements){element.removeAttribute('data-gpu-atlas-page');element.removeAttribute('data-gpu-atlas-index');}
     for(const element of document.querySelectorAll('[data-gpu-atlas-unclip]'))element.removeAttribute('data-gpu-atlas-unclip');
