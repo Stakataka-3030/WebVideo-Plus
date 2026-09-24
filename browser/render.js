@@ -204,6 +204,60 @@ globalThis.__exportRebaseCubism2QueueEntry=(motion,entry,coreNow,state,coreModel
   if(typeof motion.updateParam==='function')try{motion.updateParam(coreModel,entry);}catch{}
   globalThis.__exportRebaseCubism2QueueEntry.lastMode='probe';return true;
 };
+globalThis.__exportRebaseCubism4QueueEntry=(entry,nowSeconds,state)=>{
+  if(!entry||!state||!Number.isFinite(Number(nowSeconds))||
+     typeof entry.setIsStarted!=='function'||typeof entry.setStartTime!=='function'||
+     typeof entry.setFadeInStartTime!=='function'||typeof entry.setEndTime!=='function')return false;
+  const offset=Math.max(0,Number(state.offsetMs)||0)/1000;
+  const duration=Number(state.durationMs)/1000;
+  if(!Number.isFinite(duration)||duration<=0)return false;
+  const start=Number(nowSeconds)-offset;
+  entry.setIsStarted(true);
+  entry.setStartTime(start);
+  entry.setFadeInStartTime(start);
+  entry.setEndTime(state.loop?-1:start+duration);
+  entry.setLastCheckEventSeconds?.(offset);
+  return true;
+};
+globalThis.__exportResolveCubism4Blink=(ageSeconds,intervalSeconds,closingSeconds,closedSeconds,openingSeconds,key,cache=null)=>{
+  const age=Math.max(0,Number(ageSeconds)||0),interval=Number(intervalSeconds),closing=Number(closingSeconds),closed=Number(closedSeconds),opening=Number(openingSeconds);
+  if(![interval,closing,closed,opening].every(Number.isFinite)||interval<=0||closing<=0||closed<=0||opening<=0)return null;
+  const signature=String(key??'')+'|'+interval+'|'+closing+'|'+closed+'|'+opening;
+  const schedule=cache||{};
+  if(schedule.signature!==signature){schedule.signature=signature;schedule.events=[];}
+  const events=schedule.events;
+  while((!events.length||age>=events[events.length-1].end)&&events.length<100000){
+    const step=events.length,cursor=step?events[step-1].end:0;
+    const random=globalThis.__exportHash32(String(key??'')+'|blink|'+step)/4294967296;
+    const next=cursor+Math.max(.1,random*Math.max(.1,2*interval-1));
+    events.push({step,cursor,next,end:next+closing+closed+opening});
+  }
+  let lo=0,hi=events.length-1;
+  while(lo<hi){const mid=(lo+hi)>>1;if(age<events[mid].end)hi=mid;else lo=mid+1;}
+  const event=events[lo];if(!event||age>=event.end)return null;
+  const {step,cursor,next}=event;
+  if(age<next)return {state:1,value:1,stateStart:cursor,next,step};
+  if(age<next+closing)return {state:2,value:Math.max(0,1-(age-next)/closing),stateStart:next,next,step};
+  if(age<next+closing+closed)return {state:3,value:0,stateStart:next+closing,next,step};
+  return {state:4,value:Math.min(1,(age-next-closing-closed)/opening),stateStart:next+closing+closed,next,step};
+};
+globalThis.__exportInstallCubism4Blink=(blink,target)=>{
+  if(!blink||typeof blink.updateParameters!=='function'||blink.__webVideoAbsoluteBlinkAge)return false;
+  const original=blink.updateParameters.bind(blink);
+  blink.__webVideoBlinkSchedule={};
+  blink.updateParameters=(core,dt)=>{
+    const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+    const ids=blink.getParameterIds?.()||blink._parameterIds;
+    if(!lifetime||!Number.isFinite(nowMs)||!Array.isArray(ids)||!ids.length||typeof core?.setParameterValueById!=='function')return original(core,dt);
+    const age=Math.max(0,(nowMs-Number(lifetime.startMs))/1000);
+    const state=globalThis.__exportResolveCubism4Blink(age,blink._blinkingIntervalSeconds,blink._closingSeconds,blink._closedSeconds,blink._openingSeconds,target+'|'+Number(lifetime.startMs),blink.__webVideoBlinkSchedule);
+    if(!state)return original(core,dt);
+    blink._userTimeSeconds=age;blink._blinkingState=state.state;blink._stateStartTimeSeconds=state.stateStart;blink._nextBlinkingTime=state.next;
+    for(const id of ids)core.setParameterValueById(id,state.value);
+  };
+  blink.__webVideoAbsoluteBlinkAge=true;
+  return true;
+};
 globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50,live2dLifetimes=[]})=>{
   const pc=__wgProbe.core.gameplay.performController,arrange=pc.arrangeNewPerform;
   const dormantHoldCommands=new Set(['setAnimation','setTempAnimation','setTransform']);
@@ -226,6 +280,76 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
       }))).filter(Boolean);
     })());
     return await cache.get(group);
+  };
+  const cubism4Entries=async(manager,group)=>{
+    if(!group)return [];
+    const cache=manager.__webVideoCubism4Entries||(manager.__webVideoCubism4Entries=new Map());
+    if(!cache.has(group))cache.set(group,(async()=>{
+      const defs=manager.definitions?.[group];if(!Array.isArray(defs)||!defs.length)return [];
+      return (await Promise.all(defs.map(async(_,index)=>{
+        const motion=await manager.loadMotion(group,index);if(!motion)return null;
+        const duration=Number(motion.getDuration?.()),loopDuration=Number(motion.getLoopDuration?.());
+        const loop=motion.getLoop?.()===true||(duration<0&&loopDuration>0);
+        const span=loop?loopDuration:duration;
+        return Number.isFinite(span)&&span>0?{index,durationMs:span*1000,loop,motion}:null;
+      }))).filter(Boolean);
+    })());
+    return await cache.get(group);
+  };
+  const resolveCubism4State=async(manager,target,lifetime,nowMs)=>{
+    if(!lifetime||!Number.isFinite(Number(nowMs)))return null;
+    const epoch=globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);
+    let idleStart=Number(lifetime.startMs)||0;
+    if(epoch){
+      const epochTime=Math.round(Math.ceil(Number(epoch.atMs)*fps/1000-.000001)*1000/fps);
+      const group=String(epoch.group??'');
+      if(group){
+        const entries=await cubism4Entries(manager,group),index=Number.isInteger(Number(epoch.index))?Number(epoch.index):0,selected=entries.find(x=>x.index===index);
+        if(!selected)return null;
+        const elapsed=Math.max(0,Math.round(nowMs)-epochTime);
+        if(selected.loop)return {kind:'explicit',group,index,priority:Number(epoch.priority)||3,offsetMs:elapsed%selected.durationMs,durationMs:selected.durationMs,loop:true,motion:selected.motion,originMs:Number(epoch.atMs)};
+        if(elapsed<selected.durationMs)return {kind:'explicit',group,index,priority:Number(epoch.priority)||3,offsetMs:elapsed,durationMs:selected.durationMs,loop:false,motion:selected.motion,originMs:Number(epoch.atMs)};
+        idleStart=epochTime+selected.durationMs;
+        const idleDefs=manager.definitions?.[manager.groups?.idle];
+        if(!Array.isArray(idleDefs)||!idleDefs.length)return {kind:'completed',group,index,priority:Number(epoch.priority)||3,offsetMs:selected.durationMs,durationMs:selected.durationMs,loop:false,motion:selected.motion,originMs:Number(epoch.atMs)};
+      }else idleStart=epochTime;
+    }
+    const group=manager.groups?.idle,entries=await cubism4Entries(manager,group);
+    const scheduleKey=target+'|'+Number(lifetime.startMs)+'|'+String(lifetime.source||'')+'|'+idleStart;
+    const state=globalThis.__exportResolveCubism2Idle(entries,Math.max(0,Math.round(nowMs)-idleStart),scheduleKey);
+    if(!state)return null;
+    const selected=entries.find(x=>x.index===state.index);if(!selected)return null;
+    return {...state,kind:'idle',group,priority:1,motion:selected.motion,originMs:idleStart};
+  };
+  const seekCubism4State=async(manager,queue,coreModel,target,lifetime,nowMs)=>{
+    const state=await resolveCubism4State(manager,target,lifetime,nowMs);if(!state)return false;
+    if(typeof queue?.getCubismMotionQueueEntries!=='function'&& !Array.isArray(queue?._motions))return false;
+    // A model born on this very frame already started its explicit motion in WebGAL.
+    // Do not trigger its motion/audio a second time just to seek to phase zero.
+    if(state.kind==='explicit'&&nowMs-Number(lifetime.startMs)<=1000/fps+.01&&state.offsetMs<=1000/fps+.01&&manager.state?.isActive?.(state.group,state.index))return true;
+    manager.stopAllMotions?.();
+    const ok=await manager.startMotion(state.group,state.index,state.priority);if(!ok)return false;
+    const entries=queue.getCubismMotionQueueEntries?.()||queue._motions||[],entry=entries[entries.length-1];
+    const nowSeconds=performance.now()/1000;
+    const offsetMs=state.kind==='completed'?Math.max(0,state.durationMs-1):state.offsetMs;
+    const rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,nowSeconds,{...state,offsetMs});
+    if(!rebased)return false;
+    if(state.kind==='completed'){
+      queue.doUpdateMotion?.(coreModel,nowSeconds);
+      manager.stopAllMotions?.();
+      coreModel.saveParameters?.();
+    }
+    manager.__webVideoIdleSeekLast={target,startMs:Number(lifetime.startMs),group:state.group,index:state.index,offsetMs:state.offsetMs,kind:state.kind,originMs:state.originMs,rebased,rebaseMode:'cubism4-public'};
+    return true;
+  };
+  globalThis.__exportSeekCubism4Current=seekCubism4State;
+  const rebaseCubism4Expression=(manager,lifetime,nowMs)=>{
+    const events=(lifetime?.expressionEvents||[]).filter(e=>Number(e.atMs)<=nowMs+.01);
+    if(!events.length)return false;
+    const event=events[events.length-1],queue=manager?.expressionManager?.queueManager;
+    const entries=queue?.getCubismMotionQueueEntries?.()||queue?._motions||[],entry=entries[entries.length-1];
+    if(!entry)return false;
+    return globalThis.__exportRebaseCubism4QueueEntry(entry,performance.now()/1000,{offsetMs:Math.max(0,nowMs-Number(event.atMs)),durationMs:1000,loop:true});
   };
   const resolveCubism2State=async(manager,target,lifetime,nowMs)=>{
     if(!lifetime||!Number.isFinite(Number(nowMs)))return null;
@@ -323,6 +447,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
           };
           breath.__webVideoAbsoluteModelAge=true;
         }
+        if(breath)globalThis.__exportInstallCubism4Blink(inner.eyeBlink,target);
         // Cubism2 has an implicit breath oscillator even without a motion/idle group.
         if(!breath&&typeof inner.updateNaturalMovements==='function'){
           inner.__webVideoAbsoluteNaturalAge=true;
@@ -347,6 +472,24 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
           manager.__webVideoDeterministicIdle=true;
           const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
           if(lifetime)await seekCubism2State(manager,queue,inner.coreModel,target,lifetime,nowMs);
+        }
+        if(breath&&manager&&queue&&typeof manager.startRandomMotion==='function'&&typeof manager.loadMotion==='function'){
+          const originalRandom=manager.startRandomMotion.bind(manager);
+          manager.startRandomMotion=async(group,priority)=>{
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+            if(group!==manager.groups?.idle||!lifetime)return originalRandom(group,priority);
+            if(manager.__webVideoIdleSeekPending)return manager.__webVideoIdleSeekPending;
+            const task=(async()=>{
+              const state=await resolveCubism4State(manager,target,lifetime,nowMs);
+              if(!state||state.kind!=='idle')return originalRandom(group,priority);
+              return await seekCubism4State(manager,queue,inner.coreModel,target,lifetime,nowMs);
+            })();
+            manager.__webVideoIdleSeekPending=task;
+            try{return await task;}finally{manager.__webVideoIdleSeekPending=null;}
+          };
+          manager.__webVideoDeterministicIdle=true;
+          const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+          if(lifetime){await seekCubism4State(manager,queue,inner.coreModel,target,lifetime,nowMs);rebaseCubism4Expression(manager,lifetime,nowMs);}
         }
       }
     }

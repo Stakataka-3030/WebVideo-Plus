@@ -393,11 +393,11 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.equal(autoPlan.live2dLifetimes.length,1);
   assert.equal(autoPlan.live2dLifetimes[0].motionEvents.length,0,'plain Cubism2/Live2D figures start directly on the deterministic auto-idle timeline');
 
-  const switchedScript=['changeFigure:hero/model.json -id=hero -motion=idle;','hero:before;','changeFigure:hero/model.json -id=hero -motion=wave;','hero:after;'].join('\n');
+  const switchedScript=['changeFigure:hero/model.json -id=hero -motion=idle -expression=smile;','hero:before;','changeFigure:hero/model.json -id=hero -motion=wave -expression=thinking;','hero:after;'].join('\n');
   const switchedParsed={sentenceList:[
-    cmd('changeFigure','hero/model.json',[{key:'id',value:'hero'},{key:'motion',value:'idle'}],0),
+    cmd('changeFigure','hero/model.json',[{key:'id',value:'hero'},{key:'motion',value:'idle'},{key:'expression',value:'smile'}],0),
     say('before',[],1),
-    cmd('changeFigure','hero/model.json',[{key:'id',value:'hero'},{key:'motion',value:'wave'}],2),
+    cmd('changeFigure','hero/model.json',[{key:'id',value:'hero'},{key:'motion',value:'wave'},{key:'expression',value:'thinking'}],2),
     say('after',[],3)
   ]};
   const switchedTiming={durationSeconds:30,lineTimes:[0,1000,10000,12000],sourceEvents:[{index:0,forwardGroup:1},{index:1,forwardGroup:2},{index:2,forwardGroup:3},{index:3,forwardGroup:4}],controlEvents:[],performWindows:[
@@ -415,6 +415,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.equal(switched.live2dLifetimes[0].motionEvents[0].group,'idle');
   assert.equal(switched.live2dLifetimes[0].motionEvents[1].group,'wave');
   assert.equal(switched.live2dLifetimes[0].motionEvents[1].atMs,10000);
+  assert.deepEqual(Array.from(switched.live2dLifetimes[0].expressionEvents,e=>[e.atMs,e.name]),[[0,'smile'],[10000,'thinking']],'expression changes must retain their absolute fade epochs');
 
   const strict=build({script:switchedScript,parsed:switchedParsed,media:{},animations:{},timing:switchedTiming,root:'C:/root',project:'P',sceneName:'start.txt',fps:60,strictSegmentCuts:true});
   assert.equal(strict.strictSegmentCuts,true);
