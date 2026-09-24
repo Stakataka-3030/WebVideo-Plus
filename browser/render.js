@@ -213,6 +213,11 @@ globalThis.__exportLive2DEventAt=(events,timeMs)=>{
   }
   return best;
 };
+globalThis.__exportCubism4ExplicitMotionIndex=(lifetime,group,nowMs,definitions,frameMs)=>{
+  const epoch=globalThis.__exportCubism2MotionEpoch(lifetime,nowMs),at=Number(epoch?.atMs),index=Number(epoch?.index);
+  if(!epoch||String(epoch.group??'')!==String(group??'')||!Number.isFinite(at)||Math.abs(Number(nowMs)-at)>Math.max(1,Number(frameMs)||0)+.01)return null;
+  return Number.isInteger(index)&&index>=0&&Array.isArray(definitions)&&definitions[index]?index:null;
+};
 globalThis.__exportRebaseCubism4QueueEntry=(entry,nowMs,state,{terminal=false}={})=>{
   if(!entry||!state||!Number.isFinite(Number(nowMs)))return false;
   const setters=['setIsStarted','setStartTime','setFadeInStartTime','setEndTime'];
@@ -484,6 +489,8 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
           const originalRandom=manager.startRandomMotion.bind(manager);
           manager.startRandomMotion=async(group,priority)=>{
             const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+            const explicitIndex=lifetime?globalThis.__exportCubism4ExplicitMotionIndex(lifetime,group,nowMs,manager.definitions?.[group],1000/fps):null;
+            if(explicitIndex!==null)return manager.startMotion(group,explicitIndex,priority);
             if(group!==manager.groups?.idle||!lifetime)return originalRandom(group,priority);
             if(manager.__webVideoCubism4SeekPending)return manager.__webVideoCubism4SeekPending;
             const task=(async()=>{
