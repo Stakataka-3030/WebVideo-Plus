@@ -29,6 +29,10 @@ assert.equal(typeof context.__exportCubism2MotionEpoch,'function');
 assert.equal(typeof context.__exportCubism2QueueTimingKeys,'function');
 assert.equal(typeof context.__exportProbeCubism2QueueTimingKeys,'function');
 assert.equal(typeof context.__exportRebaseCubism2QueueEntry,'function');
+assert.equal(typeof context.__exportCubism4MotionEpoch,'function');
+assert.equal(typeof context.__exportCubism4ExpressionEpoch,'function');
+assert.equal(typeof context.__exportRebaseCubism4QueueEntry,'function');
+assert.equal(typeof context.__exportResolveCubism4BlinkState,'function');
 assert.equal(typeof context.__exportWaitDialogueDom,'function');
 assert.equal(typeof context.__exportNotendVisualDuration,'function');
 assert.equal(typeof context.__exportFindChainedWaitIndex,'function');
@@ -83,6 +87,16 @@ assert.equal(context.__exportTextSettleApplies(null,'same',true),true);
   assert.equal(wrappedEntry.a,3750);
   assert.equal(wrappedEntry.b,3750);
   assert.equal(wrappedEntry.c,6750);
+  const c4Entry={started:false,start:-1,fade:0,end:-1,last:0,setIsStarted(v){this.started=v;},setStartTime(v){this.start=v;},setFadeInStartTime(v){this.fade=v;},setEndTime(v){this.end=v;},setLastCheckEventSeconds(v){this.last=v;}};
+  assert.equal(context.__exportRebaseCubism4QueueEntry(c4Entry,12,{offsetMs:2500,durationMs:4000,loop:false}),true);
+  assert.equal(c4Entry.started,true);
+  assert.equal(c4Entry.start,9.5);
+  assert.equal(c4Entry.fade,9.5);
+  assert.equal(c4Entry.end,13.5);
+  assert.equal(c4Entry.last,12);
+  const blinkA=context.__exportResolveCubism4BlinkState(7.25,{_blinkingIntervalSeconds:4,_blinkingIntervalRandomSeconds:1,_closingSeconds:.1,_closedSeconds:.05,_openingSeconds:.15},'hero|0');
+  const blinkB=context.__exportResolveCubism4BlinkState(7.25,{_blinkingIntervalSeconds:4,_blinkingIntervalRandomSeconds:1,_closingSeconds:.1,_closedSeconds:.05,_openingSeconds:.15},'hero|0');
+  assert.deepEqual(blinkA,blinkB,'Cubism3/4 blink schedule must be deterministic for the same model age');
 }
 
 {
@@ -374,6 +388,9 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.equal(plan.live2dLifetimes[0].motionEvents.length,1,'explicit -motion must be recorded as a seekable epoch inside the same model lifetime');
   assert.equal(plan.live2dLifetimes[0].motionEvents[0].group,'idle');
   assert.equal(plan.live2dLifetimes[0].motionEvents[0].atMs,0);
+  assert.equal(plan.live2dLifetimes[0].expressionEvents.length,0);
+  assert.equal(plan.live2dLifetimes[0].blinkEvents.length,1,'explicit blink settings must be retained inside the Live2D lifetime');
+  assert.equal(plan.live2dLifetimes[0].blinkEvents[0].atMs,0);
   assert.equal(context.__exportLive2DLifetimeAt(plan.live2dLifetimes,'hero',30000)?.startMs,0);
   assert.equal(context.__exportLive2DLifetimeAt(plan.live2dLifetimes,'hero',60000),null,'lifetime end is exclusive');
   assert.equal(plan.softCutWindows.length,1);
@@ -430,6 +447,11 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(renderSource.includes('__webviewWarmupStep=async frame=>'),'GPU raw warmup must expose a stage-rendering step');
   assert.ok(renderSource.includes('breath.__webVideoAbsoluteModelAge=true'),'Cubism4 breath must be rebound to absolute model age for seam continuity');
   assert.ok(renderSource.includes('breath._currentTime=ageSeconds-delta;'),'breath phase compensation must allow the first tick to land exactly on model age');
+  assert.ok(renderSource.includes('globalThis.__exportRebaseCubism4QueueEntry'),'Cubism3/4 queue entries must be rebased in seconds at worker restore');
+  assert.ok(renderSource.includes('globalThis.__exportSeekCubism4Current=seekCubism4State'),'Cubism3/4 restore must expose immediate current-motion seeking');
+  assert.ok(renderSource.includes("manager.__webVideoRuntime='cubism3/4'"),'Cubism3/4 must be detected by runtime capability rather than engine-version branching');
+  assert.ok(renderSource.includes('blink.__webVideoAbsoluteBlinkAge=true'),'Cubism3/4 eye blink must be bound to absolute model age');
+  assert.ok(renderSource.includes('restoreCubism4Expression'),'Cubism3/4 expression queue must be restored from an absolute expression epoch');
   assert.ok(renderSource.includes('manager.__webVideoDeterministicIdle=true'),'Cubism2 auto-idle must use model-local deterministic seeking');
   assert.ok(renderSource.includes('manager.__webVideoMotionEntries||(manager.__webVideoMotionEntries=new Map())'),'Cubism2 motion metadata must be cached per group and model');
   assert.ok(renderSource.includes('globalThis.__exportSeekCubism2Current=seekCubism2State'),'Cubism2 restore must expose immediate current-motion seeking');
