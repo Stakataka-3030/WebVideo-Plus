@@ -37,36 +37,15 @@ namespace NativeVideo {
   static EngineAdapter BundledWebgal() {
    return new EngineAdapter("webgal","4.6.4",Path.Combine(Files.Root,"runtime/web"),BundledWebgalBundle,"bundled-runtime",false,false);
   }
-  static bool IdentifierChar(char value) {
-   return char.IsLetterOrDigit(value)||value=='_'||value=='$';
-  }
   static string InstrumentExternalWebgal(string text) {
-   string baselineFile=Path.Combine(Files.Root,"runtime/web",BundledWebgalBundle);
-   if(!File.Exists(baselineFile))throw new IOException("缺少内置 WebGAL 运行快照");
-   string baseline=File.ReadAllText(baselineFile);
-
-   // The pinned runtime already contains the read-only probe exports used by the
-   // exporter. Transfer those tiny exports to a compatible project runtime rather
-   // than replacing the project's engine code, defaults, split chunks or CSS.
-   if(!text.Contains("globalThis.__probeCommands")) {
-    const string commandMarker="=globalThis.__probeCommands={\"preview.command.sync-scene\"";
-    int at=baseline.IndexOf(commandMarker,StringComparison.Ordinal);
-    if(at<0)throw new IOException("内置 WebGAL 运行快照缺少预览命令探针");
-    int start=at-1;
-    while(start>=0&&IdentifierChar(baseline[start]))start--;
-    string name=baseline.Substring(start+1,at-start-1);
-    if(string.IsNullOrWhiteSpace(name))throw new IOException("无法识别 WebGAL 预览命令表");
-    string from=name+"={\"preview.command.sync-scene\"";
-    text=ReplaceOnce(text,from,name+commandMarker);
-   }
-
-   if(!text.Contains("globalThis.__wgProbe")) {
-    const string probeMarker="globalThis.__wgProbe={";
-    int at=baseline.IndexOf(probeMarker,StringComparison.Ordinal);
-    int end=at<0?-1:baseline.IndexOf(';',at);
-    if(at<0||end<0)throw new IOException("内置 WebGAL 运行快照缺少核心探针");
-    text+="\n;"+baseline.Substring(at,end-at+1)+"\n";
-   }
+   // Copying only the first probe assignment from the bundled build leaves
+   // parseScene and stageManager undefined. Its minified identifiers are not
+   // safe to transplant into a separately built project runtime either.
+   if(!text.Contains("globalThis.__probeCommands")||
+      !text.Contains("globalThis.__wgProbe={")||
+      !text.Contains("Object.assign(globalThis.__wgProbe,{parseScene:")||
+      !text.Contains("Object.assign(globalThis.__wgProbe,{stageManager:"))
+    throw new IOException("外部 WebGAL 运行时缺少完整导出探针，改用内置 WebGAL 4.6.4 运行时");
    return text;
   }
   static EngineAdapter TryMygoProjectRuntime(string root,out string fallbackReason) {
@@ -135,7 +114,7 @@ namespace NativeVideo {
     adapter.Patch(InstrumentExternalWebgal(File.ReadAllText(main)));
     return adapter;
    } catch(Exception e) {
-    if(official)error="项目 WebGAL 运行时无法直接用于导出，将回退兼容基线："+e.Message;
+    error=(sourceKind=="project-runtime"?"工程":"Terre 模板")+" WebGAL 运行时无法直接用于导出，将回退内置 4.6.4："+e.Message;
     return null;
    }
   }
