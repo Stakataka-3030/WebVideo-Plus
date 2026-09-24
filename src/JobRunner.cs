@@ -17,7 +17,7 @@ namespace NativeVideo {
   public double SampleSeconds{get{return samples.Count<2?0:samples.Last().Key-samples.Peek().Key;}}
  }
  public sealed class JobRunner {
-  const string PipelineRevision="prefix-parser-target-0.8.1";
+  const string PipelineRevision="prefix-parser-target-0.8.2";
   readonly object request;readonly string dir,recordDir;bool encoderFallback;readonly Dictionary<string,object> state=new Dictionary<string,object>();readonly Stopwatch began=Stopwatch.StartNew();Stopwatch phase=Stopwatch.StartNew();
   public JobRunner(object request){this.request=request;dir=J.S(request,"jobDir");recordDir=J.S(request,"recordDir",dir);Directory.CreateDirectory(dir);Directory.CreateDirectory(recordDir);}
   void Status(object patch){lock(state){if(J.Get(patch,"phase")!=null&&J.S(patch,"phase")!=J.S(state,"phase"))phase.Restart();foreach(var kv in J.D(patch))state[kv.Key]=kv.Value;state["updatedAt"]=DateTime.UtcNow.ToString("o");state["elapsedSeconds"]=began.Elapsed.TotalSeconds;state["stageElapsedSeconds"]=phase.Elapsed.TotalSeconds;J.Write(Path.Combine(recordDir,"status.json"),state);Files.Append(Path.Combine(recordDir,"runner.log"),J.O("at",state["updatedAt"],"event","status","elapsedSeconds",state["elapsedSeconds"],"details",patch));}}
