@@ -5,7 +5,13 @@
 ### 内部版本 0.8.1 / 导出内核 0.6.42
 
 - 多行普通对话改用同一张原位文字截图参与逐字合成，避免 `-concat` 刷新时第二行跨文字图集分页的字符单独上下跳动。单行对话与 intro 动画继续使用文字图集。
-- 更新导出缓存修订，旧任务重试会重新规划和渲染。
+- 完成 Cubism 3/4（`.model3.json` 共用 Cubism4 runtime）的分段恢复审计，并补齐此前只覆盖 breath 的主要时间轴缺口。Planning 的 Live2D lifetime 现在除 `motionEvents` 外还记录 `expressionEvents`、`blinkEvents` 与 `focusEvents` 的绝对事件时刻；motion / expression / blink / focus 更新仍不会错误地重启模型 lifetime。
+- Cubism 3/4 显式 motion 与自动 Idle 现在按绝对模型时间恢复。导出器读取运行时 motion 元数据，重建当前 group/index，并直接 rebase CubismMotionQueueEntry 的秒制 start/fade/end 时钟；循环 motion 使用当前周期内的 modulo phase，且在 `loopFadeIn=false` 时保留原始 fade 年龄，避免恢复后一帧又跳回循环起点或重新淡入。
+- 非循环 Cubism 3/4 motion 已经结束且模型没有 Idle 时，不再因 prefix restore 把旧动作从头重播。恢复器会用原生 Cubism4 queue 在参数层执行一次终态求值并保存参数，然后清空队列；不会增加整段 GPU replay。
+- Cubism 3/4 自动眨眼不再依赖各 Worker 新实例自己的 `Math.random()` 与局部计时器。导出时按模型 lifetime / 最近一次 blink 配置事件建立确定性的绝对 blink 时间线，并继续沿用模型自己的 interval/random/closing/closed/opening 参数。这样不同 Worker 在同一绝对时刻得到相同眨眼相位；代价是导出中的随机眨眼序列现在是确定性的，未承诺与一次实时游玩的随机抽样完全相同。
+- Cubism 3/4 expression queue 会按最近一次 expression 事件的绝对时间 rebase fade 时钟，避免 prefix restore 把长驻表情重新当作刚开始淡入。非常规超长 expression 交叉淡化的“前一个表情”历史，以及 physics / pose / focus 的积分状态仍继续使用现有 3 秒 bounded warmup 收敛，不恢复 whole-lifetime replay；严格切片模式的硬保护语义保持不变。
+- Live2D per-part 诊断扩展为同时记录 Cubism 3/4 motion seek、expression seek、绝对 breath、确定性 blink 与 focus controller 状态；Cubism2 原有 motion / natural-age 恢复路径保持不变。
+- 构建期生命周期回归新增 Cubism 3/4 queue 秒制 rebase、loop phase、deterministic blink、expression/blink/focus epoch metadata 与 renderer hook 检查。pipeline revision 更新为 `cubism34-seam-wrapped-dialogue-0.8.1`，旧分片缓存自动失效。
 
 ### 内部版本 0.8.0 / 导出内核 0.6.41
 

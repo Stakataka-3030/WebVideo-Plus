@@ -143,8 +143,8 @@ globalThis.__exportResolveCubism2Idle=(entries,ageMs,key)=>{
     const candidates=valid.length>1&&previous!==null?valid.filter(x=>x.index!==previous):valid;
     const hash=globalThis.__exportHash32(String(key??'')+'|idle|'+step),pick=candidates[Math.min(candidates.length-1,Math.floor((hash/4294967296)*candidates.length))];
     if(!pick)return null;
-    if(pick.loop)return {index:pick.index,offsetMs:remaining%pick.durationMs,durationMs:pick.durationMs,loop:true,step};
-    if(remaining<pick.durationMs)return {index:pick.index,offsetMs:remaining,durationMs:pick.durationMs,loop:false,step};
+    if(pick.loop)return {index:pick.index,offsetMs:remaining%pick.durationMs,elapsedMs:remaining,durationMs:pick.durationMs,loop:true,step};
+    if(remaining<pick.durationMs)return {index:pick.index,offsetMs:remaining,elapsedMs:remaining,durationMs:pick.durationMs,loop:false,step};
     remaining-=pick.durationMs;previous=pick.index;
   }
   return null;
@@ -204,59 +204,41 @@ globalThis.__exportRebaseCubism2QueueEntry=(motion,entry,coreNow,state,coreModel
   if(typeof motion.updateParam==='function')try{motion.updateParam(coreModel,entry);}catch{}
   globalThis.__exportRebaseCubism2QueueEntry.lastMode='probe';return true;
 };
-globalThis.__exportRebaseCubism4QueueEntry=(entry,nowSeconds,state)=>{
-  if(!entry||!state||!Number.isFinite(Number(nowSeconds))||
-     typeof entry.setIsStarted!=='function'||typeof entry.setStartTime!=='function'||
-     typeof entry.setFadeInStartTime!=='function'||typeof entry.setEndTime!=='function')return false;
-  const offset=Math.max(0,Number(state.offsetMs)||0)/1000;
-  const duration=Number(state.durationMs)/1000;
-  if(!Number.isFinite(duration)||duration<=0)return false;
-  const start=Number(nowSeconds)-offset;
-  entry.setIsStarted(true);
-  entry.setStartTime(start);
-  entry.setFadeInStartTime(start);
-  entry.setEndTime(state.loop?-1:start+duration);
-  entry.setLastCheckEventSeconds?.(offset);
-  return true;
-};
-globalThis.__exportResolveCubism4Blink=(ageSeconds,intervalSeconds,closingSeconds,closedSeconds,openingSeconds,key,cache=null)=>{
-  const age=Math.max(0,Number(ageSeconds)||0),interval=Number(intervalSeconds),closing=Number(closingSeconds),closed=Number(closedSeconds),opening=Number(openingSeconds);
-  if(![interval,closing,closed,opening].every(Number.isFinite)||interval<=0||closing<=0||closed<=0||opening<=0)return null;
-  const signature=String(key??'')+'|'+interval+'|'+closing+'|'+closed+'|'+opening;
-  const schedule=cache||{};
-  if(schedule.signature!==signature){schedule.signature=signature;schedule.events=[];}
-  const events=schedule.events;
-  while((!events.length||age>=events[events.length-1].end)&&events.length<100000){
-    const step=events.length,cursor=step?events[step-1].end:0;
-    const random=globalThis.__exportHash32(String(key??'')+'|blink|'+step)/4294967296;
-    const next=cursor+Math.max(.1,random*Math.max(.1,2*interval-1));
-    events.push({step,cursor,next,end:next+closing+closed+opening});
+globalThis.__exportLive2DEventAt=(events,timeMs)=>{
+  const time=Number(timeMs);if(!Number.isFinite(time))return null;
+  let best=null;
+  for(const event of Array.isArray(events)?events:[]){
+    const at=Number(event?.atMs);if(!Number.isFinite(at)||at>time+.01)continue;
+    if(!best||at>=Number(best.atMs))best=event;
   }
-  let lo=0,hi=events.length-1;
-  while(lo<hi){const mid=(lo+hi)>>1;if(age<events[mid].end)hi=mid;else lo=mid+1;}
-  const event=events[lo];if(!event||age>=event.end)return null;
-  const {step,cursor,next}=event;
-  if(age<next)return {state:1,value:1,stateStart:cursor,next,step};
-  if(age<next+closing)return {state:2,value:Math.max(0,1-(age-next)/closing),stateStart:next,next,step};
-  if(age<next+closing+closed)return {state:3,value:0,stateStart:next+closing,next,step};
-  return {state:4,value:Math.min(1,(age-next-closing-closed)/opening),stateStart:next+closing+closed,next,step};
+  return best;
 };
-globalThis.__exportInstallCubism4Blink=(blink,target)=>{
-  if(!blink||typeof blink.updateParameters!=='function'||blink.__webVideoAbsoluteBlinkAge)return false;
-  const original=blink.updateParameters.bind(blink);
-  blink.__webVideoBlinkSchedule={};
-  blink.updateParameters=(core,dt)=>{
-    const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
-    const ids=blink.getParameterIds?.()||blink._parameterIds;
-    if(!lifetime||!Number.isFinite(nowMs)||!Array.isArray(ids)||!ids.length||typeof core?.setParameterValueById!=='function')return original(core,dt);
-    const age=Math.max(0,(nowMs-Number(lifetime.startMs))/1000);
-    const state=globalThis.__exportResolveCubism4Blink(age,blink._blinkingIntervalSeconds,blink._closingSeconds,blink._closedSeconds,blink._openingSeconds,target+'|'+Number(lifetime.startMs),blink.__webVideoBlinkSchedule);
-    if(!state)return original(core,dt);
-    blink._userTimeSeconds=age;blink._blinkingState=state.state;blink._stateStartTimeSeconds=state.stateStart;blink._nextBlinkingTime=state.next;
-    for(const id of ids)core.setParameterValueById(id,state.value);
-  };
-  blink.__webVideoAbsoluteBlinkAge=true;
+globalThis.__exportRebaseCubism4QueueEntry=(entry,nowMs,state,{terminal=false}={})=>{
+  if(!entry||!state||!Number.isFinite(Number(nowMs)))return false;
+  const setters=['setIsStarted','setStartTime','setFadeInStartTime','setEndTime'];
+  if(!setters.every(name=>typeof entry[name]==='function'))return false;
+  const now=Number(nowMs)/1000,offset=Math.max(0,Number(state.offsetMs)||0)/1000,elapsed=Math.max(offset,Math.max(0,Number(state.elapsedMs??state.offsetMs)||0)/1000),duration=Math.max(0,Number(state.durationMs)||0)/1000;
+  const start=now-offset,fadeStart=state.loop&&state.loopFadeIn===false?now-elapsed:start,end=terminal||state.loop||!(duration>0)?-1:start+duration;
+  entry.setIsStarted(true);entry.setStartTime(start);entry.setFadeInStartTime(fadeStart);entry.setEndTime(end);
+  entry.setLastCheckEventSeconds?.(now);
   return true;
+};
+globalThis.__exportResolveCubism4Blink=(elapsedSeconds,options={},key='')=>{
+  let remaining=Math.max(0,Number(elapsedSeconds)||0);
+  const interval=Math.max(0,Number(options.intervalSeconds)||0),random=Math.max(0,Number(options.randomSeconds)||0),closing=Math.max(.000001,Number(options.closingSeconds)||0),closed=Math.max(.000001,Number(options.closedSeconds)||0),opening=Math.max(.000001,Number(options.openingSeconds)||0);
+  for(let cycle=0;cycle<100000;cycle++){
+    const unit=globalThis.__exportHash32(String(key)+'|blink|'+cycle)/4294967296;
+    const wait=Math.max(0,interval+(unit*2-1)*random);
+    if(remaining<wait)return {state:1,value:1,cycle,phase:'interval',phaseSeconds:remaining,userTimeSeconds:remaining,nextBlinkingTime:wait,intervalSeconds:wait};
+    remaining-=wait;
+    if(remaining<closing)return {state:2,value:1-remaining/closing,cycle,phase:'closing',phaseSeconds:remaining,userTimeSeconds:remaining,nextBlinkingTime:wait,intervalSeconds:wait};
+    remaining-=closing;
+    if(remaining<closed)return {state:3,value:0,cycle,phase:'closed',phaseSeconds:remaining,userTimeSeconds:remaining,nextBlinkingTime:wait,intervalSeconds:wait};
+    remaining-=closed;
+    if(remaining<opening)return {state:4,value:remaining/opening,cycle,phase:'opening',phaseSeconds:remaining,userTimeSeconds:remaining,nextBlinkingTime:wait,intervalSeconds:wait};
+    remaining-=opening;
+  }
+  return {state:1,value:1,cycle:100000,phase:'interval',phaseSeconds:0,userTimeSeconds:0,nextBlinkingTime:interval,intervalSeconds:interval};
 };
 globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50,live2dLifetimes=[]})=>{
   const pc=__wgProbe.core.gameplay.performController,arrange=pc.arrangeNewPerform;
@@ -280,76 +262,6 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
       }))).filter(Boolean);
     })());
     return await cache.get(group);
-  };
-  const cubism4Entries=async(manager,group)=>{
-    if(!group)return [];
-    const cache=manager.__webVideoCubism4Entries||(manager.__webVideoCubism4Entries=new Map());
-    if(!cache.has(group))cache.set(group,(async()=>{
-      const defs=manager.definitions?.[group];if(!Array.isArray(defs)||!defs.length)return [];
-      return (await Promise.all(defs.map(async(_,index)=>{
-        const motion=await manager.loadMotion(group,index);if(!motion)return null;
-        const duration=Number(motion.getDuration?.()),loopDuration=Number(motion.getLoopDuration?.());
-        const loop=motion.getLoop?.()===true||(duration<0&&loopDuration>0);
-        const span=loop?loopDuration:duration;
-        return Number.isFinite(span)&&span>0?{index,durationMs:span*1000,loop,motion}:null;
-      }))).filter(Boolean);
-    })());
-    return await cache.get(group);
-  };
-  const resolveCubism4State=async(manager,target,lifetime,nowMs)=>{
-    if(!lifetime||!Number.isFinite(Number(nowMs)))return null;
-    const epoch=globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);
-    let idleStart=Number(lifetime.startMs)||0;
-    if(epoch){
-      const epochTime=Math.round(Math.ceil(Number(epoch.atMs)*fps/1000-.000001)*1000/fps);
-      const group=String(epoch.group??'');
-      if(group){
-        const entries=await cubism4Entries(manager,group),index=Number.isInteger(Number(epoch.index))?Number(epoch.index):0,selected=entries.find(x=>x.index===index);
-        if(!selected)return null;
-        const elapsed=Math.max(0,Math.round(nowMs)-epochTime);
-        if(selected.loop)return {kind:'explicit',group,index,priority:Number(epoch.priority)||3,offsetMs:elapsed%selected.durationMs,durationMs:selected.durationMs,loop:true,motion:selected.motion,originMs:Number(epoch.atMs)};
-        if(elapsed<selected.durationMs)return {kind:'explicit',group,index,priority:Number(epoch.priority)||3,offsetMs:elapsed,durationMs:selected.durationMs,loop:false,motion:selected.motion,originMs:Number(epoch.atMs)};
-        idleStart=epochTime+selected.durationMs;
-        const idleDefs=manager.definitions?.[manager.groups?.idle];
-        if(!Array.isArray(idleDefs)||!idleDefs.length)return {kind:'completed',group,index,priority:Number(epoch.priority)||3,offsetMs:selected.durationMs,durationMs:selected.durationMs,loop:false,motion:selected.motion,originMs:Number(epoch.atMs)};
-      }else idleStart=epochTime;
-    }
-    const group=manager.groups?.idle,entries=await cubism4Entries(manager,group);
-    const scheduleKey=target+'|'+Number(lifetime.startMs)+'|'+String(lifetime.source||'')+'|'+idleStart;
-    const state=globalThis.__exportResolveCubism2Idle(entries,Math.max(0,Math.round(nowMs)-idleStart),scheduleKey);
-    if(!state)return null;
-    const selected=entries.find(x=>x.index===state.index);if(!selected)return null;
-    return {...state,kind:'idle',group,priority:1,motion:selected.motion,originMs:idleStart};
-  };
-  const seekCubism4State=async(manager,queue,coreModel,target,lifetime,nowMs)=>{
-    const state=await resolveCubism4State(manager,target,lifetime,nowMs);if(!state)return false;
-    if(typeof queue?.getCubismMotionQueueEntries!=='function'&& !Array.isArray(queue?._motions))return false;
-    // A model born on this very frame already started its explicit motion in WebGAL.
-    // Do not trigger its motion/audio a second time just to seek to phase zero.
-    if(state.kind==='explicit'&&nowMs-Number(lifetime.startMs)<=1000/fps+.01&&state.offsetMs<=1000/fps+.01&&manager.state?.isActive?.(state.group,state.index))return true;
-    manager.stopAllMotions?.();
-    const ok=await manager.startMotion(state.group,state.index,state.priority);if(!ok)return false;
-    const entries=queue.getCubismMotionQueueEntries?.()||queue._motions||[],entry=entries[entries.length-1];
-    const nowSeconds=performance.now()/1000;
-    const offsetMs=state.kind==='completed'?Math.max(0,state.durationMs-1):state.offsetMs;
-    const rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,nowSeconds,{...state,offsetMs});
-    if(!rebased)return false;
-    if(state.kind==='completed'){
-      queue.doUpdateMotion?.(coreModel,nowSeconds);
-      manager.stopAllMotions?.();
-      coreModel.saveParameters?.();
-    }
-    manager.__webVideoIdleSeekLast={target,startMs:Number(lifetime.startMs),group:state.group,index:state.index,offsetMs:state.offsetMs,kind:state.kind,originMs:state.originMs,rebased,rebaseMode:'cubism4-public'};
-    return true;
-  };
-  globalThis.__exportSeekCubism4Current=seekCubism4State;
-  const rebaseCubism4Expression=(manager,lifetime,nowMs)=>{
-    const events=(lifetime?.expressionEvents||[]).filter(e=>Number(e.atMs)<=nowMs+.01);
-    if(!events.length)return false;
-    const event=events[events.length-1],queue=manager?.expressionManager?.queueManager;
-    const entries=queue?.getCubismMotionQueueEntries?.()||queue?._motions||[],entry=entries[entries.length-1];
-    if(!entry)return false;
-    return globalThis.__exportRebaseCubism4QueueEntry(entry,performance.now()/1000,{offsetMs:Math.max(0,nowMs-Number(event.atMs)),durationMs:1000,loop:true});
   };
   const resolveCubism2State=async(manager,target,lifetime,nowMs)=>{
     if(!lifetime||!Number.isFinite(Number(nowMs)))return null;
@@ -426,6 +338,83 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     return true;
   };
   globalThis.__exportSeekCubism2Current=seekCubism2State;
+  const cubism4Entries=async(manager,group)=>{
+    if(!group)return [];
+    const cache=manager.__webVideoCubism4Entries||(manager.__webVideoCubism4Entries=new Map());
+    if(cache.has(group))return cache.get(group);
+    const task=(async()=>{
+      const defs=manager.definitions?.[group];if(!Array.isArray(defs)||!defs.length)return [];
+      const items=await Promise.all(defs.map(async(_,index)=>{
+        const motion=await manager.loadMotion(group,index);if(!motion)return null;
+        const duration=Number(motion.getDuration?.()),loopDuration=Number(motion.getLoopDuration?.()),declaredLoop=typeof motion.isLoop==='function'?!!motion.isLoop():false,loop=declaredLoop||(!(duration>0)&&loopDuration>0);
+        const spanSeconds=loop?(loopDuration>0?loopDuration:duration):(duration>0?duration:loopDuration);
+        if(!(Number.isFinite(spanSeconds)&&spanSeconds>0))return null;
+        return {index,durationMs:spanSeconds*1000,loop,loopFadeIn:typeof motion.isLoopFadeIn==='function'?!!motion.isLoopFadeIn():true,motion};
+      }));
+      return items.filter(Boolean);
+    })();
+    cache.set(group,task);return task;
+  };
+  const resolveCubism4State=async(manager,target,lifetime,nowMs)=>{
+    const epoch=globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);
+    let idleStart=Number(lifetime.startMs)||0;
+    if(epoch){
+      const epochTime=Math.round(Math.ceil(Number(epoch.atMs)*fps/1000-.000001)*1000/fps),group=String(epoch.group??'');
+      if(group){
+        const entries=await cubism4Entries(manager,group),index=Number.isInteger(Number(epoch.index))?Number(epoch.index):0,selected=entries.find(x=>x.index===index);
+        if(selected){
+          const elapsed=Math.max(0,Math.round(nowMs)-epochTime);
+          if(selected.loop)return {kind:'explicit',group,index,priority:Number(epoch.priority)||3,offsetMs:elapsed%selected.durationMs,elapsedMs:elapsed,durationMs:selected.durationMs,loop:true,loopFadeIn:selected.loopFadeIn,motion:selected.motion,originMs:epochTime};
+          if(elapsed<selected.durationMs)return {kind:'explicit',group,index,priority:Number(epoch.priority)||3,offsetMs:elapsed,elapsedMs:elapsed,durationMs:selected.durationMs,loop:false,loopFadeIn:selected.loopFadeIn,motion:selected.motion,originMs:epochTime};
+          idleStart=epochTime+selected.durationMs;
+        }else idleStart=epochTime;
+      }else idleStart=epochTime;
+    }
+    const group=manager.groups?.idle,entries=await cubism4Entries(manager,group);
+    const scheduleKey=target+'|'+Number(lifetime.startMs)+'|'+String(lifetime.source||'')+'|'+idleStart;
+    const state=globalThis.__exportResolveCubism2Idle(entries,Math.max(0,Number(nowMs)-idleStart),scheduleKey);
+    if(!state){manager.__webVideoNoMotionOriginMs=idleStart;return null;}
+    const selected=entries.find(x=>x.index===state.index);if(!selected){manager.__webVideoNoMotionOriginMs=idleStart;return null;}
+    manager.__webVideoNoMotionOriginMs=null;
+    return {...state,kind:'idle',group,priority:1,motion:selected.motion,loopFadeIn:selected.loopFadeIn,originMs:idleStart};
+  };
+  const restoreCompletedCubism4Motion=async(manager,queue,coreModel,target,lifetime,nowMs)=>{
+    const epoch=globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);if(!epoch||!String(epoch.group??''))return false;
+    const epochTime=Math.round(Math.ceil(Number(epoch.atMs)*fps/1000-.000001)*1000/fps),entries=await cubism4Entries(manager,String(epoch.group)),index=Number.isInteger(Number(epoch.index))?Number(epoch.index):0,selected=entries.find(x=>x.index===index);
+    if(!selected||selected.loop||Math.max(0,Math.round(nowMs)-epochTime)<selected.durationMs)return false;
+    const idle=await cubism4Entries(manager,manager.groups?.idle);if(idle.length)return false;
+    manager.stopAllMotions?.();
+    const ok=await manager.startMotion(String(epoch.group),index,Number(epoch.priority)||3);if(!ok)return false;
+    const motions=Array.from(queue._motions||queue.motions||[]),entry=motions[motions.length-1];
+    const state={offsetMs:selected.durationMs,elapsedMs:selected.durationMs,durationMs:selected.durationMs,loop:false,loopFadeIn:selected.loopFadeIn};
+    const rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,nowMs,state,{terminal:true});if(!rebased){manager.stopAllMotions?.();return false;}
+    queue.doUpdateMotion?.(coreModel,Number(nowMs)/1000);
+    manager.stopAllMotions?.();coreModel?.saveParameters?.();
+    manager.__webVideoCubism4SeekLast={target,startMs:Number(lifetime.startMs),group:String(epoch.group),index,kind:'completed',originMs:epochTime,offsetMs:selected.durationMs,rebased:true,rebaseMode:'queue-seconds-terminal'};
+    manager.__webVideoNoMotionOriginMs=epochTime+selected.durationMs;
+    return true;
+  };
+  const seekCubism4State=async(manager,queue,coreModel,target,lifetime,nowMs)=>{
+    const state=await resolveCubism4State(manager,target,lifetime,nowMs);if(!state)return await restoreCompletedCubism4Motion(manager,queue,coreModel,target,lifetime,nowMs);
+    manager.stopAllMotions?.();
+    const ok=await manager.startMotion(state.group,state.index,state.priority);if(!ok)return false;
+    const motions=Array.from(queue._motions||queue.motions||[]),entry=motions[motions.length-1];
+    let rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,nowMs,state),mode=rebased?'queue-seconds':'';
+    if(!rebased&&typeof state.motion?.setOffsetTime==='function'){state.motion.setOffsetTime(Math.max(0,Number(state.offsetMs)||0)/1000);rebased=true;mode='motion-offset';}
+    manager.__webVideoCubism4SeekLast={target,startMs:Number(lifetime.startMs),group:state.group,index:state.index,offsetMs:state.offsetMs,elapsedMs:state.elapsedMs,kind:state.kind,originMs:state.originMs,rebased,rebaseMode:mode};
+    return true;
+  };
+  globalThis.__exportSeekCubism4Current=seekCubism4State;
+  const rebaseCubism4Expression=async(manager,target,lifetime,nowMs)=>{
+    const event=globalThis.__exportLive2DEventAt(lifetime?.expressionEvents,nowMs),name=String(event?.name??'');if(!event||!name)return false;
+    const expressions=manager?.expressionManager,queue=expressions?.queueManager;if(!expressions||!queue)return false;
+    let motions=Array.from(queue._motions||queue.motions||[]),entry=motions[motions.length-1];
+    if(!entry&&typeof expressions.setExpression==='function'){await expressions.setExpression(name);motions=Array.from(queue._motions||queue.motions||[]);entry=motions[motions.length-1];}
+    if(!entry)return false;
+    const offsetMs=Math.max(0,Number(nowMs)-Number(event.atMs)),rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,nowMs,{offsetMs,elapsedMs:offsetMs,durationMs:0,loop:true,loopFadeIn:false});
+    expressions.__webVideoExpressionSeekLast={target,name,originMs:Number(event.atMs),offsetMs,rebased,rebaseMode:rebased?'queue-seconds':''};
+    return rebased;
+  };
   const bindLive2DDeterminism=async()=>{
     const stage=__wgProbe.core.gameplay.pixiStage,objects=stage?.getAllStageObj?.()||stage?.figureObjects||[];
     for(const obj of objects){
@@ -447,7 +436,21 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
           };
           breath.__webVideoAbsoluteModelAge=true;
         }
-        if(breath)globalThis.__exportInstallCubism4Blink(inner.eyeBlink,target);
+        const eyeBlink=inner.eyeBlink;
+        if(breath&&eyeBlink&&typeof eyeBlink.updateParameters==='function'&&Array.isArray(eyeBlink._parameterIds)){
+          const originalBlink=eyeBlink.updateParameters.bind(eyeBlink);
+          eyeBlink.updateParameters=(core,dt)=>{
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+            if(!lifetime||!Number.isFinite(nowMs))return originalBlink(core,dt);
+            const event=globalThis.__exportLive2DEventAt(lifetime.blinkEvents,nowMs),epochMs=Number(event?.atMs??lifetime.startMs),state=globalThis.__exportResolveCubism4Blink(Math.max(0,(nowMs-epochMs)/1000),{
+              intervalSeconds:Number(eyeBlink._blinkingIntervalSeconds),randomSeconds:Number(eyeBlink._blinkingIntervalRandomSeconds),closingSeconds:Number(eyeBlink._closingSeconds),closedSeconds:Number(eyeBlink._closedSeconds),openingSeconds:Number(eyeBlink._openingSeconds)
+            },target+'|'+Number(lifetime.startMs)+'|'+epochMs);
+            eyeBlink._blinkingState=state.state;eyeBlink._userTimeSeconds=state.userTimeSeconds;eyeBlink._nextBlinkingTime=state.nextBlinkingTime;
+            for(const id of eyeBlink._parameterIds)if(typeof id==='string')core.multiplyParameterValueById?.(id,state.value);
+            eyeBlink.__webVideoAbsoluteTimeline={target,epochMs,cycle:state.cycle,phase:state.phase,value:state.value};
+          };
+          eyeBlink.__webVideoDeterministicTimeline=true;
+        }
         // Cubism2 has an implicit breath oscillator even without a motion/idle group.
         if(!breath&&typeof inner.updateNaturalMovements==='function'){
           inner.__webVideoAbsoluteNaturalAge=true;
@@ -478,18 +481,18 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
           manager.startRandomMotion=async(group,priority)=>{
             const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
             if(group!==manager.groups?.idle||!lifetime)return originalRandom(group,priority);
-            if(manager.__webVideoIdleSeekPending)return manager.__webVideoIdleSeekPending;
+            if(manager.__webVideoCubism4SeekPending)return manager.__webVideoCubism4SeekPending;
             const task=(async()=>{
               const state=await resolveCubism4State(manager,target,lifetime,nowMs);
               if(!state||state.kind!=='idle')return originalRandom(group,priority);
               return await seekCubism4State(manager,queue,inner.coreModel,target,lifetime,nowMs);
             })();
-            manager.__webVideoIdleSeekPending=task;
-            try{return await task;}finally{manager.__webVideoIdleSeekPending=null;}
+            manager.__webVideoCubism4SeekPending=task;
+            try{return await task;}finally{manager.__webVideoCubism4SeekPending=null;}
           };
-          manager.__webVideoDeterministicIdle=true;
+          manager.__webVideoDeterministicIdleCubism4=true;
           const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
-          if(lifetime){await seekCubism4State(manager,queue,inner.coreModel,target,lifetime,nowMs);rebaseCubism4Expression(manager,lifetime,nowMs);}
+          if(lifetime){await seekCubism4State(manager,queue,inner.coreModel,target,lifetime,nowMs);await rebaseCubism4Expression(manager,target,lifetime,nowMs);}
         }
       }
     }
@@ -504,7 +507,8 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
       for(let index=0;index<children.length;index++){
         const inner=children[index]?.internalModel;if(!inner)continue;
         const manager=inner.motionManager,blink=inner.eyeBlink,physics=inner.physics;
-        rows.push({target,index,runtime:inner.breath?'cubism4':'cubism2',motionSeek:manager?.__webVideoIdleSeekLast?{...manager.__webVideoIdleSeekLast}:null,naturalAgeAligned:!!inner.__webVideoAbsoluteNaturalAge,physicsHairs:Array.isArray(physics?.physicsHairs)?physics.physicsHairs.length:0,eyeBlink:blink?{state:Number(blink.eyeState),value:Number(blink.eyeParamValue),nextMs:Number(blink.nextBlinkTimeLeft)}:null});
+        const cubism4=!!inner.breath,blinkState=blink?(cubism4?{state:Number(blink._blinkingState),userTimeSeconds:Number(blink._userTimeSeconds),nextBlinkingTime:Number(blink._nextBlinkingTime),deterministic:!!blink.__webVideoDeterministicTimeline,timeline:blink.__webVideoAbsoluteTimeline?{...blink.__webVideoAbsoluteTimeline}:null}:{state:Number(blink.eyeState),value:Number(blink.eyeParamValue),nextMs:Number(blink.nextBlinkTimeLeft)}):null;
+        rows.push({target,index,runtime:cubism4?'cubism4':'cubism2',motionSeek:cubism4?(manager?.__webVideoCubism4SeekLast?{...manager.__webVideoCubism4SeekLast}:null):(manager?.__webVideoIdleSeekLast?{...manager.__webVideoIdleSeekLast}:null),expressionSeek:manager?.expressionManager?.__webVideoExpressionSeekLast?{...manager.expressionManager.__webVideoExpressionSeekLast}:null,breathAgeAligned:!!inner.breath?.__webVideoAbsoluteModelAge,naturalAgeAligned:!!inner.__webVideoAbsoluteNaturalAge,physicsHairs:Array.isArray(physics?.physicsHairs)?physics.physicsHairs.length:0,eyeBlink:blinkState,focus:inner.focusController?{x:Number(inner.focusController.x),y:Number(inner.focusController.y),targetX:Number(inner.focusController.targetX),targetY:Number(inner.focusController.targetY),vx:Number(inner.focusController.vx),vy:Number(inner.focusController.vy)}:null});
       }
     }
     return rows;
@@ -658,9 +662,8 @@ globalThis.__gpuDomPrepareTextAtlas=()=>{
       if(ancestor===state.textboxRoot)break;
     }
   }
-  // A wrapped dialogue may be split between atlas screenshots. Capture its
-  // text at the original position so later -concat refreshes cannot shift
-  // only the characters assigned to one atlas page.
+  // Keep wrapped dialogue on one original-position capture surface so a
+  // later -concat refresh cannot move just the next atlas page's characters.
   if(supported){
     const dialogueRows=new Set(entries.filter(entry=>!entry.element.hasAttribute('data-gpu-intro-text')).map(entry=>Math.round(entry.rect.top*2)/2));
     if(dialogueRows.size>1)supported=false;
