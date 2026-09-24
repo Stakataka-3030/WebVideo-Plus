@@ -387,8 +387,9 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     const ok=await manager.startMotion(String(epoch.group),index,Number(epoch.priority)||3);if(!ok)return false;
     const motions=Array.from(queue._motions||queue.motions||[]),entry=motions[motions.length-1];
     const state={offsetMs:selected.durationMs,elapsedMs:selected.durationMs,durationMs:selected.durationMs,loop:false,loopFadeIn:selected.loopFadeIn};
-    const rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,nowMs,state,{terminal:true});if(!rebased){manager.stopAllMotions?.();return false;}
-    queue.doUpdateMotion?.(coreModel,Number(nowMs)/1000);
+    const runtimeNowMs=performance.now();
+    const rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,runtimeNowMs,state,{terminal:true});if(!rebased){manager.stopAllMotions?.();return false;}
+    queue.doUpdateMotion?.(coreModel,runtimeNowMs/1000);
     manager.stopAllMotions?.();coreModel?.saveParameters?.();
     manager.__webVideoCubism4SeekLast={target,startMs:Number(lifetime.startMs),group:String(epoch.group),index,kind:'completed',originMs:epochTime,offsetMs:selected.durationMs,rebased:true,rebaseMode:'queue-seconds-terminal'};
     manager.__webVideoNoMotionOriginMs=epochTime+selected.durationMs;
@@ -396,10 +397,13 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
   };
   const seekCubism4State=async(manager,queue,coreModel,target,lifetime,nowMs)=>{
     const state=await resolveCubism4State(manager,target,lifetime,nowMs);if(!state)return await restoreCompletedCubism4Motion(manager,queue,coreModel,target,lifetime,nowMs);
+    // WebGAL has already started a newly born model's explicit motion. Restarting
+    // it here would replace its first queue entry and can change the visible pose.
+    if(state.kind==='explicit'&&nowMs-Number(lifetime.startMs)<=1000/fps+.01&&state.offsetMs<=1000/fps+.01&&manager.state?.isActive?.(state.group,state.index))return true;
     manager.stopAllMotions?.();
     const ok=await manager.startMotion(state.group,state.index,state.priority);if(!ok)return false;
     const motions=Array.from(queue._motions||queue.motions||[]),entry=motions[motions.length-1];
-    let rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,nowMs,state),mode=rebased?'queue-seconds':'';
+    let rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,performance.now(),state),mode=rebased?'queue-seconds':'';
     if(!rebased&&typeof state.motion?.setOffsetTime==='function'){state.motion.setOffsetTime(Math.max(0,Number(state.offsetMs)||0)/1000);rebased=true;mode='motion-offset';}
     manager.__webVideoCubism4SeekLast={target,startMs:Number(lifetime.startMs),group:state.group,index:state.index,offsetMs:state.offsetMs,elapsedMs:state.elapsedMs,kind:state.kind,originMs:state.originMs,rebased,rebaseMode:mode};
     return true;
@@ -411,7 +415,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     let motions=Array.from(queue._motions||queue.motions||[]),entry=motions[motions.length-1];
     if(!entry&&typeof expressions.setExpression==='function'){await expressions.setExpression(name);motions=Array.from(queue._motions||queue.motions||[]);entry=motions[motions.length-1];}
     if(!entry)return false;
-    const offsetMs=Math.max(0,Number(nowMs)-Number(event.atMs)),rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,nowMs,{offsetMs,elapsedMs:offsetMs,durationMs:0,loop:true,loopFadeIn:false});
+    const offsetMs=Math.max(0,Number(nowMs)-Number(event.atMs)),rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,performance.now(),{offsetMs,elapsedMs:offsetMs,durationMs:0,loop:true,loopFadeIn:false});
     expressions.__webVideoExpressionSeekLast={target,name,originMs:Number(event.atMs),offsetMs,rebased,rebaseMode:rebased?'queue-seconds':''};
     return rebased;
   };

@@ -456,6 +456,7 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(renderSource.includes('globalThis.__exportSeekCubism4Current=seekCubism4State'),'Cubism3/4 restore must expose immediate current-motion seeking');
   assert.ok(renderSource.includes('manager.__webVideoDeterministicIdleCubism4=true'),'Cubism3/4 idle selection must use the deterministic absolute timeline');
   assert.ok(renderSource.includes('__exportRebaseCubism4QueueEntry'),'Cubism3/4 queue entries must be rebased in the framework seconds clock');
+  assert.ok(renderSource.includes('__exportRebaseCubism4QueueEntry(entry,performance.now(),state)'),'Cubism3/4 seek must use the WebGAL runtime clock, not the story clock, for queue timestamps');
   assert.ok(renderSource.includes("rebaseMode:'queue-seconds-terminal'"),'completed Cubism3/4 motions without Idle must restore their terminal parameter state rather than restart');
   assert.ok(renderSource.includes('eyeBlink.__webVideoDeterministicTimeline=true'),'Cubism3/4 blink must use a deterministic seam-stable timeline');
   assert.ok(renderSource.includes('globalThis.__exportResolveCubism4Blink'),'Cubism3/4 blink phase must resolve from an absolute epoch rather than a worker-local random timer');
