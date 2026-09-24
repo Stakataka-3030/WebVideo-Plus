@@ -3,7 +3,7 @@
 public partial class SetupForm {
  sealed class LayoutField {public Label Label;public TextBox Box;public Button Browse;}
  readonly List<LayoutField> layoutFields=new List<LayoutField>();
- Label layoutVersion,layoutSubtitle,layoutTerreLabel,layoutRecoveryNote,layoutAiInfo;
+ Label layoutVersion,layoutSubtitle,layoutTerreLabel,layoutRecoveryNote,layoutFFmpegNote,layoutAiInfo;
  Button layoutLogs;Panel layoutAdvancedContent;
  bool responsiveReady,responsiveBusy;
  static int TextHeight(Control control,int width){return TextRenderer.MeasureText(control.Text,control.Font,new Size(Math.Max(1,width),int.MaxValue),TextFormatFlags.WordBreak|TextFormatFlags.TextBoxControl|TextFormatFlags.NoPrefix).Height+6;}
@@ -21,11 +21,12 @@ public partial class SetupForm {
   layoutAiInfo=Controls.OfType<Label>().First(c=>c.AccessibleName=="生成式AI组件说明");
   layoutLogs=Controls.OfType<Button>().First(c=>c.Text=="打开日志");
   layoutRecoveryNote=advanced.Controls.OfType<Label>().First(c=>c.Text.StartsWith("关闭后仍会"));
-  foreach(var item in new[]{Tuple.Create("游戏目录",games),Tuple.Create("成片保存目录",output),Tuple.Create("Terre 本机地址",url),Tuple.Create("WebVideo+ 数据目录",dataDir),Tuple.Create("导出工作缓存",workDir),Tuple.Create("安装缓存目录",installCache)}){
+  layoutFFmpegNote=advanced.Controls.OfType<Label>().First(c=>c.Text.StartsWith("选择含 ffmpeg.exe"));
+  foreach(var item in new[]{Tuple.Create("游戏目录",games),Tuple.Create("成片保存目录",output),Tuple.Create("Terre 本机地址",url),Tuple.Create("WebVideo+ 数据目录",dataDir),Tuple.Create("导出工作缓存",workDir),Tuple.Create("安装缓存目录",installCache),Tuple.Create("FFmpeg 目录（可选）",ffmpegDir)}){
    var box=item.Item2;layoutFields.Add(new LayoutField{Label=advanced.Controls.OfType<Label>().First(c=>c.Text==item.Item1),Box=box,Browse=advanced.Controls.OfType<Button>().FirstOrDefault(c=>Math.Abs(c.Top-box.Top)<=2)});
   }
   var advancedChildren=advanced.Controls.Cast<Control>().ToArray();layoutAdvancedContent=new Panel();foreach(var child in advancedChildren)layoutAdvancedContent.Controls.Add(child);advanced.Controls.Add(layoutAdvancedContent);
-  foreach(var label in new[]{headline,layoutVersion,layoutSubtitle,moduleNote,status,elapsed,layoutRecoveryNote})label.TextChanged+=(s,e)=>ResponsiveLayout();
+  foreach(var label in new[]{headline,layoutVersion,layoutSubtitle,moduleNote,status,elapsed,layoutFFmpegNote,layoutRecoveryNote})label.TextChanged+=(s,e)=>ResponsiveLayout();
   foreach(var button in new[]{install,remove,cancel}){button.TextChanged+=(s,e)=>ResponsiveLayout();button.VisibleChanged+=(s,e)=>ResponsiveLayout();}
   FontChanged+=(s,e)=>ResponsiveLayout();ClientSizeChanged+=(s,e)=>ResponsiveLayout();
   advancedToggle.CheckedChanged+=(s,e)=>{advanced.Visible=advancedToggle.Checked;ResizeForContent();};
@@ -46,7 +47,7 @@ public partial class SetupForm {
    var boxes=ModuleCatalog.Advanced.Select(id=>moduleBoxes[id]).ToArray();
    for(int index=0;index<boxes.Length;index+=columns){int rowBottom=ay;for(int col=0;col<columns&&index+col<boxes.Length;col++)rowBottom=Math.Max(rowBottom,PlaceCheck(boxes[index+col],gap+col*(columnWidth+gap),ay,columnWidth,scale));ay=rowBottom+small;}
    ay=PlaceText(moduleNote,gap,ay+small,innerWidth)+gap;
-   foreach(var field in layoutFields){ay=PlaceText(field.Label,gap,ay,innerWidth)+small;int buttonWidth=field.Browse==null?0:Math.Max(Pixels(scale,85),TextWidth(field.Browse)+Pixels(scale,20));int h=Math.Max(field.Box.PreferredHeight,Pixels(scale,30));field.Box.SetBounds(gap,ay,innerWidth-(buttonWidth==0?0:buttonWidth+gap),field.Box.PreferredHeight);if(field.Browse!=null)field.Browse.SetBounds(field.Box.Right+gap,ay,buttonWidth,h);ay+=h+gap;}
+   foreach(var field in layoutFields){ay=PlaceText(field.Label,gap,ay,innerWidth)+small;int buttonWidth=field.Browse==null?0:Math.Max(Pixels(scale,85),TextWidth(field.Browse)+Pixels(scale,20));int h=Math.Max(field.Box.PreferredHeight,Pixels(scale,30));field.Box.SetBounds(gap,ay,innerWidth-(buttonWidth==0?0:buttonWidth+gap),field.Box.PreferredHeight);if(field.Browse!=null)field.Browse.SetBounds(field.Box.Right+gap,ay,buttonWidth,h);ay+=h+gap;if(Object.ReferenceEquals(field.Box,ffmpegDir))ay=PlaceText(layoutFFmpegNote,gap+Pixels(scale,20),ay,innerWidth-Pixels(scale,20))+gap;}
    ay=PlaceCheck(keepRecovery,gap,ay,innerWidth,scale)+small;ay=PlaceText(layoutRecoveryNote,gap+Pixels(scale,20),ay,innerWidth-Pixels(scale,20))+gap;
    int natural=ay-scrollY;layoutAdvancedContent.Size=new Size(innerWidth+2*gap,natural);if(advanced.AutoScrollMinSize.Height!=natural)advanced.AutoScrollMinSize=new Size(0,natural);advanced.SetBounds(pad,y,width,Math.Min(natural,Math.Max(Pixels(scale,180),ClientSize.Height/2)));y=advanced.Bottom+gap;
   }

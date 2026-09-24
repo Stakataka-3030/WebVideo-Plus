@@ -24,7 +24,7 @@ public class SetupProgress {
  public SetupProgress(string message,int percent=-1){Message=message;Percent=percent;}
 }
 public class RuntimePlan {
- public string Native,FFmpeg,FFprobe,Payload;public bool NeedFFmpeg,NeedWebView2;
+ public string Native,FFmpeg,FFprobe,Payload,FFmpegSourceDir;public bool NeedFFmpeg,NeedWebView2;
  public string RuntimePath {get{return string.Join(Path.PathSeparator.ToString(),new[]{FFmpeg,FFprobe}.Where(x=>!string.IsNullOrEmpty(x)).Select(Path.GetDirectoryName).Distinct());}}
  public List<string> Downloads {get{var a=new List<string>();if(NeedFFmpeg)a.Add("FFmpeg 9.0.1，含 ffprobe（约 106 MB）");if(NeedWebView2)a.Add("Microsoft WebView2 Runtime（由微软安装程序下载）");return a;}}
 }
@@ -83,6 +83,17 @@ public class SetupEngine {
   using(var p=new Process()){p.StartInfo=new ProcessStartInfo(file,args){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};p.Start();var output=p.StandardOutput.ReadToEndAsync();var error=p.StandardError.ReadToEndAsync();if(!p.WaitForExit(10000)){try{p.Kill();}catch{}return null;}return p.ExitCode==0?output.GetAwaiter().GetResult():null;}
  }
  static bool ValidFF(string f){try{return Probe(f,"-version")!=null;}catch{return false;}}
+ public void UseLocalFFmpeg(RuntimePlan plan,string directory){
+  if(plan==null)throw new ArgumentNullException("plan");
+  if(String.IsNullOrWhiteSpace(directory))throw new ArgumentException("请选择 FFmpeg 文件夹。");
+  string root=Path.GetFullPath(directory.Trim().Trim('"'));
+  string bin=File.Exists(Path.Combine(root,"ffmpeg.exe"))&&File.Exists(Path.Combine(root,"ffprobe.exe"))?root:Path.Combine(root,"bin");
+  string ffmpeg=Path.Combine(bin,"ffmpeg.exe"),ffprobe=Path.Combine(bin,"ffprobe.exe");
+  if(!File.Exists(ffmpeg)||!File.Exists(ffprobe))throw new ArgumentException("所选 FFmpeg 文件夹需同时包含 ffmpeg.exe 和 ffprobe.exe；也可选择含 bin 子目录的上一级文件夹。");
+  string ffmpegVersion=Probe(ffmpeg,"-version"),ffprobeVersion=Probe(ffprobe,"-version");
+  if(ffmpegVersion==null||!ffmpegVersion.TrimStart().StartsWith("ffmpeg version ",StringComparison.OrdinalIgnoreCase)||ffprobeVersion==null||!ffprobeVersion.TrimStart().StartsWith("ffprobe version ",StringComparison.OrdinalIgnoreCase))throw new ArgumentException("所选 FFmpeg 文件夹中的程序未通过版本检查，请选择完整的 Windows FFmpeg 发行包。");
+  plan.FFmpeg=ffmpeg;plan.FFprobe=ffprobe;plan.FFmpegSourceDir=bin;plan.NeedFFmpeg=false;Report("使用用户指定的本地 FFmpeg："+bin);
+ }
  public RuntimePlan Inspect(string payload){
   Report("正在检测原生运行环境…");var plan=new RuntimePlan{Payload=payload,Native=Path.Combine(payload,"WebGAL.Video.exe")};if(!File.Exists(plan.Native))throw new Exception("安装包缺少原生导出程序");
   string ff=Path.Combine(Tools,"ffmpeg-"+FFVersion+"-essentials_build","bin");plan.FFmpeg=File.Exists(Path.Combine(ff,"ffmpeg.exe"))&&ValidFF(Path.Combine(ff,"ffmpeg.exe"))?Path.Combine(ff,"ffmpeg.exe"):FindProgram("ffmpeg.exe",ValidFF);plan.FFprobe=File.Exists(Path.Combine(ff,"ffprobe.exe"))&&ValidFF(Path.Combine(ff,"ffprobe.exe"))?Path.Combine(ff,"ffprobe.exe"):FindProgram("ffprobe.exe",ValidFF);
@@ -105,7 +116,7 @@ public class SetupEngine {
  }
  public void EnsureRuntimes(RuntimePlan plan,bool downloadAuthorized){
   if(plan.Downloads.Count>0&&!downloadAuthorized)throw new InvalidOperationException("尚未获得下载和安装依赖的授权");Check();Directory.CreateDirectory(Tools);
-  if(plan.NeedFFmpeg){string name="ffmpeg-"+FFVersion+"-essentials_build.zip",file=Path.Combine(Cache,name);Download(new[]{"https://www.gyan.dev/ffmpeg/builds/packages/"+name,"https://github.com/GyanD/codexffmpeg/releases/download/"+FFVersion+"/"+name},"fec81ae03971d9dd4be3ebe02e263bd2ec1d789483f931bdba5f5715e65da2e9",file);Extract(file,Tools);string bin=Path.Combine(Tools,"ffmpeg-"+FFVersion+"-essentials_build/bin");plan.FFmpeg=Path.Combine(bin,"ffmpeg.exe");plan.FFprobe=Path.Combine(bin,"ffprobe.exe");if(!ValidFF(plan.FFmpeg)||!ValidFF(plan.FFprobe))throw new Exception("FFmpeg 安装后验证未通过");}
+  if(plan.NeedFFmpeg){string name="ffmpeg-"+FFVersion+"-essentials_build.zip",file=Path.Combine(Cache,name);Download(new[]{"https://www.gyan.dev/ffmpeg/builds/packages/"+name,"https://github.com/GyanD/codexffmpeg/releases/download/"+FFVersion+"/"+name},"fec81ae03971d9dd4be3ebe02e263bd2ec1d789483f931bdba5f5715e65da2e9",file);Extract(file,Tools);string bin=Path.Combine(Tools,"ffmpeg-"+FFVersion+"-essentials_build/bin");plan.FFmpeg=Path.Combine(bin,"ffmpeg.exe");plan.FFprobe=Path.Combine(bin,"ffprobe.exe");if(!ValidFF(plan.FFmpeg)||!ValidFF(plan.FFprobe))throw new Exception("FFmpeg 安装后验证未通过");plan.NeedFFmpeg=false;}
   if(plan.NeedWebView2){string bootstrap=Path.Combine(plan.Payload,"bin/MicrosoftEdgeWebview2Setup.exe");if(!File.Exists(bootstrap)||Hash(bootstrap)!="17debf797a6c737959bc588236e897936ffac1af5f7e515e674ab32f9edfe719")throw new Exception("WebView2 安装引导程序校验失败");Report("正在安装 Microsoft WebView2 Runtime…");Run(bootstrap,new[]{"/silent","/install"},plan.RuntimePath,plan.Payload);string result=Probe(plan.Native,"check-runtime");if(string.IsNullOrWhiteSpace(result)||!result.Contains("webview2"))throw new Exception("WebView2 Runtime 安装后未通过检测");}
   Check();Report("运行环境准备完成，无需 Node.js 或 Electron",100);
  }

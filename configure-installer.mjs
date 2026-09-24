@@ -15,7 +15,7 @@ replace('  return payload;',`  string manifestFile=Path.Combine(payload,"MANIFES
   return payload;`);
 replace('Check();Directory.CreateDirectory(Tools);','Check();if(plan.Modules!=null&&!plan.Modules.Contains("exporter")){Report("所选模块无需额外运行环境",100);return;}Directory.CreateDirectory(Tools);');
 replace('Report("运行环境准备完成，无需 Node.js 或 Electron",100);','Report("运行环境准备完成",100);');
-replace('public string Native,FFmpeg,FFprobe,Payload;','public string Native,FFmpeg,FFprobe,Payload;public string[] Modules;');
+replace('public string Native,FFmpeg,FFprobe,Payload,FFmpegSourceDir;','public string Native,FFmpeg,FFprobe,Payload,FFmpegSourceDir;public string[] Modules;');
 replace('public RuntimePlan Inspect(string payload){','public RuntimePlan Inspect(string payload,string[] modules=null){');
 replace('var plan=new RuntimePlan{Payload=payload,Native=Path.Combine(payload,"WebGAL.Video.exe")};','var plan=new RuntimePlan{Payload=payload,Native=Path.Combine(payload,"WebGAL.Video.exe"),Modules=modules??new[]{"timelineNavigator","timelineSelector","exporter"}};if(!plan.Modules.Contains("exporter")){Report("时间线模块无需额外运行环境");return plan;}');
 replace('Report("正在更新 Terre 原生导出组件…");','Report("正在应用 WebVideo+ 模块选择…");');
