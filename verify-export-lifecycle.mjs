@@ -463,6 +463,8 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(renderSource.includes('__exportRebaseCubism4QueueEntry'),'Cubism3/4 queue entries must be rebased in the framework seconds clock');
   assert.ok(renderSource.includes('__exportRebaseCubism4QueueEntry(entry,performance.now(),state)'),'Cubism3/4 seek must use the WebGAL runtime clock, not the story clock, for queue timestamps');
   assert.ok(renderSource.includes('if(explicitIndex!==null)return manager.startMotion(group,explicitIndex,priority)'),'Cubism3/4 explicit multi-motion groups must not pick a different random index in each worker');
+  assert.ok(renderSource.includes('manager.startMotion=async(group,index,priority)=>'),'Cubism3/4 direct motion starts must also use the planned deterministic group index');
+  assert.ok(renderSource.includes('__exportRebaseCubism4QueueEntry(entry,originMs,'),'Cubism3/4 explicit motion start must preserve the story event time across asynchronous loading');
   assert.ok(renderSource.includes("rebaseMode:'queue-seconds-terminal'"),'completed Cubism3/4 motions without Idle must restore their terminal parameter state rather than restart');
   assert.ok(renderSource.includes('eyeBlink.__webVideoDeterministicTimeline=true'),'Cubism3/4 blink must use a deterministic seam-stable timeline');
   assert.ok(renderSource.includes('globalThis.__exportResolveCubism4Blink'),'Cubism3/4 blink phase must resolve from an absolute epoch rather than a worker-local random timer');

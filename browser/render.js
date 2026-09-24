@@ -389,8 +389,9 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     if(!selected||selected.loop||Math.max(0,Math.round(nowMs)-epochTime)<selected.durationMs)return false;
     const idle=await cubism4Entries(manager,manager.groups?.idle);if(idle.length)return false;
     manager.stopAllMotions?.();
-    const ok=await manager.startMotion(String(epoch.group),index,Number(epoch.priority)||3);if(!ok)return false;
+    const ok=await manager.startMotion(String(epoch.group),index,Number(epoch.priority)||3);
     const motions=Array.from(queue._motions||queue.motions||[]),entry=motions[motions.length-1];
+    if(!ok&&entry?._motion!==selected.motion)return false;
     const state={offsetMs:selected.durationMs,elapsedMs:selected.durationMs,durationMs:selected.durationMs,loop:false,loopFadeIn:selected.loopFadeIn};
     const runtimeNowMs=performance.now();
     const rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,runtimeNowMs,state,{terminal:true});if(!rebased){manager.stopAllMotions?.();return false;}
@@ -406,8 +407,11 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     // it here would replace its first queue entry and can change the visible pose.
     if(state.kind==='explicit'&&nowMs-Number(lifetime.startMs)<=1000/fps+.01&&state.offsetMs<=1000/fps+.01&&manager.state?.isActive?.(state.group,state.index))return true;
     manager.stopAllMotions?.();
-    const ok=await manager.startMotion(state.group,state.index,state.priority);if(!ok)return false;
+    const ok=await manager.startMotion(state.group,state.index,state.priority);
     const motions=Array.from(queue._motions||queue.motions||[]),entry=motions[motions.length-1];
+    // Some runtimes report false after enqueuing the requested motion. The
+    // queue entry is the reliable signal for whether there is a pose to seek.
+    if(!ok&&entry?._motion!==state.motion)return false;
     let rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,performance.now(),state),mode=rebased?'queue-seconds':'';
     if(!rebased&&typeof state.motion?.setOffsetTime==='function'){state.motion.setOffsetTime(Math.max(0,Number(state.offsetMs)||0)/1000);rebased=true;mode='motion-offset';}
     manager.__webVideoCubism4SeekLast={target,startMs:Number(lifetime.startMs),group:state.group,index:state.index,offsetMs:state.offsetMs,elapsedMs:state.elapsedMs,kind:state.kind,originMs:state.originMs,rebased,rebaseMode:mode};
@@ -486,6 +490,22 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
           if(lifetime)await seekCubism2State(manager,queue,inner.coreModel,target,lifetime,nowMs);
         }
         if(breath&&manager&&queue&&typeof manager.startRandomMotion==='function'&&typeof manager.loadMotion==='function'){
+          const originalStart=manager.startMotion.bind(manager);
+          manager.startMotion=async(group,index,priority)=>{
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+            const planned=lifetime?globalThis.__exportCubism4ExplicitMotionIndex(lifetime,group,nowMs,manager.definitions?.[group],1000/fps):null;
+            const selected=planned===null?index:planned,epoch=planned===null?null:globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);
+            const originMs=performance.now()-Math.max(0,nowMs-Number(epoch?.atMs??nowMs));
+            const result=await originalStart(group,selected,priority);
+            if(planned!==null){
+              const motion=manager.motionGroups?.[group]?.[selected],motions=Array.from(queue._motions||queue.motions||[]),entry=motions[motions.length-1];
+              if(motion&&entry?._motion===motion){
+                const duration=Number(motion.getDuration?.()),loopDuration=Number(motion.getLoopDuration?.()),loop=typeof motion.isLoop==='function'&&!!motion.isLoop();
+                globalThis.__exportRebaseCubism4QueueEntry(entry,originMs,{offsetMs:0,elapsedMs:0,durationMs:(duration>0?duration:loopDuration)*1000,loop,loopFadeIn:typeof motion.isLoopFadeIn==='function'&&!!motion.isLoopFadeIn()});
+              }
+            }
+            return result;
+          };
           const originalRandom=manager.startRandomMotion.bind(manager);
           manager.startRandomMotion=async(group,priority)=>{
             const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
