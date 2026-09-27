@@ -22,7 +22,7 @@ Pop-Location
 
 国内网络可为 `npm ci` 附加 `--registry=https://registry.npmmirror.com`。以提交的锁文件和完整性校验值为准，不重新解析 latest。
 
-当前公开 Release 安装器 SHA-256：
+固定构建 bootstrap（0.4.10.2）安装器 SHA-256：
 
 ```text
 a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
@@ -39,6 +39,7 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules` 都不提交。脚本不依赖维护者个人目录；Node 位置由当前 PATH 解析。
 
 按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-1.1.0.exe`；Win32 安装器内部文件版本使用数字形式 `1.1.0.0`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
+
 
 ## 开发快速构建
 
