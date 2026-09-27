@@ -4,6 +4,8 @@
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`manifest.mjs`、`build-product.ps1`、`configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
+更新检查读取 GitHub 正式 Release 列表。发布 1.1.0 或后续版本时，应把对应 `RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"webgal":["4.6.4"]} -->` 一并放进 Release 正文，并按实际适配基线更新数组；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4 和 1.1.0 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
+
 ## 初次准备
 
 1. 使用 Windows PowerShell 5.1 或 PowerShell 7，安装 Node.js 22.20.0 或兼容版本。

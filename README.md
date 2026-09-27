@@ -2,7 +2,7 @@
 
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [1.0.4 发行说明](RELEASE_NOTES_1.0.4.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [1.1.0 更新说明（待发布）](RELEASE_NOTES_1.1.0.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
 **当前源码版本：1.1.0（内部开发标识 0.8.4；安装器 Win32 版本 1.1.0.0，导出内核 0.6.44）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
 
@@ -44,7 +44,7 @@
 
 并行数支持 1–32，但更多进程不一定更快。Planner 会按剧情安全点和 DOM workload 估算分配分片，且分片数不会超过有效 worker 数，避免额外 WebView2 冷启动。**1080p 是常规推荐档，1440p 适合需要更高输出分辨率的场景；4K 每帧像素量约为 1080p 的 4 倍，建议 2–4 worker。若原始背景、立绘或 Live2D 贴图本身不是 4K，通常不会获得更多真实细节。**
 
-1.1.0 的源码改动见 [版本记录](CHANGELOG.md)；最近已发布的 1.0.4 摘要见 [1.0.4 发行说明](RELEASE_NOTES_1.0.4.md)，此前版本见 [1.0.3 发行说明](RELEASE_NOTES_1.0.3.md)、[1.0.2 发行说明](RELEASE_NOTES_1.0.2.md)、[1.0.1 发行说明](RELEASE_NOTES_1.0.1.md)与[1.0.0 发行说明](RELEASE_NOTES_1.0.0.md)。
+1.1.0 的改动见 [更新说明](RELEASE_NOTES_1.1.0.md)和[版本记录](CHANGELOG.md)；最近已发布的 1.0.4 摘要见 [1.0.4 发行说明](RELEASE_NOTES_1.0.4.md)，此前版本见 [1.0.3 发行说明](RELEASE_NOTES_1.0.3.md)、[1.0.2 发行说明](RELEASE_NOTES_1.0.2.md)、[1.0.1 发行说明](RELEASE_NOTES_1.0.1.md)与[1.0.0 发行说明](RELEASE_NOTES_1.0.0.md)。
 
 ## 两轮基础舞台
 
