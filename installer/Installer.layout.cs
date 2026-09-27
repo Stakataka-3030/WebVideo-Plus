@@ -32,7 +32,7 @@ public partial class SetupForm {
   advancedToggle.CheckedChanged+=(s,e)=>{advanced.Visible=advancedToggle.Checked;ResizeForContent();};
   Shown+=(s,e)=>ResizeForContent();responsiveReady=true;ResizeForContent();
  }
- void ResizeForContent(){if(!responsiveReady||responsiveBusy)return;float scale=Density(this);var area=Screen.FromControl(this).WorkingArea;MinimumSize=new Size(Math.Min(area.Width,Pixels(scale,560)),Math.Min(area.Height,Pixels(scale,430)));int width=Math.Min(area.Width-Pixels(scale,24),Math.Max(ClientSize.Width,Pixels(scale,760)));int height=Math.Min(area.Height-Pixels(scale,64),Pixels(scale,advancedToggle.Checked?900:560));ClientSize=new Size(Math.Max(320,width),Math.Max(300,height));ResponsiveLayout();if(!advancedToggle.Checked){ClientSize=new Size(ClientSize.Width,Math.Min(height,Math.Max(Pixels(scale,430),AutoScrollMinSize.Height)));ResponsiveLayout();}}
+ void ResizeForContent(){if(!responsiveReady||responsiveBusy)return;float scale=Density(this);var area=Screen.FromControl(this).WorkingArea;MinimumSize=new Size(Math.Min(area.Width,Pixels(scale,560)),Math.Min(area.Height,Pixels(scale,430)));int width=Math.Min(area.Width-Pixels(scale,24),Math.Max(ClientSize.Width,Pixels(scale,760)));int height=Math.Min(area.Height-Pixels(scale,64),Pixels(scale,advancedToggle.Checked?900:620));ClientSize=new Size(Math.Max(320,width),Math.Max(300,height));ResponsiveLayout();if(!advancedToggle.Checked){ClientSize=new Size(ClientSize.Width,Math.Min(height,Math.Max(Pixels(scale,460),AutoScrollMinSize.Height)));ResponsiveLayout();}}
  void ResponsiveLayout(){if(!responsiveReady||responsiveBusy||IsDisposed)return;responsiveBusy=true;SuspendLayout();advanced.SuspendLayout();try{
   float scale=Density(this);int pad=Pixels(scale,24),gap=Pixels(scale,8),small=Pixels(scale,4),offset=AutoScrollPosition.Y;
   int width=Math.Max(200,ClientSize.Width-2*pad-SystemInformation.VerticalScrollBarWidth),y=pad+offset;
@@ -40,6 +40,7 @@ public partial class SetupForm {
   y=PlaceText(layoutTerreLabel,pad,y,width)+small;int row=Math.Max(terre.PreferredHeight,Pixels(scale,30));
   int findWidth=Math.Max(Pixels(scale,90),TextWidth(findTerre)+Pixels(scale,20)),selectWidth=Math.Max(Pixels(scale,82),TextWidth(selectTerre)+Pixels(scale,20));
   terre.SetBounds(pad,y,Math.Max(80,width-findWidth-selectWidth-2*gap),terre.PreferredHeight);findTerre.SetBounds(terre.Right+gap,y,findWidth,row);selectTerre.SetBounds(findTerre.Right+gap,y,selectWidth,row);y+=row+gap;
+  if(updateStatus!=null){int retryWidth=Math.Max(Pixels(scale,72),TextWidth(updateRetry)+gap),actionWidth=updateAction.Visible?Math.Max(Pixels(scale,105),TextWidth(updateAction)+gap):0,labelWidth=Math.Max(Pixels(scale,160),width-retryWidth-actionWidth-2*gap),updateHeight=Math.Max(Pixels(scale,28),TextHeight(updateStatus,labelWidth));updateStatus.SetBounds(pad,y,labelWidth,updateHeight);if(updateAction.Visible)updateAction.SetBounds(updateStatus.Right+gap,y,actionWidth,updateHeight);updateRetry.SetBounds(pad+width-retryWidth,y,retryWidth,updateHeight);y+=updateHeight+gap;}
   y=PlaceCheck(advancedToggle,pad,y,width,scale)+gap;advanced.Visible=advancedToggle.Checked;
   if(advancedToggle.Checked){
    int scrollY=0,innerWidth=Math.Max(150,width-SystemInformation.VerticalScrollBarWidth-2*gap),ay=gap+scrollY;

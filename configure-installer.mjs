@@ -79,9 +79,9 @@ replace('public class SetupForm:Form {','public partial class SetupForm:Form {')
 const legacyToggle=s.match(/  var lower=Controls[\s\S]*?advancedToggle\.CheckedChanged[\s\S]*?;\};/);
 if(!legacyToggle)throw Error('Legacy installer toggle layout missing');
 s=s.replace(legacyToggle[0],'');
-replace('\n }\n TextBox Field(', '\n  InitializeResponsiveLayout();\n }\n TextBox Field(');
+replace('\n }\n TextBox Field(', '\n  InitializeResponsiveLayout();\n  InitializeUpdateCheck();\n }\n TextBox Field(');
 replace('bool accepted=f.ShowDialog(this)==DialogResult.OK;', 'ConfigureUninstallLayout(f);bool accepted=f.ShowDialog(this)==DialogResult.OK;');
-s+='\n'+fs.readFileSync(path.join(root,'installer/Installer.layout.cs'),'utf8');
+s+='\n'+fs.readFileSync(path.join(root,'installer/Installer.layout.cs'),'utf8')+'\n'+fs.readFileSync(path.join(root,'installer/Installer.update.cs'),'utf8');
 
 fs.writeFileSync(path.join(root,'installer/Installer.cs'),s);
 console.log('WebVideo+ installer source generated.');

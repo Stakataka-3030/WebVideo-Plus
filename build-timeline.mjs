@@ -57,7 +57,7 @@ fs.writeFileSync(path.join(root,'package/product-ui/menu-patches.json'),JSON.str
 fs.writeFileSync(path.join(root,'package/product-ui/character-map-patches.json'),JSON.stringify(mapPatches,null,2));
 fs.mkdirSync(path.join(root,'package/timeline'),{recursive:true});
 fs.mkdirSync(path.join(root,'package/product-ui'),{recursive:true});
-for(const name of ['toolbar.js','toolbar.css','game-tools.js','editor-runtime.js'])fs.copyFileSync(path.join(root,'browser',name),path.join(root,'package/product-ui',name));
+for(const name of ['toolbar.js','toolbar.css','game-tools.js','editor-runtime.js','update-check.js'])fs.copyFileSync(path.join(root,'browser',name),path.join(root,'package/product-ui',name));
 fs.appendFileSync(path.join(root,'package/product-ui/editor-runtime.js'),'\n'+read('browser/character-map.js')+'\n'+read('browser/menu-actions.js')+'\n'+read('browser/automatic-backups.js')+'\n'+read('browser/ai-config.js'));
 for(const name of ['timeline-core.js','timeline.css'])fs.copyFileSync(path.join(root,'browser',name),path.join(root,'package/timeline',name));
 fs.writeFileSync(path.join(root,'package/timeline/timeline-core.js'),read('browser/navigation-metadata.js')+'\n'+read('browser/navigation-model.js')+'\n'+read('browser/filter-library.js')+'\n'+read('browser/preset-library.js')+'\n'+read('browser/timing-tasks.js')+'\n'+read('browser/timeline-core.js'));
