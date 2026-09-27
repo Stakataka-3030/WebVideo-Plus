@@ -10,6 +10,7 @@ This scope statement is intended to make the repository's mixed provenance expli
 | --- | --- | --- |
 | WebVideo+ original code under `src/`, `browser/`, `manager/`, `installer/`, `launcher/`, `bootstrap/`, and project build scripts | MPL-2.0 | Except where a file contains separately attributed third-party material. |
 | `baseline/terre-4.6.4.js` | MPL-2.0 (upstream) | Unmodified/fixed WebGAL Terre 4.6.4 release bundle used as the patching baseline. Upstream copyright remains with its contributors. |
+| `baseline/terre-4.6.5.js` | MPL-2.0 (upstream) | Unmodified/fixed WebGAL Terre 4.6.5 release bundle used as the current experimental patching baseline. Upstream copyright remains with its contributors. |
 | Terre/WebGAL-derived snippets or modifications embedded in patch definitions | MPL-2.0 | These remain under the same MPL-2.0 family as the upstream source. |
 | `anogo-actions.factory.json` default action vocabulary | AGPL-3.0 | Copied/adapted from `A-kirami/anogo`, `src/stores/state.ts`. See `licenses/ANOGO-ATTRIBUTION.txt` and `licenses/LICENSE-Anogo-AGPL-3.0.txt`. WebVideo+'s independently implemented Anogo importer code remains MPL-2.0. |
 | `vendor/js-yaml-4.1.1.min.js` | MIT | See `vendor/js-yaml-LICENSE` and `licenses/LICENSE-js-yaml.txt`. |

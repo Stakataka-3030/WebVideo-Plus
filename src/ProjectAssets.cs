@@ -42,12 +42,12 @@ namespace NativeVideo {
   void CheckJson(object text,bool array,int line,string label){try{object value=text is string?J.Parse((string)text):text;if(array?!(value is object[]):!(value is Dictionary<string,object>))throw new Exception(array?"应为动画帧数组":"应为对象");}catch(Exception e){Add("syntax",line,label,"参数无法解析："+e.Message);}}
   public object Scan(object parsed,bool ignoreStageBackground=false){
    Parsed=parsed;
-   var lines=Regex.Split(Script,"\r?\n");
+   var lines=Regex.Split(Script,"\r?\n");bool needsLive2D=false;
    var sentences=J.A(J.Get(parsed,"sentenceList"));
    var forbidden=new HashSet<string>(new[]{"changeScene","callScene","return","choose","chooseLabel","jumpLabel","getUserInput","if","setVar","showVars"});
-   var known=new HashSet<string>(new[]{"say","changeBg","changeFigure","bgm","playVideo","pixiPerform","pixiInit","intro","miniAvatar","changeScene","choose","end","setComplexAnimation","setFilter","label","jumpLabel","chooseLabel","setVar","if","callScene","showVars","unlockCg","unlockBgm","filmMode","setTextbox","setAnimation","playEffect","setTempAnimation","comment","__commment","setTransform","setTransition","getUserInput","applyStyle","wait","callSteam","return"});
+   var known=new HashSet<string>(new[]{"say","changeBg","changeFigure","changeFigureDiff","bgm","playVideo","pixiPerform","pixiInit","intro","miniAvatar","changeScene","choose","end","setComplexAnimation","setFilter","label","jumpLabel","chooseLabel","setVar","if","callScene","showVars","unlockCg","unlockBgm","filmMode","setTextbox","setAnimation","playEffect","setTempAnimation","comment","__commment","setTransform","setTransition","getUserInput","applyStyle","wait","callSteam","return"});
    var sideEffects=new HashSet<string>(new[]{"unlockCg","unlockBgm","callSteam"});
-   var mapping=new Dictionary<string,string>{{"changeBg","background"},{"changeFigure","figure"},{"miniAvatar","figure"},{"bgm","bgm"},{"playEffect","vocal"},{"playVideo","video"}};
+   var mapping=new Dictionary<string,string>{{"changeBg","background"},{"changeFigure","figure"},{"changeFigureDiff","figure"},{"miniAvatar","figure"},{"bgm","bgm"},{"playEffect","vocal"},{"playVideo","video"}};
    var args=new Dictionary<string,string>{{"vocal","vocal"},{"backgroundImage","background"},{"mouthOpen","figure"},{"mouthClose","figure"},{"mouthHalfOpen","figure"},{"eyesOpen","figure"},{"eyesClose","figure"}};
    for(int i=0;i<lines.Length;i++){
     if(string.IsNullOrWhiteSpace(lines[i])||lines[i].TrimStart().StartsWith(";"))continue;
@@ -69,15 +69,20 @@ namespace NativeVideo {
     if(mapping.ContainsKey(cmd)&&!(ignoreStageBackground&&cmd=="changeBg"))Ref(mapping[cmd],J.S(s,"content"),line,skip);
     if(cmd=="changeFigure"){
      var value=J.S(s,"content");
+     if(Regex.IsMatch(value,@"\.json([?#].*)?$",RegexOptions.IgnoreCase)||value.Contains("type=live2d"))needsLive2D=true;
      if(Regex.IsMatch(value,@"\.(skel|mkv)([?#].*)?$",RegexOptions.IgnoreCase)||value.Contains("type=spine"))Add("unsupported",line,value,"当前不支持此立绘格式");
      else if(!Adapter.IsMygo&&(Regex.IsMatch(value,@"\.(webm|mp4|mov|jsonl|wmdl)([?#].*)?$",RegexOptions.IgnoreCase)||value.Contains("type=video")))Add("unsupported",line,value,"此立绘需要选择已安装的 MyGO 3.2.1 引擎");
+    }
+    if(cmd=="changeFigureDiff"){
+     var value=J.S(s,"content");
+     if(value!="none"&&!Regex.IsMatch(value,@"\.(png|jpe?g|webp|gif)([?#].*)?$",RegexOptions.IgnoreCase))Add("unsupported",line,value,"立绘差分只支持图片，不适用于 Live2D、Spine 或视频");
     }
     foreach(var a in args)if(p.ContainsKey(a.Key))Ref(a.Value,J.S(p,a.Key),line,J.O("line",line,"startLine",line,"endLine",endLine,"kind","remove-argument","key",a.Key));
     if(cmd=="setAnimation")Ref("animation",J.S(s,"content")+".json",line,skip);
     if(new[]{"setTransition","changeBg","changeFigure"}.Contains(cmd))foreach(var key in new[]{"enter","exit"})if(p.ContainsKey(key))Ref("animation",J.S(p,key)+".json",line,J.O("line",line,"startLine",line,"endLine",endLine,"kind","remove-argument","key",key));
     if(i%10==0)Report(J.O("phase","scanning","scannedLines",line,"totalLines",lines.Length,"checkedFiles",checkedFiles.Count));
    }
-   foreach(var lib in libraries)if(!J.B(lib,"found"))Add("environment",0,J.S(lib,"name"),"未找到引擎运行库，请检查工程或安装配置");
+   foreach(var lib in libraries)if(!J.B(lib,"found")&&(Adapter.IsMygo||needsLive2D))Add("environment",0,J.S(lib,"name"),"未找到 Live2D 运行库，请检查工程或安装配置");
    var template=Path.Combine(Project,"game/template");
    if(Directory.Exists(template))foreach(var file in Directory.EnumerateFiles(template,"*",SearchOption.AllDirectories)){
     checkedFiles.Add(file);

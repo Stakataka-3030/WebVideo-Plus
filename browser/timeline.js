@@ -162,7 +162,7 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
   // WebGAL when a preceding -notend/-next say overlaps the wait, and that retry can later
   // settle the following dialogue. -nobreak already supplies native blockingNext semantics.
   const arrange=pc.arrangeNewPerform;
-  const trackedPerformCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','playVideo','intro','pixiPerform']);
+  const trackedPerformCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','changeFigureDiff','playVideo','intro','pixiPerform']);
   pc.arrangeNewPerform=function(perform,s,...rest){
     const params=Object.fromEntries(s.args.map(a=>[a.key,a.value]));
     const command=s.command===0?'say':s.commandRaw;

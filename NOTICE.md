@@ -4,7 +4,7 @@
 
 除 [`LICENSES.md`](LICENSES.md) 明确列出的第三方或独立许可材料外，WebVideo+ 的原创源代码、构建脚本、项目特定实现和原创数据采用 **Mozilla Public License 2.0（MPL-2.0）**。完整许可证文本见根目录 [`LICENSE`](LICENSE)。根许可证不会覆盖或替换其他权利人的既有条款。
 
-- **WebGAL / Terre**：编辑器与播放引擎基座遵循其各自 MPL-2.0 许可。`baseline/terre-4.6.4.js` 来源于 OpenWebGAL/WebGAL_Terre 4.6.4，用于精确挂载定位，SHA-256 为 `3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133`。
+- **WebGAL / Terre**：编辑器与播放引擎基座遵循其各自 MPL-2.0 许可。历史基线 `baseline/terre-4.6.4.js` 的 SHA-256 为 `3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133`；当前实验分支的官方 4.6.5 基线 `baseline/terre-4.6.5.js` 的 SHA-256 为 `1c4911a397ad887cba6a13eba4e16b58faea72c6595a6b4a14f146f200232cd4`。
 - **WebView2 / FFmpeg / Node.js**：按各自许可用于原生导出、媒体处理和可选 AI 运行环境。固定第三方二进制由发布安装器/构建 bootstrap 提供，不视为 WebVideo+ 自有代码。
 - **DeepSeek Harness / pi-ai**：可选 AI 组件使用 DSH 0.1.5-rc.1 与 pi-ai 0.85.1；依赖版本由 `ai-runtime/package-lock.json` 固定，相关第三方许可保留在依赖目录或上游包内。
 - **Anogo**：`anogo-actions.factory.json` 中的默认动作词表来自 A-kirami/anogo，继续适用其 AGPL-3.0 来源与许可；WebVideo+ 自行实现的 Anogo 导入适配代码采用 MPL-2.0。完整 Anogo 创作工具并不随 WebVideo+ 捆绑。

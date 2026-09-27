@@ -1,7 +1,7 @@
 using System;using System.IO;using System.IO.Compression;using System.Linq;using System.Collections.Generic;using System.Text.RegularExpressions;using System.Threading.Tasks;using System.Diagnostics;
 namespace NativeVideo {
  public static class ProductIntegration {
-  const string TerreBaselineHash="3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133";
+  const string TerreBaselineHash="1c4911a397ad887cba6a13eba4e16b58faea72c6595a6b4a14f146f200232cd4";
   static string ProductVersion{get{return VersionInfo.Product;}}static string InternalVersion{get{return VersionInfo.Internal;}}static string KernelVersion{get{return VersionInfo.Kernel;}}
   static object UpdateContext(string terre){var engine=J.TryRead(Path.Combine(terre,"assets/templates/WebGAL_Template/webgal-engine.json"));return J.O("productVersion",ProductVersion,"engineId",J.S(engine,"id"),"engineVersion",J.S(engine,"webgalVersion",J.S(engine,"version")));}
   static string ProductFile(string terre){return Path.Combine(terre,"webvideo-plus.json");}
@@ -164,7 +164,7 @@ namespace NativeVideo {
     byte[] originalEntry=ResolveOriginalIndex(terre,index,manifest,sourceState,mounted,force);string html=Files.Utf8.GetString(originalEntry),source=null,bundleName=Path.GetFileName(J.S(manifest,"originalBundle"));if(bundleName=="")bundleName=Path.GetFileName(J.S(J.TryRead(RecoveryMeta(sourceState)),"originalBundle"));if(bundleName!="")RestoreRecoveryBundle(sourceState,terre,bundleName);
     if(modules.Length>0){
      if(!TryCleanBundle(terre,html,bundleName,force,out source,out bundleName)){if(!force)throw ForceRequired("无法从记录的 Terre 原版入口找到可安装的前端文件。");throw new IOException("强制修复仍无法识别 Terre 原版前端文件，未更改安装。");}
-     string sourceHash=Files.HashText(source);bool exactBaseline=sourceHash==TerreBaselineHash;if(!exactBaseline)Console.WriteLine("前端哈希与已知 Terre 4.6.4 基线不同；正在使用结构锚点兼容性校验。");try{source=Patch(source,modules,UpdateContext(terre));}catch(IOException e){if(!exactBaseline&&!force)throw ForceRequired("前端与已知基线不同，且结构锚点校验未通过："+e.Message);throw;}
+     string sourceHash=Files.HashText(source);bool exactBaseline=sourceHash==TerreBaselineHash;if(!exactBaseline)Console.WriteLine("前端哈希与已知 Terre 4.6.5 基线不同；正在使用结构锚点兼容性校验。");try{source=Patch(source,modules,UpdateContext(terre));}catch(IOException e){if(!exactBaseline&&!force)throw ForceRequired("前端与已知基线不同，且结构锚点校验未通过："+e.Message);throw;}
     }else if(string.IsNullOrWhiteSpace(bundleName)){string ignored;if(!TryCleanBundle(terre,html,"",true,out ignored,out bundleName))bundleName="";}
     string exeName=J.S(product,"exeName",J.S(life,"exeName",""));if(exeName==""){foreach(var name in new[]{"WebGAL_Terre.exe","WebGAL Terre.exe"})if(File.Exists(Path.Combine(terre,name))){exeName=name;break;}if(exeName==""){var matches=Directory.GetFiles(terre,"*.exe").Where(f=>Regex.Replace(Path.GetFileNameWithoutExtension(f),@"[\s_-]+","").Equals("WebGALTerre",StringComparison.OrdinalIgnoreCase)).ToArray();if(matches.Length==1)exeName=Path.GetFileName(matches[0]);}if(exeName=="")throw new IOException("未找到 Terre 主程序（支持 WebGAL_Terre.exe / WebGAL Terre.exe）");}
     string exe=Files.Under(terre,exeName),originalName=J.S(life,"originalName",Path.GetFileNameWithoutExtension(exeName)+".video-original.exe"),original=Files.Under(terre,originalName),recordedOriginalHash=J.S(life,"originalHash"),recordedWrapperHash=J.S(life,"wrapperHash");

@@ -1,6 +1,6 @@
 {
-  "productVersion": "1.1.0",
-  "installerVersion": "1.1.0.0",
-  "productInternalVersion": "0.8.4",
-  "kernelVersion": "0.6.44"
+  "productVersion": "1.2.0",
+  "installerVersion": "1.2.0.0",
+  "productInternalVersion": "0.9.0-exp.1",
+  "kernelVersion": "0.6.45"
 }

@@ -19,6 +19,14 @@
   function write(row,variants){if(!inside(row)||!variants.length)return;const eol=model.source.includes('\r\n')?'\r\n':'\n';let text=variants.map((value,i)=>{const {__content,...args}=value;return norm(native.write(row,{...(typeof __content==='string'?{content:__content}:{}),args:{...args,...(i<variants.length-1?{next:true}:{})}})).trimEnd();}).join('\n');if(/\n$/.test(row.source))text+='\n';text=text.replace(/\n/g,eol);if(text!==model.source.slice(row.startOffset,row.endOffset))patches.push({startOffset:row.startOffset,endOffset:row.endOffset,before:row.source,after:text,line:row.startLine});}
   for(let index=0;index<items.length;index++){
    const item=items[index],{row,pos,existing}=item,a=row.args;
+   if(row.command==='changeFigureDiff'){
+    const target=existing?lookup(existing):stage.get('fig-'+pos),image=value=>/\.(png|jpe?g|webp|gif)([?#].*)?$/i.test(value||'');
+    if(!target){warn(row,'差分没有找到当前在场的立绘，未自动补 ID。');continue;}
+    if(inside(row)&&(!item.hasExisting||options.overwrite)&&existing!==target.id){write(row,[{id:target.id}]);stats.figures++;}
+    if(row.content==='none'||!row.content)stage.delete(target.id);
+    else if(image(target.file)&&image(row.content))stage.set(target.id,{...target,file:row.content});
+    continue;
+   }
    if(row.command==='changeFigure'){
     if(item.gone){let victims=existing?[lookup(existing)].filter(Boolean):liveAt(pos);if(!victims.length){warn(row,'没有找到对应的在场角色，离场语句保持原样。');continue;}
      if(inside(row)&&(!item.hasExisting||options.overwrite)){

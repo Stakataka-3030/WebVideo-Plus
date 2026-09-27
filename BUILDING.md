@@ -1,19 +1,19 @@
 # 构建与发布
 
-当前分支产品版本 **1.1.0**，产品内部开发标识 **0.8.4**，安装器 Win32 版本 **1.1.0.0**，导出内核 **0.6.44**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建 bootstrap 仍固定使用已发布的 **0.4.10.2** 安装器，以保证第三方运行资源来源和校验值可复现。
+当前实验分支产品版本 **1.2.0**，产品内部开发标识 **0.9.0-exp.1**，安装器 Win32 版本 **1.2.0.0**，导出内核 **0.6.45**。此分支尚未发布。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建 bootstrap 仍固定使用已发布的 **0.4.10.2** 安装器；WebGAL 网页运行时另外从官方 4.6.5 ZIP 按哈希导入。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`manifest.mjs`、`build-product.ps1`、`configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
-更新检查读取 GitHub 正式 Release 列表。发布 1.1.0 或后续版本时，应把对应 `RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"webgal":["4.6.4"]} -->` 一并放进 Release 正文，并按实际适配基线更新数组；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4 和 1.1.0 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
+更新检查读取 GitHub 正式 Release 列表。若将来发布 1.2.0，应把对应发行说明中的 `<!-- webvideo-compat: {"webgal":["4.6.5"]} -->` 放进 Release 正文；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4 和 1.1.0 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
 
 ## 初次准备
 
 1. 使用 Windows PowerShell 5.1 或 PowerShell 7，安装 Node.js 22.20.0 或兼容版本。
-2. 从 GitHub Release 下载当前已发布的 `WebVideo+-Setup-0.4.10.2.exe`。构建脚本从其中抽取固定的 WebGAL/WebView2 运行资源和既有许可文件，不会启动安装程序。该旧安装器不包含编译期 managed WebView2 SDK，因此 `prepare-build.ps1` 另行固定下载 Microsoft.Web.WebView2 `1.0.4191.47`，并保留其许可文本；不会解析 latest。
+2. 从 GitHub Release 下载已发布的 `WebVideo+-Setup-0.4.10.2.exe`，并下载官方 `WebGAL-4.6.5-web.zip`。构建脚本从旧安装器抽取固定的 WebView2 等运行资源及许可文件，再用经过 SHA-256 核对的官方 4.6.5 ZIP 替换 WebGAL 网页运行时，不会启动安装程序。该旧安装器不包含编译期 managed WebView2 SDK，因此 `prepare-build.ps1` 另行固定下载 Microsoft.Web.WebView2 `1.0.4191.47`，并保留其许可文本；不会解析 latest。
 3. 在仓库目录执行：
 
 ```powershell
-.\prepare-build.ps1 -InstallerPath C:\Downloads\WebVideo+-Setup-0.4.10.2.exe
+.\prepare-build.ps1 -InstallerPath C:\Downloads\WebVideo+-Setup-0.4.10.2.exe -WebGALZip C:\Downloads\WebGAL-4.6.5-web.zip
 Push-Location ai-runtime
 npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
 Pop-Location
@@ -34,11 +34,17 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 1ed9f61ab893f32c59c84a5b1a0865fea760789b1e5b71d79fd8083e7b00ed2d
 ```
 
+官方 WebGAL 4.6.5 网页 ZIP 的 SHA-256：
+
+```text
+30a6a446121482cb431950c4d0457ee48f4af9652ca81250fc3f5e244537ce1b
+```
+
 `prepare-build.ps1` 会先清空并重建 `package/` 与 `.build/`，避免旧构建文件残留。之后再执行 `npm ci`；不要在安装依赖后重复运行 `prepare-build.ps1`。
 
 输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules` 都不提交。脚本不依赖维护者个人目录；Node 位置由当前 PATH 解析。
 
-按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-1.1.0.exe`；Win32 安装器内部文件版本使用数字形式 `1.1.0.0`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
+实验构建应使用 `-InternalBuild`，输出 `dist/WebVideo+-Setup-0.9.0-exp.1-dev.exe`；Win32 安装器内部文件版本为 `1.2.0.0`。本分支未发布正式 Release。安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
 
 
 ## 开发快速构建
@@ -69,7 +75,7 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 .\build-product.ps1 -Fast -InternalBuild
 ```
 
-`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.1.0` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
+`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion`（本分支为 `1.2.0`）作为安装/升级比较版本，不会把内部标识误判成低于正式 `1.1.0` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
 
 需要重现某个旧内部标识时，可直接覆盖：
 
@@ -77,7 +83,7 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 .\build-product.ps1 -Fast -InternalVersion 0.5.7
 ```
 
-指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.1.0`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
+指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；`productVersion` 仍保持 `1.2.0`。不带 `-InternalBuild` / `-InternalVersion` 的构建会生成稳定版状态，因此此实验分支的调试包应明确带 `-InternalBuild`。
 
 ## 安装恢复与存储目录
 
@@ -125,7 +131,7 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 
 这是一份整理后的现有工程，而不是重新编写的独立编辑器。首次构建仍从固定安装器中抽取 WebGAL 运行快照和 WebView2 二进制资源；没有宣称从源码重建全部第三方引擎和 SDK。C# 内核、管理器、安装器、process-guard、launcher 及浏览器扩展均从本仓库源码构建。
 
-精确补丁使用 `baseline/terre-4.6.4.js`，与 Terre 4.6.4 对应。更新上游时需要重新核对补丁锚点，不能只修改版本号。对于前端被重新打包但挂载语义未变化的 Terre 4.6.4 变体，部分锚点允许在限定结构范围内使用正则匹配；仍要求目标唯一，避免把兼容性放宽成无条件写入。
+精确补丁使用 `baseline/terre-4.6.5.js`，与 Terre 4.6.5 对应。更新上游时需要重新核对补丁锚点，不能只修改版本号。对于前端被重新打包但挂载语义未变化的 Terre 4.6.5 变体，部分锚点允许在限定结构范围内使用正则匹配；仍要求目标唯一，避免把兼容性放宽成无条件写入。适配进度见 `WEBGAL_4_6_5_ADAPTATION.md`。
 
 安装器的 AI 勾选框位于主界面，标记 Beta，并有 API Key 提示。AI 运行环境随包离线提供，仅启用时部署。
 

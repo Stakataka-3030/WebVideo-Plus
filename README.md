@@ -4,9 +4,9 @@
 
 [下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [1.1.0 发行说明](RELEASE_NOTES_1.1.0.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前源码版本：1.1.0（内部开发标识 0.8.4；安装器 Win32 版本 1.1.0.0，导出内核 0.6.44）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
+**当前分支是未发布的 1.2.0 实验适配（内部开发标识 0.9.0-exp.1；安装器 Win32 版本 1.2.0.0，导出内核 0.6.45）。** 最新正式安装器仍以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
 
-当前适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
+本实验分支的适配基线为 **Terre / WebGAL 4.6.5**，验证范围见 [适配记录](WEBGAL_4_6_5_ADAPTATION.md)。正式 1.1.0 安装器仍对应 Terre 4.6.4。
 
 ## 主要功能
 
@@ -71,7 +71,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于所选 **WebVideo+ 数据�
 ## 安装与模块管理
 
 1. 从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 下载最新的 `WebVideo+-Setup-*.exe`。
-2. 运行安装器并选择已有 **Terre 4.6.4** 安装目录。
+2. 正式 1.1.0 安装器请选择 **Terre 4.6.4**；本实验分支仅面向 **Terre 4.6.5**，尚未发布供一般安装。
 3. 默认安装常用模块；在高级选项中可单独增删功能，并可选择 WebVideo+ 数据目录、导出工作缓存、安装缓存以及是否保留长期 Terre 恢复备份。灰选项目表示其他已选模块所需依赖。
 4. 完成后照常启动 Terre。
 
@@ -90,7 +90,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于所选 **WebVideo+ 数据�
 - 导出重型临时文件：所选导出工作缓存目录
 - 安装下载、解包和运行依赖缓存：所选安装缓存目录
 
-为保证 Terre 4.6.4 的补丁锚点可复现，仓库包含 `baseline/terre-4.6.4.js` 和 `baseline/local-baseline.json`。前者是固定 Terre 4.6.4 发布 bundle；后者保留建立基线时的校验元数据，其中 `baseHash` 会被当前构建脚本写入 `supportedOriginalBundleSha256`。`local-baseline.json` 中的旧 `kernel` 字段和旧文件哈希属于历史验证信息，不代表当前 WebVideo+ 内核版本；当前构建以根目录 `version.json` 的 `kernelVersion` 为准。
+当前精确补丁基线为 `baseline/terre-4.6.5.js`，来源和校验值记录在 `baseline/terre-4.6.5.json`。旧的 `baseline/terre-4.6.4.js` 与 `baseline/local-baseline.json` 保留作历史参考；当前构建以根目录 `version.json` 和新的 4.6.5 基线为准。
 
 ## 许可证
 
@@ -108,7 +108,7 @@ WebVideo+ 建立在多个开源项目、公开技术资料和社区贡献之上�
 
 | 项目 | 本项目中的用途 |
 | --- | --- |
-| [OpenWebGAL/WebGAL_Terre](https://github.com/OpenWebGAL/WebGAL_Terre) | 编辑器基座；复用图形/文本编辑、素材管理、语句组件和预览通信。当前补丁基线为 4.6.4。 |
+| [OpenWebGAL/WebGAL_Terre](https://github.com/OpenWebGAL/WebGAL_Terre) | 编辑器基座；复用图形/文本编辑、素材管理、语句组件和预览通信。本实验分支的补丁基线为 4.6.5。 |
 | [OpenWebGAL/WebGAL](https://github.com/OpenWebGAL/WebGAL) | 播放引擎、语句解析和导出运行资源的上游。 |
 | [OpenWebGAL/WebGAL_Doc](https://github.com/OpenWebGAL/WebGAL_Doc) | WebGAL 语法、引擎和编辑器开发资料。 |
 | [MicrosoftEdge/WebView2Samples](https://github.com/MicrosoftEdge/WebView2Samples) / [WebView2Feedback](https://github.com/MicrosoftEdge/WebView2Feedback) | WebView2 嵌入和原生宿主参考；当前导出核心使用微软 WebView2 SDK。 |
@@ -134,7 +134,7 @@ WebVideo+ 建立在多个开源项目、公开技术资料和社区贡献之上�
 | [floatDreamWithSong/webgal-tools](https://github.com/floatDreamWithSong/webgal-tools) | 早期资产扫描与场景读写方案研究；当前发布包不依赖其 MCP 服务。 |
 | [microsoft/playwright](https://github.com/microsoft/playwright) / [electron/electron](https://github.com/electron/electron) | 早期浏览器自动化、捕获与导出原型研究。当前导出核心使用 C# + WebView2，不捆绑 Playwright 或 Electron 运行时。 |
 
-React、Fluent UI、IconPark、TanStack Virtual、Zustand、Monaco Editor、PixiJS、pixi-filters、Popmotion、Redux Toolkit、localForage 以及 Live2D 显示库等主要通过 Terre/WebGAL 上游继承。WebVideo+ 会调用其现有接口，但不因此把这些项目改成 WebVideo+ 自有代码或统一许可。更完整的传递依赖以 Terre/WebGAL 4.6.4 的包清单与许可文件为准。
+React、Fluent UI、IconPark、TanStack Virtual、Zustand、Monaco Editor、PixiJS、pixi-filters、Popmotion、Redux Toolkit、localForage 以及 Live2D 显示库等主要通过 Terre/WebGAL 上游继承。WebVideo+ 会调用其现有接口，但不因此把这些项目改成 WebVideo+ 自有代码或统一许可。更完整的传递依赖以对应上游包清单与许可文件为准。
 
 ### 特别感谢
 

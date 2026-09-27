@@ -1,5 +1,5 @@
 const WebVideoBatchNext=(()=>{
- const types=[['say','普通对话'],['changeBg','切换背景'],['changeFigure','切换立绘'],['video','播放视频'],['playEffect','效果声音'],['setAnimation','调用动画'],['setComplexAnimation','复杂动画'],['setTransform','单段动画'],['setTempAnimation','多段动画'],['setTransition','进出场动画'],['pixi','使用特效'],['pixiInit','清除特效'],['miniAvatar','角落头像'],['setTextbox','文本显示'],['filmMode','电影模式']];
+ const types=[['say','普通对话'],['changeBg','切换背景'],['changeFigure','切换立绘'],['changeFigureDiff','立绘差分'],['video','播放视频'],['playEffect','效果声音'],['setAnimation','调用动画'],['setComplexAnimation','复杂动画'],['setTransform','单段动画'],['setTempAnimation','多段动画'],['setTransition','进出场动画'],['pixi','使用特效'],['pixiInit','清除特效'],['miniAvatar','角落头像'],['setTextbox','文本显示'],['filmMode','电影模式']];
  const canonical=command=>({playVideo:'video',pixiPerform:'pixi'})[command]||command;
  const supported=new Set(types.map(([command])=>command));
  // Match the native parser's unescaped statement terminator, before any inline comment.

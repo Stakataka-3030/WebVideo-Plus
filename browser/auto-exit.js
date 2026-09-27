@@ -5,9 +5,11 @@ const WebVideoAutoExit=(()=>{
  const label=actor=>{const names=window.WebVideoCharacterMap?.names()||{},name=names[actor.id.toLowerCase()];return name||(actor.explicit?actor.id:actor.file.replace(/\\/g,'/').split('/').pop());};
  function scan(model,selected=null){
   const stage=new Map(),items=[],patches=[],eol=model?.source.includes('\r\n')?'\r\n':'\n';let inserted=0;
-  for(const row of model?.statements||[]){if(row.command!=='changeFigure')continue;const a=row.args,flags=positions.filter(p=>a[p]===true);if(flags.length>1)continue;const explicit=text(a.id),pos=flags[0]||'center',key=explicit||'fig-'+pos,gone=!row.content||row.content==='none'||a.clear===true;
+  for(const row of model?.statements||[]){if(!['changeFigure','changeFigureDiff'].includes(row.command))continue;const diff=row.command==='changeFigureDiff',a=row.args,flags=positions.filter(p=>a[p]===true);if(flags.length>1)continue;const explicit=text(a.id),pos=flags[0]||'center',key=explicit||'fig-'+pos,gone=!row.content||row.content==='none'||!diff&&a.clear===true;
    if(gone){if(explicit)stage.delete(key);else for(const [id,actor]of stage)if(actor.pos===pos)stage.delete(id);continue;}
-   const actor={id:key,explicit:!!explicit,pos,file:row.content},previous=stage.get(key),entering=!previous||previous.pos!==pos||file(previous.file)!==file(actor.file);
+   const actor={id:key,explicit:!!explicit,pos,file:row.content},previous=stage.get(key),image=value=>/\.(png|jpe?g|webp|gif)([?#].*)?$/i.test(value||'');
+   if(diff&&previous){if(image(previous.file)&&image(actor.file))stage.set(key,{...previous,file:actor.file});continue;}
+   const entering=!previous||previous.pos!==pos||file(previous.file)!==file(actor.file);
    const victims=entering?[...stage.values()].filter(old=>old.pos===pos&&(old.id!==actor.id||file(old.file)!==file(actor.file))):[];
    if(victims.length){const item={row,actor,victims,eligible:true};items.push(item);if(selected===null||selected.has(row.id)){
      const lines=victims.map(old=>'changeFigure:none'+(old.explicit?' -id='+old.id:'')+' -'+old.pos+' -next'+(a.when!==undefined?' -when='+a.when:'')+';');

@@ -6,11 +6,12 @@ using System.Text.RegularExpressions;
 
 namespace NativeVideo {
  // Engine code is always copied into a job-local snapshot before patching.
- // Compatible WebGAL 4.6.4 project/template runtimes are preferred so engine-level
+ // Compatible WebGAL 4.6.5 project/template runtimes are preferred so engine-level
  // defaults, split chunks and CSS stay identical to the game being exported.
  public sealed class EngineAdapter {
   public const string MygoHash = "0407b5a6326ebaa1608d16541b79b4ccc54a0432947ae7d3a6a855606a68866e";
-  const string BundledWebgalBundle = "assets/index-R1tKotR6.js";
+  const string BundledWebgalBundle = "assets/index-CC7KTie-.js";
+  const string OfficialWebgal465Hash = "356f7184c80af8da4dd782e25c5b3fb89f55f1e8b9e9e18be6f50035763dc6b6";
   public readonly string Id, Version, Source, Bundle, SourceKind, FallbackReason;
   readonly bool externalWebgal, strictMygoHash;
   public bool IsMygo { get { return Id == "mygo"; } }
@@ -35,18 +36,13 @@ namespace NativeVideo {
    return full.Substring(prefix.Length).Replace('\\','/');
   }
   static EngineAdapter BundledWebgal() {
-   return new EngineAdapter("webgal","4.6.4",Path.Combine(Files.Root,"runtime/web"),BundledWebgalBundle,"bundled-runtime",false,false);
+   return new EngineAdapter("webgal","4.6.5",Path.Combine(Files.Root,"runtime/web"),BundledWebgalBundle,"bundled-runtime",false,false);
   }
-  static string InstrumentExternalWebgal(string text) {
-   // Copying only the first probe assignment from the bundled build leaves
-   // parseScene and stageManager undefined. Its minified identifiers are not
-   // safe to transplant into a separately built project runtime either.
-   if(!text.Contains("globalThis.__probeCommands")||
-      !text.Contains("globalThis.__wgProbe={")||
-      !text.Contains("Object.assign(globalThis.__wgProbe,{parseScene:")||
-      !text.Contains("Object.assign(globalThis.__wgProbe,{stageManager:"))
-    throw new IOException("外部 WebGAL 运行时缺少完整导出探针，改用内置 WebGAL 4.6.4 运行时");
-   return text;
+  static string InstrumentWebgal465(string text) {
+   if(text.Contains("globalThis.__probeCommands")&&text.Contains("globalThis.__wgProbe={core:R,store:Pe}")&&text.Contains("parseScene:wo")&&text.Contains("stageManager:X"))return text;
+   if(Files.HashText(text)!=OfficialWebgal465Hash)throw new IOException("仅支持已校验的官方 WebGAL 4.6.5 运行时；其它引擎暂不直接注入导出探针");
+   text=ReplaceOnce(text,"Ge={\"preview.command.sync-scene\"","Ge=globalThis.__probeCommands={\"preview.command.sync-scene\"");
+   return text+"\n;globalThis.__wgProbe={core:R,store:Pe};\nObject.assign(globalThis.__wgProbe,{parseScene:wo});\nObject.assign(globalThis.__wgProbe,{stageManager:X});\n";
   }
   static EngineAdapter TryMygoProjectRuntime(string root,out string fallbackReason) {
    fallbackReason=null;
@@ -88,8 +84,8 @@ namespace NativeVideo {
      string id=J.S(metadata,"id");
      if(id=="open-webgal.webgal") {
       official=true;
-      if(J.S(metadata,"version")!="4.6.4"||J.S(metadata,"webgalVersion")!="4.6.4")
-       error="检测到 WebGAL "+J.S(metadata,"version")+"，将尝试结构兼容；不兼容时回退 4.6.4 基线";
+      if(J.S(metadata,"version")!="4.6.5"||J.S(metadata,"webgalVersion")!="4.6.5")
+       error="检测到 WebGAL "+J.S(metadata,"version")+"，仅 4.6.5 可直接用于导出；将回退 4.6.5 官方基线";
      } else if(!string.IsNullOrWhiteSpace(id))return null;
     } catch(Exception e) {
      error="读取 WebGAL 引擎描述失败："+e.Message;
@@ -106,15 +102,14 @@ namespace NativeVideo {
     if(official)error="WebGAL 主 bundle 缺失或尺寸异常";
     return null;
    }
-   var adapter=new EngineAdapter("webgal","4.6.4",root,RelativeBundle(root,main),sourceKind,true);
+   var adapter=new EngineAdapter("webgal","4.6.5",root,RelativeBundle(root,main),sourceKind,true);
    try {
-    // Dry-run every structural patch. Small engine customizations (for example
-    // transition durations or Live2D defaults) are accepted; incompatible
-    // rebuilds fail before a job snapshot is changed.
-    adapter.Patch(InstrumentExternalWebgal(File.ReadAllText(main)));
+    // Only the verified official 4.6.5 bundle is instrumented. Dry-run every
+    // patch before a job snapshot changes; custom rebuilds use the fixed base.
+    adapter.Patch(File.ReadAllText(main));
     return adapter;
    } catch(Exception e) {
-    error=(sourceKind=="project-runtime"?"工程":"Terre 模板")+" WebGAL 运行时无法直接用于导出，将回退内置 4.6.4："+e.Message;
+    error=(sourceKind=="project-runtime"?"工程":"Terre 模板")+" WebGAL 运行时无法直接用于导出，将回退内置 4.6.5："+e.Message;
     return null;
    }
   }
@@ -153,7 +148,7 @@ namespace NativeVideo {
     var template=TryWebgalRuntime(J.S(request,"engineRoot"),"terre-template",out templateReason);
     if(template!=null)return template;
     string reason=string.Join("；",new[]{projectReason,templateReason}.Where(x=>!string.IsNullOrWhiteSpace(x)));
-    return new EngineAdapter("webgal","4.6.4",Path.Combine(Files.Root,"runtime/web"),BundledWebgalBundle,"bundled-runtime",false,false,string.IsNullOrWhiteSpace(reason)?null:reason);
+    return new EngineAdapter("webgal","4.6.5",Path.Combine(Files.Root,"runtime/web"),BundledWebgalBundle,"bundled-runtime",false,false,string.IsNullOrWhiteSpace(reason)?null:reason);
    }
    if(selected!="mygo")throw new IOException("未知导出引擎");
    string mygoFallbackReason;
@@ -185,7 +180,6 @@ namespace NativeVideo {
    if(!File.Exists(file))throw new IOException("导出运行时缺少主 bundle："+Bundle);
    if(IsMygo&&strictMygoHash&&Files.Hash(file)!=MygoHash)throw new IOException("MyGO 文件在准备过程中改变，请重新导出");
    string text=File.ReadAllText(file);
-   if(externalWebgal)text=InstrumentExternalWebgal(text);
    Files.Atomic(file,Patch(text));
    // SnapshotServer serves raw files only; removing stale compressed copies also
    // prevents later tooling from mistaking them for the patched main bundle.
@@ -218,14 +212,17 @@ namespace NativeVideo {
   }
   public string Patch(string text) {
    if(text.Contains("__nativeAdapterInstalled"))throw new IOException("工作副本不能重复适配");
-   string core=IsMygo?"R":"I", observe=IsMygo?"OP":"bP", next=IsMygo?"vp":"dp", autoCallback=IsMygo?"dTe":"JAe";
+   if(!IsMygo)text=InstrumentWebgal465(text);
+   string core="R", observe=IsMygo?"OP":"tO", next=IsMygo?"vp":"Lp", autoCallback=IsMygo?"dTe":"kPe";
    text=ReplaceOnce(text,observe+"=e=>{var n;",observe+"=e=>{globalThis.__nativeObserve?.(e);var n;");
    text=ReplaceOnce(text,next+"=()=>{"+core+".events.userInteractNext.emit()",next+"=()=>{if(globalThis.__nativeBeforeNext?.()===false)return;"+core+".events.userInteractNext.emit()");
    text=ReplaceOnce(text,core+".gameplay.autoTimeout=setTimeout("+autoCallback+",t)",core+".gameplay.autoTimeout=(globalThis.__nativeScheduleAuto??setTimeout)("+autoCallback+",t)");
+   // Both MyGO 3.2.1 and official WebGAL 4.6.5 initialize a no-op 0 ms
+   // interval. It has no visual effect, but an offline clock can never pass it.
+   text=ReplaceOnce(text,"audioLevelInterval:setInterval(()=>{},0)","audioLevelInterval:null");
    if(IsMygo) {
     // This is an unused placeholder, not a real polling task. A zero-period
     // interval prevents the offline clock from ever advancing past that tick.
-    text=ReplaceOnce(text,"audioLevelInterval:setInterval(()=>{},0)","audioLevelInterval:null");
     text=ReplaceOnce(text,"SCe=e=>{const t=Z.getCalculationStageState()","SCe=e=>{const nativeSpeechGeneration=globalThis.__exportSpeechGeneration;const t=Z.getCalculationStageState()");
     text=ReplaceOnce(text,"const T=(F=!1)=>{if(!S)return;","const T=(F=!1)=>{if(nativeSpeechGeneration!==globalThis.__exportSpeechGeneration){E!==null&&cancelAnimationFrame(E);E=null;return;}if(!S)return;");
     text=ReplaceOnce(text,"tt={\"preview.command.sync-scene\"","tt=globalThis.__probeCommands={\"preview.command.sync-scene\"");
@@ -241,7 +238,7 @@ namespace NativeVideo {
     text=Deferral(text,"addFigure(","async addJsonlFigure(");
     text=Deferral(text,"addVideoFigure(","addWmdlFigure(");
     text+="\n;globalThis.__wgProbe={core:R,store:Ie,stageManager:Z,parseScene:Ao,nativeAuto:yP,nativeStopAuto:$_,nativeNext:vp,compileText:Ds,textDelay:CP,textAnimation:PP};\n";
-   } else text+="\nObject.assign(globalThis.__wgProbe,{nativeAuto:G$,nativeStopAuto:D_,nativeNext:dp,compileText:Os,textDelay:_P,textAnimation:xP});\n";
+   } else text+="\nObject.assign(globalThis.__wgProbe,{nativeAuto:k5,nativeStopAuto:p0,nativeNext:Lp,compileText:Na,textDelay:KC,textAnimation:JC});\n";
    text+="\nglobalThis.__wgProbe.adapter="+J.Text(J.O("id",Id,"version",Version))+ ";globalThis.__nativeAdapterInstalled=true;\n";
    return text;
   }

@@ -25,7 +25,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   if(['changeScene','callScene','choose','jumpLabel','chooseLabel','if','getUserInput'].includes(cmd)&&!(cmd==='choose'&&hintMs))throw Error('无法导出第'+(range.start+1)+'行交互命令：'+cmd);
   if(cmd==='end')break;
   let snippet=raw,voiceMs=0;
-  const kind={changeBg:'background',changeFigure:'figure',miniAvatar:'figure',bgm:'bgm',playEffect:'vocal',playVideo:'video'}[cmd],name=kind?clean(kind,s.content):s.content;
+  const kind={changeBg:'background',changeFigure:'figure',changeFigureDiff:'figure',miniAvatar:'figure',bgm:'bgm',playEffect:'vocal',playVideo:'video'}[cmd],name=kind?clean(kind,s.content):s.content;
   if(cmd==='bgm'||cmd==='playEffect'){scheduleAudioCommand(audio,{command:cmd,name,file:name&&name!=='none'?local(kind,name):null,atMs:cursor,durationMs:info(kind,name).durationMs,params});continue;}
   if(cmd==='say'&&params.vocal){
    voiceMs=info('vocal',params.vocal).durationMs;
@@ -41,24 +41,29 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   }
   if(cmd==='wait'){if(!params.next)cursor+=Math.max(0,Number(s.content)||0);continue;}
   let videoDuration=0;
-  if(cmd==='changeBg'||cmd==='changeFigure'){
-   const position=['left','right','left13','right13','left14','right14'].find(k=>params[k])||'center',target=cmd==='changeBg'?'bg-main':params.id||'fig-'+position,key=cmd+':'+target;
+  if(cmd==='changeBg'||cmd==='changeFigure'||cmd==='changeFigureDiff'){
+   const isFigure=cmd!=='changeBg',isDiff=cmd==='changeFigureDiff',position=['left','right','left13','right13','left14','right14'].find(k=>params[k])||'center',target=isFigure?params.id||'fig-'+position:'bg-main',key=cmd+':'+target;
    const visualName=cmd==='changeFigure'&&params.clear===true?'':name;
-   const oldIdentity=cmd==='changeFigure'?figureIdentities.get(target):null;
+   const oldIdentity=isFigure?figureIdentities.get(target):null;
    const canonicalBounds=value=>String(value??'').split(',').map(x=>x.trim()).join(',');
-   const nextBounds=params.bounds!==undefined?canonicalBounds(params.bounds):(oldIdentity?.bounds||'');
-   const previous=cmd==='changeFigure'?oldIdentity?.name:visualSources.get(key);
-   const changed=cmd==='changeFigure'
+   const nextBounds=!isDiff&&params.bounds!==undefined?canonicalBounds(params.bounds):(oldIdentity?.bounds||'');
+   const previous=isFigure?oldIdentity?.name:visualSources.get(key);
+   const changed=isFigure
     ?(!oldIdentity||oldIdentity.name!==visualName||oldIdentity.position!==position||(params.bounds!==undefined&&oldIdentity.bounds!==nextBounds))
     :previous!==visualName;
    const gone=!visualName||visualName==='none',previousPresent=previous!==undefined&&previous!==null&&previous!==''&&previous!=='none';
-   if(changed&&previousPresent){
+   const image=value=>/\.(png|jpe?g|webp|gif)([?#].*)?$/i.test(String(value||''));
+   const diffReplacing=isDiff&&previousPresent&&!gone&&image(previous)&&image(visualName);
+   const diffNoop=isDiff&&previousPresent&&!gone&&!diffReplacing;
+   if(changed&&previousPresent&&!diffReplacing&&!diffNoop){
     const state=transitionStates.get(target)||{},fallback=cmd==='changeBg'?1500:450;
     const exitMs=state.exitName?ensureAnimation(state.exitName):Math.max(0,Number.isFinite(Number(state.exitDuration))?Number(state.exitDuration):fallback);
     if(exitMs>0)exitReplay.push({startMs:cursor,triggerMs:cursor,endMs:cursor+exitMs,target,command:cmd==='changeBg'?'changeBg-exit':'changeFigure-exit',line:range.start+1,hold:false,dormantRestorable:false,rootReplay:false,noCut:false});
    }
    visualSources.set(key,visualName);
-   if(cmd==='changeFigure'){
+   if(isFigure&&diffReplacing){
+    if(changed){figureIdentities.set(target,{...oldIdentity,name:visualName});softCutWindows.push({startMs:Math.round(cursor),endMs:Math.round(cursor+Math.max(0,Number(plannedPerform?.durationMs??200))),reason:'figure-diff',target,line:range.start+1});}
+   }else if(isFigure&&!diffNoop){
     const liveRuntime=!gone&&(/\.(json|jsonl|wmdl)([?#].*)?$/i.test(visualName)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(visualName)||!!params.motion||!!params.skin||!!params.expression||!!params.blink||!!params.focus||!!params.animationFlag||!!params.eyesOpen||!!params.eyesClose);
     const activeLifetime=activeLiveLifetimes.get(target);
     if(activeLifetime&&(gone||!liveRuntime||changed)){
@@ -75,9 +80,9 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
     if(gone)figureIdentities.delete(target);else figureIdentities.set(target,{name:visualName,position,bounds:nextBounds,liveRuntime});
     if(liveRuntime)softCutWindows.push({startMs:Math.round(cursor),endMs:Math.round(cursor+1000),reason:'live2d-state-change',target,line:range.start+1});
    }
-   if(changed&&(/\.(webm|mp4|mov|mkv)([?#].*)?$/i.test(visualName)||/[?&]type=video(?:&|$)/i.test(visualName)))videoCues.push({path:'/game/'+kind+'/'+physical(visualName),target,atMs:Math.round(cursor),durationMs:info(kind,visualName).durationMs});
-   if(changed)transitionStates.delete(target);
-   if(!gone){
+   if(changed&&!diffReplacing&&!diffNoop&&(/\.(webm|mp4|mov|mkv)([?#].*)?$/i.test(visualName)||/[?&]type=video(?:&|$)/i.test(visualName)))videoCues.push({path:'/game/'+kind+'/'+physical(visualName),target,atMs:Math.round(cursor),durationMs:info(kind,visualName).durationMs});
+   if(changed&&!diffReplacing&&!diffNoop)transitionStates.delete(target);
+   if(!gone&&!diffReplacing&&!diffNoop){
     const state={...(transitionStates.get(target)||{})};
     if(params.exit!==undefined)state.exitName=String(params.exit||'');
     state.exitDuration=Math.max(0,Number(params.exitDuration??(cmd==='changeBg'?1500:450))||0);
@@ -101,7 +106,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    plannedDurationMs:Number.isFinite(Number(plannedPerform?.durationMs))?Number(plannedPerform.durationMs):null,
    voiceControlled:cmd==='say'&&!!params.vocal,
    mouthTarget:cmd==='say'?speakerTarget(params):null,
-   loads:['changeBg','changeFigure','playVideo'].includes(cmd)
+   loads:['changeBg','changeFigure','changeFigureDiff','playVideo'].includes(cmd)
   });
   if(cmd==='playVideo')events.push({atMs:Math.round(cursor+videoDuration),line:range.start+1,sourceIndex:i,command:'__finishVideo',script:'',loads:false});
   if(hintMs){
@@ -116,8 +121,8 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    cursor+=text?Math.max(1600,text.length*1000/22+(params.notend?0:900),voiceMs):350;
   }else if(cmd==='playVideo')cursor+=videoDuration;
   else if(cmd==='intro')cursor+=s.content.split('|').length*Number(params.delayTime??1500)+1000;
-  else if(['setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure'].includes(cmd)){
-   let ms=Number(params.duration??(cmd.startsWith('change')?350:500));
+  else if(['setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','changeFigureDiff'].includes(cmd)){
+   let ms=cmd==='changeFigureDiff'?Number(plannedPerform?.durationMs??200):Number(params.duration??(cmd.startsWith('change')?350:500));
    if(cmd==='setTempAnimation')try{ms=JSON.parse(s.content).reduce((a,f)=>a+Number(f.duration||0),0);}catch{}
    if(cmd==='setAnimation')ms=namedDuration;
    if(!params.keep)cursor+=Math.max(0,ms);
@@ -141,7 +146,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   if(lifetime.endMs>lifetime.startMs)live2dLifetimes.push(lifetime);
  }
  live2dLifetimes.sort((a,b)=>a.startMs-b.startMs||String(a.target).localeCompare(String(b.target)));
- const dynamicCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','playVideo','intro','pixiPerform']);
+ const dynamicCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','changeFigureDiff','playVideo','intro','pixiPerform']);
  const dormantHoldCommands=new Set(['setTransform','setTempAnimation','setAnimation']);
  const decorativePixiNames=new Set(['rain','snow','heavySnow','cherryBlossoms']),relaxedDecorativePixi=[];
  for(const w of performWindows){

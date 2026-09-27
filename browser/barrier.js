@@ -18,7 +18,14 @@ function installStageAssetBarrier() {
     finished=true;cancelPoll();reject(Error('舞台素材或聚合模型加载超时：'+missing().map(x=>x.key+' ('+x.sourceUrl+')').join(', ')));
    },20000);
    const check=async()=>{
-    try{await __pwClock.controller.runFor(0);}catch(error){finished=true;cancelTimeout();reject(error);return;}
+    try{
+     // WebGAL 4.6.5 prepares Pixi textures through a queued upload callback.
+     // During planning the renderer ticker is paused; pump that queue without
+     // advancing story time, or both background and figure remain childless.
+     const prepare=stage.currentApp?.renderer?.plugins?.prepare;
+     if(prepare?.queue?.length&&typeof prepare.delayedTick==='function')prepare.delayedTick();
+     await __pwClock.controller.runFor(0);
+    }catch(error){finished=true;cancelTimeout();reject(error);return;}
     if(finished)return;
     if(!missing().length){finished=true;cancelTimeout();resolve();}else cancelPoll=timer(check,2);
    };

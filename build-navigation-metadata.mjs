@@ -1,5 +1,5 @@
 import fs from 'node:fs';import path from 'node:path';import vm from 'node:vm';import {fileURLToPath} from 'node:url';
-const root=path.dirname(fileURLToPath(import.meta.url)),base=fs.readFileSync(path.join(root,'baseline/terre-4.6.4.js'),'utf8'),translations=new Map();
+const root=path.dirname(fileURLToPath(import.meta.url)),base=fs.readFileSync(path.join(root,'baseline/terre-4.6.5.js'),'utf8'),translations=new Map();
 for(const match of base.matchAll(/"([^"\\]*(?:\\.[^"\\]*)*)":"([^"\\]*(?:\\.[^"\\]*)*)"/g)){try{const key=JSON.parse('"'+match[1]+'"'),value=JSON.parse('"'+match[2]+'"');if(/[\u4e00-\u9fff]/.test(value)&&!translations.has(key))translations.set(key,value);}catch{}}
 const sandbox={reactExports:{useMemo:fn=>fn()},i18n:{_:({id})=>translations.get(id)||id}};vm.createContext(sandbox);
 for(const [name,end] of [['useEffectEditorConfig','function getValueByPath'],['useEaseTypeOptions','function TerrePanel']]){const start=base.indexOf('const '+name+'='),finish=base.indexOf(end,start);if(start<0||finish<start)throw Error('Native metadata anchor missing: '+name);vm.runInContext(base.slice(start,finish),sandbox);}

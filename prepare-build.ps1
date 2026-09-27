@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$InstallerPath)
+param([Parameter(Mandatory=$true)][string]$InstallerPath,[Parameter(Mandatory=$true)][string]$WebGALZip)
 $ErrorActionPreference='Stop'
 $taskInstaller=(Resolve-Path -LiteralPath $InstallerPath).Path
 $taskInstallerHash=(Get-FileHash -LiteralPath $taskInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -7,10 +7,21 @@ $taskAcceptedHashes=@(
  '1ed9f61ab893f32c59c84a5b1a0865fea760789b1e5b71d79fd8083e7b00ed2d'  # legacy pre-release bootstrap
 )
 if($taskAcceptedHashes -notcontains $taskInstallerHash){throw 'Unsupported bootstrap installer. Use the published WebVideo+-Setup-0.4.10.2.exe or the legacy pinned bootstrap listed in BUILDING.md.'}
+$taskWebGALArchive=(Resolve-Path -LiteralPath $WebGALZip).Path
+$taskWebGALHash=(Get-FileHash -LiteralPath $taskWebGALArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+if($taskWebGALHash -ne '30a6a446121482cb431950c4d0457ee48f4af9652ca81250fc3f5e244537ce1b'){throw 'WebGAL 4.6.5 web package SHA-256 mismatch.'}
 $taskRoot=$PSScriptRoot
 $taskOut=Join-Path $taskRoot 'package'
 $taskCache=Join-Path $taskRoot '.build'
-foreach($taskPath in @($taskOut,$taskCache)){if(Test-Path $taskPath){Remove-Item -LiteralPath $taskPath -Recurse -Force}}
+$taskRootFull=[IO.Path]::GetFullPath($taskRoot).TrimEnd([IO.Path]::DirectorySeparatorChar)
+foreach($taskPath in @($taskOut,$taskCache)){
+ $taskFull=[IO.Path]::GetFullPath($taskPath)
+ if(-not $taskFull.StartsWith($taskRootFull+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Invalid build target'}
+ if(Test-Path -LiteralPath $taskFull){
+  if((Get-Item -LiteralPath $taskFull -Force).Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Build target is a reparse point'}
+  Remove-Item -LiteralPath $taskFull -Recurse -Force
+ }
+}
 New-Item -ItemType Directory -Path $taskOut,$taskCache -Force | Out-Null
 $taskAssembly=[Reflection.Assembly]::LoadFile($taskInstaller)
 $taskStream=$taskAssembly.GetManifestResourceStream('payload.zip')
@@ -21,6 +32,14 @@ try{$taskStream.CopyTo($taskFile)}finally{$taskFile.Dispose();$taskStream.Dispos
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $taskZip=[IO.Compression.ZipFile]::OpenRead($taskArchive)
 try{foreach($taskEntry in $taskZip.Entries){if(-not $taskEntry.FullName.StartsWith('webvideo-plus/')){continue};$taskRelative=$taskEntry.FullName.Substring('webvideo-plus/'.Length);if(-not($taskRelative -match '^(runtime/|bin/|licenses/|component\.json$|WebGAL\.Video\.exe\.config$|Microsoft\.Web\.WebView2\.[^/]+\.dll$|WebView2Loader\.dll$)')){continue};if(-not $taskEntry.Name){continue};$taskTarget=[IO.Path]::GetFullPath((Join-Path $taskOut $taskRelative));if(-not $taskTarget.StartsWith([IO.Path]::GetFullPath($taskOut)+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Invalid archive path'};New-Item -ItemType Directory -Path (Split-Path $taskTarget -Parent) -Force | Out-Null;[IO.Compression.ZipFileExtensions]::ExtractToFile($taskEntry,$taskTarget,$true)}}finally{$taskZip.Dispose()}
+$taskRuntime=[IO.Path]::GetFullPath((Join-Path $taskOut 'runtime/web'))
+if(-not $taskRuntime.StartsWith([IO.Path]::GetFullPath($taskOut)+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Invalid runtime target'}
+if(Test-Path -LiteralPath $taskRuntime){Remove-Item -LiteralPath $taskRuntime -Recurse -Force}
+New-Item -ItemType Directory -Path $taskRuntime -Force | Out-Null
+$taskWebGALEntries=[IO.Compression.ZipFile]::OpenRead($taskWebGALArchive)
+try{foreach($taskEntry in $taskWebGALEntries.Entries){if(-not $taskEntry.Name){continue};$taskTarget=[IO.Path]::GetFullPath((Join-Path $taskRuntime $taskEntry.FullName));if(-not $taskTarget.StartsWith($taskRuntime+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Invalid WebGAL archive path'};New-Item -ItemType Directory -Path (Split-Path $taskTarget -Parent) -Force | Out-Null;[IO.Compression.ZipFileExtensions]::ExtractToFile($taskEntry,$taskTarget,$false)}}finally{$taskWebGALEntries.Dispose()}
+if(-not(Test-Path -LiteralPath (Join-Path $taskRuntime 'assets/index-CC7KTie-.js'))){throw 'WebGAL 4.6.5 main bundle missing'}
+if((Get-Content -LiteralPath (Join-Path $taskRuntime 'webgal-engine.json') -Raw | ConvertFrom-Json).webgalVersion -ne '4.6.5'){throw 'WebGAL runtime descriptor version mismatch'}
 $taskWebView2Version='1.0.4191.47'
 $taskWebView2Names=@('Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll')
 $taskMissingWebView2=$taskWebView2Names | Where-Object {-not(Test-Path (Join-Path $taskOut $_))}
