@@ -38,6 +38,26 @@ namespace NativeVideo {
   public static void CopyTree(string source,string target,Action<string,long> copied=null){if(!Directory.Exists(source))return;if(Within(source,target,true))throw new IOException("副本目录必须位于源目录之外");Directory.CreateDirectory(target);foreach(var d in Directory.GetDirectories(source)){if((File.GetAttributes(d)&FileAttributes.ReparsePoint)!=0)throw new IOException("素材目录不能包含目录链接："+d);CopyTree(d,Path.Combine(target,Path.GetFileName(d)),copied);}foreach(var f in Directory.GetFiles(source)){CopyFile(f,Path.Combine(target,Path.GetFileName(f)));if(copied!=null)copied(f,new FileInfo(f).Length);}}
   public static void DeleteTree(string allowedRoot,string target){target=Full(target);if(!Within(allowedRoot,target))throw new IOException("拒绝删除指定根目录以外的路径");if(Directory.Exists(target)){if((File.GetAttributes(target)&FileAttributes.ReparsePoint)!=0){Directory.Delete(target);return;}foreach(var d in Directory.GetDirectories(target))DeleteTree(allowedRoot,d);foreach(var f in Directory.GetFiles(target))File.Delete(f);Directory.Delete(target);}}
  }
+ public static class TerreUserData {
+  public static string DefaultGamesRoot{get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".webgal_terre","games");}}
+  public static bool SamePath(string left,string right){return !string.IsNullOrWhiteSpace(left)&&!string.IsNullOrWhiteSpace(right)&&Files.Full(left).TrimEnd('\\','/').Equals(Files.Full(right).TrimEnd('\\','/'),StringComparison.OrdinalIgnoreCase);}
+  // Terre 4.6 selects install/data in portable mode; otherwise config.json in
+  // ~/.webgal_terre may redirect the active user data root to any directory.
+  public static string GamesRoot(string terreDir,string configRoot=null){
+   string app=Files.Full(terreDir),config=Files.Full(configRoot??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".webgal_terre")),portable=Path.Combine(app,"data");
+   if(Directory.Exists(portable))return Path.Combine(portable,"games");
+   string configured=J.S(J.TryRead(Path.Combine(config,"config.json")),"userDataPath");
+   if(!string.IsNullOrWhiteSpace(configured))try{return Path.Combine(Files.Full(Path.IsPathRooted(configured)?configured:Path.Combine(app,configured)),"games");}catch{}
+   return Path.Combine(config,"games");
+  }
+  public static string ScenePath(string gamesRoot,string game,string scene){string project=Files.Under(gamesRoot,game);return Files.Under(Path.Combine(project,"game","scene"),scene);}
+  public static Dictionary<string,string> FindScene(string configuredGamesRoot,string detectedGamesRoot,string game,string scene){
+   foreach(var root in new[]{detectedGamesRoot,configuredGamesRoot}.Where(x=>!string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase)){
+    string file=ScenePath(root,game,scene);if(File.Exists(file))return new Dictionary<string,string>{{"root",Files.Full(root)},{"project",Files.Under(root,game)},{"file",file}};
+   }
+   return null;
+  }
+ }
  public static class WorkCache {
   public static void CleanupBrowserProfile(string parent){string profile=Path.Combine(parent,"profile");try{if(Directory.Exists(profile))Files.DeleteTree(parent,profile);}catch{}}
   public static void CleanupProfiles(object request){
