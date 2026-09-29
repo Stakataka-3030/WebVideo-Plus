@@ -1,6 +1,6 @@
 // Included by configure-installer.mjs after the responsive layout helpers.
 public sealed class ReleaseUpdateFinding {
- public string Kind,Message,Url;
+ public string Kind,Message,Url,LatestVersion;
  public ReleaseUpdateFinding(string kind,string message,string url=""){Kind=kind;Message=message;Url=url;}
 }
 
@@ -35,21 +35,27 @@ public static class ReleaseUpdateCheck {
   using(var response=(HttpWebResponse)request.GetResponse())using(var stream=response.GetResponseStream())using(var reader=new StreamReader(stream,Encoding.UTF8)){
    if(response.StatusCode!=HttpStatusCode.OK||response.ContentLength>2*1024*1024)throw new IOException("GitHub 发行列表不可用");
    var text=new StringBuilder();var block=new char[4096];int count;while((count=reader.Read(block,0,block.Length))>0){text.Append(block,0,count);if(text.Length>2*1024*1024)throw new IOException("GitHub 发行列表过大");}
-   var serializer=new JavaScriptSerializer{MaxJsonLength=2*1024*1024};var rows=serializer.Deserialize<object[]>(text.ToString());return Evaluate(rows,engine,current);
+   var serializer=new JavaScriptSerializer{MaxJsonLength=2*1024*1024};var rows=serializer.Deserialize<object[]>(text.ToString());var result=Evaluate(rows,engine,current);result.LatestVersion=rows.OfType<Dictionary<string,object>>().Where(row=>!Flag(row,"draft")&&!Flag(row,"prerelease")&&Version(Value(row,"tag_name"))!="").Select(row=>Version(Value(row,"tag_name"))).OrderByDescending(value=>new System.Version(value)).FirstOrDefault()??current;return result;
   }
  }
 }
 
 public partial class SetupForm {
- Label updateStatus;LinkLabel updateAction,updateRetry;System.Windows.Forms.Timer updateTimer;string updateUrl="";int updateTicket;
+ Label updateStatus;LinkLabel updateAction,updateRetry,updateReminder;System.Windows.Forms.Timer updateTimer;string updateUrl="",updateLatest="";int updateTicket;
  void InitializeUpdateCheck(){
   updateStatus=new Label{Text="选择 Terre 后检查兼容版本。",ForeColor=Color.DimGray,AccessibleName="WebVideo+ 更新检查状态"};
   updateAction=new LinkLabel{Text="查看发行页",Visible=false,AutoSize=false,AccessibleName="打开 WebVideo+ 发行页"};
   updateRetry=new LinkLabel{Text="重新检查",AutoSize=false,AccessibleName="重新检查 WebVideo+ 更新"};
-  Controls.Add(updateStatus);Controls.Add(updateAction);Controls.Add(updateRetry);
+  updateReminder=new LinkLabel{Text="提醒设置",AutoSize=false,AccessibleName="更新提醒设置"};
+  var reminderMenu=new ContextMenuStrip();
+  foreach(var choice in new[]{Tuple.Create("next-release","下个版本前不要提醒我"),Tuple.Create("next-major","下个主要版本前不要提醒我"),Tuple.Create("never","不要提醒我"),Tuple.Create("on","恢复提醒")}){
+   var mode=choice.Item1;reminderMenu.Items.Add(choice.Item2,null,(s,e)=>{try{UpdatePreferences.Save(mode,updateLatest!=""?updateLatest:InstallerBuild.PackageVersion);updateStatus.Text=mode=="on"?"已恢复自动更新提醒；可点“重新检查”立即查询。":"更新提醒设置已保存，Terre 与安装器将共用此设置。";updateUrl="";updateAction.Visible=false;}catch(Exception error){MessageBox.Show(this,error.Message,"提醒设置未保存");}});
+  }
+  updateReminder.LinkClicked+=(s,e)=>reminderMenu.Show(updateReminder,0,updateReminder.Height);
+  Controls.Add(updateStatus);Controls.Add(updateAction);Controls.Add(updateRetry);Controls.Add(updateReminder);
   updateStatus.TextChanged+=(s,e)=>ResponsiveLayout();updateAction.VisibleChanged+=(s,e)=>ResponsiveLayout();
   updateAction.LinkClicked+=(s,e)=>{if(updateUrl!="")try{Process.Start(new ProcessStartInfo(updateUrl){UseShellExecute=true});}catch(Exception error){MessageBox.Show(this,"无法打开发行页："+error.Message,"打开链接失败");}};
-  updateRetry.LinkClicked+=async(s,e)=>await CheckUpdatesAsync();
+  updateRetry.LinkClicked+=async(s,e)=>await CheckUpdatesAsync(true);
   updateTimer=new System.Windows.Forms.Timer{Interval=650};updateTimer.Tick+=async(s,e)=>{updateTimer.Stop();await CheckUpdatesAsync();};
   terre.TextChanged+=(s,e)=>{updateTicket++;updateTimer.Stop();updateTimer.Start();};
   Shown+=(s,e)=>{updateTimer.Stop();updateTimer.Start();};
@@ -63,13 +69,14 @@ public partial class SetupForm {
   if(!data.TryGetValue("webgalVersion",out version))data.TryGetValue("version",out version);
   return Convert.ToString(version);
  }
- async Task CheckUpdatesAsync(){
+ async Task CheckUpdatesAsync(bool manual=false){
   int ticket=++updateTicket;updateUrl="";updateAction.Visible=false;updateRetry.Enabled=true;
+  var preference=UpdatePreferences.Read();if(!manual&&Convert.ToString(preference["mode"])=="never"){updateStatus.Text="已关闭自动更新检查；可点“重新检查”手动查询。";return;}
   if(!File.Exists(Path.Combine(terre.Text,"public/index.html"))){updateStatus.Text="选择有效的 Terre 目录后检查更新。";return;}
   string engine;try{engine=DefaultEngineVersion();}catch{engine="";}
   if(String.IsNullOrWhiteSpace(engine)){updateStatus.Text="无法确认 Terre 默认 WebGAL 引擎版本，检查更新失败；安装与启动不受影响。";return;}
   updateStatus.Text="正在检查 WebVideo+ 更新…";updateRetry.Enabled=false;
-  try{var result=await Task.Run(()=>ReleaseUpdateCheck.Fetch(engine,InstallerBuild.PackageVersion));if(ticket!=updateTicket||IsDisposed)return;updateStatus.Text=result.Message;updateUrl=result.Url;updateAction.Visible=updateUrl!="";}
+  try{var result=await Task.Run(()=>ReleaseUpdateCheck.Fetch(engine,InstallerBuild.PackageVersion));if(ticket!=updateTicket||IsDisposed)return;updateLatest=result.LatestVersion;if(!manual&&UpdatePreferences.Suppressed(preference,updateLatest)){updateStatus.Text="更新提醒已暂停；可点“重新检查”手动查询。";return;}if(Convert.ToString(preference["mode"])!="on")try{UpdatePreferences.Save("on","");}catch{}updateStatus.Text=result.Message;updateUrl=result.Url;updateAction.Visible=updateUrl!="";}
   catch{if(ticket==updateTicket&&!IsDisposed)updateStatus.Text="检查更新失败。请检查网络或稍后重试；安装与启动不受影响。";}
   finally{if(ticket==updateTicket&&!IsDisposed)updateRetry.Enabled=true;}
  }
