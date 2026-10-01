@@ -12,6 +12,12 @@ async function runtimeSettings(expected) {
   const queue=[element._reactRootContainer?._internalRoot?.current,...Object.keys(element).filter(k=>k.startsWith('__reactContainer$')||k.startsWith('__reactFiber$')).map(k=>element[k])].filter(Boolean),seen=new Set();let store;
   for(let i=0;i<queue.length&&i<3000;i++){const n=queue[i];if(!n||seen.has(n))continue;seen.add(n);for(const p of [n.memoizedProps,n.pendingProps])for(const s of [p?.store,p?.value?.store])if(s?.getState?.()?.userData?.optionData){store=s;break;}if(store)break;for(const x of [n.child,n.sibling,n.alternate,n.stateNode?.current])if(x&&!seen.has(x))queue.push(x);}
   if(!store)throw Error('实际预览设置尚未就绪');
+  if(expected.startup){
+    const raw=localStorage.getItem('lang'),language=store.getState().userData.optionData.language;
+    if(document.querySelector('._langWrapper_1oupq_10'))throw Error('请先在当前工程预览中完成语言选择');
+    if(typeof raw!=='string'||! /^[0-7]$/.test(raw)||!Number.isInteger(language)||Number(raw)!==language)throw Error('当前预览语言未完成初始化，请选择语言后重试');
+    return {language,source:'preview'};
+  }
   let persistence;
   if(expected.values){
     if(expected.previous){const actual=store.getState().userData.optionData;if(['textSpeed','autoSpeed'].some(k=>Number(actual[k])!==Number(expected.previous[k])))throw Error('预览速度已变化，请重新测量');}
@@ -33,7 +39,7 @@ async function runtimeSettings(expected) {
   if(Object.values(result).some(v=>!Number.isFinite(v)||v< -500||v>100))throw Error('preview-setting-invalid');
   return persistence?{...result,persistence}:result;
 }
-export async function previewSettings(cdp,contexts,{url,values,expected:previous},loadedKeys=new Map()) {
+export async function previewSettings(cdp,contexts,{url,values,expected:previous,startup=false},loadedKeys=new Map()) {
   const parsed=new URL(url);if(parsed.protocol!=='http:'||!['127.0.0.1','localhost'].includes(parsed.hostname))throw Error('preview-origin-denied');
   if(values&&(Object.keys(values).some(k=>!['textSpeed','autoSpeed'].includes(k))||Object.values(values).some(v=>!Number.isFinite(v)||v< -100||v>100)))throw Error('preview-setting-invalid');
   const tree=await cdp.call('Page.getFrameTree'),frames=[];const walk=n=>{frames.push(n.frame);for(const c of n.childFrames||[])walk(c);};walk(tree.frameTree);
@@ -43,7 +49,7 @@ export async function previewSettings(cdp,contexts,{url,values,expected:previous
   const loaded=loadedKeys.get(matches[0].id),expectedConfig=new URL('game/config.txt',parsed.origin+parsed.pathname.replace(/\/$/,'')+'/');
   const matchesConfig=loaded&&new URL(loaded.url).origin===expectedConfig.origin&&new URL(loaded.url).pathname===expectedConfig.pathname;
   const loadedGameKey=matchesConfig&&loaded.loaderId===matches[0].loaderId?loaded.key:undefined;
-  const expression=`(${runtimeSettings.toString()})(${JSON.stringify({origin:parsed.origin,path:parsed.pathname.replace(/\/$/,''),values,previous,loadedGameKey})})`;
+  const expression=`(${runtimeSettings.toString()})(${JSON.stringify({origin:parsed.origin,path:parsed.pathname.replace(/\/$/,''),values,previous,loadedGameKey,startup})})`;
   const result=await cdp.call('Runtime.evaluate',{contextId:context.id,expression,awaitPromise:true,returnByValue:true});
   if(result.exceptionDetails)throw Error(result.exceptionDetails.exception?.description||'preview-setting-failed');return result.result.value;
 }

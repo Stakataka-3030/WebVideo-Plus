@@ -1,7 +1,7 @@
 // Fail early on an incomplete source handoff, before downloads or Windows compilation.
 import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';
 export const requiredSourceFiles=[
- 'src/EngineAdapter.cs','src/WebgalEngineProfile.cs','src/ProjectAssets.cs','prepare-build.ps1','build.ps1','version.json','native.manifest','verify-export-lifecycle.mjs',
+ 'src/RuntimeStartup.cs','src/EngineAdapter.cs','src/WebgalEngineProfile.cs','src/ProjectAssets.cs','prepare-build.ps1','build.ps1','version.json','native.manifest','verify-export-lifecycle.mjs',
  'scripts/prepare-build-inputs.ps1','scripts/build-common.ps1','scripts/prepare-webgal-runtime.mjs','scripts/import-legacy-bootstrap.ps1','scripts/verify-build-inputs.mjs','scripts/build-ai.ps1','scripts/build-ai-metadata.mjs',
  'build/dependencies.lock.json','build/runtime-patches.json','build/templates/component.json','build/templates/WebGAL.Video.exe.config',
  'README.md','LICENSE','LICENSES.md','NOTICE.md','CHANGELOG.md','docs/USER_GUIDE.md',

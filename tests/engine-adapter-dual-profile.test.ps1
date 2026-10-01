@@ -26,7 +26,7 @@ try {
   $core=$core.Substring(0,$end)+" public static partial class App {public static readonly object LogLock=new object();}`n}`n"
   $corePath=Join-Path $temp 'Core.cs'
   [IO.File]::WriteAllText($corePath,$core,[Text.UTF8Encoding]::new($false))
-  Add-Type -Path @($corePath,(Join-Path $PSScriptRoot '../src/WebgalEngineProfile.cs'),(Join-Path $PSScriptRoot '../src/EngineAdapter.cs'),(Join-Path $PSScriptRoot 'engine-adapter-dual-profile.portable-json.cs'),(Join-Path $PSScriptRoot 'engine-adapter-dual-profile-checks.cs'))
+  Add-Type -Path @($corePath,(Join-Path $PSScriptRoot '../src/WebgalEngineProfile.cs'),(Join-Path $PSScriptRoot '../src/RuntimeStartup.cs'),(Join-Path $PSScriptRoot '../src/EngineAdapter.cs'),(Join-Path $PSScriptRoot 'engine-adapter-dual-profile.portable-json.cs'),(Join-Path $PSScriptRoot 'engine-adapter-dual-profile-checks.cs'))
   [EngineAdapterDualProfileChecks]::Run($Webgal464Root,$Webgal465Root,$Webgal464Manifest,$output)
  }else{
   if($env:OS -ne 'Windows_NT'){throw 'Use -Portable for source-level checks; product-assembly checks require Windows.'}

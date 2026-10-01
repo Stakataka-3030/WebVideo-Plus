@@ -27,3 +27,9 @@ test('cancel during native hint synchronization prevents later snippet and timer
  try{const result=b.previewHint({line:1,key:'__wvp_hint_test',duration:1800});while(!started)await new Promise(setImmediate);await b.cancelHintPreview();release();await assert.rejects(result,/取消/);assert.equal(calls.filter(x=>typeof x==='string').length,1);assert(!calls.some(x=>Array.isArray(x)&&!x[1].cancel));}
  finally{delete globalThis.WebVideoCraftScript;}
 });
+test('timing dependencies invalidate when actual preview language changes',async()=>{
+ const f=fixture();f.stores.previewSession={currentGameServeUrl:'http://127.0.0.1:8899/game/test/'};let language=1,discarded=0;
+ f.stores.editor.collectDocumentPathsUnder=()=>[];
+ const b=createBridge({getStores:()=>f.stores,registry:async()=>({enginePath:'C:/engine',runtimeVersion:'4.6.4',runtimeId:'open-webgal.webgal'}),invoke:async()=>{},rpc:async method=>{if(method==='snapshot.allocate')return{snapshotId:'owned',site:'C:/snapshot'};if(method==='snapshot.ready')return{snapshotId:'owned',dependencyHash:'unchanged-files'};if(method==='preview.settings')return{language,source:'preview'};if(method==='snapshot.discard'){discarded++;return; }throw Error('unexpected RPC');}});
+ const one=await b.timingDependencyHash();language=2;assert.notEqual(await b.timingDependencyHash(),one);assert.equal(discarded,2);
+});

@@ -33,3 +33,10 @@ for(const settings of [{loaded:false},{initial:'different'},{globalKey:'differen
 test('runtime key change during asynchronous DB lookup stops write',async()=>{const f=writablePreview({changeDuringDb:true});await assert.rejects(f.run(),/preview-changed/);assert.equal(f.writes(),0);assert.equal(f.state.userData.optionData.textSpeed,20);});
 
 test('speed change during asynchronous DB lookup cannot be overwritten',async()=>{const f=writablePreview({speedChangeDuringDb:true});await assert.rejects(f.run(),/preview-changed/);assert.equal(f.writes(),0);assert.equal(f.state.userData.optionData.textSpeed,99);});
+
+for(const fixture of [{raw:'0',language:0,ok:true},{raw:'2',language:2,ok:true},{raw:null,language:0},{raw:'2',language:0},{raw:'8',language:8},{raw:'2',language:2,chooser:true}])test('preview startup language proof '+JSON.stringify(fixture),async()=>{
+ const url='http://127.0.0.1:8899/game/test/',store={getState:()=>({userData:{optionData:{language:fixture.language,textSpeed:50,autoSpeed:50}}})},element={'__reactContainer$x':{memoizedProps:{store}}};
+ const cdp={async call(method,args){if(method==='Page.getFrameTree')return{frameTree:{frame:{id:'preview',url}}};return{result:{value:await vm.runInNewContext(args.expression,{location:new URL(url),localStorage:{getItem:()=>fixture.raw},document:{getElementById:()=>element,querySelector:()=>fixture.chooser?{}:null}})}}}};
+ const run=()=>previewSettings(cdp,new Map([[7,{id:7,origin:'http://127.0.0.1:8899',auxData:{isDefault:true,frameId:'preview'}}]]),{url,startup:true});
+ if(fixture.ok)assert.deepEqual(JSON.parse(JSON.stringify(await run())),{language:fixture.language,source:'preview'});else await assert.rejects(run(),/语言/);
+});

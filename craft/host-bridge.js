@@ -141,7 +141,7 @@
         } catch(e){await rpc('snapshot.discard',{snapshotId:allocation.snapshotId}).catch(()=>{});throw e;}
         finally{finish?.();}
       },
-      async timingDependencyHash(){const snapshot=await bridge.exportSnapshot();try{return snapshot.dependencyHash;}finally{await rpc('snapshot.discard',{snapshotId:snapshot.snapshotId});}},
+      async timingDependencyHash(){const c=context(),snapshot=await bridge.exportSnapshot();try{const url=c.previewSession?.currentGameServeUrl,startup=url?await rpc('preview.settings',{url,startup:true}):null;assertContext(c);return snapshot.dependencyHash+'|locale='+JSON.stringify(startup);}finally{await rpc('snapshot.discard',{snapshotId:snapshot.snapshotId});}},
       async listBackups(){const c=context();return rpc('backups.list',{project:{id:c.game.id,path:c.projectPath}});},
       async readBackup(item){const file=typeof item==='string'?item:item.file;if(!file?.startsWith('.webvideo-plus/backups/'))fail('备份路径无效');return JSON.parse(await bridge.readProjectFile(file));},
       async captureStorySnapshot({slot}={}){const c=context();if(c.editor.hasUnsavedDocuments)fail('请先保存文档，故事快照不会覆盖未保存内容');

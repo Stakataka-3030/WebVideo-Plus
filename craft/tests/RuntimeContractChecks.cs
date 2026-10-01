@@ -8,11 +8,12 @@ class RuntimeContractChecks {
   var service=new QueueService(config);
   // Exercise real request construction/serialization while preventing the test from spawning a renderer.
   typeof(QueueService).GetField("stopping",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(service,true);
-  var request=new HttpRequest{Method="POST",Path="/api/timing",Body=Encoding.UTF8.GetBytes(J.Text(J.O("project","fixture","scene","start.txt","sourceText","A:test;\n","expectedRuntimeVersion","4.6.5","settings",J.O("gpuRawMode","traditional"))))};
+  var request=new HttpRequest{Method="POST",Path="/api/timing",Body=Encoding.UTF8.GetBytes(J.Text(J.O("project","fixture","scene","start.txt","sourceText","A:test;\n","expectedRuntimeVersion","4.6.5","runtimeStartup",J.O("language",2,"source","preview"),"settings",J.O("gpuRawMode","traditional"))))};
   var task=(Task<HttpResponse>)typeof(QueueService).GetMethod("Authorized",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(service,new object[]{request});var response=task.GetAwaiter().GetResult();
   if(response.Status!=200)throw new Exception("Queue rejected test request: "+J.Text(response.Json));
   var paths=Directory.GetFiles(Path.Combine(state,"jobs"),"request.json",SearchOption.AllDirectories);if(paths.Length!=1)throw new Exception("Expected one persisted queue request");
   var persisted=J.Read(paths[0]);if(!J.B(persisted,"requireRuntimeParity")||J.S(persisted,"expectedRuntimeVersion")!="4.6.5"||J.S(persisted,"expectedRuntimeId")!="open-webgal.webgal")throw new Exception("Runtime contract was lost before request.json serialization");
+  if(J.N(J.Get(persisted,"runtimeStartup"),"language",-1)!=2||J.S(J.Get(persisted,"runtimeStartup"),"source")!="preview")throw new Exception("Queued preview language was lost");
   if(J.S(J.Get(persisted,"settings"),"engine")!="webgal"||J.S(persisted,"engineRoot")!=project||!string.IsNullOrEmpty(J.S(persisted,"mygoRoot")))throw new Exception("Strict queue selected a foreign engine");
   var configResponse=Call(service,new HttpRequest{Method="GET",Path="/api/config"});
   if(J.S(J.Get(configResponse.Json,"settings"),"engine")!="webgal"||J.A(J.Get(configResponse.Json,"engineOptions")).Count!=1)throw new Exception("Machine MyGO preference leaked into Craft config");

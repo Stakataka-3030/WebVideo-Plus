@@ -68,6 +68,15 @@ try{
  const bindingName='__wv_'+crypto.randomBytes(12).toString('hex');
  async function verifyProject(p){if(!p.project)return;const result=await cdp.call('Runtime.evaluate',{contextId:rpc.contextId,expression:`(()=>{const w=document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('workspace').currentGame;return w?{id:w.id,path:w.path}:null})()`,returnByValue:true});const game=result.result?.value;if(!game||game.id!==p.project.id||path.resolve(game.path).toLowerCase()!==path.resolve(p.project.path).toLowerCase())throw Error('current-project-mismatch');}
  previewManager=new PreviewSessionManager(cdp,contexts,loadedPreviewConfigs);
+ service.readRuntimeStartup=async snapshot=>{
+  const read=async()=>{const r=await cdp.call('Runtime.evaluate',{contextId:rpc.contextId,expression:`(()=>{const p=document.querySelector('#app').__vue_app__.config.globalProperties.$pinia;const w=p._s.get('workspace').currentGame;return {project:w?{id:w.id,path:w.path}:null,url:p._s.get('previewSession')?.currentGameServeUrl||null};})()`,returnByValue:true});if(r.exceptionDetails)throw Error('preview-project-unavailable');return r.result.value;};
+  const before=await read();if(!before.project||before.project.id!==snapshot.project.id||path.resolve(before.project.path).toLowerCase()!==path.resolve(snapshot.project.path).toLowerCase())throw Error('导出工程已切换');
+  if(!before.url)return undefined;
+  const startup=await previewManager.settings({url:before.url,startup:true});
+  const after=await read();if(JSON.stringify(after)!==JSON.stringify(before))throw Error('读取预览语言时工程或预览已切换');
+  if(!Number.isInteger(startup?.language)||startup.language<0||startup.language>7||startup.source!=='preview')throw Error('预览语言无效');return startup;
+ };
+
  const hintTickets=new Map();
  const handlers={
   'audio.duration':async p=>{if(typeof p.file!=='string'||!/^game\/(bgm|vocal)\//.test(p.file)||p.file.split('/').some(x=>!x||x==='.'||x==='..')||/[\\:\0]/.test(p.file))throw Error('audio-path-invalid');const response=await cdp.call('Runtime.evaluate',{contextId:rpc.contextId,expression:`window.WebVideoCraftBridge._context().file.resolveFilePath(${JSON.stringify(p.project.path+'/'+p.file)})`,awaitPromise:true,returnByValue:true});if(response.exceptionDetails||response.result?.value!==p.physicalPath)throw Error('audio-resolution-changed');return audioDuration(p.physicalPath,{ffprobe:config.ffprobe||'ffprobe'});},
