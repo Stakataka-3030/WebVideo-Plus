@@ -67,8 +67,24 @@ function Make-Png([string]$relative, [int]$width, [int]$height, [Drawing.Color]$
   finally { $graphics.Dispose(); $bitmap.Dispose() }
 }
 Make-Png 'game/background/black.png' 1920 1080 ([Drawing.Color]::Black)
-Make-Png 'game/figure/red.png' 256 256 ([Drawing.Color]::FromArgb(255,240,32,32))
-Make-Png 'game/figure/green.png' 256 256 ([Drawing.Color]::FromArgb(255,32,240,32))
+# WebGAL fits a figure's full texture to stage height. Transparent margins
+# keep the visible 256px square bounded instead of scaling an opaque 256px
+# texture to the entire screen and clipping transformed edges.
+function Make-FigurePng([string]$relative, [Drawing.Color]$color) {
+  $target = Join-Path $project $relative
+  New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($target)) -Force | Out-Null
+  $bitmap = [Drawing.Bitmap]::new(1024, 1024)
+  $graphics = [Drawing.Graphics]::FromImage($bitmap)
+  $brush = [Drawing.SolidBrush]::new($color)
+  try { $graphics.Clear([Drawing.Color]::Transparent); $graphics.FillRectangle($brush,384,384,256,256); $bitmap.Save($target,[Drawing.Imaging.ImageFormat]::Png) }
+  finally { $brush.Dispose(); $graphics.Dispose(); $bitmap.Dispose() }
+}
+Make-FigurePng 'game/figure/red.png' ([Drawing.Color]::FromArgb(255,240,32,32))
+Make-FigurePng 'game/figure/green.png' ([Drawing.Color]::FromArgb(255,32,240,32))
+# Native 4.6.5 dialogue starts below y=510 at 1280x720. Keep it visibly
+# rendered for real dialogue sync/cuts, and measure figures only above y=500.
+# Full-frame worker comparisons below still include the entire dialogue UI.
+$figureRoi = [PSCustomObject]@{ left=0; top=0; width=1280; height=500 }
 Write-Utf8 (Join-Path $project 'game/config.txt') "Game_name:Figure diff regression;`nDefault_Language:zh_CN;`nStage_Width:1920;`nStage_Height:1080;`n"
 Write-Utf8 (Join-Path $project 'game/animation/animationTable.json') '[]'
 Write-Utf8 (Join-Path $project 'game/userStyleSheet.css') ''
@@ -142,13 +158,14 @@ foreach ($range in @($exports[1].result.segmentRanges | Select-Object -Skip 1)) 
 function Measure-Png([string]$file) {
   $bitmap=[Drawing.Bitmap]::new($file)
   try {
+    $minX=$figureRoi.width; $minY=$figureRoi.height; $maxX=-1; $maxY=-1
     $count=0; [double]$xSum=0; [double]$ySum=0; [double]$dominant=0; [double]$red=0; [double]$green=0
-    for ($y=0;$y -lt $bitmap.Height;$y+=4) { for ($x=0;$x -lt $bitmap.Width;$x+=4) {
+    for ($y=$figureRoi.top;$y -lt $figureRoi.top+$figureRoi.height;$y+=4) { for ($x=$figureRoi.left;$x -lt $figureRoi.left+$figureRoi.width;$x+=4) {
       $p=$bitmap.GetPixel($x,$y); $max=[Math]::Max([int]$p.R,[int]$p.G)
-      if ($max -gt 40 -and $max-[int]$p.B -gt 25) { $count++; $xSum+=$x; $ySum+=$y; $dominant+=$max; $red+=$p.R; $green+=$p.G }
+      if ($max -gt 40 -and $max-[int]$p.B -gt 25) { $count++; $xSum+=$x; $ySum+=$y; $dominant+=$max; $red+=$p.R; $green+=$p.G; $minX=[Math]::Min($minX,$x); $minY=[Math]::Min($minY,$y); $maxX=[Math]::Max($maxX,$x); $maxY=[Math]::Max($maxY,$y) }
     } }
     $denominator=[Math]::Max(1,$count)
-    return [PSCustomObject]@{ count=$count; x=$xSum/$denominator; y=$ySum/$denominator; dominant=$dominant/$denominator; red=$red/$denominator; green=$green/$denominator }
+    return [PSCustomObject]@{ count=$count; minX=$minX; minY=$minY; maxX=$maxX; maxY=$maxY; x=$xSum/$denominator; y=$ySum/$denominator; dominant=$dominant/$denominator; red=$red/$denominator; green=$green/$denominator }
   } finally { $bitmap.Dispose() }
 }
 function Compare-Png([string]$first,[string]$second) {
@@ -182,7 +199,11 @@ foreach ($entry in $samples.GetEnumerator()) {
 function Require-Near([double]$a,[double]$b,[double]$tolerance,[string]$message) { if ([Math]::Abs($a-$b) -gt $tolerance) { throw "$message ($a versus $b)" } }
 foreach ($workers in @(1,2)) {
   $before=$measurements["$workers-beforeDiff"]; $after=$measurements["$workers-afterDiff"]; $same=$measurements["$workers-sameImage"]; $current=$measurements["$workers-current"]; $default=$measurements["$workers-default"]; $second=$measurements["$workers-secondDiff"]
-  foreach ($name in @('beforeDiff','afterDiff','sameImage','current','default','secondDiff','reentered')) { if ($measurements["$workers-$name"].count -lt 100) { throw "No visible figure at workers-$workers $name" } }
+  foreach ($name in @('beforeDiff','afterDiff','sameImage','current','default','secondDiff','reentered')) {
+    $box=$measurements["$workers-$name"]
+    if ($box.count -lt 100) { throw "No visible figure at workers-$workers $name" }
+    if ($box.minX -le $figureRoi.left -or $box.minY -le $figureRoi.top -or $box.maxX -ge $figureRoi.width-4 -or $box.maxY -ge $figureRoi.height-4) { throw "Figure touches measurement boundary at workers-$workers $name; cannot infer an unclipped position." }
+  }
   if ($before.red -lt $before.green*2 -or $after.green -lt $after.red*2) { throw 'Image diff did not replace red with green.' }
   Require-Near $before.x $after.x 2 'Image diff changed retained X position'
   Require-Near $before.y $after.y 2 'Image diff changed retained Y position'
@@ -204,5 +225,5 @@ foreach ($workers in @(1,2)) {
 # Re-read only the original pinned bundle to prove fixture work did not mutate it.
 $bundle=Join-Path $RuntimeRoot 'assets/index-CC7KTie-.js'
 if ((Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant() -ne '356f7184c80af8da4dd782e25c5b3fb89f55f1e8b9e9e18be6f50035763dc6b6') { throw 'Source runtime bundle changed during the fixture.' }
-[PSCustomObject]@{ passed=$true; runtime='WebView2'; version='4.6.5'; sourceKind='project-runtime'; runtimeParity=$true; totalFrames=$totalFrames; anchors=$anchors; samples=$samples; measurements=$measurements; comparisons=$comparisons; segmentRanges=$exports[1].result.segmentRanges } | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath (Join-Path $run 'native-summary.json') -Encoding UTF8
+[PSCustomObject]@{ passed=$true; runtime='WebView2'; version='4.6.5'; sourceKind='project-runtime'; runtimeParity=$true; totalFrames=$totalFrames; figureRoi=$figureRoi; anchors=$anchors; samples=$samples; measurements=$measurements; comparisons=$comparisons; segmentRanges=$exports[1].result.segmentRanges } | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath (Join-Path $run 'native-summary.json') -Encoding UTF8
 Write-Host "Native figure-diff regression passed. Diagnostics: $run"

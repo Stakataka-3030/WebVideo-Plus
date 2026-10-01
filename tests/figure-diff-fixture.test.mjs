@@ -17,3 +17,15 @@ test('native sampling follows named anchors and still requires real two-worker s
  assert.match(script,/@\(-2,-1,0,1,2\)/);
  assert.match(script,/Compare-Png \$paths\[0\] \$paths\[1\]/);
 });
+
+test('dialogue remains visible and bounded color measurement cannot bypass full-frame seam checks',()=>{
+ assert.equal(steps.find(s=>s.id==='show-textbox').source,'setTextbox:show -next;');
+ assert.ok(!steps.some(s=>/setTextbox:hide/.test(s.source)));
+ assert.match(script,/Clear\(\[Drawing.Color\]::Transparent\)/);
+ assert.match(script,/FillRectangle\(\$brush,384,384,256,256\)/);
+ assert.match(script,/\$figureRoi = .*width=1280; height=500/);
+ assert.match(script,/Figure touches measurement boundary/);
+ const compare=script.slice(script.indexOf('function Compare-Png'),script.indexOf('\n$measurements='));
+ assert.doesNotMatch(compare,/figureRoi/);
+ assert.match(compare,/\$a.Height/);
+});

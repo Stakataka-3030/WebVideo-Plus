@@ -4,8 +4,8 @@
     "source": "changeBg:black.png -duration=0 -next;"
   },
   {
-    "id": "hide-textbox",
-    "source": "setTextbox:hide -next;"
+    "id": "show-textbox",
+    "source": "setTextbox:show -next;"
   },
   {
     "id": "enter-red",
