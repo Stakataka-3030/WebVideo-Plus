@@ -1,10 +1,10 @@
 # 构建与发布
 
-当前分支产品版本 **1.1.3**，产品内部开发标识 **0.8.7**，安装器 Win32 版本 **1.1.3.0**，导出内核 **0.6.47**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建 bootstrap 仍固定使用已发布的 **0.4.10.2** 安装器，以保证第三方运行资源来源和校验值可复现。
+当前分支产品版本 **1.1.4**，产品内部开发标识 **0.8.8**，安装器 Win32 版本 **1.1.4.0**，导出内核 **0.6.48**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建 bootstrap 仍固定使用已发布的 **0.4.10.2** 安装器，以保证第三方运行资源来源和校验值可复现。
 
-产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`manifest.mjs`、`build-product.ps1`、`configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
+产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`scripts/manifest.mjs`、`build-product.ps1`、`scripts/configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
-更新检查读取 GitHub 正式 Release 列表。发布 1.1.3 或后续版本时，应把对应 `RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"webgal":["4.6.4"]} -->` 一并放进 Release 正文，并按实际适配基线更新数组；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
+更新检查读取 GitHub 正式 Release 列表。发布 1.1.4 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"webgal":["4.6.4"]} -->` 一并放进 Release 正文，并按实际适配基线更新数组；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
 
 ## 初次准备
 
@@ -38,7 +38,7 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 
 输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules` 都不提交。脚本不依赖维护者个人目录；Node 位置由当前 PATH 解析。
 
-按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-1.1.3.exe`；Win32 安装器内部文件版本使用数字形式 `1.1.3.0`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
+按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-1.1.4.exe`；Win32 安装器内部文件版本使用数字形式 `1.1.4.0`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
 
 
 ## 开发快速构建
@@ -69,7 +69,7 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 .\build-product.ps1 -Fast -InternalBuild
 ```
 
-`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.1.2` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
+`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.1.4` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
 
 需要重现某个旧内部标识时，可直接覆盖：
 
@@ -77,7 +77,7 @@ a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
 .\build-product.ps1 -Fast -InternalVersion 0.5.7
 ```
 
-指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.1.2`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
+指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.1.4`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
 
 ## 安装恢复与存储目录
 
@@ -148,10 +148,10 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 
 正常 JobRunner 结果现在额外记录 `renderWallSeconds`、`aggregateFps`、`realtimeFactor`、`sumPartRenderSeconds`、`sequentialEquivalentFps`、`parallelismFactor` 与 `parallelEfficiency`。其中 `parallelismFactor = sum(part.renderSeconds) / renderWallSeconds`，表示本次任务实际获得的并行度；`parallelEfficiency = parallelismFactor / effectiveWorkers`，可直接观察 4/8/16 worker 的资源竞争损失。每个 `renderParts[]` 也会记录自身 `outputFps` 与 `realtimeFactor`。
 
-仓库根目录提供 `compare-gpu-scaling.ps1`，可把多次完整导出的 JSON 一次汇总。例如：
+`scripts/` 目录提供 `compare-gpu-scaling.ps1`，可把多次完整导出的 JSON 一次汇总。例如：
 
 ```powershell
-.\compare-gpu-scaling.ps1 D:\Temp\gpu-full-x264rgb.json D:\Temp\gpu-full-x264rgb-4w.json D:\Temp\gpu-full-x264rgb-8w.json D:\Temp\gpu-full-x264rgb-16w.json
+.\scripts/compare-gpu-scaling.ps1 D:\Temp\gpu-full-x264rgb.json D:\Temp\gpu-full-x264rgb-4w.json D:\Temp\gpu-full-x264rgb-8w.json D:\Temp\gpu-full-x264rgb-16w.json
 ```
 
 脚本会以第一个 JSON 为基线输出 SpeedupVsFirst，并兼容旧的单 worker JSON（缺少新聚合字段时从 renderParts 回退计算）。
@@ -166,4 +166,4 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 
 并行数仍由用户在 GUI 中选择，支持 1–32 的整数及快捷值。项目不会依据开发机实测写死 8 worker 等“最佳值”；不同 CPU、GPU、显存、内存带宽和磁盘环境应由用户自行选择。GUI 的 `gpuRawMode` 会持久化到 settings，并由 QueueService 映射为 JobRunner 的 `gpuRawExport/gpuRawCodec/gpuRawDom` 请求字段。任务列表会显示当前 GPU Raw codec，便于区分历史任务。
 
-构建链版本同步：`build-timeline.mjs` 与 `build-feature-assets.mjs` 不再把 staged `product.json` / `component.json` 写回旧的 0.4.x / 0.3.x 常量，统一从根目录 `version.json` 读取 productVersion/kernelVersion。这样安装包内 MANIFEST、product.json、component.json 和运行时版本元数据保持同源。
+构建链版本同步：`scripts/build-timeline.mjs` 与 `scripts/build-feature-assets.mjs` 不再把 staged `product.json` / `component.json` 写回旧的 0.4.x / 0.3.x 常量，统一从根目录 `version.json` 读取 productVersion/kernelVersion。这样安装包内 MANIFEST、product.json、component.json 和运行时版本元数据保持同源。

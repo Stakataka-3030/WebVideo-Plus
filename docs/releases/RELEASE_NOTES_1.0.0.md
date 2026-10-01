@@ -34,4 +34,4 @@ WebVideo+ 1.0.0 是面向 WebGAL Terre 4.6.4 的首个 1.x 正式版本。它把
 
 WebVideo+ 原创部分采用 MPL-2.0。Terre/WebGAL、Anogo 默认动作词表、js-yaml、WebView2、FFmpeg、Node.js、DeepSeek Harness / DSH、pi-ai 及其他第三方组件继续适用各自许可证和署名要求。详见 `LICENSES.md`、`NOTICE.md` 与 `licenses/THIRD-PARTY.md`。
 
-更细的逐版本变更请查看 [CHANGELOG.md](CHANGELOG.md)。
+更细的逐版本变更请查看 [CHANGELOG.md](../../CHANGELOG.md)。

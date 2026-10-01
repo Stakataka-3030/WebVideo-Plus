@@ -1,6 +1,6 @@
 param([switch]$ReuseDependencies)
 $ErrorActionPreference='Stop'
-$taskRoot=$PSScriptRoot
+$taskRoot=Split-Path -Parent $PSScriptRoot
 $taskVersions=Get-Content -LiteralPath (Join-Path $taskRoot 'version.json') -Raw | ConvertFrom-Json
 $taskProductVersion=[string]$taskVersions.productVersion
 if([string]::IsNullOrWhiteSpace($taskProductVersion)){throw 'version.json is missing productVersion'}

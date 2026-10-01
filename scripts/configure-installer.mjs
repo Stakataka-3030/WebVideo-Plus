@@ -1,7 +1,7 @@
 import fs from 'node:fs';
-import {applyInstallerEnhancements} from './installer/installer-enhancements.mjs';
+import {applyInstallerEnhancements} from '../installer/installer-enhancements.mjs';
 import path from 'node:path';import {fileURLToPath} from 'node:url';
-const root=path.dirname(fileURLToPath(import.meta.url));
+const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const internalAt=process.argv.indexOf('--internal-version'),internalVersion=internalAt>=0?process.argv[internalAt+1]:'';if(internalAt>=0&&!internalVersion)throw Error('--internal-version requires a value');
 const versions=JSON.parse(fs.readFileSync(path.join(root,'version.json'),'utf8')),productVersion=versions.productVersion,installerVersion=versions.installerVersion,kernelVersion=versions.kernelVersion;
 if(!productVersion||!installerVersion||!kernelVersion)throw Error('version.json is missing required version fields');

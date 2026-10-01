@@ -11,4 +11,4 @@
 - 内部版本：`0.8.3`
 - 导出内核：`0.6.43`（本次未改动）
 
-正式安装器文件名为 `WebVideo+-Setup-1.0.4.exe`。此前版本的改动见 [CHANGELOG.md](CHANGELOG.md)。
+正式安装器文件名为 `WebVideo+-Setup-1.0.4.exe`。此前版本的改动见 [CHANGELOG.md](../../CHANGELOG.md)。

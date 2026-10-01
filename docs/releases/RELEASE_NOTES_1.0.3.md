@@ -14,4 +14,4 @@
 - 导出内核：`0.6.43`
 - 适配基线：WebGAL Terre `4.6.4`
 
-正式安装器文件名为 `WebVideo+-Setup-1.0.3.exe`。此前版本的变更见 [CHANGELOG.md](CHANGELOG.md)。
+正式安装器文件名为 `WebVideo+-Setup-1.0.3.exe`。此前版本的变更见 [CHANGELOG.md](../../CHANGELOG.md)。
