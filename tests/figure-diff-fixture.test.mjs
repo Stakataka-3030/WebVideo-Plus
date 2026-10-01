@@ -29,3 +29,16 @@ test('dialogue remains visible and bounded color measurement cannot bypass full-
  assert.doesNotMatch(compare,/figureRoi/);
  assert.match(compare,/\$a.Height/);
 });
+
+test('saved-frame validation uses explicit ICC conversion without weakening thresholds or rerendering',()=>{
+ assert.match(script,/function Open-SrgbBitmap.*new\(\$file,\$true\)/);
+ assert.match(script,/\$bitmap=Open-SrgbBitmap \$file/);
+ assert.match(script,/\$a=Open-SrgbBitmap \$first; \$b=Open-SrgbBitmap \$second/);
+ assert.match(script,/\[string\]\$ReuseRun/);
+ assert.match(script,/if \(-not \$ReuseRun\) \{ Invoke-Checked \$exe \(Export-Arguments/);
+ assert.match(script,/Existing run used a different named scene fixture/);
+ assert.match(script,/Require-Near \$default.dominant \$second.dominant 15/);
+ assert.match(script,/meanAbsoluteRgb -gt 2/);
+ assert.match(script,/changedFraction -gt 0.01/);
+ assert.match(script,/native-summary-icm-/);
+});

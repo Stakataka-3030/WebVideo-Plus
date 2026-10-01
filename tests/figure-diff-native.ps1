@@ -2,7 +2,8 @@ param(
   [string]$PackageRoot = (Join-Path $PSScriptRoot '../package'),
   [string]$RuntimeRoot = '',
   [string]$OutputRoot = (Join-Path $PSScriptRoot '../.build/figure-diff/native'),
-  [int]$TimeoutSeconds = 600
+  [int]$TimeoutSeconds = 600,
+  [string]$ReuseRun = ''
 )
 # Actual WebView2/Pixi export with a pinned 4.6.5 project runtime and generated
 # opaque PNGs. No SDK, proprietary model, existing project or installed host is
@@ -15,9 +16,10 @@ $RuntimeRoot = [IO.Path]::GetFullPath($RuntimeRoot)
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 $exe = Join-Path $PackageRoot 'WebGAL.Video.exe'
 if (-not (Test-Path -LiteralPath $exe)) { throw "Build the native executable first: $exe" }
-$run = Join-Path $OutputRoot ([Guid]::NewGuid().ToString('N'))
+$run = if ($ReuseRun) { [IO.Path]::GetFullPath($ReuseRun) } else { Join-Path $OutputRoot ([Guid]::NewGuid().ToString('N')) }
+if ($ReuseRun -and -not(Test-Path -LiteralPath $run -PathType Container)) { throw 'Existing diagnostic run is missing.' }
 $project = Join-Path $run 'project'
-New-Item -ItemType Directory -Path $project -Force | Out-Null
+if ($ReuseRun) { if (-not(Test-Path -LiteralPath $project -PathType Container)) { throw 'Existing project snapshot is missing.' } } else { New-Item -ItemType Directory -Path $project -Force | Out-Null }
 $utf8 = New-Object Text.UTF8Encoding($false)
 function Write-Utf8([string]$file, [string]$text) {
   New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($file)) -Force | Out-Null
@@ -54,8 +56,9 @@ foreach ($file in $manifest.files) {
   $source = Join-Path $RuntimeRoot $file.path
   if (-not (Test-Path -LiteralPath $source) -or (Get-Item -LiteralPath $source).Length -ne $file.sourceSize -or (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant() -ne $file.sourceSha256) { throw "Unverified runtime input: $source" }
   $target = Join-Path $project $file.path
-  New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($target)) -Force | Out-Null
-  Copy-Item -LiteralPath $source -Destination $target
+  if (-not $ReuseRun) { New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($target)) -Force | Out-Null }
+  if (-not $ReuseRun) { Copy-Item -LiteralPath $source -Destination $target }
+  elseif (-not(Test-Path -LiteralPath $target) -or (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $file.sourceSha256) { throw "Existing project runtime changed: $target" }
 }
 Add-Type -AssemblyName System.Drawing
 function Make-Png([string]$relative, [int]$width, [int]$height, [Drawing.Color]$color) {
@@ -66,6 +69,7 @@ function Make-Png([string]$relative, [int]$width, [int]$height, [Drawing.Color]$
   try { $graphics.Clear($color); $bitmap.Save($target, [Drawing.Imaging.ImageFormat]::Png) }
   finally { $graphics.Dispose(); $bitmap.Dispose() }
 }
+if (-not $ReuseRun) {
 Make-Png 'game/background/black.png' 1920 1080 ([Drawing.Color]::Black)
 # WebGAL fits a figure's full texture to stage height. Transparent margins
 # keep the visible 256px square bounded instead of scaling an opaque 256px
@@ -81,13 +85,14 @@ function Make-FigurePng([string]$relative, [Drawing.Color]$color) {
 }
 Make-FigurePng 'game/figure/red.png' ([Drawing.Color]::FromArgb(255,240,32,32))
 Make-FigurePng 'game/figure/green.png' ([Drawing.Color]::FromArgb(255,32,240,32))
+}
 # Native 4.6.5 dialogue starts below y=510 at 1280x720. Keep it visibly
 # rendered for real dialogue sync/cuts, and measure figures only above y=500.
 # Full-frame worker comparisons below still include the entire dialogue UI.
 $figureRoi = [PSCustomObject]@{ left=0; top=0; width=1280; height=500 }
-Write-Utf8 (Join-Path $project 'game/config.txt') "Game_name:Figure diff regression;`nDefault_Language:zh_CN;`nStage_Width:1920;`nStage_Height:1080;`n"
+if (-not $ReuseRun) { Write-Utf8 (Join-Path $project 'game/config.txt') "Game_name:Figure diff regression;`nDefault_Language:zh_CN;`nStage_Width:1920;`nStage_Height:1080;`n"
 Write-Utf8 (Join-Path $project 'game/animation/animationTable.json') '[]'
-Write-Utf8 (Join-Path $project 'game/userStyleSheet.css') ''
+Write-Utf8 (Join-Path $project 'game/userStyleSheet.css') '' }
 # Explicit arguments are supported by the pinned bundle: Swe (image diff),
 # uC (transformFrom precedence), uTe (setTransform), KCe (wait). Image diff
 # intentionally ignores transform/position when a target image already exists.
@@ -103,16 +108,18 @@ foreach ($step in $steps) {
   $lines += [string]$step.source
   $anchors[$step.id] = $lines.Count
 }
-Write-Utf8 (Join-Path $project 'game/scene/start.txt') (($lines -join "`n") + "`n")
+$fixtureSource = (($lines -join "`n") + "`n")
+if (-not $ReuseRun) { Write-Utf8 (Join-Path $project 'game/scene/start.txt') (($lines -join "`n") + "`n") }
+elseif ([IO.File]::ReadAllText((Join-Path $project 'game/scene/start.txt')).Replace("`r`n","`n") -ne $fixtureSource) { throw 'Existing run used a different named scene fixture.' }
 $ffmpeg = Find-MediaTool 'ffmpeg'
 $ffprobe = Find-MediaTool 'ffprobe'
-Invoke-Checked $exe @('check-runtime') 'webview2' 60
+if (-not $ReuseRun) { Invoke-Checked $exe @('check-runtime') 'webview2' 60 }
 function Export-Arguments([string]$video, [string]$work, [int]$workers) {
   return @('export','--project',('"'+$project+'"'),'--scene','start.txt','--out',('"'+$video+'"'),'--work-dir',('"'+$work+'"'),'--width','1280','--height','720','--fps','30','--workers',"$workers",'--mode','manual','--hold','1','--text-speed','100','--story-scope','sceneOnly','--gpu-raw-export','traditional')
 }
 # Analysis-only preserves the real runtime line times after export cache cleanup.
 $analysisWork = Join-Path $run 'analysis'
-Invoke-Checked $exe ((Export-Arguments (Join-Path $run 'analysis.mp4') $analysisWork 1) + @('--analyze','true')) 'analyze'
+if (-not $ReuseRun) { Invoke-Checked $exe ((Export-Arguments (Join-Path $run 'analysis.mp4') $analysisWork 1) + @('--analyze','true')) 'analyze' }
 Require-Completed $analysisWork
 $timing = Get-Content -LiteralPath (Join-Path $analysisWork 'timing-plan.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($timing.durationSeconds -lt 11 -or $timing.durationSeconds -gt 15) { throw "Unexpected fixture duration: $($timing.durationSeconds)" }
@@ -120,16 +127,16 @@ $exports = @()
 foreach ($workers in @(1,2)) {
   $video = Join-Path $run "workers-$workers.mp4"
   $work = Join-Path $run "workers-$workers-work"
-  Invoke-Checked $exe (Export-Arguments $video $work $workers) "export-$workers"
+  if (-not $ReuseRun) { Invoke-Checked $exe (Export-Arguments $video $work $workers) "export-$workers" }
   Require-Completed $work
   $result = Get-Content -LiteralPath ([IO.Path]::ChangeExtension($video,'.json')) -Raw -Encoding UTF8 | ConvertFrom-Json
   if ($result.host -ne 'webview2' -or $result.engine.version -ne '4.6.5' -or $result.engine.sourceKind -ne 'project-runtime' -or $result.engine.runtimeParity -ne $true) { throw "workers-$workers did not use the verified 4.6.5 project runtime." }
   if ($result.effectiveWorkers -ne $workers -or @($result.segmentRanges).Count -ne $workers) { throw "workers-$workers did not exercise $workers real segments: $($result.workerReductionReason)" }
-  Invoke-Checked $ffprobe @('-v','error','-count_frames','-show_streams','-of','json',('"'+$video+'"')) "probe-$workers"
+  if (-not $ReuseRun) { Invoke-Checked $ffprobe @('-v','error','-count_frames','-show_streams','-of','json',('"'+$video+'"')) "probe-$workers" }
   $probe = Get-Content -LiteralPath (Join-Path $run "probe-$workers.log") -Raw | ConvertFrom-Json
   $stream = @($probe.streams | Where-Object codec_type -eq 'video')[0]
   if ($stream.width -ne 1280 -or $stream.height -ne 720 -or [int]$stream.nb_read_frames -ne [int]$result.totalFrames) { throw 'Decoded dimensions/frame count disagree with metadata.' }
-  $exports += [PSCustomObject]@{ workers=$workers; video=$video; result=$result }
+  $exports += [PSCustomObject]@{ workers=$workers; video=$video; videoSha256=(Get-FileHash -LiteralPath $video -Algorithm SHA256).Hash.ToLowerInvariant(); result=$result }
 }
 if ($exports[0].result.totalFrames -ne $exports[1].result.totalFrames) { throw 'Worker counts changed the total number of frames.' }
 $totalFrames = [int]$exports[0].result.totalFrames
@@ -155,8 +162,12 @@ foreach ($offset in @(34,100,167)) { $samples["blend$offset"] = Frame-At ((Line-
 foreach ($range in @($exports[1].result.segmentRanges | Select-Object -Skip 1)) {
   foreach ($offset in @(-2,-1,0,1,2)) { $frame=[int]$range.startFrame+$offset; if ($frame -ge 0 -and $frame -lt $totalFrames) { $samples["seam$($range.startFrame)_$offset"]=$frame } }
 }
+# GetPixel on the default Bitmap constructor returns profile-encoded RGB.
+# The decoded PNGs carry WebView2's ICC profile. Windows PS5.1/7 probes verified
+# that this overload converts to sRGB (e.g. green232/red210 both become238).
+function Open-SrgbBitmap([string]$file) { return [Drawing.Bitmap]::new($file,$true) }
 function Measure-Png([string]$file) {
-  $bitmap=[Drawing.Bitmap]::new($file)
+  $bitmap=Open-SrgbBitmap $file
   try {
     $minX=$figureRoi.width; $minY=$figureRoi.height; $maxX=-1; $maxY=-1
     $count=0; [double]$xSum=0; [double]$ySum=0; [double]$dominant=0; [double]$red=0; [double]$green=0
@@ -169,7 +180,7 @@ function Measure-Png([string]$file) {
   } finally { $bitmap.Dispose() }
 }
 function Compare-Png([string]$first,[string]$second) {
-  $a=[Drawing.Bitmap]::new($first); $b=[Drawing.Bitmap]::new($second)
+  $a=Open-SrgbBitmap $first; $b=Open-SrgbBitmap $second
   try {
     if ($a.Width -ne $b.Width -or $a.Height -ne $b.Height) { throw 'Compared PNG dimensions differ.' }
     [double]$sum=0; $large=0; $count=0
@@ -181,14 +192,15 @@ function Compare-Png([string]$first,[string]$second) {
     return [PSCustomObject]@{ meanAbsoluteRgb=$sum/(3*$count); changedFraction=$large/[double]$count }
   } finally { $a.Dispose(); $b.Dispose() }
 }
-$measurements=@{}; $comparisons=@()
+$measurements=@{}; $comparisons=@(); $frameHashes=@()
 foreach ($entry in $samples.GetEnumerator()) {
   $paths=@()
   foreach ($export in $exports) {
     $png=Join-Path $run ("workers-{0}-{1}-f{2}.png" -f $export.workers,$entry.Key,$entry.Value)
-    Invoke-Checked $ffmpeg @('-v','error','-y','-i',('"'+$export.video+'"'),'-vf',('select=eq(n\,'+$entry.Value+')'),'-fps_mode','passthrough','-frames:v','1',('"'+$png+'"')) ("decode-{0}-{1}" -f $export.workers,$entry.Key)
+    if (-not $ReuseRun) { Invoke-Checked $ffmpeg @('-v','error','-y','-i',('"'+$export.video+'"'),'-vf',('select=eq(n\,'+$entry.Value+')'),'-fps_mode','passthrough','-frames:v','1',('"'+$png+'"')) ("decode-{0}-{1}" -f $export.workers,$entry.Key) }
     if (-not (Test-Path -LiteralPath $png)) { throw "No decoded frame: $png" }
     $paths+=$png
+    $frameHashes += [PSCustomObject]@{workers=$export.workers;sample=$entry.Key;frame=[int]$entry.Value;file=[IO.Path]::GetFileName($png);sha256=(Get-FileHash -LiteralPath $png -Algorithm SHA256).Hash.ToLowerInvariant()}
     $measurements["$($export.workers)-$($entry.Key)"]=Measure-Png $png
   }
   $comparison=Compare-Png $paths[0] $paths[1]
@@ -197,6 +209,8 @@ foreach ($entry in $samples.GetEnumerator()) {
   if ($comparison.meanAbsoluteRgb -gt 2 -or $comparison.changedFraction -gt 0.01) { throw "Worker replay differs at $($entry.Key), frame $($entry.Value): $($comparison | ConvertTo-Json -Compress)" }
 }
 function Require-Near([double]$a,[double]$b,[double]$tolerance,[string]$message) { if ([Math]::Abs($a-$b) -gt $tolerance) { throw "$message ($a versus $b)" } }
+# Both generated source colors have dominant sRGB channel 240, so these
+# comparisons test retained filter strength only after explicit ICC conversion.
 foreach ($workers in @(1,2)) {
   $before=$measurements["$workers-beforeDiff"]; $after=$measurements["$workers-afterDiff"]; $same=$measurements["$workers-sameImage"]; $current=$measurements["$workers-current"]; $default=$measurements["$workers-default"]; $second=$measurements["$workers-secondDiff"]
   foreach ($name in @('beforeDiff','afterDiff','sameImage','current','default','secondDiff','reentered')) {
@@ -225,5 +239,5 @@ foreach ($workers in @(1,2)) {
 # Re-read only the original pinned bundle to prove fixture work did not mutate it.
 $bundle=Join-Path $RuntimeRoot 'assets/index-CC7KTie-.js'
 if ((Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant() -ne '356f7184c80af8da4dd782e25c5b3fb89f55f1e8b9e9e18be6f50035763dc6b6') { throw 'Source runtime bundle changed during the fixture.' }
-[PSCustomObject]@{ passed=$true; runtime='WebView2'; version='4.6.5'; sourceKind='project-runtime'; runtimeParity=$true; totalFrames=$totalFrames; figureRoi=$figureRoi; anchors=$anchors; samples=$samples; measurements=$measurements; comparisons=$comparisons; segmentRanges=$exports[1].result.segmentRanges } | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath (Join-Path $run 'native-summary.json') -Encoding UTF8
+[PSCustomObject]@{ passed=$true; runtime='WebView2'; version='4.6.5'; sourceKind='project-runtime'; runtimeParity=$true; totalFrames=$totalFrames; reusedExistingRun=[bool]$ReuseRun; videoHashes=@($exports | ForEach-Object {[PSCustomObject]@{workers=$_.workers;sha256=$_.videoSha256}}); colorMeasurement='ICC-normalized sRGB via GDI+ useEmbeddedColorManagement'; figureRoi=$figureRoi; frameHashes=$frameHashes; anchors=$anchors; samples=$samples; measurements=$measurements; comparisons=$comparisons; segmentRanges=$exports[1].result.segmentRanges } | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath (Join-Path $run $(if ($ReuseRun) { 'native-summary-icm-'+[Guid]::NewGuid().ToString('N')+'.json' } else { 'native-summary.json' })) -Encoding UTF8
 Write-Host "Native figure-diff regression passed. Diagnostics: $run"
