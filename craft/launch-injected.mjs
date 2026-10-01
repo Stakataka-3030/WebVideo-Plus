@@ -16,11 +16,13 @@ import {audioDuration} from './session/audio.mjs';
 import {runHint} from './session/hint-operation.mjs';
 import {readState,verifyPackage} from './installer/transaction.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
+const launchStatus=(stage,text)=>console.log('WEBVIDEO_CRAFT_STATUS '+JSON.stringify({stage,text,at:new Date().toISOString()}));
 const args=process.argv.slice(2),split=args.indexOf('--'),options=split<0?args:args.slice(0,split),hostArgs=split<0?[]:args.slice(split+1);
 const option=k=>{const i=options.indexOf(k);return i<0?undefined:options[i+1];};
 const configPath=option('--config')||option('--state');
 if(!configPath)throw Error('请通过已验证的 Craft 适配安装配置启动');
-const config=readState(configPath),manifest=verifyPackage(config.adapterRoot,{allowMutable:true});
+launchStatus('verifying','正在校验会话负载…');
+const config=readState(configPath),manifest=verifyPackage(config.adapterRoot,{allowMutable:true,onProgress:p=>launchStatus('verifying',p.stage==='files'?`正在校验会话文件 ${p.checked} / ${p.total}：${p.path}`:p.stage==='tree'?'正在检查会话目录完整性…':'会话负载校验通过')});
 if(manifest.manifestSha256!==config.package.manifestSha256)throw Error('适配包与安装记录不一致');
 const craft=path.resolve(option('--craft')||config.originalExe||config.craftExe||''),kernel=path.resolve(option('--kernel')||config.kernelExe||'');
 if(process.platform!=='win32')throw Error('Craft 原生启动只支持 Windows；云端可运行单元测试');
@@ -39,10 +41,14 @@ const log=data=>fs.appendFile(path.join(root,'session.log'),JSON.stringify({at:n
 const port=await new Promise((resolve,reject)=>{const s=net.createServer();s.once('error',reject);s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>resolve(p));});});
 const env={...process.env,WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:`--remote-debugging-address=127.0.0.1 --remote-debugging-port=${port}`};
 if(option('--profile'))env.WEBVIEW2_USER_DATA_FOLDER=path.resolve(option('--profile'));
+launchStatus('starting','校验完成，正在启动 Craft 原程序…');
+await log({event:'host-starting',hostExe:craft,port});
 const app=spawn(craft,hostArgs,{cwd:path.dirname(craft),env,windowsHide:false,stdio:'ignore'});
 let spawnError;app.once('error',e=>spawnError=e);const waitForApp=()=>app.exitCode!==null||app.signalCode!==null?Promise.resolve():new Promise(resolve=>app.once('exit',resolve));
 const lease={schemaVersion:1,sessionId,coordinatorPid:process.pid,hostPid:app.pid,wrapperPid:Number(option('--wrapper-pid'))||undefined,hostExe:craft,startedAt:new Date().toISOString()};
 await fs.writeFile(path.join(stateDir,'session.json'),JSON.stringify(lease));
+await log({event:'host-started',hostPid:app.pid,port});
+launchStatus('connecting','Craft 已启动，正在等待主窗口并接入增强界面…');
 const storage=new SessionStorage(root),service=new KernelSession({kernel,root,storage,runtimePath:config.runtimePath,stateRoot:path.join(stateDir,"kernel")});
 const updater=new UpdateCoordinator({stateDir,hostPid:app.pid,craftExe:config.craftExe||craft,installMode:config.installMode||'external',supportedHosts:config.supportedHosts||{},observerValidated:false /* enable only after a package-scoped native compatibility test */});
 let cdp,rpc,previewManager,closed=false;
@@ -99,10 +105,11 @@ try{
  await waitForVue(ctx.id);
  const injected=await cdp.call('Runtime.evaluate',{contextId:ctx.id,expression:browserPayload,returnByValue:true});if(injected.exceptionDetails)throw Error(injected.exceptionDetails.text+' '+(injected.exceptionDetails.exception?.description||''));
  await log({event:'injected',target:target.id,result:injected.result?.value,listener:'verified-loopback-owned'});
+ launchStatus('ready','Craft 增强界面已接入');
  reinject=async next=>{if(!next.auxData?.isDefault||next.auxData.frameId!==tree.frameTree.frame.id||next.origin!=='http://tauri.localhost'||next.id===rpc.contextId&&!rpc.closed)return;const token=rpc.token;rpc.close();rpc=new SessionRpc({token,contextId:next.id,bindingName,handlers});await cdp.call('Runtime.addBinding',{name:bindingName,executionContextId:next.id});await waitForVue(next.id);const result=await cdp.call('Runtime.evaluate',{contextId:next.id,expression:browserPayload,returnByValue:true});if(result.exceptionDetails)throw Error(result.exceptionDetails.exception?.description||'reinjection failed');await log({event:'reinjected',contextId:next.id});};
  await waitForApp();
  if(updater.pending){const outcome=await updater.pending.completion;await log({event:'update-completion',outcome});if(outcome.state!=='verified-compatible')console.error('官方更新结束，但增强适配尚未验证。请从官方入口打开 Craft 或运行适配安装器检查。');}
-}catch(e){await log({event:'failed',error:e.message});console.error(e.message);process.exitCode=1;
+}catch(e){await log({event:'failed',error:e.message});launchStatus('failed','Craft 接入失败：'+e.message);console.error(e.message);process.exitCode=1;
  if(app.exitCode===null&&!spawnError){
   const message='WebVideo+ 接入失败：'+e.message+'。请保存工作并关闭此 Craft 窗口，再检查适配版本。关闭前本机会话调试端口仍存在。';
   const encoded=Buffer.from(message,'utf8').toString('base64');

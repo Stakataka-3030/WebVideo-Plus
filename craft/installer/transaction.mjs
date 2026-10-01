@@ -30,19 +30,33 @@ function walk(root){
  for(const entry of fs.readdirSync(root,{withFileTypes:true})){const file=path.join(root,entry.name);assertNoLinks(file);if(entry.isDirectory())result.push(...walk(file));else if(entry.isFile())result.push(file);else throw Error('Non-regular package file: '+file);}
  return result;
 }
-export function verifyPackage(root,{allowMutable=false}={}){
+export function verifyPackage(root,{allowMutable=false,onProgress}={}){
  root=path.resolve(root);assertNoLinks(root);const manifestPath=path.join(root,'MANIFEST.json'),manifest=readJson(manifestPath);
  if(manifest.schemaVersion!==1||manifest.product!=='WebVideo+ Craft'||!Array.isArray(manifest.files)||!manifest.files.length)throw Error('Unsupported Craft package manifest');
  if(!Array.isArray(manifest.supportedHosts)||!manifest.supportedHosts.length||manifest.supportedHosts.some(h=>!h.version||! /^[a-f0-9]{64}$/.test(h.sha256||'')))throw Error('Missing verified Craft host compatibility allowlist');
- const names=new Set();
- for(const item of manifest.files){
-  const relative=safeRelative(item.path),key=relative.toLowerCase();
-  if(names.has(key)||key==='manifest.json'||mutable.has(relative.split('/')[0].toLowerCase()))throw Error('Duplicate/reserved package path: '+relative);
-  names.add(key);const file=path.join(root,...relative.split('/'));assertNoLinks(file);
-  if(!exists(file)||!fs.statSync(file).isFile()||fs.statSync(file).size!==item.bytes||! /^[a-f0-9]{64}$/.test(item.sha256)||fileHash(file)!==item.sha256)throw Error('Package integrity mismatch: '+relative);
+ // Verify each directory on entry and each file immediately before hashing.
+ // Root ancestry is checked once, not once per dependency. No cross-call cache.
+ const expected=new Map();
+ for(const item of manifest.files){const relative=safeRelative(item.path),key=relative.toLowerCase();
+  if(expected.has(key)||key==='manifest.json'||mutable.has(relative.split('/')[0].toLowerCase()))throw Error('Duplicate/reserved package path: '+relative);
+  if(!Number.isSafeInteger(item.bytes)||item.bytes<0||! /^[a-f0-9]{64}$/.test(item.sha256||''))throw Error('Package integrity mismatch: '+relative);
+  expected.set(key,item);
  }
- for(const file of walk(root)){const relative=path.relative(root,file).split(path.sep).join('/');if(relative==='MANIFEST.json')continue;if(allowMutable&&mutable.has(relative.split('/')[0].toLowerCase()))continue;if(!names.has(relative.toLowerCase()))throw Error('Unlisted package file: '+relative);}
- for(const key of ['entry','wrapper','node','kernel']){safeRelative(manifest[key]);if(!names.has(manifest[key].toLowerCase()))throw Error('Missing launch contract: '+key);}
+ for(const key of ['entry','wrapper','node','kernel']){safeRelative(manifest[key]);if(!expected.has(manifest[key].toLowerCase()))throw Error('Missing launch contract: '+key);}
+ const seen=new Set();let checked=0,lastProgress=0;
+ const visit=directory=>{for(const name of fs.readdirSync(directory)){
+  const file=path.join(directory,name),relative=path.relative(root,file).split(path.sep).join('/'),key=relative.toLowerCase();
+  if(onProgress&&(lastProgress===0||Date.now()-lastProgress>=250)){onProgress({stage:'files',checked,total:manifest.files.length,path:relative});lastProgress=Date.now();}
+  const stat=fs.lstatSync(file);if(stat.isSymbolicLink())throw Error('Linked/reparse path is not allowed: '+file);
+  if(stat.isDirectory()){visit(file);continue;}if(!stat.isFile())throw Error('Non-regular package file: '+file);
+  if(seen.has(key))throw Error('Duplicate package filesystem path: '+relative);seen.add(key);
+  if(relative==='MANIFEST.json'||allowMutable&&mutable.has(relative.split('/')[0].toLowerCase()))continue;
+  const item=expected.get(key);if(!item)throw Error('Unlisted package file: '+relative);
+  if(stat.size!==item.bytes||fileHash(file)!==item.sha256)throw Error('Package integrity mismatch: '+relative);checked++;
+ }};
+ onProgress?.({stage:'tree',checked:0,total:manifest.files.length});visit(root);
+ for(const [key,item] of expected)if(!seen.has(key))throw Error('Package integrity mismatch: '+item.path);
+ onProgress?.({stage:'verified',checked,total:manifest.files.length});
  return {...manifest,manifestSha256:fileHash(manifestPath)};
 }
 function validateState(state,statePath){

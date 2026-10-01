@@ -20,6 +20,18 @@
 
 音乐时长来自实际探测，故事时间来自实际引擎运行。预览速度通过经过所属页面检查的独立 iframe/CDP session 读取。没有准确加载配置证据时，速度修改只影响本次预览，并明确说明；不会猜测 IndexedDB 存档键。
 
+## 安装器 1.1.3.0c
+
+安装 / 更新、拆卸和会话检查在后台执行，界面显示当前阶段和用时；解压及完整文件校验可能耗时数分钟。操作期间输入与其他操作会锁定，窗口会阻止普通关闭，等待当前事务与临时文件清理结束。失败后可查看错误日志并重试；不会通过强制终止进程中断安装。
+
+## 启动反馈与完整性检查（1.1.3.0c）
+
+增强入口会立即显示启动进度；目录及文件校验在后台执行，显示阶段、已校验数量和用时。原入口同名包装器和适配目录启动器共用本次会话的启动互斥锁，重复点击会立即提示已有会话，避免排队做多轮全量校验。完整文件哈希、兼容宿主哈希、所有权和链接路径检查仍保留，不使用跨启动的“已校验”缓存。
+
+校验器每次只检查一次根目录祖先和每个递归子项，在访问文件时立即做大小及 SHA-256 校验，移除了逐文件反复查询整条祖先路径的开销。真实生产观察曾出现约 4 分 40 秒后才创建 Craft 宿主的延迟；修订代码的云端测试覆盖了线性文件系统调用数量，实际 Windows 启动耗时仍需合并验证，不能把云端测试耗时当作本机提升结果。
+
+启动早期日志会保存在临时目录的 `WebVideoCraft-Launcher-<id>.log`，确认安装归属后的会话输出写入适配目录 `state/logs/launcher.log`。启动窗只在增强界面成功接入后隐藏，包装器仍随所属 Craft 会话保留，直到宿主退出后清理。
+
 ## 构建（Windows，隔离工作目录）
 
 1. 运行 `powershell -File prepare-build.ps1`，从带 SHA-256 校验的官方固定来源重建输入；不再强制依赖历史安装器
@@ -32,7 +44,9 @@
 
 ## 验证
 
-云端：`node --test craft/tests/*.test.mjs tests/features-imports.test.mjs tests/craft-installer.test.mjs tests/craft-packaging.test.mjs tests/build-inputs.test.mjs`
+云端：`node --test craft/tests/*.test.mjs tests/features-imports.test.mjs tests/craft-installer.test.mjs tests/craft-packaging.test.mjs tests/build-inputs.test.mjs tests/craft-setup-ui.test.mjs tests/craft-launcher.test.mjs`
+
+Windows 安装器界面回归：`powershell -NoProfile -File craft/tests/setup-gui.test.ps1` 使用真实窗体和无副作用的延迟操作，检查响应、进度、重复点击、关闭保护、报错和重试；真实负载安装仍需在隔离副本点击验收。
 
 Windows 原生回归：`tests/font-render-preflight.test.ps1` 验证普通项目不会因未用的 Live2D SDK 被阻挡；`craft/tests/native-update-observer.ps1` 只编译、运行写入隔离标记文件的合成宿主/安装器，不升级 Craft。合成安装器通过也不代表官方 NSIS 升级已验证。
 

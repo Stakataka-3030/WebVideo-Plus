@@ -6,6 +6,8 @@ This development module keeps the adapter package and its coordinator outside th
 
 `MANIFEST.json` schema 1 declares every immutable package file and its SHA-256/size, plus `entry`, `node`, `kernel`, `wrapper`, and a `supportedHosts` allowlist. All relative paths must stay inside the package; duplicate/case-colliding paths, unknown files, links and reparse points are rejected. Mutable `config.json`, `state/` and `logs/` are not payload entries. The first verified host is the official Craft 1.0.0-beta.2 executable with SHA-256 `3515c1329b3b033d1882329026a4c5d3cf9eb21cb50b5b0040d7882daf933d0d`; another hash is not made compatible merely by recording it.
 
+Native Setup captures the GUI request and runs it on a background worker, reporting coarse stages and elapsed time on the UI thread. Busy inputs, repeated actions and normal window closure remain blocked until the operation and cleanup finish; there is no force-cancel timeout. Errors return to the UI with a full diagnostic log and permit retry. The synchronous command-line exit contract remains unchanged.
+
 Native Setup extracts into a fresh temporary coordinator directory, verifies the complete package, then invokes `craft/installer/manage.mjs`. It never executes a coordinator from a directory being replaced. The external adapter directory is not allowed to contain, or be contained by, the Craft host directory.
 
 ## Ownership and rollback

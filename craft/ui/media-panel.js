@@ -99,7 +99,7 @@
     button(exportRow, '取消本面板导出任务', async () => { for (const id of exportJobs) await bridge.cancelJob(id); message('已请求取消导出任务'); }, ['exportVideo'], true);
     exportCard.append(jobInfo); panel.append(status); drawMusic(); refreshCapabilities();
     const interval = setInterval(() => { if (!disposed) refreshCapabilities(); }, 1000);
-    return { dispose() { disposed = true; clearInterval(interval); for (const remove of disposers) remove(); controller.cancel().catch(() => {}); panel.remove(); } };
+    return { show(view) { musicCard.hidden = view !== 'music'; timeCard.hidden = view !== 'time'; exportCard.hidden = view !== 'export'; }, dispose() { disposed = true; clearInterval(interval); for (const remove of disposers) remove(); controller.cancel().catch(() => {}); panel.remove(); } };
   }
   root.WebVideoCraftMediaUI = { mount };
 })(typeof window !== 'undefined' ? window : globalThis);
