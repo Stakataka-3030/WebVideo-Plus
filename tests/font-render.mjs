@@ -138,7 +138,19 @@ async function render(browser,runtime,label,out) {
     while(Date.now()<deadline) {const result=await send('Runtime.evaluate',{expression:'globalThis.fontRenderResult',returnByValue:true});report=result.result?.value;if(report)break;await sleep(50);}
     assert.ok(report,'Fixture timed out');assert.equal(report.ok,true,report.error);
     const {root}=await send('DOM.getDocument');report.platformFonts={};
-    for(const id of [...sampleIds,'dialogue','speaker','extended']) {const {nodeId}=await send('DOM.querySelector',{nodeId:root.nodeId,selector:'#'+id});const {fonts}=await send('CSS.getPlatformFontsForNode',{nodeId});report.platformFonts[id]=fonts;}
+    for(const id of [...sampleIds,'dialogue','speaker','extended']) {
+      // CDP only reports fonts for immediate text nodes. Dialogue's visible
+      // gradient layers contain the text; querying its wrapper returns [].
+      const selector=id==='dialogue'?'#dialogue ._outer_p1zxt_64':'#'+id;
+      const {nodeIds}=await send('DOM.querySelectorAll',{nodeId:root.nodeId,selector});
+      assert.equal(nodeIds.length,id==='dialogue'?2:1,`Missing text-bearing node: ${id}`);
+      const collected=[];
+      for(const nodeId of nodeIds) {
+        const {fonts}=await send('CSS.getPlatformFontsForNode',{nodeId});
+        assert.ok(fonts.length,`No rendered font in ${id} text layer`);collected.push(...fonts);
+      }
+      report.platformFonts[id]=collected;
+    }
     report.runtime=styles;report.browser=await browser.send('Browser.getVersion');report.requests=requests;
     const {data}=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
     fs.writeFileSync(path.join(out,label+'.png'),Buffer.from(data,'base64'));
