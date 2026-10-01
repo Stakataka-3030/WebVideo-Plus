@@ -59,6 +59,7 @@ Pop-Location
 - `build.ps1`：导出内核、process guard、Terre launcher 的原生编译与生命周期检查
 - `build-product.ps1`：组合 AI、时间线、安装器源码、管理器、功能模块、manifest、ZIP 和安装器
 - `scripts/build-ai.ps1`：复制锁定 npm 依赖、提示词与已固定的 Node；统一 staged package/lock 根版本
+- `scripts/build-ai-metadata.mjs`：用 Node 同步 AI package/lock 根版本，避免 PowerShell 5.1 对空键的限制
 - `scripts/build-timeline.mjs` / `build-navigation-metadata.mjs`：验证 Terre 挂载锚点并生成界面资源
 - `scripts/configure-installer.mjs`：从源码模板生成安装器及锁定的 bootstrap 校验值
 - `scripts/build-feature-assets.mjs` / `manifest.mjs`：打包模块、文档、源码、产品元数据和逐文件清单

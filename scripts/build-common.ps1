@@ -19,6 +19,8 @@ function Get-PinnedBuildInput($InputRecord,[string]$CacheDirectory,[switch]$Offl
  $partial=$file+'.part-'+[Guid]::NewGuid().ToString('N')
  try{
   [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
+  $ProgressPreference='SilentlyContinue'
+  Write-Host ('Downloading pinned input: '+$InputRecord.file)
   Invoke-WebRequest -UseBasicParsing -Uri $InputRecord.url -OutFile $partial
   $actual=(Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash.ToLowerInvariant()
   if($actual -ne $InputRecord.sha256){throw ('SHA-256 mismatch for '+$InputRecord.file+'. Expected '+$InputRecord.sha256+', got '+$actual+'. No package files were replaced.')}
