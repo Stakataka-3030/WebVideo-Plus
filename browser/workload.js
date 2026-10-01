@@ -53,8 +53,12 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
     :previous!==visualName;
    const gone=!visualName||visualName==='none',previousPresent=previous!==undefined&&previous!==null&&previous!==''&&previous!=='none';
    const image=value=>/\.(png|jpe?g|webp|gif)([?#].*)?$/i.test(String(value||''));
-   const diffReplacing=isDiff&&previousPresent&&!gone&&image(previous)&&image(visualName);
-   const diffNoop=isDiff&&previousPresent&&!gone&&!diffReplacing;
+   const unsupportedDiff=value=>{try{const url=new URL(String(value||''),'http://localhost/'),extension=url.pathname.split('.').pop().toLowerCase();return extension==='json'||extension==='skel'||url.searchParams.get('type')==='spine';}catch{return false;}};
+   const diffReplacing=isDiff&&previousPresent&&!gone&&!unsupportedDiff(previous)&&!unsupportedDiff(visualName)&&image(previous)&&image(visualName);
+   // 4.6.5 rejects a model diff before its empty/none fallback. Keep model
+   // lifetimes (including unknown model-backed formats) until a real removal.
+   const modelDiffRemoval=isDiff&&gone&&previousPresent&&oldIdentity?.liveRuntime&&!image(previous);
+   const diffNoop=isDiff&&(unsupportedDiff(previous)||unsupportedDiff(visualName)||modelDiffRemoval||previousPresent&&!gone&&!diffReplacing);
    if(changed&&previousPresent&&!diffReplacing&&!diffNoop){
     const state=transitionStates.get(target)||{},fallback=cmd==='changeBg'?1500:450;
     const exitMs=state.exitName?ensureAnimation(state.exitName):Math.max(0,Number.isFinite(Number(state.exitDuration))?Number(state.exitDuration):fallback);
@@ -62,7 +66,8 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    }
    visualSources.set(key,visualName);
    if(isFigure&&diffReplacing){
-    if(changed){figureIdentities.set(target,{...oldIdentity,name:visualName});softCutWindows.push({startMs:Math.round(cursor),endMs:Math.round(cursor+Math.max(0,Number(plannedPerform?.durationMs??200))),reason:'figure-diff',target,line:range.start+1});}
+    // Diff ignores position/bounds arguments and no-ops when the image is unchanged.
+    if(previous!==visualName){figureIdentities.set(target,{...oldIdentity,name:visualName});softCutWindows.push({startMs:Math.round(cursor),endMs:Math.round(cursor+Math.max(0,Number(plannedPerform?.durationMs??200))),reason:'figure-diff',target,line:range.start+1});}
    }else if(isFigure&&!diffNoop){
     const liveRuntime=!gone&&(/\.(json|jsonl|wmdl)([?#].*)?$/i.test(visualName)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(visualName)||!!params.motion||!!params.skin||!!params.expression||!!params.blink||!!params.focus||!!params.animationFlag||!!params.eyesOpen||!!params.eyesClose);
     const activeLifetime=activeLiveLifetimes.get(target);

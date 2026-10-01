@@ -38,7 +38,7 @@ Pop-Location
 
 `-Offline` 只适用于构建输入准备，不等同于 `npm ci` 离线；首次恢复 AI npm 依赖仍需要网络或已有 npm 缓存。缺失或损坏的离线输入会明确报错，不会绕过校验。
 
-输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正式安装器为 `dist/WebVideo+-Setup-0.9.0-exp.1-dev.exe`，Win32 文件版本 `1.2.0.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
+输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，使用 `-InternalBuild` 生成的实验安装器为 `dist/WebVideo+-Setup-0.9.0-exp.1-dev.exe`，Win32 文件版本 `1.2.0.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
 
 本实验分支使用官方 4.6.5 输入，不接受 4.6.5 旧安装器导入。实验产物必须带 `-InternalBuild`，本分支未发布。
 

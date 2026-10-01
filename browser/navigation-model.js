@@ -33,7 +33,8 @@
   const targetLabel=value=>value==='bg-main'?'背景':value?.startsWith('fig-')&&M.positions[value.slice(4)]?M.positions[value.slice(4)]+'人物':idLabel(value)||'未填写';
   const flatten=value=>{const result={};if(!value||typeof value!=='object')return result;for(const [key,spec] of Object.entries(M.fields)){const v=get(value,spec.path)??value[key];if(v!==undefined)result[key]=number(v,v);}return result;};
   const fromDefault=args=>own(args,'transformFrom')&&args.transformFrom!==''?args.transformFrom==='default':args.writeDefault===true;
-  const resetEffects=args=>fromDefault(args)&&args.parallel!==true&&args.ignoreDefault!==true;
+  // 4.6.5 gives an explicit transformFrom precedence over legacy flags.
+  const resetEffects=args=>fromDefault(args)&&args.parallel!==true&&(args.transformFrom==='default'||args.ignoreDefault!==true);
   const figureLabel=(args,id)=>String(args.id??'')?idLabel(id):targetLabel(id);
   const speakerSource=args=>{
    const characterNames=root.WebVideoCharacterMap?root.WebVideoCharacterMap.names():M.characterNames;
@@ -95,7 +96,9 @@
     else {const more=moreParts(args,old.more);figures.set(id,{file:content,position,more:more.state,motion:own(args,'motion')?String(args.motion):old?.motion,expression:own(args,'expression')?String(args.expression):old?.expression});row.kind='event';row.title='立绘调整';row.parts=more.parts;row.attachRule='figure';if(!row.parts.length)continue;}
    }else if(command==='changeFigureDiff'){
     const position=positions.find(p=>args[p]===true)||'center',id=String(args.id??'')||'fig-'+position,gone=!content||content==='none',old=figures.get(id);row.target=id;
-    if(gone){row.kind='figure';row.main=true;row.title='人物离场 · '+figureLabel(args,id);row.parts=[part(row.title)];figures.delete(id);effects.delete(id);}
+    const unsupportedDiff=value=>{try{const url=new URL(String(value||''),'http://localhost/'),extension=url.pathname.split('.').pop().toLowerCase();return extension==='json'||extension==='skel'||url.searchParams.get('type')==='spine';}catch{return false;}};
+    if(unsupportedDiff(old?.file)||unsupportedDiff(content)){row.diffNoop=true;row.kind='event';row.title='立绘差分 · 图片不适用';row.parts=[part(row.title,['当前素材无法作为图片差分替换'])];row.attachRule='figure';}
+    else if(gone){row.kind='figure';row.main=true;row.title='人物离场 · '+figureLabel(args,id);row.parts=[part(row.title)];figures.delete(id);effects.delete(id);}
     else if(!old){const more=moreParts(args,null);figures.set(id,{file:content,position,more:more.state});effects.set(id,{...defaults});row.kind='figure';row.main=true;row.figureEntering=true;row.title='人物登场 · '+figureLabel(args,id)+' · '+content;row.parts=[part(row.title)];}
     else {const image=value=>/\.(png|jpe?g|webp|gif)([?#].*)?$/i.test(value||''),valid=image(old.file)&&image(content);if(valid)figures.set(id,{...old,file:content});row.kind='event';row.title=valid?'立绘差分 · '+fileName(content):'立绘差分 · 图片不适用';row.parts=[part(row.title,valid?['保留位置、层级和现有效果']:['当前素材无法作为图片差分替换'])];row.attachRule='figure';}
    }else if(command==='playEffect'){

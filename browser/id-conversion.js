@@ -22,6 +22,8 @@
    if(row.command==='changeFigureDiff'){
     const target=existing?lookup(existing):stage.get('fig-'+pos),image=value=>/\.(png|jpe?g|webp|gif)([?#].*)?$/i.test(value||'');
     if(!target){warn(row,'差分没有找到当前在场的立绘，未自动补 ID。');continue;}
+    const unsupportedDiff=value=>{try{const url=new URL(String(value||''),'http://localhost/'),extension=url.pathname.split('.').pop().toLowerCase();return extension==='json'||extension==='skel'||url.searchParams.get('type')==='spine';}catch{return false;}};
+    if(unsupportedDiff(target.file)||unsupportedDiff(row.content)){warn(row,'图片差分不适用于当前素材，保持原样。');continue;}
     if(inside(row)&&(!item.hasExisting||options.overwrite)&&existing!==target.id){write(row,[{id:target.id}]);stats.figures++;}
     if(row.content==='none'||!row.content)stage.delete(target.id);
     else if(image(target.file)&&image(row.content))stage.set(target.id,{...target,file:row.content});

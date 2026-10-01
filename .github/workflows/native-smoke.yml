@@ -24,7 +24,7 @@ jobs:
       - name: Verify repository layout and browser regressions
         shell: pwsh
         run: |
-          node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs tests/build-inputs.test.mjs tests/ai-build-metadata.test.mjs tests/font-render.test.mjs tests/terre-ui-font.test.mjs
+          node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs tests/build-inputs.test.mjs tests/ai-build-metadata.test.mjs tests/font-render.test.mjs tests/terre-ui-font.test.mjs tests/webgal-465-diff.test.mjs tests/manager-isolation.test.mjs
           if ($LASTEXITCODE -ne 0) { throw "Node regression checks failed" }
           node tests/update-check-and-atlas.mjs
           if ($LASTEXITCODE -ne 0) { throw "Update and atlas checks failed" }
@@ -66,7 +66,9 @@ jobs:
 
       - name: Verify optional Live2D preflight against referenced assets
         shell: powershell
-        run: .\tests\font-render-preflight.test.ps1
+        run: |
+          .\tests\font-render-preflight.test.ps1
+          .\tests\engine-adapter-465.test.ps1
 
       - name: Render and decode a multilingual native export
         shell: pwsh
@@ -77,6 +79,9 @@ jobs:
           Expand-CheckedBuildArchive $archive (Join-Path $PWD '.build/ffmpeg-test')
           $env:PATH = (Join-Path $PWD ('.build/ffmpeg-test/ffmpeg-' + $lock.ffmpegTest.version + '-essentials_build/bin')) + ';' + $env:PATH
           .\tests\font-render-native.ps1
+          .\tests\font-render-native.ps1 -RuntimeSource project-runtime
+          .\tests\font-render-native.ps1 -RuntimeSource terre-template
+          .\tests\figure-diff-native.ps1
 
       - name: Restore locked optional AI dependencies
         shell: pwsh
@@ -110,6 +115,9 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
           path: |
+            .build/figure-diff/native/*/*.png
+            .build/figure-diff/native/*/*.json
+            .build/figure-diff/native/*/*.log
             .build/terre-ui-font/*.png
             .build/terre-ui-font/*.json
             .build/font-render/*.png

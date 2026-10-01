@@ -6,6 +6,8 @@ const WebVideoAutoExit=(()=>{
  function scan(model,selected=null){
   const stage=new Map(),items=[],patches=[],eol=model?.source.includes('\r\n')?'\r\n':'\n';let inserted=0;
   for(const row of model?.statements||[]){if(!['changeFigure','changeFigureDiff'].includes(row.command))continue;const diff=row.command==='changeFigureDiff',a=row.args,flags=positions.filter(p=>a[p]===true);if(flags.length>1)continue;const explicit=text(a.id),pos=flags[0]||'center',key=explicit||'fig-'+pos,gone=!row.content||row.content==='none'||!diff&&a.clear===true;
+   const unsupportedDiff=value=>{try{const url=new URL(String(value||''),'http://localhost/'),extension=url.pathname.split('.').pop().toLowerCase();return extension==='json'||extension==='skel'||url.searchParams.get('type')==='spine';}catch{return false;}};
+   if(diff&&(unsupportedDiff(stage.get(key)?.file)||unsupportedDiff(row.content)))continue;
    if(gone){if(explicit)stage.delete(key);else for(const [id,actor]of stage)if(actor.pos===pos)stage.delete(id);continue;}
    const actor={id:key,explicit:!!explicit,pos,file:row.content},previous=stage.get(key),image=value=>/\.(png|jpe?g|webp|gif)([?#].*)?$/i.test(value||'');
    if(diff&&previous){if(image(previous.file)&&image(actor.file))stage.set(key,{...previous,file:actor.file});continue;}

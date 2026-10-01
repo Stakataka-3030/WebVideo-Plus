@@ -23,7 +23,9 @@ public static class FontPreflightChecks {
    int colon=line.IndexOf(':');string command=colon<0?"say":line.Substring(0,colon),content=colon<0?line:line.Substring(colon+1).TrimEnd(';');var args=new List<object>();
    foreach(Match match in Regex.Matches(content,@"\s-([A-Za-z]\w*)(?:=([^\s;]+))?"))args.Add(J.O("key",match.Groups[1].Value,"value",match.Groups[2].Success?(object)match.Groups[2].Value:true));
    content=Regex.Split(content,@"\s-[A-Za-z]")[0];
-   if(!new[]{"changeFigure","miniAvatar","changeBg","setAnimation","changeScene","callScene","return","end","customModel"}.Contains(command))command="say";
+   // The pinned runtime's resource URL parser normalizes `none` to empty.
+   if(command=="changeFigureDiff"&&content=="none")content="";
+   if(!new[]{"changeFigure","changeFigureDiff","miniAvatar","changeBg","setAnimation","changeScene","callScene","return","end","customModel"}.Contains(command))command="say";
    sentences.Add(J.O("command",command=="say"?0:1,"commandRaw",command,"content",content,"args",args.ToArray(),"startLine",i,"endLine",i));
   }
   return J.O("sentenceList",sentences.ToArray());
@@ -36,13 +38,24 @@ public static class FontPreflightChecks {
   foreach(string name in Both)libraries.Add(J.O("name",name,"found",available!=null&&available.Contains(name)));
   return assets;
  }
- static object Check(string name,string source,bool expectedModels,Action arrange=null,bool expectedMissing=false,bool mygo=false,string[] available=null){
+ static object Check(string name,string source,bool expectedModels,Action arrange=null,bool expectedMissing=false,bool mygo=false,string[] available=null,Action<ProjectAssets,object> verify=null){
   project=Path.Combine(home,"case-"+count);Directory.CreateDirectory(Path.Combine(project,"game/scene"));
-  if(arrange!=null)arrange();var report=NewAssets(source,mygo,available).Scan(Parse(source));
+  if(arrange!=null)arrange();var assets=NewAssets(source,mygo,available);var report=assets.Scan(Parse(source));
   var required=J.A(J.Get(report,"issues")).Where(x=>J.S(x,"kind")=="environment").Select(x=>J.S(x,"file")).OrderBy(x=>x).ToArray();
   Assert(required.SequenceEqual((expectedModels?Both:new string[0]).Except(available??new string[0]).OrderBy(x=>x)),name+": wrong SDK requirements: "+string.Join(",",required));
   if(expectedMissing)Assert(J.A(J.Get(report,"issues")).Any(x=>J.S(x,"kind")=="missing"),name+": missing asset error was lost");
+  if(verify!=null)verify(assets,report);
   count++;Console.WriteLine("PASS "+name);return report;
+ }
+ static void IssueKinds(object report,params string[] expected){
+  var actual=J.A(J.Get(report,"issues")).Select(x=>J.S(x,"kind")).Distinct().OrderBy(x=>x).ToArray();
+  Assert(actual.SequenceEqual(expected.Distinct().OrderBy(x=>x)),"Unexpected issue kinds: "+string.Join(",",actual));
+ }
+ static void ImageSnapshot(ProjectAssets assets,object report,string relative,string expected){
+  IssueKinds(report);Assert(J.N(report,"checkedFiles")==1,"Image diff resource was not inspected exactly once");
+  assets.Snapshot().GetAwaiter().GetResult();
+  Assert(File.ReadAllText(Path.Combine(assets.Root,relative))==expected,"Image diff resource was not copied into the export snapshot");
+  Assert(File.ReadAllText(Path.Combine(project,relative))==expected,"Image diff scanning mutated the project resource");
  }
  public static int Main(string[] args){
   try{if(args.Length!=1)throw new ArgumentException("Pass the original package root");int passed=Run(args[0]);Console.WriteLine("Live2D preflight checks passed: "+passed);return 0;}
@@ -57,6 +70,24 @@ public static class FontPreflightChecks {
    Check("static image needs no SDK","changeFigure:hero.png;",false,()=>Put("game/figure/hero.png","synthetic image"));
    Check("missing static image still blocks","changeFigure:missing.png;",false,null,true);
    Check("remote static image does not imply Live2D","changeFigure:https://example.invalid/hero.png;",false);
+   // These are scanner tests, not runtime image decoding. The small parser
+   // must keep changeFigureDiff as a command so resource and SDK checks run.
+   var diffParsed=J.A(J.Get(Parse("changeFigureDiff:hero.png -id=hero;"),"sentenceList"))[0];
+   Assert(J.S(diffParsed,"commandRaw")=="changeFigureDiff"&&J.N(diffParsed,"command")!=0,"Synthetic parser hid figure diff as dialogue");
+   Check("image diff is inspected and copied without SDKs","changeFigureDiff:hero.png -id=hero;",false,()=>Put("game/figure/hero.png","synthetic diff image"),verify:(assets,report)=>ImageSnapshot(assets,report,"game/figure/hero.png","synthetic diff image"));
+   Check("image diff query and encoded path use physical resource","changeFigureDiff:./game/figure/hero%20smile.WEBP?cache=1#pose -id=hero;",false,()=>Put("game/figure/hero smile.WEBP","encoded diff image"),verify:(assets,report)=>ImageSnapshot(assets,report,"game/figure/hero smile.WEBP","encoded diff image"));
+   Check("none diff removes without resource or SDKs","changeFigureDiff:none -id=hero;",false,verify:(assets,report)=>{IssueKinds(report);Assert(J.N(report,"checkedFiles")==0,"Removal attempted to inspect a resource");Assert(J.A(J.Get(report,"actions")).Count==0,"Removal added a repair action");});
+   Check("empty diff removes without resource or SDKs","changeFigureDiff: -id=hero;",false,verify:(assets,report)=>{IssueKinds(report);Assert(J.N(report,"checkedFiles")==0,"Empty removal attempted to inspect a resource");});
+   Check("missing diff image retains skip-line repair","changeFigureDiff:missing.png -id=hero;",false,null,true,verify:(assets,report)=>{IssueKinds(report,"missing");Assert(J.B(report,"canContinue"),"Missing image diff must permit sanitized export");Assert(J.A(J.Get(report,"actions")).Any(x=>J.S(x,"kind")=="skip-line"&&J.N(x,"line")==1),"Missing diff lost its skip-line action");Assert(!J.S(report,"sanitizedScript").Contains("changeFigureDiff:"),"Missing diff survived sanitization");});
+   Check("remote diff image warns without SDKs","changeFigureDiff:https://example.invalid/hero.png -id=hero;",false,verify:(assets,report)=>{IssueKinds(report);Assert(J.A(J.Get(report,"warnings")).Any(x=>J.S(x,"kind")=="external-resource"),"Remote diff lost its external-resource warning");Assert(J.N(report,"checkedFiles")==0,"Remote diff was treated as a local file");});
+   Check("Cubism3 diff is unsupported and still requires both SDKs","changeFigureDiff:hero.model3.json -id=hero;",true,()=>{Put("game/figure/hero.model3.json","{\"FileReferences\":{\"Moc\":\"hero.moc3\"}}");Put("game/figure/hero.moc3","synthetic model");},verify:(assets,report)=>{IssueKinds(report,"unsupported","environment");Assert(J.N(report,"checkedFiles")==2,"Unsupported model diff stopped dependency inspection");Assert(!J.B(report,"canContinue"),"Unsupported model diff became skippable");});
+   Check("missing model diff retains independent errors","changeFigureDiff:missing.model3.json -id=hero;",true,null,true,verify:(assets,report)=>IssueKinds(report,"missing","unsupported","environment"));
+   Check("Spine diff is unsupported and conservatively requires SDKs","changeFigureDiff:hero.skel -id=hero;",true,()=>Put("game/figure/hero.skel","synthetic skeleton"),verify:(assets,report)=>IssueKinds(report,"unsupported","environment"));
+   Check("video diff is unsupported without implying Live2D","changeFigureDiff:hero.webm -id=hero;",false,()=>Put("game/figure/hero.webm","synthetic video"),verify:(assets,report)=>{IssueKinds(report,"unsupported");Assert(!J.B(report,"canContinue"),"Unsupported video diff became skippable");});
+   Check("MyGO selection does not allow video diff","changeFigureDiff:hero.mp4 -id=hero;",false,()=>Put("game/figure/hero.mp4","synthetic video"),mygo:true,verify:(assets,report)=>IssueKinds(report,"unsupported"));
+   Check("unknown diff format fails closed","changeFigureDiff:hero.custom -id=hero;",true,()=>Put("game/figure/hero.custom","unknown"),verify:(assets,report)=>IssueKinds(report,"unsupported","environment"));
+   Check("dynamic diff image remains conservative","changeFigureDiff:{hero}.png -id=hero;",true,null,true,verify:(assets,report)=>{IssueKinds(report,"missing","environment");Assert(J.A(J.Get(report,"warnings")).Any(x=>J.S(x,"kind")=="runtime-variable"),"Dynamic diff lost its interpolation warning");});
+   Check("diff type query still requires conservative SDKs","changeFigureDiff:hero.png?type=customModel -id=hero;",true,()=>Put("game/figure/hero.png","synthetic image"),verify:(assets,report)=>IssueKinds(report,"environment"));
    Check("unknown custom command fails closed","customModel:hero.png;",true);
    Check("unknown figure format fails closed","changeFigure:hero.custom;",true,()=>Put("game/figure/hero.custom","unknown"));
    Check("dynamic image filename fails closed","changeFigure:{hero}.png;",true,null,true);

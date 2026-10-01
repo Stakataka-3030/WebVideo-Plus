@@ -39,7 +39,8 @@ namespace NativeVideo {
    return new EngineAdapter("webgal","4.6.5",Path.Combine(Files.Root,"runtime/web"),BundledWebgalBundle,"bundled-runtime",false,false);
   }
   static string InstrumentWebgal465(string text) {
-   if(text.Contains("globalThis.__probeCommands")&&text.Contains("globalThis.__wgProbe={core:R,store:Pe}")&&text.Contains("parseScene:wo")&&text.Contains("stageManager:X"))return text;
+   // The prepared 4.6.5 snapshot also keeps the official raw bundle. Probe-like
+   // strings in arbitrary JavaScript are not evidence of a compatible runtime.
    if(Files.HashText(text)!=OfficialWebgal465Hash)throw new IOException("仅支持已校验的官方 WebGAL 4.6.5 运行时；其它引擎暂不直接注入导出探针");
    text=ReplaceOnce(text,"Ge={\"preview.command.sync-scene\"","Ge=globalThis.__probeCommands={\"preview.command.sync-scene\"");
    return text+"\n;globalThis.__wgProbe={core:R,store:Pe};\nObject.assign(globalThis.__wgProbe,{parseScene:wo});\nObject.assign(globalThis.__wgProbe,{stageManager:X});\n";
@@ -84,8 +85,10 @@ namespace NativeVideo {
      string id=J.S(metadata,"id");
      if(id=="open-webgal.webgal") {
       official=true;
-      if(J.S(metadata,"version")!="4.6.5"||J.S(metadata,"webgalVersion")!="4.6.5")
-       error="检测到 WebGAL "+J.S(metadata,"version")+"，仅 4.6.5 可直接用于导出；将回退 4.6.5 官方基线";
+      if(J.S(metadata,"version")!="4.6.5"||J.S(metadata,"webgalVersion")!="4.6.5") {
+       error="检测到 WebGAL "+J.S(metadata,"version")+" / "+J.S(metadata,"webgalVersion")+"，描述信息必须一致为 4.6.5 才可直接用于导出；将回退 4.6.5 官方基线";
+       return null;
+      }
      } else if(!string.IsNullOrWhiteSpace(id))return null;
     } catch(Exception e) {
      error="读取 WebGAL 引擎描述失败："+e.Message;
@@ -106,6 +109,7 @@ namespace NativeVideo {
    try {
     // Only the verified official 4.6.5 bundle is instrumented. Dry-run every
     // patch before a job snapshot changes; custom rebuilds use the fixed base.
+    if(Files.Hash(main)!=OfficialWebgal465Hash)throw new IOException("WebGAL 4.6.5 原始文件校验不符");
     adapter.Patch(File.ReadAllText(main));
     return adapter;
    } catch(Exception e) {
@@ -188,6 +192,7 @@ namespace NativeVideo {
    string file=Path.Combine(root,Bundle);
    if(!File.Exists(file))throw new IOException("导出运行时缺少主 bundle："+Bundle);
    if(IsMygo&&strictMygoHash&&Files.Hash(file)!=MygoHash)throw new IOException("MyGO 文件在准备过程中改变，请重新导出");
+   if(!IsMygo&&Files.Hash(file)!=OfficialWebgal465Hash)throw new IOException("WebGAL 4.6.5 文件在准备过程中改变，请重新导出");
    string text=File.ReadAllText(file);
    Files.Atomic(file,Patch(text));
    // SnapshotServer serves raw files only; removing stale compressed copies also

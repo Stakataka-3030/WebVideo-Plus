@@ -136,7 +136,7 @@ namespace NativeVideo {
     }
     if(cmd=="changeFigureDiff"){
      var value=J.S(s,"content");
-     if(value!="none"&&!Regex.IsMatch(value,@"\.(png|jpe?g|webp|gif)([?#].*)?$",RegexOptions.IgnoreCase))Add("unsupported",line,value,"立绘差分只支持图片，不适用于 Live2D、Spine 或视频");
+     if(!string.IsNullOrEmpty(value)&&value!="none"&&!Regex.IsMatch(value,@"\.(png|jpe?g|webp|gif)([?#].*)?$",RegexOptions.IgnoreCase))Add("unsupported",line,value,"立绘差分只支持图片，不适用于 Live2D、Spine 或视频");
     }
     foreach(var a in args)if(p.ContainsKey(a.Key))Ref(a.Value,J.S(p,a.Key),line,J.O("line",line,"startLine",line,"endLine",endLine,"kind","remove-argument","key",a.Key));
     if(cmd=="setAnimation")Ref("animation",J.S(s,"content")+".json",line,skip);

@@ -19,7 +19,7 @@
     replacement=(at>0&&!/[\r\n]$/.test(model.source.slice(0,at))?eol:'')+value+eol;
    }else if(operation.type==='figureCue'){
     if(row.command!=='say')continue;
-    const figures=new Map();for(const statement of model.statements){if(statement.startLine>=row.startLine)break;if(!['changeFigure','changeFigureDiff'].includes(statement.command))continue;const diff=statement.command==='changeFigureDiff';if(!diff&&statement.args.clear===true)figures.clear();const key=String(statement.args.id||'fig-'+(positions.find(p=>statement.args[p]===true)||'center'));if(statement.content==='none'||!statement.content)figures.delete(key);else if(diff&&figures.has(key)){const prior=figures.get(key),image=value=>/\.(png|jpe?g|webp|gif)([?#].*)?$/i.test(value||'');if(image(prior.content)&&image(statement.content))figures.set(key,{...prior,content:statement.content});}else figures.set(key,statement);}
+    const figures=new Map();for(const statement of model.statements){if(statement.startLine>=row.startLine)break;if(!['changeFigure','changeFigureDiff'].includes(statement.command))continue;const diff=statement.command==='changeFigureDiff';if(!diff&&statement.args.clear===true)figures.clear();const key=String(statement.args.id||'fig-'+(positions.find(p=>statement.args[p]===true)||'center')),unsupportedDiff=value=>{try{const url=new URL(String(value||''),'http://localhost/'),extension=url.pathname.split('.').pop().toLowerCase();return extension==='json'||extension==='skel'||url.searchParams.get('type')==='spine';}catch{return false;}};if(diff&&(unsupportedDiff(figures.get(key)?.content)||unsupportedDiff(statement.content)))continue;if(statement.content==='none'||!statement.content)figures.delete(key);else if(diff&&figures.has(key)){const prior=figures.get(key),image=value=>/\.(png|jpe?g|webp|gif)([?#].*)?$/i.test(value||'');if(image(prior.content)&&image(statement.content))figures.set(key,{...prior,content:statement.content});}else figures.set(key,statement);}
     let target=operation.target==='background'?'bg-main':operation.target==='speaker'?String(row.args.figureId||project.bindings[row.speaker]?.id||(positions.find(p=>row.args[p]===true)?'fig-'+positions.find(p=>row.args[p]===true):'')):'fig-'+operation.target;
     if(positions.includes(operation.target)){const matches=[...figures].filter(([id,item])=>(positions.find(p=>item.args[p]===true)||'center')===operation.target);if(matches.length===1)target=matches[0][0];else target='';}
     if(!target&&operation.target==='speaker'&&figures.size===1)target=[...figures.keys()][0];
@@ -70,6 +70,8 @@
    }
    if(s.command==='changeFigureDiff'){
     const id=String(s.args.id||'fig-'+(positions.find(p=>s.args[p]===true)||'center')),previous=states.get(id),image=value=>/\.(png|jpe?g|webp|gif)([?#].*)?$/i.test(value||'');
+    const unsupportedDiff=value=>{try{const url=new URL(String(value||''),'http://localhost/'),extension=url.pathname.split('.').pop().toLowerCase();return extension==='json'||extension==='skel'||url.searchParams.get('type')==='spine';}catch{return false;}};
+    if(unsupportedDiff(previous?.file)||unsupportedDiff(s.content))continue;
     if(!s.content||s.content==='none'){states.delete(id);declared.delete(id);runs.delete(id);}
     else if(!previous){states.set(id,{file:s.content});declared.add(id);runs.delete(id);}
     else if(image(previous.file)&&image(s.content)){states.set(id,{...previous,file:s.content});runs.delete(id);}
