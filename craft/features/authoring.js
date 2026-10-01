@@ -272,7 +272,12 @@
       enabled = new Set(
         options.commands || [...NEXT_COMMANDS].filter((x) => x !== "say"),
       ),
-      patches = [], hints = new Set(S().hintPairs(m).map(p=>p.choose.id));
+      patches = [],
+      hints = new Set(
+        S()
+          .hintPairs(m)
+          .map((p) => p.choose.id),
+      );
     for (const r of m.statements)
       if (
         selected.has(r.id) &&
@@ -1002,7 +1007,12 @@
         path: snapshot.path,
         capabilities: snapshot.runtimeCapabilities || snapshot.capabilities,
       }),
-      query = String(options.query || "").toLowerCase(), hints=new Map(S().hintPairs(m).map(p=>[p.choose.id,p]));
+      query = String(options.query || "").toLowerCase(),
+      hints = new Map(
+        S()
+          .hintPairs(m)
+          .map((p) => [p.choose.id, p]),
+      );
     return m.statements
       .filter((r) => r.command !== "comment")
       .map((r) => {

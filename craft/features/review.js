@@ -3,7 +3,10 @@
   "use strict";
   const clone = (x) => JSON.parse(JSON.stringify(x));
   function anchor(model, row) {
-    const i = model.statements[row.index]?.id===row.id ? row.index : model.statements.findIndex((r) => r.id === row.id),
+    const i =
+        model.statements[row.index]?.id === row.id
+          ? row.index
+          : model.statements.findIndex((r) => r.id === row.id),
       hash = root.WebVideoCraftScript.fingerprint;
     return {
       body: hash(row.source.trim()),
@@ -70,9 +73,33 @@
           capabilities: snapshot.runtimeCapabilities || snapshot.capabilities,
         }),
         next = clone(data);
-      const selected=S.selectedRows(m,rowIds),selectedKeys=new Set(),existingByKey=new Map(next.marks.map(x=>[JSON.stringify([x.path,x.kind,x.anchor]),x]));
-      for(const row of selected){const a=anchor(m,row),key=JSON.stringify([snapshot.path,kind,a]);selectedKeys.add(JSON.stringify(a));const existing=existingByKey.get(key);if(existing)existing.status=status;else {const item={path:snapshot.path,kind,status,anchor:a};next.marks.push(item);existingByKey.set(key,item);}}
-      if(kind==='manual')for(const mark of next.marks)if(mark.path===snapshot.path&&selectedKeys.has(JSON.stringify(mark.anchor)))mark.status=status;
+      const selected = S.selectedRows(m, rowIds),
+        selectedKeys = new Set(),
+        existingByKey = new Map(
+          next.marks.map((x) => [
+            JSON.stringify([x.path, x.kind, x.anchor]),
+            x,
+          ]),
+        );
+      for (const row of selected) {
+        const a = anchor(m, row),
+          key = JSON.stringify([snapshot.path, kind, a]);
+        selectedKeys.add(JSON.stringify(a));
+        const existing = existingByKey.get(key);
+        if (existing) existing.status = status;
+        else {
+          const item = { path: snapshot.path, kind, status, anchor: a };
+          next.marks.push(item);
+          existingByKey.set(key, item);
+        }
+      }
+      if (kind === "manual")
+        for (const mark of next.marks)
+          if (
+            mark.path === snapshot.path &&
+            selectedKeys.has(JSON.stringify(mark.anchor))
+          )
+            mark.status = status;
       const after = JSON.stringify(next, null, 2);
       const latest = await bridge.snapshot();
       if (
@@ -95,8 +122,17 @@
       const m = root.WebVideoCraftScript.parse(snapshot.source, {
         capabilities: snapshot.runtimeCapabilities || snapshot.capabilities,
       });
-      const byAnchor=new Map();for(const row of m.rows){const key=JSON.stringify(anchor(m,row));byAnchor.set(key,byAnchor.has(key)?null:row);}
-      return data.marks.filter(x=>x.path===snapshot.path).map(x=>({...clone(x),row:byAnchor.get(JSON.stringify(x.anchor))||null}));
+      const byAnchor = new Map();
+      for (const row of m.rows) {
+        const key = JSON.stringify(anchor(m, row));
+        byAnchor.set(key, byAnchor.has(key) ? null : row);
+      }
+      return data.marks
+        .filter((x) => x.path === snapshot.path)
+        .map((x) => ({
+          ...clone(x),
+          row: byAnchor.get(JSON.stringify(x.anchor)) || null,
+        }));
     }
     return { load, mark, list };
   }

@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   function createBridge({ getStores, invoke, rpc, registry, now = Date.now, sleep = ms => new Promise(r => setTimeout(r, ms)) }) {
-    const subscribers = new Set(); let committing = false, subscriptionTimer, lastObserved, binding;
+    const subscribers = new Set(); let committing = false, subscriptionTimer, lastObserved, binding, activeHint;
     const fail = message => { throw new Error(message); };
     const normal = p => String(p).replaceAll('\\', '/').replace(/\/$/, '');
     const relative = p => {
@@ -87,6 +87,7 @@
         } return result;
       },
       async navigate(line) {
+        await bridge.cancelHintPreview();
         const c=context(), s=snapshotSync();
         if(!Number.isInteger(line)||line<1||line>s.source.split('\n').length) fail('行号无效');
         c.editor.syncSceneSelectionFromTextLine(s.path,line);changed();
@@ -99,13 +100,13 @@
       },
       subscribe(fn) {subscribers.add(fn);if(!subscriptionTimer)subscriptionTimer=setInterval(()=>{
         let state;try{const c=context(),p=c.tabs.activeTab?.path;state=JSON.stringify([c.game.id,p,p&&c.editor.peekSceneRevision(p),p&&c.editor.getSceneSelection?.(p)]);}catch(e){state=e.message;}
-        if(state!==lastObserved){lastObserved=state;changed();}
+        if(state!==lastObserved){lastObserved=state;if(activeHint){try{const current=snapshotSync();if(current.projectId!==activeHint.projectId||current.path!==activeHint.path||current.revision!==activeHint.revision)void bridge.cancelHintPreview();}catch{void bridge.cancelHintPreview();}}changed();}
       },400);return()=>{subscribers.delete(fn);if(!subscribers.size){clearInterval(subscriptionTimer);subscriptionTimer=null;}};},
       capabilities() {
         try {const c=context();return {snapshot:true,commit:true,undo:true,redo:true,listScenes:true,readScene:true,navigate:true,
           preview:typeof c.editor.syncScenePreview==='function',readProjectFile:!!rpc,writeProjectFile:!!rpc,
           exportVideo:!!rpc,service:!!rpc,parseScene:false,measureTimeline:false,projectFiles:!!rpc,music:!!rpc,timing:!!rpc,
-          previewSettings:!!rpc&&!!c.previewSession?.currentGameServeUrl,audioImport:typeof invoke==='function',backups:!!rpc,ai:!!rpc,coordinatedUpdate:false};}
+          previewSettings:!!rpc&&!!c.previewSession?.currentGameServeUrl,previewHint:!!rpc&&!!c.previewSession?.currentGameServeUrl&&typeof c.previewSync?.sendPreviewCommand==='function',audioImport:typeof invoke==='function',backups:!!rpc,ai:!!rpc,coordinatedUpdate:false};}
         catch(e){return {snapshot:false,commit:false,reason:e.message};}
       },
       async readProjectFile(file,fallback=null){const c=context();relative(file);
@@ -113,10 +114,15 @@
         return rpc('metadata.read',{project:{id:c.game.id,path:c.projectPath},file,fallback});},
       async writeProjectFile(file,text,options={}){const c=context();relative(file);return rpc('metadata.write',{expectedText:options.expectedText,create:options.create===true,project:{id:c.game.id,path:c.projectPath},file,text});},
       async service(endpoint,data){const c=context();let snapshotId;
+        if(endpoint==='/api/music/duration'){const file=relative(data?.file);if(!/^game\/(bgm|vocal)\//.test(file))fail('音乐必须位于工程音频目录');const physicalPath=await c.file.resolveFilePath(c.projectPath+'/'+file);assertContext(c);return rpc('audio.duration',{project:{id:c.game.id,path:c.projectPath},file,physicalPath});}
+        const document=['/api/timing','/api/jobs'].includes(endpoint)?await bridge.snapshot():null;
+        if(document&&data?.sourceText!==undefined&&(data.sourceText!==document.source||data.scene!==document.sceneRelativePath))fail('导出或计时请求的剧本已经变化，请重新预览');
         if(data!==undefined&&['/api/timing','/api/jobs','/api/music/duration','/api/ai/novel/start'].includes(endpoint))snapshotId=(await bridge.exportSnapshot()).snapshotId;
+        if(document){await refreshBinding();validateSnapshot(document);}
         assertContext(c);return rpc('service.request',{project:{id:c.game.id,path:c.projectPath},endpoint,data,snapshotId});},
       async cancelJob(jobId){return rpc('job.cancel',{jobId});},
-      async exportVideo(options){const snap=await bridge.exportSnapshot();return rpc('export.start',{snapshotId:snap.snapshotId,options});},
+      async exportVideo(options){const before=await bridge.snapshot();if(options?.sourceText!==undefined&&(options.sourceText!==before.source||options.scene!==before.sceneRelativePath))fail('导出选区已变化，请重新预览');
+        const snap=await bridge.exportSnapshot();await refreshBinding();validateSnapshot(before);return rpc('export.start',{snapshotId:snap.snapshotId,options});},
       async exportSnapshot(){
         const c=context();
         if(c.editor.hasUnsavedDocuments) fail('请先保存 Craft 中所有文档，再进行导出或实际时间测量');
@@ -124,7 +130,7 @@
         const project=await registry(c.game,invoke); assertContext(c);
         const revisions=()=>JSON.stringify(c.editor.collectDocumentPathsUnder(c.projectPath).map(path=>[path,c.editor.peekSceneRevision(path)]).sort());
         const before=revisions();
-        const allocation=await rpc('snapshot.allocate',{project:{id:c.game.id,path:c.projectPath},sources:[c.projectPath,project.enginePath,project.templatePath].filter(Boolean)});
+        const allocation=await rpc('snapshot.allocate',{project:{id:c.game.id,path:c.projectPath},engineVersion:project.runtimeVersion,runtimeId:project.runtimeId,sources:[c.projectPath,project.enginePath,project.templatePath].filter(Boolean)});
         assertContext(c); if(c.editor.hasUnsavedDocuments) fail('整理工程前出现未保存文档');
         const finish=c.runtimeTask?.beginBlockingTask('webvideo-snapshot-'+allocation.snapshotId);
         try {
@@ -135,7 +141,7 @@
         } catch(e){await rpc('snapshot.discard',{snapshotId:allocation.snapshotId}).catch(()=>{});throw e;}
         finally{finish?.();}
       },
-      async timingDependencyHash(){return (await bridge.exportSnapshot()).dependencyHash;},
+      async timingDependencyHash(){const snapshot=await bridge.exportSnapshot();try{return snapshot.dependencyHash;}finally{await rpc('snapshot.discard',{snapshotId:snapshot.snapshotId});}},
       async listBackups(){const c=context();return rpc('backups.list',{project:{id:c.game.id,path:c.projectPath}});},
       async readBackup(item){const file=typeof item==='string'?item:item.file;if(!file?.startsWith('.webvideo-plus/backups/'))fail('备份路径无效');return JSON.parse(await bridge.readProjectFile(file));},
       async captureStorySnapshot({slot}={}){const c=context();if(c.editor.hasUnsavedDocuments)fail('请先保存文档，故事快照不会覆盖未保存内容');
@@ -148,6 +154,7 @@
       async writePreviewSettings(values,{expected,projectId}={}){const c=context(),url=c.previewSession?.currentGameServeUrl;if(!url)fail('请先打开 Craft 当前项目的游戏预览');
         if(projectId!==undefined&&projectId!==c.game.id)fail('工程已切换');return rpc('preview.settings',{url,values,expected});},
       async openScene(path){const c=context(),full=normal(path).startsWith(c.projectPath+'/game/scene/')?path:c.projectPath+'/game/scene/'+relative(path);
+        await bridge.cancelHintPreview();assertContext(c);
         if(!normal(full).startsWith(c.projectPath+'/game/scene/'))fail('场景路径无效');
         c.tabs.openTab(normal(full).split('/').pop(),full,{forceNormal:true,focus:true});
         for(let i=0;i<100;i++){assertContext(c);if(c.tabs.activeTab?.path===full&&c.editor.getTextProjectionState(full)?.kind==='scene')return snapshotSync();await sleep(50);}fail('等待场景载入超时');},
@@ -158,6 +165,21 @@
           const actual=await invoke('import_external_entry',{source,targetDirectory:c.projectPath+'/game/bgm',preferredName:name,projectRoot:c.projectPath});
           assertContext(c);relative(actual);result.push({file:'game/bgm/'+actual,label:normal(source).split('/').pop()});
         }changed();return result;},
+      async cancelHintPreview(){const old=activeHint;activeHint=null;if(!old)return {cancelled:false};old.cancelled=true;
+        await rpc('preview.hint',{url:old.url,ticket:old.ticket,cancel:true}).catch(()=>{});return {cancelled:true};},
+      async previewHint({line,key,duration}){await bridge.cancelHintPreview();const s=await bridge.snapshot(),c=context();
+        if(c.editor.getTextProjectionState(s.path).isDirty)fail('请先保存当前场景，再预览计时提示');
+        const model=root.WebVideoCraftScript?.parse(s.source,{path:s.path,capabilities:s.runtimeCapabilities});
+        const hint=model&&root.WebVideoCraftScript.hintPairs(model).find(p=>p.valid&&p.choose.startLine===line&&p.key===key&&p.duration===duration);
+        if(!hint)fail('请选择有效且未变化的成对单行提示');
+        const url=c.previewSession?.currentGameServeUrl;if(!url||typeof c.previewSync?.sendPreviewCommand!=='function')fail('请先打开当前项目的 Craft 预览');
+        const ticket=crypto.randomUUID(),record={ticket,url,projectId:s.projectId,path:s.path,revision:s.revision,cancelled:false};activeHint=record;
+        const current=()=>{if(activeHint!==record||record.cancelled)fail('提示预览已取消');validateSnapshot(s);if(context().previewSession?.currentGameServeUrl!==url)fail('预览工程已变化');};
+        try{current();await c.previewSync.sendPreviewCommand('preview.command.sync-scene',{sceneName:s.sceneRelativePath,sentenceId:Math.max(0,hint.choose.startLine-1),settleMode:'immediate'},{timeoutMs:10000});
+          current();await c.previewSync.sendPreviewCommand('preview.command.run-snippet',{snippet:hint.choose.source},{timeoutMs:10000});current();
+          return await rpc('preview.hint',{url,text:hint.text,key:hint.key,duration:hint.duration,ticket});
+        }finally{if(activeHint===record)activeHint=null;}
+      },
       _context:context, _invoke:invoke,
     };
     return Object.freeze(bridge);

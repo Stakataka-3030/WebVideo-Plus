@@ -4,7 +4,7 @@ import fs from 'node:fs';import path from 'node:path';import crypto from 'node:c
 const sourceRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const digest=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 function inputs(root){
- const files=['build.ps1','version.json','character-map.factory.json','preset-effects.factory.json','ai-providers.factory.json','anogo-actions.factory.json','filter-presets.factory.json',...fs.readdirSync(path.join(root,'src')).filter(n=>n.endsWith('.cs')).map(n=>'src/'+n)].sort();
+ const files=['build.ps1','version.json','native.manifest',...(fs.existsSync(path.join(root,'WebVideo+_icon.ico'))?['WebVideo+_icon.ico']:[]),'character-map.factory.json','preset-effects.factory.json','ai-providers.factory.json','anogo-actions.factory.json','filter-presets.factory.json',...fs.readdirSync(path.join(root,'src')).filter(n=>n.endsWith('.cs')).map(n=>'src/'+n)].sort();
  return Object.fromEntries(files.map(name=>[name,digest(path.join(root,name))]));
 }
 function references(root){return Object.fromEntries(['Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll'].map(name=>[name,digest(path.join(root,'package',name))]));}

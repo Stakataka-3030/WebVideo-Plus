@@ -79,4 +79,20 @@ test("project switch during metadata read fails closed", async () => {
 test("review fingerprints distinguish different supplementary Unicode characters", () => {
   assert.notEqual(S.fingerprint("Alice:😀;"), S.fingerprint("Alice:😁;"));
 });
-test('large generated review sets remain exact across bulk mark and resolution',async()=>{const f=fixture();f.snap.source=Array.from({length:1000},(_,i)=>'Alice:line '+i+';\n').join('');const model=S.parse(f.snap.source,{capabilities:caps});await f.controller.mark(f.snap,model.rows.map(r=>r.id),'pending','generated');const marks=await f.controller.list(f.snap);assert.equal(marks.length,1000);assert.ok(marks.every(m=>m.row&&m.status==='pending'));});
+test("large generated review sets remain exact across bulk mark and resolution", async () => {
+  const f = fixture();
+  f.snap.source = Array.from(
+    { length: 1000 },
+    (_, i) => "Alice:line " + i + ";\n",
+  ).join("");
+  const model = S.parse(f.snap.source, { capabilities: caps });
+  await f.controller.mark(
+    f.snap,
+    model.rows.map((r) => r.id),
+    "pending",
+    "generated",
+  );
+  const marks = await f.controller.list(f.snap);
+  assert.equal(marks.length, 1000);
+  assert.ok(marks.every((m) => m.row && m.status === "pending"));
+});

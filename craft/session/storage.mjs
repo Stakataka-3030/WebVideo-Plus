@@ -18,21 +18,26 @@ export class SessionStorage {
         const st=await fs.stat(p);bytes+=st.size;if(bytes>32*1024**3||manifest.length>200000)throw Error('project-snapshot-budget');manifest.push([name,st.size,await fileHash(p)]);
       }else throw Error('source-special-file');}
     };for(let i=0;i<roots.length;i++)await walk(roots[i],String(i));manifest.sort((a,b)=>a[0].localeCompare(b[0]));return sha(JSON.stringify(manifest));}
-  async allocate(project,sources=[]){
+  async allocate(project,sources=[],engineVersion,runtimeId){
     if(!project||typeof project.id!=='string'||typeof project.path!=='string'||!path.isAbsolute(project.path))throw Error('invalid-project');
     const projectRoot=await fs.realpath(project.path), id=crypto.randomUUID(),site=path.join(this.root,'games',id);
     await fs.mkdir(path.dirname(site),{recursive:true});
     const roots=[...new Set(await Promise.all(sources.map(p=>fs.realpath(p))))];
     if(!roots.includes(projectRoot))throw Error('source-project-missing');
     const sourceHash=await this.fingerprint(roots);
-    this.snapshots.set(id,{id,site,project:{id:project.id,path:projectRoot},roots,sourceHash,ready:false});
+    this.snapshots.set(id,{id,site,project:{id:project.id,path:projectRoot},engineVersion,runtimeId,roots,sourceHash,ready:false});
     return {snapshotId:id,site};
   }
   async ready(id){const s=this.snapshots.get(id);if(!s||s.ready)throw Error('unknown-snapshot');
+    const st=await fs.lstat(s.site);if(st.isSymbolicLink()||!st.isDirectory())throw Error('invalid-snapshot');
     const manifest=[];let bytes=0;
+    if(s.runtimeId&&s.engineVersion){const descriptor=await safeChild(s.site,'webgal-engine.json',{missing:true});await fs.writeFile(descriptor,JSON.stringify({id:s.runtimeId,version:s.engineVersion,webgalVersion:s.engineVersion}));}
+    // WebVideo's export music metadata is independent of Craft's own playable-game
+    // materialization policy. Include exactly this owned feature file when present.
+    const music=await this.metadata({project:s.project,file:'video-project.json',fallback:null});
+    if(music!==null){JSON.parse(music);const target=await safeChild(s.site,'video-project.json',{missing:true});await fs.writeFile(target,music);}
     const walk=async(dir,rel='')=>{for(const item of await fs.readdir(dir,{withFileTypes:true})){if(item.isSymbolicLink())throw Error('snapshot-link-denied');const file=path.join(dir,item.name),name=rel+item.name;
       if(item.isDirectory())await walk(file,name+'/');else if(item.isFile()){const stat=await fs.stat(file);bytes+=stat.size;if(bytes>32*1024**3)throw Error('snapshot-too-large');manifest.push([name,stat.size,await fileHash(file)]);if(manifest.length>100000)throw Error('snapshot-too-large');}else throw Error('snapshot-special-file');}};
-    const st=await fs.lstat(s.site);if(st.isSymbolicLink()||!st.isDirectory())throw Error('invalid-snapshot');
     await walk(s.site);if(!manifest.some(x=>x[0]==='index.html')||!manifest.some(x=>x[0].startsWith('game/scene/')))throw Error('not-webgal-snapshot');
     if(await this.fingerprint(s.roots)!==s.sourceHash)throw Error('source-changed-during-snapshot');
     manifest.sort((a,b)=>a[0].localeCompare(b[0]));s.hash=sha(JSON.stringify(manifest));s.ready=true;

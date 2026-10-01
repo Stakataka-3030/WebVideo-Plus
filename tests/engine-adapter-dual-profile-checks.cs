@@ -1,0 +1,98 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
+using NativeVideo;
+
+// Exact real release bytes are caller-provided. Synthetic CSS/font payloads are
+// copy-preservation controls only; this suite does not render or emulate a SDK.
+public static class EngineAdapterDualProfileChecks {
+ const string Raw464="e49e15f0db25c95556b6b1eccad89d6e77a32e284cd4e4852fad7dc9a3019902";
+ const string Prepared464="d9efa39b4eabdb3a54c3d209ca5db6cb04d1cc60fdef3acdcd2532712a8a6d10";
+ const string Raw465="356f7184c80af8da4dd782e25c5b3fb89f55f1e8b9e9e18be6f50035763dc6b6";
+ static readonly string[] Versions={"4.6.4","4.6.5"};
+ static readonly Dictionary<string,string> Bundles=new Dictionary<string,string>{{"4.6.4","assets/index-R1tKotR6.js"},{"4.6.5","assets/index-CC7KTie-.js"}};
+ static readonly Dictionary<string,string> Hashes=new Dictionary<string,string>{{"4.6.4",Raw464},{"4.6.5",Raw465}};
+ static readonly Dictionary<string,string> Sources=new Dictionary<string,string>();
+ static string home,prepared464;static int checks,sequence;
+ static void Assert(bool condition,string message){if(!condition)throw new Exception(message);}
+ static void Check(string name,Action body){body();checks++;Console.WriteLine("PASS "+name);}
+ static void Reject(Action body,string message){try{body();}catch(IOException){return;}throw new Exception("Accepted "+message);}
+ static object Request(string project,string expected,string template=null,bool strict=true){return J.O("project",project,"engineRoot",template,"requireRuntimeParity",strict,"expectedRuntimeVersion",expected,"settings",J.O("engine","webgal"));}
+ static string NewDirectory(string name){string path=Path.Combine(home,(sequence++).ToString("D3")+"-"+name);Directory.CreateDirectory(path);return path;}
+ static string Shell(string version,string name){
+  string root=NewDirectory(name),source=Sources[version];
+  foreach(string file in new[]{"index.html","webgal-engine.json",Bundles[version],"assets/index-Dch1g2w9.css"})Files.CopyFile(Path.Combine(source,file),Path.Combine(root,file));
+  Files.Atomic(Path.Combine(root,"assets/custom-font.woff2"),"synthetic-copy-control-font");
+  Files.Atomic(Path.Combine(root,"assets/custom-theme.css"),"@font-face{font-family:Fixture;src:url(custom-font.woff2)}:root{--fixture:preserve}");
+  Files.Atomic(Path.Combine(root,"icons/custom.svg"),"<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+  Files.Atomic(Path.Combine(root,"lib/custom-support.js"),"globalThis.fixtureSupport=true;");
+  Files.Atomic(Path.Combine(root,"game/scene/not-part-of-runtime.txt"),"Private project scene must not be copied as runtime shell");
+  Files.Atomic(Path.Combine(root,"index.html"),File.ReadAllText(Path.Combine(root,"index.html")).Replace("</head>","<link rel=\"stylesheet\" href=\"./assets/custom-theme.css\"></head>"));
+  return root;
+ }
+ static void Descriptor(string root,string version,string webgalVersion,string id="open-webgal.webgal"){J.Write(Path.Combine(root,"webgal-engine.json"),J.O("id",id,"version",version,"webgalVersion",webgalVersion));}
+ static Dictionary<string,string> Inventory(string root){return Directory.GetFiles(root,"*",SearchOption.AllDirectories).ToDictionary(file=>file.Substring(root.Length+1),Files.Hash);}
+ static void Unchanged(string root,Dictionary<string,string> before){var after=Inventory(root);Assert(before.Count==after.Count&&before.All(item=>after.ContainsKey(item.Key)&&after[item.Key]==item.Value),"Source project was mutated");}
+ static string BuildPrepared464(string manifestPath){
+  // Independent known-byte fixture reconstruction; the production profile must
+  // embed its patch contract and may not read this test manifest at runtime.
+  var manifest=J.Read(manifestPath);Assert(J.S(manifest,"version")=="4.6.4","4.6.4 preparation manifest required");
+  var bundle=J.Get(manifest,"bundle");Assert(J.S(bundle,"path")==Bundles["4.6.4"],"Wrong preparation entrypoint");
+  string value=File.ReadAllText(Path.Combine(Sources["4.6.4"],Bundles["4.6.4"]));
+  foreach(var patch in J.A(J.Get(bundle,"patches"))){string from=J.S(patch,"find"),to=J.S(patch,"replace");int at=value.IndexOf(from,StringComparison.Ordinal);Assert(from.Length>0&&at>=0&&value.IndexOf(from,at+from.Length,StringComparison.Ordinal)<0,"Fixture patch anchor is not unique: "+J.S(patch,"id"));value=value.Substring(0,at)+to+value.Substring(at+from.Length);}
+  Assert(J.S(bundle,"bodyNewlines")=="crlf","Review fixture newline contract");
+  value=Regex.Replace(value,@"\r?\n","\r\n")+J.S(bundle,"append");
+  Assert(Files.HashText(value)==Prepared464,"Canonical prepared 4.6.4 fixture bytes changed");return value;
+ }
+ static void Probes(string patched,string version){
+  foreach(string marker in new[]{"globalThis.__probeCommands","globalThis.__wgProbe","globalThis.__nativeObserve?.(e)","globalThis.__nativeBeforeNext?.()===false","globalThis.__nativeScheduleAuto??setTimeout","globalThis.__nativeAdapterInstalled=true"})Assert(patched.Contains(marker),"Missing common probe: "+marker);
+  string[] versionMarkers=version=="4.6.4"?new[]{"core:I,store:Pe","parseScene:xo","stageManager:Y","nativeAuto:G$","nativeStopAuto:D_","nativeNext:dp","compileText:Os","textDelay:_P","textAnimation:xP"}:new[]{"core:R,store:Pe","parseScene:wo","stageManager:X","nativeAuto:k5","nativeStopAuto:p0","nativeNext:Lp","compileText:Na","textDelay:KC","textAnimation:JC"};
+  foreach(string marker in versionMarkers)Assert(patched.Contains(marker),"Missing "+version+" profile probe: "+marker);
+  Assert(!patched.Contains("audioLevelInterval:setInterval(()=>{},0)"),"Zero-interval placeholder survived");
+ }
+ public static int Main(string[] args){try{Assert(args.Length==4,"Pass 4.6.4 raw root, 4.6.5 raw root, 4.6.4 manifest and owned output directory");Run(args[0],args[1],args[2],args[3]);return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
+ public static void Run(string root464,string root465,string manifest464,string outputRoot){
+  checks=0;sequence=0;Sources.Clear();Sources["4.6.4"]=Path.GetFullPath(root464);Sources["4.6.5"]=Path.GetFullPath(root465);home=Path.GetFullPath(outputRoot);Directory.CreateDirectory(home);
+  string oldRoot=Files.Root;Files.Root=NewDirectory("isolated-package-no-profile-json");
+  try{
+   foreach(string version in Versions)Assert(Files.Hash(Path.Combine(Sources[version],Bundles[version]))==Hashes[version],"Actual pinned raw "+version+" fixture required");
+   prepared464=BuildPrepared464(Path.GetFullPath(manifest464));
+   foreach(string version in Versions){
+    string other=version=="4.6.4"?"4.6.5":"4.6.4",project=Shell(version,"project-"+version),template=Shell(version,"template-"+version);
+    Check(version+" raw project is selected with exact engine identity",()=>{var a=EngineAdapter.Select(Request(project,version,template));Assert(a.Version==version&&a.RuntimeParity&&a.SourceKind=="project-runtime"&&a.Source==project,"Wrong bound project selection");Assert(J.S(a.Describe(),"sourceHash")==Hashes[version],"Wrong source hash");});
+    Check(version+" explicit template works without a bound project",()=>{var a=EngineAdapter.Select(Request(null,version,template));Assert(a.Version==version&&a.RuntimeParity&&a.SourceKind=="terre-template"&&a.Source==template,"Wrong explicit template selection");});
+    Check(version+" own raw Patch exposes the versioned common contract",()=>{var a=EngineAdapter.Select(Request(project,version));string patched=a.Patch(File.ReadAllText(Path.Combine(project,Bundles[version])));Probes(patched,version);Files.Atomic(Path.Combine(home,"patched-"+version+".mjs"),patched);});
+    Check(version+" rejects another profile in Patch",()=>{var a=EngineAdapter.Select(Request(project,version));Reject(()=>a.Patch(File.ReadAllText(Path.Combine(Sources[other],Bundles[other]))),"cross-profile patch");});
+    Check(version+" direct Patch rejects unverified probe-bearing text",()=>{var a=EngineAdapter.Select(Request(project,version));string spoof=File.ReadAllText(Path.Combine(project,Bundles[version]))+"\n/* globalThis.__probeCommands globalThis.__wgProbe={core:R,store:Pe} parseScene:wo stageManager:X */";Reject(()=>a.Patch(spoof),"probe markers bypassing exact source hash");});
+    Check(version+" rejects already patched job output",()=>{var a=EngineAdapter.Select(Request(project,version));Reject(()=>a.Patch(File.ReadAllText(Path.Combine(home,"patched-"+version+".mjs"))),"double instrumentation");});
+    Check(version+" Prepare preserves custom shell assets without mutating source",()=>{
+     var before=Inventory(project);var a=EngineAdapter.Select(Request(project,version));string output=NewDirectory("prepared-"+version);a.Prepare(output);Unchanged(project,before);
+     foreach(string file in new[]{"index.html","webgal-engine.json","assets/index-Dch1g2w9.css","assets/custom-theme.css","assets/custom-font.woff2","icons/custom.svg","lib/custom-support.js"})Assert(Files.Hash(Path.Combine(project,file))==Files.Hash(Path.Combine(output,file)),"Lost source bytes: "+file);
+     Assert(!File.Exists(Path.Combine(output,"game/scene/not-part-of-runtime.txt")),"Runtime shell copied unrelated scene");Probes(File.ReadAllText(Path.Combine(output,Bundles[version])),version);
+     var identity=J.Read(Path.Combine(output,"export-engine.json"));Assert(J.S(identity,"version")==version&&J.S(identity,"sourceKind")=="project-runtime"&&J.B(identity,"runtimeParity")&&J.S(identity,"sourceHash")==Hashes[version],"Snapshot identity changed");
+    });
+    foreach(string field in new[]{"version","webgalVersion"})Check(version+" rejects mismatched "+field+" despite valid hash and template",()=>{string root=Shell(version,"bad-"+field);Descriptor(root,field=="version"?other:version,field=="webgalVersion"?other:version);Reject(()=>EngineAdapter.Select(Request(root,version,template)),"incompatible bound project falling through to template");});
+    Check(version+" rejects a different expectedRuntimeVersion",()=>Reject(()=>EngineAdapter.Select(Request(project,other,template)),"expected-version mismatch"));
+    Check(version+" rejects a missing descriptor",()=>{string root=Shell(version,"missing-descriptor");File.Delete(Path.Combine(root,"webgal-engine.json"));Reject(()=>EngineAdapter.Select(Request(root,version,template)),"strict project without descriptor");});
+    Check(version+" rejects incomplete descriptor metadata",()=>{string root=Shell(version,"missing-version");Descriptor(root,version,null);Reject(()=>EngineAdapter.Select(Request(root,version,template)),"strict project with missing webgalVersion");});
+    Check(version+" rejects a different descriptor engine ID",()=>{string root=Shell(version,"wrong-id");Descriptor(root,version,version,"other.engine");Reject(()=>EngineAdapter.Select(Request(root,version,template)),"strict project with wrong ID");});
+    Check(version+" rejects tampered source even when probe text is present",()=>{string root=Shell(version,"modified");File.AppendAllText(Path.Combine(root,Bundles[version]),"\n/* globalThis.__probeCommands globalThis.__wgProbe={core:R,store:Pe} parseScene:wo stageManager:X */",Files.Utf8);Reject(()=>EngineAdapter.Select(Request(root,version,template)),"tampered bound project");});
+    Check(version+" rejects BOM byte tampering",()=>{string root=Shell(version,"bom");string file=Path.Combine(root,Bundles[version]);File.WriteAllText(file,File.ReadAllText(file),new System.Text.UTF8Encoding(true));Reject(()=>EngineAdapter.Select(Request(root,version,template)),"BOM hash mismatch");});
+    Check(version+" rejects descriptor and bundle claiming different known profiles",()=>{string root=Shell(version,"wrong-known-profile");Descriptor(root,other,other);Reject(()=>EngineAdapter.Select(Request(root,other,template)),"valid hash bound to wrong descriptor profile");});
+    Check(version+" rejects source mutation after selection",()=>{string root=Shell(version,"changed-after-selection");var a=EngineAdapter.Select(Request(root,version));File.AppendAllText(Path.Combine(root,Bundles[version]),"\n// changed",Files.Utf8);Reject(()=>a.Prepare(NewDirectory("stale-output")),"source mutation during Prepare");});
+    Check(version+" rejects descriptor version mutation after selection",()=>{string root=Shell(version,"descriptor-changed");var a=EngineAdapter.Select(Request(root,version));Descriptor(root,other,other);Reject(()=>a.Prepare(NewDirectory("descriptor-changed-output")),"descriptor mutation during Prepare");});
+    Check(version+" rejects descriptor deletion after strict selection",()=>{string root=Shell(version,"descriptor-deleted");var a=EngineAdapter.Select(Request(root,version));File.Delete(Path.Combine(root,"webgal-engine.json"));Reject(()=>a.Prepare(NewDirectory("descriptor-deleted-output")),"strict descriptor disappearing during Prepare");});
+    Check(version+" missing bound runtime cannot fall through to template",()=>Reject(()=>EngineAdapter.Select(Request(NewDirectory("empty-project"),version,template)),"empty bound project fallback"));
+   }
+   Check("strict unrecognized expected version is rejected",()=>{string root=Shell("4.6.5","unsupported-expected");Reject(()=>EngineAdapter.Select(Request(root,"4.6.6")),"unsupported requested profile");});
+   Check("canonical prepared 4.6.4 remains an exact accepted identity",()=>{string root=Shell("4.6.4","canonical-prepared");Files.Atomic(Path.Combine(root,Bundles["4.6.4"]),prepared464);var a=EngineAdapter.Select(Request(root,"4.6.4"));Assert(a.Version=="4.6.4"&&J.S(a.Describe(),"sourceHash")==Prepared464,"Prepared source identity was lost");string patched=a.Patch(prepared464);Probes(patched,"4.6.4");Files.Atomic(Path.Combine(home,"patched-4.6.4-canonical.mjs"),patched);string output=NewDirectory("prepared-canonical");a.Prepare(output);Assert(Files.Hash(Path.Combine(root,Bundles["4.6.4"]))==Prepared464,"Prepared source mutated");Assert(J.S(J.Read(Path.Combine(output,"export-engine.json")),"sourceHash")==Prepared464,"Prepared identity changed during snapshot");Probes(File.ReadAllText(Path.Combine(output,Bundles["4.6.4"])),"4.6.4");});
+   Check("4.6.5 Patch rejects canonical prepared 4.6.4",()=>{string root=Shell("4.6.5","cross-prepared");var a=EngineAdapter.Select(Request(root,"4.6.5"));Reject(()=>a.Patch(prepared464),"prepared cross-profile patch");});
+   Check("selection pins raw 4.6.4 rather than accepting a later prepared variant",()=>{string root=Shell("4.6.4","raw-to-prepared");var a=EngineAdapter.Select(Request(root,"4.6.4"));Files.Atomic(Path.Combine(root,Bundles["4.6.4"]),prepared464);Reject(()=>a.Prepare(NewDirectory("raw-to-prepared-output")),"supported source variant swapped after selection");});
+   Check("selection pins prepared 4.6.4 rather than accepting a later raw variant",()=>{string root=Shell("4.6.4","prepared-to-raw");Files.Atomic(Path.Combine(root,Bundles["4.6.4"]),prepared464);var a=EngineAdapter.Select(Request(root,"4.6.4"));Files.CopyFile(Path.Combine(Sources["4.6.4"],Bundles["4.6.4"]),Path.Combine(root,Bundles["4.6.4"]));Reject(()=>a.Prepare(NewDirectory("prepared-to-raw-output")),"prepared source variant swapped after selection");});
+   Check("generic source selection retains the explicit legacy fallback path",()=>{var a=EngineAdapter.Select(Request(NewDirectory("generic-empty"),null,null,false));Assert(a.SourceKind=="bundled-runtime"&&!a.RuntimeParity,"Generic fallback behavior unexpectedly changed");});
+   Console.WriteLine("Exact dual-profile adapter checks passed: "+checks+". Native browser/rendering validation remains separate.");
+  }finally{Files.Root=oldRoot;}
+ }
+}

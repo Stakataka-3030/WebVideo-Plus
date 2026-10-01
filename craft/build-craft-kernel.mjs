@@ -15,7 +15,7 @@ if(base.productVersion!==versions.baseProductVersion||base.kernelVersion!==versi
 const node=path.join(source,'ai-runtime/node.exe');if(digest(node)!==versions.nodeSha256)throw Error('Craft requires the pinned official Node '+versions.nodeVersion+' executable');
 fs.mkdirSync(stage,{recursive:true});
 try{
- for(const name of ['WebGAL.Video.exe','WebGAL.Video.exe.config','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll','process-guard.exe','WebVideoCraft.Launcher.exe','browser','runtime','LICENSE','LICENSES.md','NOTICE.md','licenses','native-source-build.json'])fs.cpSync(path.join(source,name),path.join(stage,name),{recursive:true});
+ for(const name of ['WebGAL.Video.exe','WebGAL.Video.exe.config','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll','process-guard.exe','CraftInstallerObserver.exe','WebVideoCraft.Launcher.exe','browser','runtime','LICENSE','LICENSES.md','NOTICE.md','licenses','native-source-build.json'])fs.cpSync(path.join(source,name),path.join(stage,name),{recursive:true});
  fs.cpSync(path.join(root,'vendor'),path.join(stage,'vendor'),{recursive:true});
  if(fs.existsSync(path.join(source,'bin')))fs.cpSync(path.join(source,'bin'),path.join(stage,'bin'),{recursive:true});
  fs.copyFileSync(node,path.join(stage,'node.exe'));fs.copyFileSync(path.join(here,'LICENSE-Node-22.20.0.txt'),path.join(stage,'LICENSE-Node.txt'));
@@ -24,7 +24,7 @@ try{
  fs.copyFileSync(path.join(here,'LICENSE-Node-22.20.0.txt'),path.join(ai,'LICENSE-Node.txt'));
  if(!fs.existsSync(path.join(ai,'node_modules/@deepseek-ai/dsh-llm-pi-ai/package.json')))throw Error('Craft AI feature dependencies are incomplete');
  function copyRuntime(directory,relative=''){
-  for(const item of fs.readdirSync(directory,{withFileTypes:true})){const from=path.join(directory,item.name),name=path.posix.join(relative,item.name);if(item.isSymbolicLink())throw Error('Linked Craft source is not allowed');if(item.isDirectory()){if(name==='tests'||name.startsWith('tests/'))continue;copyRuntime(from,name);continue;}if(!/\.(?:mjs|js|json|css|md|ps1|txt|ts)$/.test(item.name)||item.name.startsWith('build-'))continue;const to=path.join(stage,'craft',...name.split('/'));fs.mkdirSync(path.dirname(to),{recursive:true});fs.copyFileSync(from,to);}
+  for(const item of fs.readdirSync(directory,{withFileTypes:true})){const from=path.join(directory,item.name),name=path.posix.join(relative,item.name);if(item.isSymbolicLink())throw Error('Linked Craft source is not allowed');if(item.isDirectory()){if(name==='tests'||name.startsWith('tests/'))continue;copyRuntime(from,name);continue;}if(!/\.(?:mjs|js|json|css|md|ps1|txt|ts)$/.test(item.name)||item.name.startsWith('build-')||item.name==='verify-craft-package.ps1')continue;const to=path.join(stage,'craft',...name.split('/'));fs.mkdirSync(path.dirname(to),{recursive:true});fs.copyFileSync(from,to);}
  }
  copyRuntime(here);fs.writeFileSync(path.join(stage,'version.json'),JSON.stringify(versions,null,2)+'\n');
  const files=[];function walk(dir){for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const file=path.join(dir,entry.name);if(entry.isSymbolicLink())throw Error('Linked package input');if(entry.isDirectory())walk(file);else files.push({path:path.relative(stage,file).split(path.sep).join('/'),bytes:fs.statSync(file).size,sha256:digest(file)});}}walk(stage);files.sort((a,b)=>a.path.localeCompare(b.path));

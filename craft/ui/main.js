@@ -78,7 +78,7 @@
         if (!controls[i].isConnected) controls.splice(i, 1);
       for (const b of controls) {
         const required = b.dataset.required;
-        b.disabled = busy || (required && caps[required] !== true);
+        b.disabled = (busy && b.dataset.allowBusy !== "true") || (required && caps[required] !== true);
         if (required && caps[required] !== true)
           b.title =
             caps[required + "Reason"] ||
@@ -606,6 +606,19 @@
         "commit",
       ),
     );
+    // Cancellation must stay callable while the timed preview promise is pending.
+    const cancelHint = element("button", "取消提示计时", { type: "button" });
+    cancelHint.dataset.required = "previewHint";
+    cancelHint.dataset.allowBusy = "true";
+    controls.push(cancelHint);
+    cancelHint.addEventListener("click", async () => {
+      try {
+        if (typeof bridge.cancelHintPreview !== "function") throw Error("当前宿主未提供提示取消能力");
+        await bridge.cancelHintPreview();
+        notify("提示计时已取消，不会自动点击选项");
+      } catch (error) { notify(error.message || String(error), true); }
+    });
+    header.append(cancelHint);
     // Protected timed hints.
     const hint = panels.get("单行提示"),
       hintText = input("提示文字"),

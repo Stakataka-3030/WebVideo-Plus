@@ -5,7 +5,7 @@ $versions=Get-Content (Join-Path $PSScriptRoot 'version.json') -Raw | ConvertFro
 if(-not $PackageRoot){$PackageRoot=Join-Path (Split-Path $PSScriptRoot -Parent) ('dist/WebVideoCraft-Setup-'+$versions.installerVersion)}
 $PackageRoot=[IO.Path]::GetFullPath($PackageRoot)
 $manifest=Get-Content (Join-Path $PackageRoot 'MANIFEST.json') -Raw | ConvertFrom-Json
-foreach($name in @('ai-runtime/worker.mjs','ai-runtime/node.exe','ai-runtime/novel-core.mjs','ai-runtime/novel-prompt.txt','ai-runtime/stage-prompt.txt','ai-runtime/LICENSE-Node.txt','ai-runtime/node_modules/@deepseek-ai/dsh-llm-pi-ai/package.json','vendor/js-yaml-4.1.1.min.js','vendor/js-yaml-LICENSE','craft/update/observe-installer.ps1')){if(-not(Test-Path -LiteralPath (Join-Path $PackageRoot $name))){throw "Missing Craft service dependency: $name"}}
+foreach($name in @('CraftInstallerObserver.exe','ai-runtime/worker.mjs','ai-runtime/node.exe','ai-runtime/novel-core.mjs','ai-runtime/novel-prompt.txt','ai-runtime/stage-prompt.txt','ai-runtime/LICENSE-Node.txt','ai-runtime/node_modules/@deepseek-ai/dsh-llm-pi-ai/package.json','vendor/js-yaml-4.1.1.min.js','vendor/js-yaml-LICENSE','craft/update/observe-installer.ps1')){if(-not(Test-Path -LiteralPath (Join-Path $PackageRoot $name))){throw "Missing Craft service dependency: $name"}}
 foreach($name in @('node.exe','ai-runtime/node.exe')){if((Get-FileHash (Join-Path $PackageRoot $name) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $versions.nodeSha256){throw "Unpinned Node executable: $name"}}
 $assembly=[Reflection.Assembly]::Load([IO.File]::ReadAllBytes((Join-Path $PackageRoot 'WebGAL.Video.exe')))
 $resources=$assembly.GetManifestResourceNames()

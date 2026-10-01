@@ -261,9 +261,14 @@
       );
   }
   function hintPairs(model) {
-    const result = [], nextRows = [];
+    const result = [],
+      nextRows = [];
     let following = null;
-    for(let i=model.statements.length-1;i>=0;i--){nextRows[i]=following;if(model.statements[i].command!=="comment")following=model.statements[i];}
+    for (let i = model.statements.length - 1; i >= 0; i--) {
+      nextRows[i] = following;
+      if (model.statements[i].command !== "comment")
+        following = model.statements[i];
+    }
     for (let i = 0; i < model.statements.length; i++) {
       const r = model.statements[i];
       if (r.command !== "choose") continue;
@@ -301,7 +306,9 @@
       (r) =>
         r.command === "label" && String(r.content).startsWith("__wvp_hint_"),
     );
-    const keys = fresh.map((p) => p.key), keySet=new Set(keys), labelSet=new Set(labels.map(r=>r.content));
+    const keys = fresh.map((p) => p.key),
+      keySet = new Set(keys),
+      labelSet = new Set(labels.map((r) => r.content));
     if (new Set(keys).size !== keys.length) throw Error("单行提示标签不能重复");
     for (const label of labels)
       if (!keySet.has(label.content))
@@ -340,12 +347,21 @@
         throw Error("改写范围重叠或源文本不匹配");
       previous = p.endOffset;
     }
-    const chunks=[];let cursor=0;
-    for(const p of sorted){chunks.push(snapshot.source.slice(cursor,p.startOffset),p.after);cursor=p.endOffset;}
-    chunks.push(snapshot.source.slice(cursor));const after=chunks.join('');
+    const chunks = [];
+    let cursor = 0;
+    for (const p of sorted) {
+      chunks.push(snapshot.source.slice(cursor, p.startOffset), p.after);
+      cursor = p.endOffset;
+    }
+    chunks.push(snapshot.source.slice(cursor));
+    const after = chunks.join("");
     const options = {
       path: snapshot.path,
-      capabilities: details.capabilities || snapshot.runtimeCapabilities || snapshot.capabilities || {},
+      capabilities:
+        details.capabilities ||
+        snapshot.runtimeCapabilities ||
+        snapshot.capabilities ||
+        {},
     };
     protectHints(parse(snapshot.source, options), parse(after, options));
     return {

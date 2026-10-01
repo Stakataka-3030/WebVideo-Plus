@@ -16,6 +16,8 @@ try {
  $verifier=Join-Path $PSScriptRoot 'installer/ManifestVerifier.cs'
  & $compiler /nologo /target:winexe /platform:x64 /optimize+ ('/out:'+$starter) /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll (Join-Path $temp 'CraftStarter.cs') $verifier
  if($LASTEXITCODE -ne 0){throw 'Craft launcher build failed'}
+ & $compiler /nologo /target:exe /platform:x64 /optimize+ ('/out:'+(Join-Path $root 'package/CraftInstallerObserver.exe')) /r:System.Management.dll /r:System.Web.Extensions.dll (Join-Path $PSScriptRoot 'update/InstallerObserver.cs')
+ if($LASTEXITCODE -ne 0){throw 'Craft installer observer build failed'}
  & node (Join-Path $PSScriptRoot 'build-craft-kernel.mjs')
  if($LASTEXITCODE -ne 0){throw 'Craft kernel package failed'}
  & (Join-Path $PSScriptRoot 'verify-craft-package.ps1')

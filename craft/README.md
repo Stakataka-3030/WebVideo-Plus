@@ -22,7 +22,7 @@
 
 1. 运行 `powershell -File prepare-build.ps1`，从带 SHA-256 校验的官方固定来源重建输入；不再强制依赖历史安装器
 2. 运行 `powershell -File build.ps1`，编译本次源代码的原生内核
-3. 在 `ai-runtime` 执行 `npm ci --ignore-scripts`，再运行 `powershell -File scripts/build-ai.ps1`，准备本次源码的 AI 运行模块；构建不调用模型服务
+3. 在 `ai-runtime` 执行 `npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund`，再运行 `powershell -File scripts/build-ai.ps1`，准备本次源码的 AI 运行模块；构建不调用模型服务
 4. 运行 `powershell -File craft/build-craft-package.ps1`，生成独立适配安装包
 5. 仅在新建的 Craft 副本、新 WebView profile 和测试项目上安装/验收；确认版本清单、撤销、VFS、导出和恢复结果后再考虑真实使用
 

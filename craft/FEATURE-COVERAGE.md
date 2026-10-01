@@ -54,9 +54,11 @@
 node --test craft/tests/features-authoring.test.mjs craft/tests/features-review.test.mjs craft/tests/features-ui.test.mjs
 node --test craft/tests/features-media.test.mjs craft/tests/features-media-ui.test.mjs
 node tests/features-imports.test.mjs
-node --test craft/tests/features-backups.test.mjs
+node --test craft/tests/features-backups.test.mjs craft/tests/hint-operation.test.mjs
 ```
 
-作者工具测试覆盖多行／BOM／CRLF、未知字段、ID 前向引用、旧位置身份保持、差分回退和跳过、字段级滤镜替换、提示保护与复制／移动、复核偏移和 Unicode 锚点。当前聚合命令共通过 69 个测试（包含两个文件级测试脚本）。DOM mock 测试执行实际按钮逻辑，检查预览后单次提交、源变化禁用、能力禁用、路由替换后入口存活及销毁。
+作者工具测试覆盖多行／BOM／CRLF、未知字段、ID 前向引用、旧位置身份保持、差分回退和跳过、字段级滤镜替换、提示保护与复制／移动、复核偏移和 Unicode 锚点。聚合测试包含两个文件级测试脚本。DOM mock 测试执行实际按钮逻辑，检查预览后单次提交、源变化禁用、能力禁用、路由替换后入口存活及销毁。
 
 媒体与导入测试覆盖原长／重叠／CAS／备份失败、真实计时缓存、取消／陈旧源、字幕锚点、两阶段生成及无自动追加。它们证明控制器与桥契约，不替代 Windows 上的完整真实工程录制、音频听验、更新安装接续验收。实机宿主绑定与打包结果须结合项目的集成验收报告阅读。
+
+计时提示桥仅在已保存场景的专用标签、单一可见选项、React 选项身份与游戏状态一致时自动选择；计时从实际显示开始。取消、导航、选项替换或状态变化会阻止自动点击。固定运行时操作已有模拟测试，实际引擎中的完整预览流程仍需宿主集成验收。

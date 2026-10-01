@@ -29,3 +29,11 @@ CraftStarter verifies the package, original executable, current wrapper and owne
 `tests/craft-installer.test.mjs` uses real temporary filesystem transactions and inert executables, including fault injection, foreign changes, process leases, ownership and official-update preservation. `tests/craft-native-verifier.portable.ps1` compiles the actual C# verifier with a test-only serializer bridge. These tests do not execute Craft, validate WinForms interaction, or prove the same-name wrapper/native updater ordering. Those require isolated official-host Windows copies and must precede enabling that mode by default.
 
 The Craft product/installer c suffix is adapter branding. Its kernelVersion remains the actual base kernel 0.6.46; the package also records baseProductVersion/baseKernelVersion. A post-compile build receipt binds the native executable, C# inputs, embedded factory sources, reference DLLs and root version metadata. Packaging refuses a stale receipt instead of reusing a binary just because its version text matches.
+
+## Exact engine profiles in the validation build
+
+A single rebuilt kernel contains separate, digest-selected WebGAL 4.6.4 and 4.6.5 instrumentation profiles. `requireRuntimeParity: true` rejects an incompatible bound project immediately, without selecting a template or bundled fallback; `expectedRuntimeVersion` must match its official descriptor and bundle. The prepared copy rechecks the original selected bytes and descriptor. Unknown/custom bundles are rejected. The compiled profile helper is covered by the native build receipt.
+
+The 4.6.4 raw bundle uses the pinned eleven preparatory patches and verifies their canonical output digest; 4.6.5 is instrumented from its exact raw digest. Version-specific minified names are never inferred from existing probe strings. `changeFigureDiff` and `transformFrom` require the 4.6.5 profile. Portable structural, scanner, and workload checks are available, while accepting a Craft-bound 4.6.5 export still requires the isolated Windows validation of the combined kernel.
+
+Run `node craft/installer/check-source-inputs.mjs` before preparing a clean handoff. It reports missing build helpers, documentation, native sources and package inputs together, before downloads and Windows compilation.

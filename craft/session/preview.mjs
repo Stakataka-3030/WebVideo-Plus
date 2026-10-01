@@ -53,7 +53,10 @@ export class PreviewSessionManager {
     this.disposeListener=cdp.on(m=>{if(m.method==='Target.detachedFromTarget'){for(const [id,s]of this.attached)if(s.sessionId===m.params.sessionId){s.off();s.loaded.dispose?.();this.attached.delete(id);}}});
   }
   async settings(request){
-    try{return await previewSettings(this.cdp,this.mainContexts,request,this.mainLoaded);}
+    return this.operation(request,previewSettings);
+  }
+  async operation(request,operation){
+    try{return await operation(this.cdp,this.mainContexts,request,this.mainLoaded);}
     catch(e){if(!/预览目标必须唯一|不支持设置桥/.test(e.message))throw e;}
     const expected=new URL(request.url),same=value=>{try{const u=new URL(value);return u.origin===expected.origin&&u.pathname.replace(/\/$/,'')===expected.pathname.replace(/\/$/,'');}catch{return false;}};
     const info=await this.cdp.call('Target.getTargets');const matches=info.targetInfos.filter(t=>t.type==='iframe'&&same(t.url));
@@ -73,7 +76,7 @@ export class PreviewSessionManager {
       const attached={sessionId,transport,contexts,loaded,off};if(this.closed){off();loaded.dispose?.();await this.cdp.call('Target.detachFromTarget',{sessionId}).catch(()=>{});throw Error('preview-session-closed');}this.attached.set(target.targetId,attached);return attached;})().finally(()=>this.attaching.delete(target.targetId)));scoped=await this.attaching.get(target.targetId);
     }
     // Context IDs are meaningful only within this flattened target session.
-    return previewSettings(scoped.transport,scoped.contexts,request,scoped.loaded);
+    return operation(scoped.transport,scoped.contexts,request,scoped.loaded);
   }
   async close(){this.closed=true;this.disposeListener();await Promise.allSettled([...this.attaching.values()]);this.mainLoaded.dispose?.();for(const s of this.attached.values()){s.off();s.loaded.dispose?.();await this.cdp.call('Target.detachFromTarget',{sessionId:s.sessionId}).catch(()=>{});}this.attached.clear();}
 }

@@ -274,3 +274,19 @@ test("automatic backup watcher starts before an active-project capability and st
   await f.ui.dispose();
   assert.equal(stops, 1);
 });
+test("hint cancellation remains usable while timed preview is pending", async () => {
+  let resolvePreview, cancelled = 0;
+  const f = fixture({
+    capabilities: () => ({snapshot:true,previewHint:true,commit:true}),
+    previewHint: () => new Promise(resolve => {resolvePreview = resolve}),
+    cancelHintPreview: async () => {cancelled++;resolvePreview({state:'cancelled'})},
+  });
+  f.snapshot.source = 'choose:提示:__wvp_hint_a -wvpHint=1800;\nlabel:__wvp_hint_a;\n';
+  await f.ui.open();
+  const pending = f.find('计时预览').click();
+  assert.equal(f.find('刷新场景').disabled,true);
+  assert.equal(f.find('取消提示计时').disabled,false);
+  await f.find('取消提示计时').click();
+  await pending;
+  assert.equal(cancelled,1);
+});

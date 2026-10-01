@@ -14,6 +14,7 @@
       if(!usable(engine))throw Error('当前引擎未就绪，请在 Craft 中修复绑定');
       const version=engine.metadata?.webgalVersion?.trim(),parts=/^(\d+)\.(\d+)\.(\d+)$/.exec(version||'');
       if(!parts||Number(parts[1])<4||Number(parts[1])===4&&(Number(parts[2])<6||Number(parts[2])===6&&Number(parts[3])<2))throw Error('该引擎版本尚未通过 Craft 适配验证（需要稳定版 4.6.2 或更高）');
+      if(engine.engineId==='open-webgal.webgal'&&engine.version!==version)throw Error('官方引擎的版本与运行时版本记录不一致，请先在 Craft 中修复绑定');
       let templatePath;
       if(config?.engine){
         if(!config.template)templatePath=engine.path.replace(/[\\/]$/,'')+'/game/template';
@@ -21,7 +22,7 @@
         else if(config.template.kind==='standalone'){const matches=templates.filter(x=>x.metadata?.name===config.template.name&&x.status==='created');if(matches.length!==1||!usable(matches[0]))throw Error('模板缺失或绑定不唯一');templatePath=matches[0].path;}
         else throw Error('当前模板类型尚未适配');
       }
-      return {enginePath:engine.path,templatePath,engineVersion:engine.version,runtimeVersion:version,engineId:engine.id};
+      return {enginePath:engine.path,templatePath,engineVersion:engine.version,runtimeVersion:version,runtimeId:engine.engineId,engineId:engine.id};
     }finally{db.close();}
   };
 })(globalThis);

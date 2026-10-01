@@ -17,3 +17,13 @@ test('preview passes path, line and exact line text',async()=>{const f=fixture()
 test('VFS lists and reads through host store',async()=>{const f=fixture();assert.equal((await f.bridge.listScenes()).length,1);assert.equal(await f.bridge.readScene('start.txt'),f.source);await assert.rejects(f.bridge.readScene('../secret'),/路径/);});
 
 test('verified 4.6.5 binding supplies newer syntax absent in beta2 host fields',async()=>{let version='4.6.5';const f=fixture(async()=>({runtimeVersion:version,enginePath:'C:/engine',engineId:'e'}));const s=await f.bridge.snapshot();assert.equal(s.runtimeCapabilities.changeFigureDiff,true);assert.equal(s.runtimeCapabilities.transformFrom,true);version='4.6.4';await assert.rejects(f.bridge.commit({snapshot:s,after:'changed'}),/版本/);assert.equal((await f.bridge.snapshot()).runtimeCapabilities.changeFigureDiff,false);});
+
+test('cancel during native hint synchronization prevents later snippet and timer',async()=>{
+ const source='choose:提示:__wvp_hint_test -defaultChoose=1 -wvpHint=1800;\nlabel:__wvp_hint_test;';
+ const calls=[];let release,started=false;
+ globalThis.WebVideoCraftScript={parse:()=>({}),hintPairs:()=>[{valid:true,key:'__wvp_hint_test',text:'提示',duration:1800,choose:{startLine:1,source:source.split('\n')[0]}}]};
+ const stores={workspace:{currentGame:{id:'p',path:'C:/project'}},tabs:{activeTab:{path:'C:/project/game/scene/start.txt'}},file:{},editor:{getTextProjectionState:()=>({kind:'scene',textContent:source,isDirty:false}),peekSceneRevision:()=> 'r1'},previewSession:{currentGameServeUrl:'http://127.0.0.1:8899/game/test/'},previewSync:{async sendPreviewCommand(type){calls.push(type);started=true;await new Promise(r=>release=r);}}};
+ const b=createBridge({getStores:()=>stores,rpc:async(method,payload)=>{calls.push([method,payload]);return{cancelled:true};}});
+ try{const result=b.previewHint({line:1,key:'__wvp_hint_test',duration:1800});while(!started)await new Promise(setImmediate);await b.cancelHintPreview();release();await assert.rejects(result,/取消/);assert.equal(calls.filter(x=>typeof x==='string').length,1);assert(!calls.some(x=>Array.isArray(x)&&!x[1].cancel));}
+ finally{delete globalThis.WebVideoCraftScript;}
+});
