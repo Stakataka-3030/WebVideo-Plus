@@ -24,7 +24,7 @@ jobs:
       - name: Verify repository layout and browser regressions
         shell: pwsh
         run: |
-          node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs tests/build-inputs.test.mjs tests/ai-build-metadata.test.mjs
+          node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs tests/build-inputs.test.mjs tests/ai-build-metadata.test.mjs tests/font-render.test.mjs
           if ($LASTEXITCODE -ne 0) { throw "Node regression checks failed" }
           node tests/update-check-and-atlas.mjs
           if ($LASTEXITCODE -ne 0) { throw "Update and atlas checks failed" }
@@ -42,6 +42,35 @@ jobs:
           .\prepare-build.ps1 -Offline
           node scripts/verify-build-inputs.mjs
           if ($LASTEXITCODE -ne 0) { throw "Prepared inputs failed verification" }
+
+      - name: Compare multilingual font rendering with the upstream baseline
+        shell: pwsh
+        run: |
+          . .\scripts\build-common.ps1
+          Expand-CheckedBuildArchive .build/downloads/WebGAL-4.6.4-web.zip .build/font-baseline
+          node tests/font-render.mjs --runtime package/runtime/web --baseline .build/font-baseline --out .build/font-render
+          if ($LASTEXITCODE -ne 0) { throw "Font rendering comparison failed" }
+
+      - name: Compile native exporter for early font smoke
+        shell: powershell
+        run: |
+          .\build.ps1
+          node scripts/build-timeline.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Timeline metadata preparation failed" }
+
+      - name: Verify optional Live2D preflight against referenced assets
+        shell: powershell
+        run: .\tests\font-render-preflight.test.ps1
+
+      - name: Render and decode a multilingual native export
+        shell: pwsh
+        run: |
+          . .\scripts\build-common.ps1
+          $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
+          $archive = Get-PinnedBuildInput $lock.ffmpegTest (Join-Path $PWD '.build/downloads')
+          Expand-CheckedBuildArchive $archive (Join-Path $PWD '.build/ffmpeg-test')
+          $env:PATH = (Join-Path $PWD ('.build/ffmpeg-test/ffmpeg-' + $lock.ffmpegTest.version + '-essentials_build/bin')) + ';' + $env:PATH
+          .\tests\font-render-native.ps1
 
       - name: Restore locked optional AI dependencies
         shell: pwsh
@@ -66,3 +95,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Full package verification failed" }
           $version = (Get-Content version.json -Raw | ConvertFrom-Json).productVersion
           if(-not(Test-Path -LiteralPath "dist/WebVideo+-Setup-$version.exe")){throw "Installer output is missing"}
+
+      - name: Preserve synthetic font regression diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: font-render-diagnostics
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            .build/font-render/*.png
+            .build/font-render/*.json
+            .build/font-render/native/*/*.png
+            .build/font-render/native/*/*.json
+            .build/font-render/native/*/*.log

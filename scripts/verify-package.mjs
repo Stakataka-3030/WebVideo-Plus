@@ -7,6 +7,8 @@ const root=path.dirname(path.dirname(fileURLToPath(import.meta.url))),pkg=path.j
 const read=file=>JSON.parse(fs.readFileSync(path.join(pkg,file),'utf8'));
 const versions=JSON.parse(fs.readFileSync(path.join(root,'version.json'),'utf8'));
 const manifest=read('MANIFEST.json'),product=read('product.json');
+const fontReplacement=JSON.parse(fs.readFileSync(path.join(root,'build/runtime-patches.json'),'utf8')).fontReplacement;
+assert.ok(!manifest.files.some(entry=>entry.sha256===fontReplacement.removedSha256||/OPPOSans.*\.(ttf|otf|woff2?)$/i.test(entry.path)),'Unverified OPPO font must not be packaged under any filename');
 assert.equal(manifest.version,versions.productVersion);
 assert.equal(manifest.kernelVersion,versions.kernelVersion);
 assert.equal(product.version,manifest.version);

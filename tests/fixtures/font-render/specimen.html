@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<link rel="stylesheet" href="__RUNTIME_CSS__">
+<title>WebVideo+ bundled font regression</title>
+<style>
+* { animation: none !important; transition: none !important; }
+body { background: #15283c; color: #eff6ff; font-family: WebgalUI, sans-serif; }
+header { padding: 24px 42px; font-size: 28px; }
+#samples { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 30px; margin: 0 42px; }
+.card { padding: 12px 18px; border: 1px solid #6686a0; background: #203950; }
+.label { font: 18px sans-serif; color: #b7cde0; margin-bottom: 8px; }
+.sample { font-size: 28px; line-height: 42px; white-space: pre-wrap; overflow-wrap: break-word; }
+#wrap { width: 760px; }
+#explicitBreak { white-space: pre; }
+#dialogue, #speaker { font-family: WebgalUI, sans-serif; }
+#dialogue { font-size: 40px; line-height: 80px; white-space: pre; }
+#speaker { font-size: 32px; }
+#extended { position: absolute; right: 42px; top: 57px; font-size: 20px; line-height: 28px; white-space: nowrap; }
+#rounded { font-family: 资源圆体, serif; }
+#textBoxMain { font-family: WebgalUI, sans-serif; }
+#fontStatus { position: absolute; top: 30px; right: 42px; font: 18px sans-serif; }
+</style>
+<header>WebVideo+ 字体 / Font rendering regression</header><div id="fontStatus">loading</div>
+<section id="samples"></section><div id="extended"></div>
+<div class="_TextBox_Container_p1zxt_10">
+  <div class="_TextBox_main_p1zxt_18 _TextBox_main_miniavatarOff_p1zxt_39 _TextBox_Background_p1zxt_43"></div>
+  <div id="textBoxMain" class="_TextBox_main_p1zxt_18 _TextBox_main_miniavatarOff_p1zxt_39">
+    <div id="speaker" class="_TextBox_showName_p1zxt_104 _TextBox_ShowName_Background_p1zxt_117"></div>
+    <div id="dialogue" class="_text_p1zxt_174"></div>
+  </div>
+</div>
+<script>
+(async () => {
+  try {
+    const samples = await (await fetch('/samples.json')).json();
+    for (const id of ['zh', 'zhHant', 'ja', 'digits', 'latin', 'wrap', 'explicitBreak', 'rounded']) {
+      const card = document.createElement('div'); card.className = 'card';
+      const label = document.createElement('div'); label.className = 'label'; label.textContent = id;
+      const sample = document.createElement('div'); sample.className = 'sample'; sample.id = id;
+      sample.textContent = id === 'rounded' ? samples.zh : samples[id];
+      if(id === 'ja') sample.lang = 'ja';
+      if(id === 'zhHant') sample.lang = 'zh-Hant';
+      card.append(label, sample); document.querySelector('#samples').append(card);
+    }
+    document.querySelector('#speaker').textContent = samples.speaker;
+    document.querySelector('#extended').textContent = samples.extended;
+    // Use the runtime's settled outline/gradient layers, including its real line height.
+    for (const [index, line] of samples.dialogue.split('\n').entries()) {
+      if(index) document.querySelector('#dialogue').append(document.createElement('br'));
+      const glyph = document.createElement('span'); glyph.className = '_TextBox_textElement_Settled_p1zxt_97';
+      for (const name of ['_outer_p1zxt_64', '_inner_p1zxt_78', '_zhanwei_p1zxt_89']) {
+        const layer = document.createElement('span'); layer.className = name; layer.textContent = line; glyph.append(layer);
+      }
+      document.querySelector('#dialogue').append(glyph);
+    }
+    const fonts = await document.fonts.load('32px WebgalUI', Object.values(samples).join(''));
+    const rounded = await document.fonts.load('32px "资源圆体"', samples.zh);
+    await document.fonts.ready;
+    if(!fonts.length || fonts.some(font => font.status !== 'loaded')) throw Error('WebgalUI did not load');
+    if(!rounded.length || rounded.some(font => font.status !== 'loaded')) throw Error('Rounded control did not load');
+    const box = element => { const r=element.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; };
+    function lines(element) {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT); const groups = new Map();
+      while(walker.nextNode()) {
+        const text=walker.currentNode;
+        for(let i=0;i<text.length;i++) {
+          if(text.data[i] === '\n') continue;
+          const range=document.createRange(); range.setStart(text,i); range.setEnd(text,i+1);
+          const r=range.getBoundingClientRect(); const key=Math.round(r.y*10)/10;
+          const item=groups.get(key)||{y:key,text:'',left:r.left,right:r.right,height:r.height};
+          item.text+=text.data[i];item.left=Math.min(item.left,r.left);item.right=Math.max(item.right,r.right);groups.set(key,item);
+        }
+      }
+      return [...groups.values()].map(item=>({...item,width:item.right-item.left}));
+    }
+    const results={}; const ctx=document.createElement('canvas').getContext('2d');
+    for(const id of ['zh','zhHant','ja','digits','latin','wrap','explicitBreak','rounded','extended']) {
+      const element=document.getElementById(id), style=getComputedStyle(element);ctx.font=`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      results[id]={font:style.fontFamily,box:box(element),lineHeight:parseFloat(style.lineHeight),scrollWidth:element.scrollWidth,clientWidth:element.clientWidth,lines:lines(element),advance:ctx.measureText(element.textContent).width};
+    }
+    const dialogue=document.querySelector('#dialogue'), speaker=document.querySelector('#speaker');
+    results.dialogue={font:getComputedStyle(dialogue).fontFamily,box:box(dialogue),scrollWidth:dialogue.scrollWidth,clientWidth:dialogue.clientWidth,scrollHeight:dialogue.scrollHeight,clientHeight:dialogue.clientHeight,layers:[...dialogue.querySelectorAll('._zhanwei_p1zxt_89')].map(box)};
+    results.speaker={font:getComputedStyle(speaker).fontFamily,box:box(speaker)};
+    document.querySelector('#fontStatus').textContent='WebgalUI loaded';
+    globalThis.fontRenderResult={ok:true,viewport:{width:innerWidth,height:innerHeight},samples:results};
+  } catch(error) { globalThis.fontRenderResult={ok:false,error:String(error.stack||error)}; }
+})();
+</script>
+</html>
