@@ -4,7 +4,7 @@ import {spawn} from 'node:child_process';
 const GET=new Set(['/api/config','/api/jobs','/api/ai/config','/api/character-map','/api/anogo-actions','/api/filters','/api/preset-effects']);
 const POST=new Set(['/api/jobs','/api/timing','/api/music/duration','/api/ai/save','/api/ai/remove','/api/ai/novel/start','/api/ai/novel/status','/api/ai/novel/cancel','/api/character-map','/api/anogo-actions','/api/filters/save','/api/preset-effects/save','/api/settings','/api/dialog/folder','/api/dialog/subtitle','/api/subtitles/start','/api/subtitles/status','/api/subtitles/cancel']);
 export class KernelSession {
-  constructor({kernel,root,storage,runtimePath,stateRoot=path.join(root,'kernel'),isolatedRuntimeValidation=false,readRuntimeStartup}){Object.assign(this,{kernel,root,storage,runtimePath,stateRoot,isolatedRuntimeValidation,readRuntimeStartup});this.child=null;this.discovery=null;this.jobs=new Set();}
+  constructor({kernel,root,storage,runtimePath,stateRoot=path.join(root,'kernel'),readRuntimeStartup}){Object.assign(this,{kernel,root,storage,runtimePath,stateRoot,readRuntimeStartup});this.child=null;this.discovery=null;this.jobs=new Set();}
   async start(){
     if(this.discovery)return;if(this.starting)return this.starting;
     this.starting=this._start();try{await this.starting;}finally{this.starting=null;}
@@ -33,7 +33,7 @@ export class KernelSession {
     if(!(method==='GET'?GET:POST).has(endpoint)&&!(method==='GET'&&/^\/api\/timing\/[a-f0-9-]{36}$/.test(endpoint))&&!(method==='POST'&&/^\/api\/jobs\/[a-f0-9-]{36}\/cancel$/.test(endpoint)))throw Error('service-operation-denied');
     const body=data===undefined?undefined:{...data};
     if(body&&['/api/jobs','/api/timing','/api/music/duration','/api/ai/novel/start'].includes(endpoint)){const s=this.storage.get(snapshotId);
-      if(['/api/jobs','/api/timing'].includes(endpoint)){const supported=this.isolatedRuntimeValidation?['4.6.4','4.6.5']:['4.6.4'];if(s.runtimeId!=='open-webgal.webgal'||!supported.includes(s.engineVersion))throw Error('当前工程没有已完成验收的精确导出档位；4.6.5 正在隔离验证，不能自动回退到其他引擎');body.expectedRuntimeVersion=s.engineVersion;body.expectedRuntimeId=s.runtimeId;body.settings={...(body.settings||{}),engine:'webgal'};delete body.runtimeStartup;const startup=await this.readRuntimeStartup?.(s);if(startup)body.runtimeStartup=startup;}body.project=s.id;}
+      if(['/api/jobs','/api/timing'].includes(endpoint)){const supported=['4.6.4','4.6.5'];if(s.runtimeId!=='open-webgal.webgal'||!supported.includes(s.engineVersion))throw Error('当前工程引擎不在已验证的 4.6.4 / 4.6.5 精确档位内，不能回退到其他引擎');body.expectedRuntimeVersion=s.engineVersion;body.expectedRuntimeId=s.runtimeId;body.settings={...(body.settings||{}),engine:'webgal'};delete body.runtimeStartup;const startup=await this.readRuntimeStartup?.(s);if(startup)body.runtimeStartup=startup;}body.project=s.id;}
     await this.start();const response=await fetch(this.discovery.baseUrl+endpoint,{method,headers:{Authorization:'Bearer '+this.discovery.token,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(120000)});
     const result=await response.json();if(!response.ok)throw Error(result.error||'kernel-request-failed');return result;
   }

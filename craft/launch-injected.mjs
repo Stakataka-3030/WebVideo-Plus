@@ -43,7 +43,7 @@ const app=spawn(craft,hostArgs,{cwd:path.dirname(craft),env,windowsHide:false,st
 let spawnError;app.once('error',e=>spawnError=e);const waitForApp=()=>app.exitCode!==null||app.signalCode!==null?Promise.resolve():new Promise(resolve=>app.once('exit',resolve));
 const lease={schemaVersion:1,sessionId,coordinatorPid:process.pid,hostPid:app.pid,wrapperPid:Number(option('--wrapper-pid'))||undefined,hostExe:craft,startedAt:new Date().toISOString()};
 await fs.writeFile(path.join(stateDir,'session.json'),JSON.stringify(lease));
-const storage=new SessionStorage(root),service=new KernelSession({kernel,root,storage,runtimePath:config.runtimePath,stateRoot:path.join(stateDir,"kernel"),isolatedRuntimeValidation:options.includes("--isolated-test")&&!!option("--profile")});
+const storage=new SessionStorage(root),service=new KernelSession({kernel,root,storage,runtimePath:config.runtimePath,stateRoot:path.join(stateDir,"kernel")});
 const updater=new UpdateCoordinator({stateDir,hostPid:app.pid,craftExe:config.craftExe||craft,installMode:config.installMode||'external',supportedHosts:config.supportedHosts||{},observerValidated:false /* enable only after a package-scoped native compatibility test */});
 let cdp,rpc,previewManager,closed=false;
 async function shutdown(){if(closed)return;closed=true;rpc?.close();await previewManager?.close();cdp?.close();await service.stop();
