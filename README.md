@@ -2,9 +2,9 @@
 
 面向 **WebGAL Terre 4.6.4** 的视觉小说视频制作辅助工具：批量编辑、剧情导航、音乐配置、备份与检查、Anogo 故事导入，以及本机视频导出。生成式 AI 是默认不安装的可选 Beta 组件，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [使用指南](docs/USER_GUIDE.md) · [1.1.4 发行说明](docs/releases/RELEASE_NOTES_1.1.4.md) · [构建说明](docs/BUILDING.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [使用指南](docs/USER_GUIDE.md) · [1.1.5 发行说明](docs/releases/RELEASE_NOTES_1.1.5.md) · [构建说明](docs/BUILDING.md)
 
-当前源码版本 **1.1.4**，内部开发标识 **0.8.8**，安装器 Win32 版本 **1.1.4.0**，导出内核 **0.6.48**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准；当前不声明兼容 Terre 4.6.5。
+当前源码版本 **1.1.5**，内部开发标识 **0.8.9**，安装器 Win32 版本 **1.1.5.0**，导出内核 **0.6.49**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准；当前不声明兼容 Terre 4.6.5。
 
 ## 安装与开始使用
 
@@ -26,6 +26,8 @@
 - **故事导入**：Anogo 文本/JSON/YAML；可选 AI 将小说转换为可预览、待核对的剧本骨架
 
 导出默认使用 GPU Raw 管线。建议从 **1080p、推荐 / 高质量** 开始；编码器会探测 NVENC、AMF、Quick Sync，必要时回退 CPU x264。完全无损可能产生非常大的文件，传统兼容管线更慢。分辨率、并行数、缓存和 AI 配置详见[完整使用指南](docs/USER_GUIDE.md)。
+
+高级设置支持[手动指定导出切点](docs/USER_GUIDE.md#手动指定导出切点)：输入帧号、秒数或时间码后严格按指定位置分段，不增加自动切点；留空为单段，并行数仅限制同时运行的任务数。
 
 ## 文档与开发
 

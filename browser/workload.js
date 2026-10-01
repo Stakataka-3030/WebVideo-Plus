@@ -45,12 +45,17 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    const position=['left','right','left13','right13','left14','right14'].find(k=>params[k])||'center',target=cmd==='changeBg'?'bg-main':params.id||'fig-'+position,key=cmd+':'+target;
    const visualName=cmd==='changeFigure'&&params.clear===true?'':name;
    const oldIdentity=cmd==='changeFigure'?figureIdentities.get(target):null;
-   const canonicalBounds=value=>String(value??'').split(',').map(x=>x.trim()).join(',');
-   const nextBounds=params.bounds!==undefined?canonicalBounds(params.bounds):(oldIdentity?.bounds||'');
+   // Match WebGAL's numeric getOverrideBoundsArr / normalizeFigureBounds.
+   // Textually different but equal bounds must not create a fresh model epoch.
+   const rawBounds=String(params.bounds??''),boundsValues=rawBounds.split(',').map(Number);
+   const parsedBounds=boundsValues.length===4&&boundsValues.every(x=>!Number.isNaN(x))?boundsValues.join(','):null;
+   const defaultBounds='0,0,0,0',oldBounds=oldIdentity?.bounds??defaultBounds;
+   const boundsChanged=!!rawBounds&&oldBounds!==(parsedBounds??defaultBounds);
    const previous=cmd==='changeFigure'?oldIdentity?.name:visualSources.get(key);
    const changed=cmd==='changeFigure'
-    ?(!oldIdentity||oldIdentity.name!==visualName||oldIdentity.position!==position||(params.bounds!==undefined&&oldIdentity.bounds!==nextBounds))
+    ?(!oldIdentity||oldIdentity.name!==visualName||oldIdentity.position!==position||boundsChanged)
     :previous!==visualName;
+   const nextBounds=changed?(parsedBounds??defaultBounds):(parsedBounds??oldBounds);
    const gone=!visualName||visualName==='none',previousPresent=previous!==undefined&&previous!==null&&previous!==''&&previous!=='none';
    if(changed&&previousPresent){
     const state=transitionStates.get(target)||{},fallback=cmd==='changeBg'?1500:450;
@@ -68,7 +73,14 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
     }
     if(liveRuntime&&!activeLiveLifetimes.has(target))activeLiveLifetimes.set(target,{startMs:Math.round(cursor),endMs:null,target,source:visualName,position,bounds:nextBounds,line:range.start+1,motionEvents:[],expressionEvents:[],blinkEvents:[],focusEvents:[]});
     const currentLifetime=activeLiveLifetimes.get(target);
-    if(currentLifetime&&params.motion!==undefined)currentLifetime.motionEvents.push({atMs:Math.round(cursor),group:String(params.motion??''),index:0,priority:3,line:range.start+1});
+    // WebGAL only writes same-identity motion state for a nonempty motion/skin
+    // or valid bounds. Its runtime guard does not restart the recorded group,
+    // even when that motion has finished. Scope this comparison to the lifetime:
+    // a new model still starts the same named motion at its own birth time.
+    if(currentLifetime&&(changed||params.motion||params.skin||parsedBounds!==null)){
+     const group=String(params.motion??''),previousGroup=currentLifetime.motionEvents.at(-1)?.group??'';
+     if(group!==previousGroup)currentLifetime.motionEvents.push({atMs:Math.round(cursor),group,index:0,priority:3,line:range.start+1});
+    }
     if(currentLifetime&&params.expression!==undefined)currentLifetime.expressionEvents.push({atMs:Math.round(cursor),name:String(params.expression??''),line:range.start+1});
     if(currentLifetime&&params.blink!==undefined)currentLifetime.blinkEvents.push({atMs:Math.round(cursor),line:range.start+1});
     if(currentLifetime&&params.focus!==undefined)currentLifetime.focusEvents.push({atMs:Math.round(cursor),line:range.start+1});

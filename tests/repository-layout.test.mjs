@@ -24,6 +24,8 @@ test('repository documentation links point to existing files',()=>{
 });
 test('current documentation matches the canonical version fields',()=>{
  const versions=JSON.parse(read('version.json'));
+ const ai=JSON.parse(read('ai-runtime/package.json')),lock=JSON.parse(read('ai-runtime/package-lock.json'));
+ assert.equal(ai.version,versions.productVersion);assert.equal(lock.version,versions.productVersion);assert.equal(lock.packages[''].version,versions.productVersion);
  for(const file of ['README.md','docs/USER_GUIDE.md','docs/BUILDING.md']){
   for(const value of Object.values(versions))assert.ok(read(file).includes(value),`${file}: missing current version ${value}`);
  }

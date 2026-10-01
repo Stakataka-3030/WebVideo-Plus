@@ -291,16 +291,17 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     const selected=entries.find(x=>x.index===state.index);if(!selected)return null;
     return {...state,kind:'idle',group,priority:1,motion:selected.motion,originMs:idleStart};
   };
-  // Rebuild only saved motion parameters for a completed non-looping motion.
+  // Rebuild saved motion parameters after completion or an explicit stop.
   // Do not restart a static model or replay rendered frames from its birth.
   const restoreCompletedCubism2Motion=async(manager,core,target,lifetime,nowMs)=>{
     if(!lifetime||typeof MotionQueueManager==='undefined'||typeof UtSystem==='undefined')return false;
     const idleDefs=manager.definitions?.[manager.groups?.idle];if(Array.isArray(idleDefs)&&idleDefs.length)return false;
     const epochs=(lifetime.motionEvents||[]).filter(e=>Number(e.atMs)<=nowMs+.01).sort((a,b)=>Number(a.atMs)-Number(b.atMs));
-    if(!epochs.length||!epochs[epochs.length-1].group)return false;
+    if(!epochs.length||!epochs.some(e=>e.group))return false;
     const motions=[];
     for(const epoch of epochs){const entries=await cubism2Entries(manager,String(epoch.group||'')),selected=entries.find(e=>e.index===(Number(epoch.index)||0));if(epoch.group&&!selected)return false;motions.push({epoch,selected});}
-    const last=motions[motions.length-1];if(!last.selected||last.selected.loop||nowMs<Number(last.epoch.atMs)+last.selected.durationMs)return false;
+    const last=motions[motions.length-1],stopped=!last.epoch.group;
+    if(!stopped&&(!last.selected||last.selected.loop||nowMs<Number(last.epoch.atMs)+last.selected.durationMs))return false;
     const seen=new WeakSet();
     const findDefinitions=(obj,depth=0)=>{if(!obj||typeof obj!=='object'||seen.has(obj)||depth>4)return null;seen.add(obj);if(Array.isArray(obj)){if(obj.length&&obj.every(x=>x&&typeof x.getDefaultValue==='function'&&typeof x.getParamID==='function'))return obj;return null;}for(const value of Object.values(obj)){const found=findDefinitions(value,depth+1);if(found)return found;}return null;};
     const definitions=findDefinitions(core.getModelImpl?.());if(!definitions)return false;
@@ -327,7 +328,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
       }
     }finally{UtSystem.getUserTimeMSec=originalTime;queue.stopAllMotions();}
     manager.stopAllMotions?.();for(const index of touched)core.setParamFloat(index,values.get(index));core.saveParam();
-    manager.__webVideoIdleSeekLast={target,startMs:Number(lifetime.startMs),group:String(last.epoch.group),index:last.selected.index,kind:'completed',originMs:Number(last.epoch.atMs),offsetMs:last.selected.durationMs,rebased:true,rebaseMode:'terminal-replay',replayFrames};
+    manager.__webVideoIdleSeekLast={target,startMs:Number(lifetime.startMs),group:String(last.epoch.group),index:last.selected?.index??0,kind:stopped?'stopped':'completed',originMs:Number(last.epoch.atMs),offsetMs:last.selected?.durationMs??0,rebased:true,rebaseMode:'terminal-replay',replayFrames};
     return true;
   };
 
@@ -384,21 +385,28 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     return {...state,kind:'idle',group,priority:1,motion:selected.motion,loopFadeIn:selected.loopFadeIn,originMs:idleStart};
   };
   const restoreCompletedCubism4Motion=async(manager,queue,coreModel,target,lifetime,nowMs)=>{
-    const epoch=globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);if(!epoch||!String(epoch.group??''))return false;
+    const latest=globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);if(!latest)return false;
+    const stopped=!String(latest.group??''),stopFrame=stopped?Math.ceil(Number(latest.atMs)*fps/1000-.000001):null;
+    // A stop retains the last rendered motion pose, not the model defaults.
+    // Sample the frame before the stop command, including for looping motions.
+    const sampleMs=stopped?Math.round((stopFrame-1)*1000/fps):nowMs;
+    const epoch=stopped?globalThis.__exportCubism2MotionEpoch(lifetime,sampleMs):latest;if(!epoch||!String(epoch.group??''))return false;
     const epochTime=Math.round(Math.ceil(Number(epoch.atMs)*fps/1000-.000001)*1000/fps),entries=await cubism4Entries(manager,String(epoch.group)),index=Number.isInteger(Number(epoch.index))?Number(epoch.index):0,selected=entries.find(x=>x.index===index);
-    if(!selected||selected.loop||Math.max(0,Math.round(nowMs)-epochTime)<selected.durationMs)return false;
+    const elapsed=Math.max(0,Math.round(sampleMs)-epochTime);
+    if(!selected||(!stopped&&(selected.loop||elapsed<selected.durationMs)))return false;
     const idle=await cubism4Entries(manager,manager.groups?.idle);if(idle.length)return false;
     manager.stopAllMotions?.();
     const ok=await manager.startMotion(String(epoch.group),index,Number(epoch.priority)||3);
     const motions=Array.from(queue._motions||queue.motions||[]),entry=motions[motions.length-1];
     if(!ok&&entry?._motion!==selected.motion)return false;
-    const state={offsetMs:selected.durationMs,elapsedMs:selected.durationMs,durationMs:selected.durationMs,loop:false,loopFadeIn:selected.loopFadeIn};
+    const terminal=!selected.loop&&elapsed>=selected.durationMs,offsetMs=selected.loop?elapsed%selected.durationMs:Math.min(elapsed,selected.durationMs);
+    const state={offsetMs,elapsedMs:selected.loop?elapsed:offsetMs,durationMs:selected.durationMs,loop:selected.loop,loopFadeIn:selected.loopFadeIn};
     const runtimeNowMs=performance.now();
-    const rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,runtimeNowMs,state,{terminal:true});if(!rebased){manager.stopAllMotions?.();return false;}
+    const rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,runtimeNowMs,state,{terminal});if(!rebased){manager.stopAllMotions?.();return false;}
     queue.doUpdateMotion?.(coreModel,runtimeNowMs/1000);
     manager.stopAllMotions?.();coreModel?.saveParameters?.();
-    manager.__webVideoCubism4SeekLast={target,startMs:Number(lifetime.startMs),group:String(epoch.group),index,kind:'completed',originMs:epochTime,offsetMs:selected.durationMs,rebased:true,rebaseMode:'queue-seconds-terminal'};
-    manager.__webVideoNoMotionOriginMs=epochTime+selected.durationMs;
+    manager.__webVideoCubism4SeekLast={target,startMs:Number(lifetime.startMs),group:String(epoch.group),index,kind:stopped?'stopped':'completed',originMs:epochTime,offsetMs,rebased:true,rebaseMode:'queue-seconds-terminal'};
+    manager.__webVideoNoMotionOriginMs=stopped?Number(latest.atMs):epochTime+selected.durationMs;
     return true;
   };
   const seekCubism4State=async(manager,queue,coreModel,target,lifetime,nowMs)=>{

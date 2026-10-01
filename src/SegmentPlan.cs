@@ -66,6 +66,18 @@ namespace NativeVideo {
    return "insufficient-safe-cuts";
   }
 
+  public static Dictionary<string,object>[] CreateManual(object plan,int start,int end,int fps,int[] relativeCuts){
+   var frames=new List<int>{start};frames.AddRange(relativeCuts.Select(frame=>start+frame));frames.Add(end);
+   // Preserve existing best-effort warmup, without using it to judge or move a cut.
+   var replay=ReplayWindows(plan,end,fps).Concat(DomAnimationWindows(plan,end,fps)).Concat(J.A(J.Get(plan,"singleLineHints")).Select(h=>new ReplayWindow(Math.Max(0,(int)Math.Floor(J.N(h,"startMs")*fps/1000)),Math.Min(end,(int)Math.Ceiling(J.N(h,"endMs")*fps/1000)),false,false,"single-line-hint"))).OrderBy(w=>w.Start).ToArray();
+   var lifetimes=Live2DLifetimes(plan,end,fps);
+   return frames.Take(frames.Count-1).Select((first,i)=>{
+    bool live2d=lifetimes.Any(w=>first>w.Start&&first<w.End);
+    int anchor=first==0?0:ReplayAnchor(first,Math.Max(1,(int)Math.Ceiling(fps*(live2d?Live2DPhysicsWarmupSeconds:MinReplayWarmupSeconds))),replay);
+    return J.O("index",i,"startFrame",first,"endFrame",frames[i+1],"replayFrame",anchor,"warmupFrames",first-anchor,"estimatedCost",(double)(frames[i+1]-anchor),"replayKinds",replay.Where(w=>first>0&&w.Start<first&&w.End>anchor).Select(w=>w.Kind).Concat(live2d?new[]{"live2d-physics"}:new string[0]).Distinct().ToArray(),"cutMode","manual");
+   }).ToArray();
+  }
+
   public static Dictionary<string,object>[] Create(object plan,int total,int fps,int workers){
    int requestedWorkers=Math.Max(1,workers);
    var diagnostics=J.O("schemaVersion",1,"requestedWorkers",requestedWorkers,"totalFrames",total,"fps",fps,"replayCostWeight",ReplayPenaltyWeight,"maxWeightedReplayOverheadRatio",MaxWeightedReplayOverheadRatio,"attempts",new List<object>());
