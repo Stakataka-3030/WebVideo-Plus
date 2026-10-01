@@ -3,12 +3,17 @@ name: Native smoke build
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   native-smoke:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -19,31 +24,45 @@ jobs:
       - name: Verify repository layout and browser regressions
         shell: pwsh
         run: |
-          node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs
+          node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs tests/build-inputs.test.mjs
           if ($LASTEXITCODE -ne 0) { throw "Node regression checks failed" }
           node tests/update-check-and-atlas.mjs
           if ($LASTEXITCODE -ne 0) { throw "Update and atlas checks failed" }
+          .\tests\build-inputs.test.ps1
 
-      - name: Download fixed bootstrap installer
+      - name: Prepare pinned upstream dependencies from a clean checkout
+        shell: powershell
+        run: .\prepare-build.ps1
+
+      - name: Verify runtime reconstruction and offline preparation
         shell: pwsh
         run: |
-          curl.exe -L "https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v0.4.10.2/WebVideo%2B-Setup-0.4.10.2.exe" -o bootstrap.exe
-          if ($LASTEXITCODE -ne 0) { throw "Bootstrap download failed" }
+          node tests/verify-webgal-runtime.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Runtime reconstruction regression checks failed" }
+          .\prepare-build.ps1 -Offline
+          node scripts/verify-build-inputs.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Prepared inputs failed verification" }
 
-      - name: Prepare fixed WebView2 and engine build inputs
+      - name: Restore locked optional AI dependencies
         shell: pwsh
-        run: .\prepare-build.ps1 -InstallerPath (Join-Path $PWD 'bootstrap.exe')
+        working-directory: ai-runtime
+        run: |
+          npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw "Locked AI dependency restore failed" }
 
-      - name: Compile native exporter and run lifecycle regressions
-        shell: pwsh
-        run: .\build.ps1
+      - name: Build the complete product and installer from current source
+        shell: powershell
+        run: |
+          .\build-product.ps1
+          # Repeat in the same host to catch locked outputs and stale staging.
+          .\build-product.ps1 -Fast
 
-      - name: Verify semantic worker segmentation
+      - name: Verify semantic worker segmentation and complete package
         shell: pwsh
         run: |
           $p = Start-Process -FilePath (Join-Path $PWD 'package/WebGAL.Video.exe') -ArgumentList @('segment-smoke') -Wait -PassThru -NoNewWindow
           if($p.ExitCode -ne 0){ throw "Semantic segment smoke failed with exit code $($p.ExitCode)" }
-
-      - name: Verify Terre integration anchors
-        shell: pwsh
-        run: node .\scripts/build-timeline.mjs
+          node scripts/verify-package.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Full package verification failed" }
+          $version = (Get-Content version.json -Raw | ConvertFrom-Json).productVersion
+          if(-not(Test-Path -LiteralPath "dist/WebVideo+-Setup-$version.exe")){throw "Installer output is missing"}

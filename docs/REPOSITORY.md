@@ -14,6 +14,7 @@
 - `browser/`：浏览器端编辑、时间线和导出模块
 - `manager/`、`installer/`、`launcher/`、`bootstrap/`：管理器、安装器、启动器与引导工具
 - `ai-runtime/`：可选 AI 运行时、提示词与锁定依赖
+- `build/`：固定依赖清单、运行快照补丁、元数据与 .NET 配置模板
 - `baseline/`：固定 Terre 4.6.4 补丁基线与历史校验元数据
 - `vendor/`、`licenses/`：第三方代码、许可证与归属说明
 - 根目录 `*.factory.json`：构建与 C# 嵌入资源使用的默认数据，保留现有路径与资源名称
@@ -25,7 +26,7 @@
 
 根目录只保留常用的 PowerShell 构建入口：
 
-- `prepare-build.ps1`：准备固定第三方运行资源
+- `prepare-build.ps1`：从官方固定归档重建运行资源，不要求旧安装器
 - `build.ps1`：编译本机导出组件，并运行生命周期检查
 - `build-product.ps1`：组合产品并生成安装器
 

@@ -3,10 +3,13 @@ import {applyInstallerEnhancements} from '../installer/installer-enhancements.mj
 import path from 'node:path';import {fileURLToPath} from 'node:url';
 const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const internalAt=process.argv.indexOf('--internal-version'),internalVersion=internalAt>=0?process.argv[internalAt+1]:'';if(internalAt>=0&&!internalVersion)throw Error('--internal-version requires a value');
+const inputs=JSON.parse(fs.readFileSync(path.join(root,'build/dependencies.lock.json'),'utf8'));
 const versions=JSON.parse(fs.readFileSync(path.join(root,'version.json'),'utf8')),productVersion=versions.productVersion,installerVersion=versions.installerVersion,kernelVersion=versions.kernelVersion;
 if(!productVersion||!installerVersion||!kernelVersion)throw Error('version.json is missing required version fields');
 let s=fs.readFileSync(path.join(root,'installer/Installer.base.cs'),'utf8').replaceAll('\r\n','\n');
 function replace(a,b){if(!s.includes(a))throw Error('Missing installer anchor '+a);s=s.replace(a,b);}
+if(!/^[a-f0-9]{64}$/.test(inputs.webview2Bootstrap.sha256))throw Error('Invalid pinned WebView2 bootstrap hash');
+replace('__WEBVIEW2_BOOTSTRAP_SHA256__',inputs.webview2Bootstrap.sha256);
 function between(a,b,t){let i=s.indexOf(a),j=s.indexOf(b,i+a.length);if(i<0||j<0)throw Error(a);s=s.slice(0,i)+t+s.slice(j);}
 s=s.replaceAll('WebGAL Video Exporter Setup','WebVideo+ Setup').replaceAll('WebGAL Video Exporter','WebVideo+').replaceAll('0.3.1.0',installerVersion).replaceAll('"webgal-native-exporter"','"webvideo-plus"');
 replace('  return payload;',`  string manifestFile=Path.Combine(payload,"MANIFEST.json");if(!File.Exists(manifestFile)||Hash(manifestFile)!=InstallerBuild.ManifestHash)throw new Exception("安装文件清单校验失败，请重新获取安装包。");

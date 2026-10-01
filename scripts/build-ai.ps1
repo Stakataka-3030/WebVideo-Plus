@@ -21,10 +21,18 @@ foreach($taskFile in @('worker.mjs','novel-prompt.txt','stage-prompt.txt','packa
 $taskPackage=Get-Content -LiteralPath (Join-Path $taskSource 'package.json') -Raw | ConvertFrom-Json
 $taskPackage.version=$taskProductVersion
 [IO.File]::WriteAllText((Join-Path $taskDest 'package.json'),($taskPackage|ConvertTo-Json -Depth 100),[Text.UTF8Encoding]::new($false))
-$taskNode=(Get-Command node -ErrorAction Stop).Source
-Copy-Item -LiteralPath $taskNode -Destination (Join-Path $taskDest 'node.exe') -Force
-$taskNodeLicense=Join-Path (Split-Path $taskNode -Parent) 'LICENSE'
-if(Test-Path $taskNodeLicense){Copy-Item -LiteralPath $taskNodeLicense -Destination (Join-Path $taskDest 'LICENSE-Node.txt') -Force}
+# prepare-build.ps1 stages the exact Windows Node archive and required license.
+$taskInputs=Get-Content -LiteralPath (Join-Path $taskRoot 'build/dependencies.lock.json') -Raw | ConvertFrom-Json
+$taskNode=Join-Path $taskDest 'node.exe'
+$taskNodeLicense=Join-Path $taskDest 'LICENSE-Node.txt'
+if(-not(Test-Path $taskNode)-or -not(Test-Path $taskNodeLicense)){throw 'Pinned Node runtime is missing. Run prepare-build.ps1 before building.'}
+$taskNodeVersion=(& $taskNode --version).Trim()
+if($LASTEXITCODE -ne 0 -or $taskNodeVersion -ne ('v'+$taskInputs.node.version)){throw 'Staged Node runtime version differs from build/dependencies.lock.json'}
+# Keep published package metadata aligned without rewriting dependency resolutions.
+$taskLock=Get-Content -LiteralPath (Join-Path $taskSource 'package-lock.json') -Raw | ConvertFrom-Json
+$taskLock.version=$taskProductVersion
+$taskLock.packages.''.version=$taskProductVersion
+[IO.File]::WriteAllText((Join-Path $taskDest 'package-lock.json'),($taskLock|ConvertTo-Json -Depth 100),[Text.UTF8Encoding]::new($false))
 Copy-Item -LiteralPath (Join-Path $taskRoot 'ai-providers.factory.json') -Destination (Join-Path $taskDest 'providers.json') -Force
 $taskCore=[IO.File]::ReadAllText((Join-Path $taskRoot 'browser/novel-core.js'))+[Environment]::NewLine+'export { WebVideoNovel };';[IO.File]::WriteAllText((Join-Path $taskDest 'novel-core.mjs'),$taskCore)
 Write-Output 'Packaged optional DSH provider runtime for WebVideo+ '+$taskProductVersion

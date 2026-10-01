@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "engine": "WebGAL",
+  "version": "4.6.4",
+  "source": {
+    "url": "https://github.com/OpenWebGAL/WebGAL/releases/download/4.6.4/WebGAL-4.6.4-web.zip",
+    "sha256": "f7dbb153c0372044055ad167eeddc7202c5978bf661983328490ecd8d0a391ae",
+    "size": 74986038
+  },
+  "description": "Runtime file selection and deterministic export instrumentation. All output bytes match the previously shipped WebGAL 4.6.4 runtime; no legacy installer is needed.",
+  "files": [
+    {
+      "path": "assets/OPPOSans-R-tAcFw8I3.ttf",
+      "sourceSize": 10152780,
+      "sourceSha256": "ea92535935f8b5da18b64bb23e5ffbfef1417b7ae4ff3fc15372a65ee95a9580",
+      "outputSize": 10152780,
+      "outputSha256": "ea92535935f8b5da18b64bb23e5ffbfef1417b7ae4ff3fc15372a65ee95a9580"
+    },
+    {
+      "path": "assets/ResourceHanRoundedCN-Regular-C1HdCLVq.ttf",
+      "sourceSize": 14663464,
+      "sourceSha256": "1c5c623f008eabef10c45135a48b01b46311f9369c28857355872cfe05f48dc0",
+      "outputSize": 14663464,
+      "outputSha256": "1c5c623f008eabef10c45135a48b01b46311f9369c28857355872cfe05f48dc0"
+    },
+    {
+      "path": "assets/SourceHanSerifCN-Regular-B_f-kQ2u.ttf",
+      "sourceSize": 13013172,
+      "sourceSha256": "1e60cc2eedfa25bf5e4ecaa794402f581ad770d4c8be46d338bf52064b307ec7",
+      "outputSize": 13013172,
+      "outputSha256": "1e60cc2eedfa25bf5e4ecaa794402f581ad770d4c8be46d338bf52064b307ec7"
+    },
+    {
+      "path": "assets/cherryBlossoms-DzBBkOW8.webp",
+      "sourceSize": 13706,
+      "sourceSha256": "56cf09c9a41863994f7000786d8972b03dcc214f692c479b78962608109bb0e3",
+      "outputSize": 13706,
+      "outputSha256": "56cf09c9a41863994f7000786d8972b03dcc214f692c479b78962608109bb0e3"
+    },
+    {
+      "path": "assets/conentsCash-BBWvsVB4.js",
+      "sourceSize": 517,
+      "sourceSha256": "a3405a060bac043a6b0e60c02f9c91aee4aaba64d26ff8aeb4375873eb0c68ee",
+      "outputSize": 517,
+      "outputSha256": "a3405a060bac043a6b0e60c02f9c91aee4aaba64d26ff8aeb4375873eb0c68ee"
+    },
+    {
+      "path": "assets/dialog-BDvwibdp.mp3",
+      "sourceSize": 14881,
+      "sourceSha256": "d5b912353085e44e2fd975dfbfbe6561c38d1c3705687b22bb9bd065791e6bfe",
+      "outputSize": 14881,
+      "outputSha256": "d5b912353085e44e2fd975dfbfbe6561c38d1c3705687b22bb9bd065791e6bfe"
+    },
+    {
+      "path": "assets/index-Dch1g2w9.css",
+      "sourceSize": 47833,
+      "sourceSha256": "ea9ea5a2be73a70eb62a83976394862149755450ca84d20870d76b6192299cb7",
+      "outputSize": 47833,
+      "outputSha256": "ea9ea5a2be73a70eb62a83976394862149755450ca84d20870d76b6192299cb7"
+    },
+    {
+      "path": "assets/index-R1tKotR6.js",
+      "sourceSize": 1490691,
+      "sourceSha256": "e49e15f0db25c95556b6b1eccad89d6e77a32e284cd4e4852fad7dc9a3019902",
+      "outputSize": 1495011,
+      "outputSha256": "d9efa39b4eabdb3a54c3d209ca5db6cb04d1cc60fdef3acdcd2532712a8a6d10"
+    },
+    {
+      "path": "assets/index.es-erQsk_Nn.js",
+      "sourceSize": 127904,
+      "sourceSha256": "46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505",
+      "outputSize": 127904,
+      "outputSha256": "46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505"
+    },
+    {
+      "path": "assets/initRegister-CesUtdWC.js",
+      "sourceSize": 6183,
+      "sourceSha256": "c334655fa3d9e65f3ac08137bc5d2ef10b9daa37d3f5597d820225c875e5e38f",
+      "outputSize": 6183,
+      "outputSha256": "c334655fa3d9e65f3ac08137bc5d2ef10b9daa37d3f5597d820225c875e5e38f"
+    },
+    {
+      "path": "assets/page-flip-1-CZ8VQh4O.mp3",
+      "sourceSize": 14965,
+      "sourceSha256": "7df32409e65c6c56707f030a59327de24865e24ad38e243a9ad4a604f4a19161",
+      "outputSize": 14965,
+      "outputSha256": "7df32409e65c6c56707f030a59327de24865e24ad38e243a9ad4a604f4a19161"
+    },
+    {
+      "path": "assets/rain-Bd8ZRQ7x.png",
+      "sourceSize": 37390,
+      "sourceSha256": "e0935c5335c65986437f2c2e0e7c7cdc3c6bd1e603edf6acf6bf8d232331bb4a",
+      "outputSize": 37390,
+      "outputSha256": "e0935c5335c65986437f2c2e0e7c7cdc3c6bd1e603edf6acf6bf8d232331bb4a"
+    },
+    {
+      "path": "assets/snow-CJh9m2KR.png",
+      "sourceSize": 27182,
+      "sourceSha256": "5313a7b0259c483f1329b57c2d2744fe4ee506163a7876b3c8a6111ba8e01978",
+      "outputSize": 27182,
+      "outputSha256": "5313a7b0259c483f1329b57c2d2744fe4ee506163a7876b3c8a6111ba8e01978"
+    },
+    {
+      "path": "assets/switch-1-DI-7VpPw.mp3",
+      "sourceSize": 9325,
+      "sourceSha256": "99b576bc49cf679b735460e30f1b97f7a07e9f3dc053c266a27d6b719f5e8b5b",
+      "outputSize": 9325,
+      "outputSha256": "99b576bc49cf679b735460e30f1b97f7a07e9f3dc053c266a27d6b719f5e8b5b"
+    },
+    {
+      "path": "index.html",
+      "sourceSize": 19013,
+      "sourceSha256": "772b3c90804ff9b66bf29bc9cc8f16c9e7c08c5c3618c982bb510781b377ea57",
+      "outputSize": 19013,
+      "outputSha256": "772b3c90804ff9b66bf29bc9cc8f16c9e7c08c5c3618c982bb510781b377ea57"
+    },
+    {
+      "path": "webgal-engine.json",
+      "sourceSize": 1284,
+      "sourceSha256": "a49a40c80608be8a7ed3c97c1c64dcd507abed1e58c91bdd96766f8bcac82eed",
+      "outputSize": 1284,
+      "outputSha256": "a49a40c80608be8a7ed3c97c1c64dcd507abed1e58c91bdd96766f8bcac82eed"
+    }
+  ],
+  "bundle": {
+    "path": "assets/index-R1tKotR6.js",
+    "patches": [
+      {
+        "id": "queue-drain-microtask",
+        "find": "if(n.started=!0,i==null&&n.idle()){setTimeout(function(){return n.drain()},1)",
+        "replace": "if(n.started=!0,i==null&&n.idle()){queueMicrotask(function(){return n.drain()},1)"
+      },
+      {
+        "id": "queue-process-microtask",
+        "find": "o?n._tasks.unshift(s):n._tasks.push(s),setTimeout(n.process,1)},this.process=function(){for(",
+        "replace": "o?n._tasks.unshift(s):n._tasks.push(s),queueMicrotask(n.process,1)},this.process=function(){for("
+      },
+      {
+        "id": "queue-each-microtask",
+        "find": "return}i?setTimeout(function(){r(t[o++],s)},1):r(t[o++],s)}s()},e.queue=function(t,r){return new e(t,r)},e}(),gS=100,pxe=/(#[\\w-]+)?$/,Mc=function(){function e(t,r){var n=this",
+        "replace": "return}i?queueMicrotask(function(){r(t[o++],s)},1):r(t[o++],s)}s()},e.queue=function(t,r){return new e(t,r)},e}(),gS=100,pxe=/(#[\\w-]+)?$/,Mc=function(){function e(t,r){var n=this"
+      },
+      {
+        "id": "background-load-microtask",
+        "find": "const c=()=>{setTimeout(()=>{var v,g",
+        "replace": "const c=()=>{queueMicrotask(()=>{var v,g"
+      },
+      {
+        "id": "background-load-delay",
+        "find": "E.scale.x=S,E.scale.y=S,E.anchor.set(.5),E.position.y=this.stageHeight/2,i.setBaseX(this.stageWidth/2),i.setBaseY(this.stageHeight/2),i.pivot.set(0,this.stageHeight/2),i.addChild(E),this.notifyTargetReferenceBoxChanged(t),this.requestRender()}},0)}",
+        "replace": "E.scale.x=S,E.scale.y=S,E.anchor.set(.5),E.position.y=this.stageHeight/2,i.setBaseX(this.stageWidth/2),i.setBaseY(this.stageHeight/2),i.pivot.set(0,this.stageHeight/2),i.addChild(E),this.notifyTargetReferenceBoxChanged(t),this.requestRender()}})}"
+      },
+      {
+        "id": "video-background-load-microtask",
+        "find": "const l=()=>{setTimeout(()=>{console.debug(\"start loaded video: \"+r)",
+        "replace": "const l=()=>{queueMicrotask(()=>{console.debug(\"start loaded video: \"+r)"
+      },
+      {
+        "id": "video-background-load-delay",
+        "find": "S.scale.x=b,S.scale.y=b,S.anchor.set(.5),S.position.y=this.stageHeight/2,i.setBaseX(this.stageWidth/2),i.setBaseY(this.stageHeight/2),i.pivot.set(0,this.stageHeight/2),i.addChild(S),this.notifyTargetReferenceBoxChanged(t)})},0)}",
+        "replace": "S.scale.x=b,S.scale.y=b,S.anchor.set(.5),S.position.y=this.stageHeight/2,i.setBaseX(this.stageWidth/2),i.setBaseY(this.stageHeight/2),i.pivot.set(0,this.stageHeight/2),i.addChild(S),this.notifyTargetReferenceBoxChanged(t)})})}"
+      },
+      {
+        "id": "figure-load-microtask",
+        "find": "const d=()=>{setTimeout(()=>{var x,m",
+        "replace": "const d=()=>{queueMicrotask(()=>{var x,m"
+      },
+      {
+        "id": "figure-load-delay",
+        "find": "o.setBaseY(this.stageHeight/2),D<this.stageHeight&&o.setBaseY(this.stageHeight/2+(this.stageHeight-D)/2),o.setBaseX(X1(n,this.stageWidth,O)),o.pivot.set(0,this.stageHeight/2),o.addChild(T),this.notifyTargetReferenceBoxChanged(t),this.requestRender()}},0)}",
+        "replace": "o.setBaseY(this.stageHeight/2),D<this.stageHeight&&o.setBaseY(this.stageHeight/2+(this.stageHeight-D)/2),o.setBaseX(X1(n,this.stageWidth,O)),o.pivot.set(0,this.stageHeight/2),o.addChild(T),this.notifyTargetReferenceBoxChanged(t),this.requestRender()}})}"
+      },
+      {
+        "id": "disable-placeholder-polling",
+        "find": "return setTimeout(()=>{I.sceneManager.resetScene()},5),bTe(),sy(),Yo(r).then(n=>{I.sceneManager.sceneData.currentScene=xo(n,\"start.txt\",r)}),t(Ot({component:\"showTitle\",visibility:!0})),IT(Pe.getState().GUI.titleBgm),Ar()},wTe=e=>(jU(e.content),Ar()),ETe=e=>(ee.warn(\"pixi 被脚本重新初始化\"),I.gameplay.performController.unmountPerformByPrefix(\"PixiPerform\",!0),Y.removeAllPixiPerforms(),Ar()),Ct={audioContext:null,source:null,analyser:void 0,dataArray:void 0,audioLevelInterval:setInterval(()=>{},0),blinkTimerID:setTimeout(()=>{},0),maxAudioLevel:0},ATe=async()=>{if(!Ct.audioContext){const e=window.AudioContext??window.webkitAudioContext",
+        "replace": "return setTimeout(()=>{I.sceneManager.resetScene()},5),bTe(),sy(),Yo(r).then(n=>{I.sceneManager.sceneData.currentScene=xo(n,\"start.txt\",r)}),t(Ot({component:\"showTitle\",visibility:!0})),IT(Pe.getState().GUI.titleBgm),Ar()},wTe=e=>(jU(e.content),Ar()),ETe=e=>(ee.warn(\"pixi 被脚本重新初始化\"),I.gameplay.performController.unmountPerformByPrefix(\"PixiPerform\",!0),Y.removeAllPixiPerforms(),Ar()),Ct={audioContext:null,source:null,analyser:void 0,dataArray:void 0,audioLevelInterval:null,blinkTimerID:setTimeout(()=>{},0),maxAudioLevel:0},ATe=async()=>{if(!Ct.audioContext){const e=window.AudioContext??window.webkitAudioContext"
+      },
+      {
+        "id": "expose-preview-commands",
+        "find": "return}Y.updateEffectAndCommit({target:ne.target,transform:rt})},it={\"preview.command.sync-scene\":ne=>(Oe(ne),{}),\"preview.command.run-scene-content\":ne=>(me(ne),{}),\"preview.command.run-snippet\":ne=>(he(ne),{}),\"preview.command.reload-templates\":()=>(ae(),{}),\"preview.command.set-effect\":ne=>(Ze(ne),{}),\"preview.command.set-component-visibility\":ne=>(Ie(ne),{}),\"preview.command.set-font-optimization\":ne=>(xe(ne),{}),\"preview.command.set-text-read-mode\":ne=>(Ue(ne),{})},gt=ne=>QCe(ne.type),Ae=ne=>{switch(ne.type){case\"preview.query.reference-box\":TPe(ne,I.gameplay.pixiStage).then(Be=>{m.send(Be)}).catch(Be=>{ee.error(`执行编辑器同步 V1 请求失败：${ne.type}`,Be),T(ne,\"internal-error\",\"预览运行时无法安全完成该请求\")})",
+        "replace": "return}Y.updateEffectAndCommit({target:ne.target,transform:rt})},it=globalThis.__probeCommands={\"preview.command.sync-scene\":ne=>(Oe(ne),{}),\"preview.command.run-scene-content\":ne=>(me(ne),{}),\"preview.command.run-snippet\":ne=>(he(ne),{}),\"preview.command.reload-templates\":()=>(ae(),{}),\"preview.command.set-effect\":ne=>(Ze(ne),{}),\"preview.command.set-component-visibility\":ne=>(Ie(ne),{}),\"preview.command.set-font-optimization\":ne=>(xe(ne),{}),\"preview.command.set-text-read-mode\":ne=>(Ue(ne),{})},gt=ne=>QCe(ne.type),Ae=ne=>{switch(ne.type){case\"preview.query.reference-box\":TPe(ne,I.gameplay.pixiStage).then(Be=>{m.send(Be)}).catch(Be=>{ee.error(`执行编辑器同步 V1 请求失败：${ne.type}`,Be),T(ne,\"internal-error\",\"预览运行时无法安全完成该请求\")})"
+      }
+    ],
+    "append": "\r\n;globalThis.__wgProbe={core:I,store:Pe};\r\n\nObject.assign(globalThis.__wgProbe,{parseScene:xo});\n\nObject.assign(globalThis.__wgProbe,{stageManager:Y});\n",
+    "bodyNewlines": "crlf"
+  }
+}
