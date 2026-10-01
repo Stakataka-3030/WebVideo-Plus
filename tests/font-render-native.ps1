@@ -76,9 +76,14 @@ for ($index = 0; $index -lt $performs.Count; $index++) {
   $event = $performs[$index]
   $nextStart = if ($index + 1 -lt $performs.Count) { [double]$performs[$index + 1].startMs / 1000 } else { [double]$result.durationSeconds }
   $seconds = [Math]::Max(0, [Math]::Min($result.durationSeconds - 0.05, $nextStart - 0.15))
-  $stamp = $seconds.ToString('0.000', [Globalization.CultureInfo]::InvariantCulture)
+  $frameIndex = [Math]::Min([int]$stream.nb_read_frames - 1, [Math]::Max(0, [int][Math]::Floor($seconds * 30)))
+  $seconds = $frameIndex / 30.0
   $png = Join-Path $run ("dialogue-{0}.png" -f ($index + 1))
-  Invoke-Checked $ffmpeg @('-v', 'error', '-y', '-ss', $stamp, '-i', ('"' + $video + '"'), '-frames:v', '1', ('"' + $png + '"')) ("frame-{0}" -f $index)
+  # Decode from the beginning and select an exact frame. Fast input seeking can
+  # return no frame near the final GOP while still exiting successfully.
+  $select = 'select=eq(n\,' + $frameIndex + ')'
+  Invoke-Checked $ffmpeg @('-v', 'error', '-y', '-i', ('"' + $video + '"'), '-vf', $select, '-fps_mode', 'passthrough', '-frames:v', '1', ('"' + $png + '"')) ("frame-{0}" -f $index)
+  if (-not (Test-Path -LiteralPath $png) -or (Get-Item -LiteralPath $png).Length -eq 0) { throw "FFmpeg emitted no PNG for dialogue $($index+1), frame $frameIndex; diagnostics: $run" }
   $bitmap = [Drawing.Bitmap]::new($png)
   try {
     $cyan = 0
@@ -89,7 +94,7 @@ for ($index = 0; $index -lt $performs.Count; $index++) {
       }
     }
     if ($cyan -lt 70) { throw "Decoded dialogue $($index+1) has no sufficient cyan text pixels ($cyan); inspect $png" }
-    $frames += [PSCustomObject]@{ sceneLine=$event.line; seconds=$seconds; png=[IO.Path]::GetFileName($png); sampledCyanTextPixels=$cyan }
+    $frames += [PSCustomObject]@{ sceneLine=$event.line; frameIndex=$frameIndex; seconds=$seconds; png=[IO.Path]::GetFileName($png); sampledCyanTextPixels=$cyan }
   } finally { $bitmap.Dispose() }
 }
 [PSCustomObject]@{ passed=$true; runtime='WebView2'; fontSha256=$fontHash; decodedFrames=[int]$stream.nb_read_frames; width=$stream.width; height=$stream.height; samples=$frames } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $run 'native-summary.json') -Encoding UTF8
