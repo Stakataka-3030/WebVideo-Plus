@@ -1,0 +1,4 @@
+Game_name:Font render regression;
+Default_Language:zh_CN;
+Stage_Width:1920;
+Stage_Height:1080;

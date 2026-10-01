@@ -11,4 +11,4 @@
 - 导出内核：`0.6.42`（本次未改动）
 - 适配基线：WebGAL Terre `4.6.4`
 
-正式安装器为 `WebVideo+-Setup-1.0.2.exe`。此前的 Live2D 切段与文字显示改进见 [1.0.1 发行说明](RELEASE_NOTES_1.0.1.md)；完整记录见 [CHANGELOG.md](CHANGELOG.md)。
+正式安装器为 `WebVideo+-Setup-1.0.2.exe`。此前的 Live2D 切段与文字显示改进见 [1.0.1 发行说明](RELEASE_NOTES_1.0.1.md)；完整记录见 [CHANGELOG.md](../../CHANGELOG.md)。

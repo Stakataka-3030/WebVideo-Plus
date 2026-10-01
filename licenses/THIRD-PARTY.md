@@ -1,14 +1,15 @@
 # 上游与第三方来源
 
-本文件记录 WebVideo+ 当前实验分支实际使用、构建时提取或随包保留的主要第三方来源。**WebVideo+ 原创部分的主许可证为 MPL-2.0**；根目录 [`LICENSES.md`](../LICENSES.md) 负责按路径和材料划分 MPL-2.0、AGPL-3.0、MIT 与其他上游许可证的范围。更细的传递依赖仍以各上游项目自己的包清单和许可为准。
+本文件记录 WebVideo+ 当前实际使用、构建时提取或随包保留的主要第三方来源。**WebVideo+ 原创部分的主许可证为 MPL-2.0**；根目录 [`LICENSES.md`](../LICENSES.md) 负责按路径和材料划分 MPL-2.0、AGPL-3.0、MIT 与其他上游许可证的范围。更细的传递依赖仍以各上游项目自己的包清单和许可为准。
 
 ## 当前运行与构建依赖
 
-- **OpenWebGAL / WebGAL Terre 4.6.5**：当前实验分支的编辑器基座。仓库中的 `baseline/terre-4.6.5.js` 用于精确挂载定位；旧 4.6.4 基线仅保留作历史参考。相关 MPL-2.0 文本保存在本目录。
-- **OpenWebGAL / WebGAL 4.6.5**：播放引擎和导出运行资源的上游。构建时使用已核对 SHA-256 的官方 Web ZIP，而不是在本仓库内重新构建完整 WebGAL。
-- **Microsoft WebView2**：C# 原生导出与嵌入浏览器运行环境。运行资源继续来自固定的 0.4.10.2 bootstrap；当前源码构建缺失的 managed SDK/loader 固定使用 Microsoft.Web.WebView2 1.0.4191.47 NuGet 包补齐，不解析 latest，并随包保留相应许可文本。
+- **OpenWebGAL / WebGAL Terre 4.6.5**：WebVideo+ 的编辑器基座。仓库中的 `baseline/terre-4.6.5.js` 用于精确挂载定位；相关 MPL-2.0 文本保存在本目录。
+- **OpenWebGAL / WebGAL 4.6.5**：播放引擎和导出运行资源的上游。构建时从固定官方 Web 发行包选择运行文件并重建导出探针；最终 16 份文件与原导出快照字节一致，不重新编译整个 WebGAL。见 `build/runtime-patches.json` 与 [运行资源来源说明](WEBGAL-RUNTIME-SOURCES.md)。
+- **OPPO Sans v1.00**：保留上游原始字体与 `WebgalUI` CSS，不进行字体替换、修改或重新授权。本项目暂按 OPPO 历史公开免费商用许可涵盖软件内嵌分发理解；公开限制和解释边界见上述来源说明。资源圆体与思源宋体仍分别适用其原有 OFL 许可。
+- **Microsoft WebView2**：C# 原生导出与嵌入浏览器运行环境。managed SDK/loader 固定使用 Microsoft.Web.WebView2 1.0.4191.47 官方 NuGet 包；安装引导程序固定 Microsoft 官方最终下载地址及 SHA-256，Windows 上验证签名。两者不再要求旧安装器，不解析 latest，并随包保留相应许可文本。
 - **FFmpeg / ffprobe**：视频编码、媒体探测和音频混合。安装器在缺少可用版本时按固定版本获取；FFmpeg 适用其自身许可。
-- **Node.js**：仅用于可选 AI 运行环境及构建工具。启用 AI 模块时随其运行目录提供固定 Node 可执行文件。
+- **Node.js**：仅用于可选 AI 运行环境及构建工具。准备时下载官方 Node.js 22.20.0 Windows x64 ZIP，验证 SHA-256；启用 AI 模块时随其运行目录提供固定可执行文件和许可证。
 - **DeepSeek Harness / DSH 0.1.5-rc.1** 与 **@earendil-works/pi-ai 0.85.1**：可选 AI 模块的多提供商、流式协议和模型目录基础。版本由 `ai-runtime/package-lock.json` 固定。
 - **js-yaml 4.1.1**：Anogo YAML 导入使用的解析器；仓库包含压缩版本及 MIT 许可。
 - **Anogo**：结构化故事格式和默认动作词表的来源。`anogo-actions.factory.json` 中的默认动作词表继续适用 AGPL-3.0；WebVideo+ 自行实现的导入适配代码采用根目录 MPL-2.0。对应来源说明与 AGPL-3.0 文本随包保留。

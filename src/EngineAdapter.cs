@@ -123,20 +123,29 @@ namespace NativeVideo {
     return bundle!=null&&File.Exists(bundle)&&new FileInfo(bundle).Length<8*1024*1024&&Files.Hash(bundle)==MygoHash;
    } catch { return false; }
   }
-  public static string FindMygo(string gamesRoot=null) {
+  public static string[] MygoSearchRoots(string gamesRoot=null,string terreDir=null,string configRoot=null) {
    var roots=new List<string>();
-   if(!string.IsNullOrWhiteSpace(gamesRoot))roots.Add(Path.Combine(Path.GetDirectoryName(Files.Full(gamesRoot)),"derivative-engines"));
-   roots.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".webgal_terre","derivative-engines"));
-   foreach(string root in roots.Distinct(StringComparer.OrdinalIgnoreCase)) {
+   if(!string.IsNullOrWhiteSpace(terreDir)){
+    string activeGames=TerreUserData.GamesRoot(terreDir,configRoot);
+    roots.Add(Path.Combine(Path.GetDirectoryName(activeGames),"derivative-engines"));
+    if(!string.IsNullOrWhiteSpace(gamesRoot)&&(!TerreUserData.SamePath(gamesRoot,TerreUserData.DefaultGamesRoot)||TerreUserData.SamePath(activeGames,TerreUserData.DefaultGamesRoot)))roots.Add(Path.Combine(Path.GetDirectoryName(Files.Full(gamesRoot)),"derivative-engines"));
+   }else{
+    if(!string.IsNullOrWhiteSpace(gamesRoot))roots.Add(Path.Combine(Path.GetDirectoryName(Files.Full(gamesRoot)),"derivative-engines"));
+    roots.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".webgal_terre","derivative-engines"));
+   }
+   return roots.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+  }
+  public static string FindMygo(string gamesRoot=null,string terreDir=null) {
+   foreach(string root in MygoSearchRoots(gamesRoot,terreDir)) {
     if(!Directory.Exists(root))continue;
     foreach(string candidate in Directory.GetDirectories(root).OrderBy(p=>p,StringComparer.OrdinalIgnoreCase))
      if(SupportedMygo(candidate))return candidate;
    }
    return null;
   }
-  public static object[] Options(string gamesRoot) {
+  public static object[] Options(string gamesRoot,string terreDir=null) {
    var options=new List<object>{J.O("value","webgal","label","WebGAL（原版）")};
-   if(FindMygo(gamesRoot)!=null)options.Add(J.O("value","mygo","label","MyGO 3.2.1"));
+   if(FindMygo(gamesRoot,terreDir)!=null)options.Add(J.O("value","mygo","label","MyGO 3.2.1"));
    return options.ToArray();
   }
   public static EngineAdapter Select(object request) {

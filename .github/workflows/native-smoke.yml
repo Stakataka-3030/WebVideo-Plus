@@ -3,12 +3,17 @@ name: Native smoke build
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   native-smoke:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -16,26 +21,99 @@ jobs:
         with:
           node-version: '22.20.0'
 
-      - name: Download fixed bootstrap installer
+      - name: Verify repository layout and browser regressions
         shell: pwsh
         run: |
-          curl.exe -L "https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v0.4.10.2/WebVideo%2B-Setup-0.4.10.2.exe" -o bootstrap.exe
-          if ($LASTEXITCODE -ne 0) { throw "Bootstrap download failed" }
+          node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs tests/build-inputs.test.mjs tests/ai-build-metadata.test.mjs tests/font-render.test.mjs tests/terre-ui-font.test.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Node regression checks failed" }
+          node tests/update-check-and-atlas.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Update and atlas checks failed" }
+          .\tests\build-inputs.test.ps1
 
-      - name: Prepare fixed WebView2 and engine build inputs
+      - name: Verify injected controls inherit Terre host typography
         shell: pwsh
-        run: .\prepare-build.ps1 -InstallerPath (Join-Path $PWD 'bootstrap.exe')
+        run: |
+          node tests/terre-ui-font-render.mjs --out .build/terre-ui-font
+          if ($LASTEXITCODE -ne 0) { throw "Terre UI font inheritance checks failed" }
 
-      - name: Compile native exporter and run lifecycle regressions
+      - name: Prepare pinned upstream dependencies from a clean checkout
+        shell: powershell
+        run: .\prepare-build.ps1
+
+      - name: Verify runtime reconstruction and offline preparation
         shell: pwsh
-        run: .\build.ps1
+        run: |
+          node tests/verify-webgal-runtime.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Runtime reconstruction regression checks failed" }
+          .\prepare-build.ps1 -Offline
+          node scripts/verify-build-inputs.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Prepared inputs failed verification" }
 
-      - name: Verify semantic worker segmentation
+      - name: Compare multilingual font rendering with the upstream baseline
+        shell: pwsh
+        run: |
+          . .\scripts\build-common.ps1
+          Expand-CheckedBuildArchive .build/downloads/WebGAL-4.6.5-web.zip .build/font-baseline
+          node tests/font-render.mjs --runtime package/runtime/web --baseline .build/font-baseline --out .build/font-render
+          if ($LASTEXITCODE -ne 0) { throw "Font rendering comparison failed" }
+
+      - name: Compile native exporter for early font smoke
+        shell: powershell
+        run: |
+          .\build.ps1
+          node scripts/build-timeline.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Timeline metadata preparation failed" }
+
+      - name: Verify optional Live2D preflight against referenced assets
+        shell: powershell
+        run: .\tests\font-render-preflight.test.ps1
+
+      - name: Render and decode a multilingual native export
+        shell: pwsh
+        run: |
+          . .\scripts\build-common.ps1
+          $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
+          $archive = Get-PinnedBuildInput $lock.ffmpegTest (Join-Path $PWD '.build/downloads')
+          Expand-CheckedBuildArchive $archive (Join-Path $PWD '.build/ffmpeg-test')
+          $env:PATH = (Join-Path $PWD ('.build/ffmpeg-test/ffmpeg-' + $lock.ffmpegTest.version + '-essentials_build/bin')) + ';' + $env:PATH
+          .\tests\font-render-native.ps1
+
+      - name: Restore locked optional AI dependencies
+        shell: pwsh
+        working-directory: ai-runtime
+        run: |
+          npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw "Locked AI dependency restore failed" }
+
+      - name: Build the complete product and installer from current source
+        shell: powershell
+        run: |
+          .\build-product.ps1 -InternalBuild
+          # Repeat in the same host to catch locked outputs and stale staging.
+          .\build-product.ps1 -Fast -InternalBuild
+
+      - name: Verify semantic worker segmentation and complete package
         shell: pwsh
         run: |
           $p = Start-Process -FilePath (Join-Path $PWD 'package/WebGAL.Video.exe') -ArgumentList @('segment-smoke') -Wait -PassThru -NoNewWindow
           if($p.ExitCode -ne 0){ throw "Semantic segment smoke failed with exit code $($p.ExitCode)" }
+          node scripts/verify-package.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Full package verification failed" }
+          $version = (Get-Content version.json -Raw | ConvertFrom-Json).productVersion
+          if(-not(Test-Path -LiteralPath "dist/WebVideo+-Setup-$((Get-Content version.json -Raw | ConvertFrom-Json).productInternalVersion)-dev.exe")){throw "Installer output is missing"}
 
-      - name: Verify Terre integration anchors
-        shell: pwsh
-        run: node .\build-timeline.mjs
+      - name: Preserve synthetic font regression diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: font-render-diagnostics
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            .build/terre-ui-font/*.png
+            .build/terre-ui-font/*.json
+            .build/font-render/*.png
+            .build/font-render/*.json
+            .build/font-render/native/*/*.png
+            .build/font-render/native/*/*.json
+            .build/font-render/native/*/*.log

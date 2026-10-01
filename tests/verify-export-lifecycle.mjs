@@ -4,7 +4,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
 
-const root=path.dirname(fileURLToPath(import.meta.url));
+const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const context={console,queueMicrotask,setTimeout,clearTimeout};
 context.globalThis=context;
 context.scheduleAudioCommand=()=>{};

@@ -1,0 +1,12 @@
+{
+  "zh": "简体中文：你好，世界！字体替换后，标点与换行都应清晰。",
+  "zhHant": "繁體中文：閱讀與對話，應保持清楚、完整。",
+  "ja": "日本語：こんにちは。ひらがな・カタカナ・漢字を確認します。",
+  "digits": "0123456789 2026-10-01 23:59:58 +12.50% (1080p/60fps)",
+  "latin": "WebVideo+ AVATAR office minimum WWW iii 1,234.56",
+  "wrap": "导出 WebVideo+ 2026，画面尺寸 1920×1080；日本語テスト。 Export 0123456789, AVATAR office. 字体应清晰，换行应完整。",
+  "explicitBreak": "第一行：中文 0123456789\n第二行：日本語 ABC xyz",
+  "dialogue": "字幕检查：中文、かな、カナ。\nWebVideo+ 2026 / 0123456789",
+  "speaker": "旁白 ナレーター 01",
+  "extended": "Expected fallback: ĄŁĞ  ӁӂӢӣ  H₂O / 10⁵"
+}

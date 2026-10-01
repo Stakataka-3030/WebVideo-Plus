@@ -1,0 +1,11 @@
+/* Force the replaced UI face in the real export pipeline, regardless of saved
+   textboxFont. The project intentionally has no template or runtime fonts. */
+body { background: #15283c !important; }
+#textBoxMain { font-family: WebgalUI, sans-serif !important; }
+#textBoxMain [class*="_outer_"] {
+  background-image: none !important;
+  color: #32ffff !important;
+}
+#textBoxMain [class*="_inner_"] { -webkit-text-stroke-color: #102031 !important; }
+
+#textBoxMain [class*="_text_"] { font-size: 40px !important; line-height: 80px !important; }
