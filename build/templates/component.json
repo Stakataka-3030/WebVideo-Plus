@@ -1,0 +1,18 @@
+{
+  "name": "webgal-native-video-export",
+  "runtime": "C# + WebView2",
+  "electronRequired": false,
+  "nodeRequired": false,
+  "workers": {
+    "minimum": 1,
+    "maximum": 32
+  },
+  "speedRange": {
+    "minimum": -500,
+    "maximum": 100,
+    "recommended": [
+      0,
+      100
+    ]
+  }
+}

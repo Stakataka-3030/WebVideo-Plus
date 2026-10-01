@@ -1,0 +1,247 @@
+/* Uses the host font and compact Craft-like controls; no private font assets. */
+.wvc-launch {
+  font: inherit;
+  cursor: pointer;
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 40;
+  padding: 7px 12px;
+  border: 1px solid #aab3c1;
+  border-radius: 6px;
+  background: #f6f8fb;
+  color: #263044;
+  box-shadow: 0 2px 8px #0002;
+}
+.dark .wvc-launch {
+  background: #303741;
+  color: #e0e4eb;
+  border-color: #627084;
+}
+.wvc-dialog {
+  font: inherit;
+  color: inherit;
+  width: min(1160px, 94vw);
+  max-height: 92vh;
+  padding: 0;
+  border: 1px solid #d6d9dd;
+  border-radius: 8px;
+  background: #fafafa;
+  box-shadow: 0 18px 60px #0003;
+}
+.wvc-dialog::backdrop {
+  background: #0005;
+}
+.wvc-header,
+.wvc-tabs,
+.wvc-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.wvc-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid #ddd;
+}
+.wvc-header strong {
+  font-size: 16px;
+  flex: 1;
+}
+.wvc-tabs {
+  padding: 8px 12px;
+  border-bottom: 1px solid #ddd;
+}
+.wvc-tabs button[aria-selected="true"] {
+  background: #e8edf5;
+  border-color: #8c9fb8;
+}
+.wvc-content {
+  padding: 16px;
+  overflow: auto;
+  max-height: 66vh;
+}
+.wvc-footer {
+  padding: 10px 16px;
+  border-top: 1px solid #ddd;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.wvc-panel[hidden],
+.wvc-hidden {
+  display: none !important;
+}
+.wvc-dialog button,
+.wvc-dialog input,
+.wvc-dialog select,
+.wvc-dialog textarea {
+  font: inherit;
+  color: inherit;
+  border: 1px solid #cdd2d8;
+  border-radius: 5px;
+  background: #fff;
+  padding: 6px 9px;
+}
+.wvc-dialog button {
+  cursor: pointer;
+}
+.wvc-dialog button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.wvc-dialog button:hover:not(:disabled) {
+  background: #edf0f4;
+}
+.wvc-dialog input[type="checkbox"] {
+  margin: 0 6px 0 0;
+}
+.wvc-dialog textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 110px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  resize: vertical;
+}
+.wvc-dialog label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.wvc-field {
+  display: grid !important;
+  gap: 5px !important;
+}
+.wvc-actions {
+  margin: 10px 0;
+}
+.wvc-card {
+  padding: 12px;
+  border: 1px solid #dce0e5;
+  border-radius: 6px;
+  margin: 12px 0;
+  background: #fff;
+}
+.wvc-card h3 {
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+.wvc-help {
+  font-size: 12px;
+  color: #66717f;
+  line-height: 1.65;
+}
+.wvc-error {
+  color: #b34b40;
+}
+.wvc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.wvc-list {
+  max-height: 370px;
+  overflow: auto;
+  border: 1px solid #dce0e5;
+  border-radius: 5px;
+}
+.wvc-row {
+  display: flex;
+  gap: 8px;
+  padding: 7px 9px;
+  align-items: center;
+  border-bottom: 1px solid #edf0f2;
+  font-size: 12px;
+}
+.wvc-row:last-child {
+  border: 0;
+}
+.wvc-row-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.wvc-row[aria-selected="true"] {
+  background: #edf2fa;
+}
+.wvc-line {
+  font-variant-numeric: tabular-nums;
+  color: #7a8490;
+  min-width: 34px;
+}
+.wvc-tag {
+  font-size: 10px;
+  background: #edf0f4;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.wvc-preview {
+  margin-top: 14px;
+}
+.wvc-preview textarea {
+  height: 230px;
+}
+.wvc-warning {
+  color: #975f14;
+  white-space: pre-wrap;
+}
+.wvc-dialog progress {
+  width: 100%;
+}
+.wvc-dialog summary {
+  cursor: pointer;
+}
+.wvc-native-note {
+  font-size: 12px;
+  margin-top: 12px;
+  color: #66717f;
+}
+.dark .wvc-dialog {
+  background: #202328;
+  color: #e0e4eb;
+  border-color: #4a505a;
+}
+.dark .wvc-dialog button,
+.dark .wvc-dialog input,
+.dark .wvc-dialog select,
+.dark .wvc-dialog textarea,
+.dark .wvc-card {
+  background: #282d34;
+  color: #e0e4eb;
+  border-color: #4a505a;
+}
+.dark .wvc-header,
+.dark .wvc-tabs,
+.dark .wvc-footer,
+.dark .wvc-list,
+.dark .wvc-row {
+  border-color: #454b54;
+}
+.dark .wvc-row[aria-selected="true"],
+.dark .wvc-tabs button[aria-selected="true"] {
+  background: #354254;
+}
+.dark .wvc-help,
+.dark .wvc-native-note {
+  color: #aeb8c5;
+}
+.dark .wvc-tag {
+  background: #3b4350;
+}
+@media (max-width: 760px) {
+  .wvc-grid {
+    grid-template-columns: 1fr;
+  }
+  .wvc-dialog {
+    width: 96vw;
+  }
+  .wvc-content {
+    padding: 10px;
+  }
+  .wvc-row {
+    flex-wrap: wrap;
+  }
+}

@@ -17,3 +17,7 @@ if($LASTEXITCODE -ne 0){throw 'Process guard build failed'}
 & $taskCompiler /nologo /target:winexe /platform:x64 /optimize+ $taskIconArg ('/out:'+(Join-Path $taskOut 'TerreLauncher.exe')) /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll (Join-Path $taskRoot 'launcher/TerreLauncher.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Native launcher build failed' }
 Write-Output 'Built native component'
+
+# Bind Craft packaging to this exact freshly compiled kernel source and binary.
+& node (Join-Path $taskRoot 'craft/installer/build-receipt.mjs') --write
+if($LASTEXITCODE -ne 0){throw 'Craft kernel build receipt failed'}

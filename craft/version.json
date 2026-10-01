@@ -1,0 +1,18 @@
+{
+  "productVersion": "1.1.2c",
+  "installerVersion": "1.1.2.0c",
+  "fileVersion": "1.1.2.0",
+  "kernelVersion": "0.6.46",
+  "baseProductVersion": "1.1.2",
+  "baseKernelVersion": "0.6.46",
+  "nodeVersion": "22.20.0",
+  "nodeSha256": "fdddbf4581e046b8102815d56208d6a248950bb554570b81519a8a5dacfee95d",
+  "supportedHosts": [
+    {
+      "version": "1.0.0-beta.2",
+      "sha256": "3515c1329b3b033d1882329026a4c5d3cf9eb21cb50b5b0040d7882daf933d0d"
+    }
+  ],
+  "updateObserverValidated": false,
+  "sameNameUpdateValidated": false
+}

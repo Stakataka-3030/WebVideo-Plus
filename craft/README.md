@@ -1,9 +1,39 @@
-# WebVideo+ Craft 注入原型
+# WebVideo+ Craft 开发版
 
-这个 Windows 原型使用 **Craft 已发布的程序**，不重新编译，也不覆盖原安装。安装器在独立目录放置启动包装器、注入脚本、Node 运行时和 WebVideo+ 内核。请关闭原 Craft，再启动 `WebVideoCraft.Launcher.exe`。包装器只在本次 Craft 进程中开启随机的本机 WebView2 调试端口，向编辑器顶栏注入一个“导出视频”按钮；Craft 退出时端口随进程关闭。不要把这个调试端口暴露到网络。
+此目录是基于本机 `craft/mvp`（bee5888）继续开发的完整 Craft 编辑器适配，不是只提供导出按钮。当前保留官方 Craft 自动检查更新，功能入口通过当前启动会话的 WebView2/CDP 注入。未改官方更新源、公钥和签名校验。
 
-按钮从 Craft 的当前工程记录读取游戏、引擎和模板路径，调用 Craft 原有的 `export_web` 命令把 VFS 叠加层整理到临时目录，再由 `WebGAL.Video.exe` 导出 MP4。未修改 Craft 的项目文件或原程序。成功后清理临时 Web 目录，失败时保留供排查；导出工作目录保留任务记录。运行日志在适配包目录的 `craft-injection.log`，任务日志在成片旁的 `.native-work-*` 目录。
+## 当前边界
 
-从同版本已构建的 `package/` 运行 `./craft/build-craft-package.ps1`，得到 `dist/WebVideoCraft-Setup-1.1.2.0c.exe`。安装时选择现有 `webgal-craft.exe`；默认适配包目录是 `%LOCALAPPDATA%/WebVideoCraft/1.1.2.0c`。内核标识为 `0.6.46c`，与 Terre 版隔离。随包包含 Node.js 22.20.0 及其许可证；FFmpeg 和 ffprobe 仍需在系统 PATH 中。
+- 已验证宿主：官方 Windows `1.0.0-beta.2`，SHA-256 `3515c1329b3b033d1882329026a4c5d3cf9eb21cb50b5b0040d7882daf933d0d`
+- 安装默认为独立增强入口。宿主保持原文件；直接打开官方 EXE 不会自动加载增强界面
+- 同名包装器是显式实验选项，需先在隔离副本测试。未知宿主哈希会拒绝挂载
+- 完整功能状态见 [FEATURE-COVERAGE.md](FEATURE-COVERAGE.md)，云端单元测试与 Windows 实测分开记录
+- 协调更新安装尚未通过真实官方 NSIS 升级测试，生产入口保持关闭；可以继续使用官方更新，之后检查新宿主兼容性并重新打开增强入口
 
-这是最小功能验证：固定从 `start.txt` 开始，1280×720、30 fps、1 进程、完整 MP4，其他行为沿用内核默认值。点击前需先在 Craft 保存编辑中的内容。已在本机 Craft `1.0.0-beta.2` 的隔离副本验证“注入按钮 → Craft 原生 VFS Web 导出 → WebVideo+ 导出”，用 WebGAL 4.6.4 测试工程得到 6.6 秒、198 帧 H.264 成片。当前工程自动识别逻辑尚未用一个真实注册在 Craft 中的工程做最终验收，因此不作为正式发布版。
+## 编辑与工程
+
+批量编辑通过 Craft 原生文档事务提交，保留未保存状态和原生撤销。提交前检查工程、活动文档、文本、revision 和引擎绑定；等待超过宿主历史合并窗口，期间文本有变化就要求重新预览。不会使用把文档标记为 clean 的系统重构同步接口。
+
+资源列表和读取通过 Craft 的 VFS。导出使用官方 export_web 生成拥有明确归属的临时快照，并检查源文件/文档是否变化。工程的引擎与模板来自原生注册表和绑定配置；不把默认文件夹扫描当成工程发现。
+
+音乐时长来自实际探测，故事时间来自实际引擎运行。预览速度通过经过所属页面检查的独立 iframe/CDP session 读取。没有准确加载配置证据时，速度修改只影响本次预览，并明确说明；不会猜测 IndexedDB 存档键。
+
+## 构建（Windows，隔离工作目录）
+
+1. 运行 `powershell -File prepare-build.ps1`，从带 SHA-256 校验的官方固定来源重建输入；不再强制依赖历史安装器
+2. 运行 `powershell -File build.ps1`，编译本次源代码的原生内核
+3. 在 `ai-runtime` 执行 `npm ci --ignore-scripts`，再运行 `powershell -File scripts/build-ai.ps1`，准备本次源码的 AI 运行模块；构建不调用模型服务
+4. 运行 `powershell -File craft/build-craft-package.ps1`，生成独立适配安装包
+5. 仅在新建的 Craft 副本、新 WebView profile 和测试项目上安装/验收；确认版本清单、撤销、VFS、导出和恢复结果后再考虑真实使用
+
+版本由根 `version.json` 与 `craft/version.json` 分开记录：根文件是原生内核基础版本，Craft 文件是适配产品版本。没有创建公开发行版。
+
+## 验证
+
+云端：`node --test craft/tests/*.test.mjs tests/features-imports.test.mjs tests/craft-installer.test.mjs tests/craft-packaging.test.mjs tests/build-inputs.test.mjs`
+
+Windows 原生回归：`tests/font-render-preflight.test.ps1` 验证普通项目不会因未用的 Live2D SDK 被阻挡；`craft/tests/native-update-observer.ps1` 只编译、运行写入隔离标记文件的合成宿主/安装器，不升级 Craft。合成安装器通过也不代表官方 NSIS 升级已验证。
+
+当前会话日志在适配目录的 `state/sessions/<sessionId>`，内核用户配置位于独立的 `state/kernel/user-data`。不会自动导入旧 Terre 的用户配置、凭据或模型列表；AI 请求只由显式功能操作启动。
+
+安装和卸载校验清单、文件哈希与归属。未知或已被官方更新替换的主程序不会被旧备份覆盖。未能证明安装完成时，不自动声明修复成功。

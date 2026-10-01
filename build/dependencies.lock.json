@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "webgal": {
+    "version": "4.6.4",
+    "file": "WebGAL-4.6.4-web.zip",
+    "url": "https://github.com/OpenWebGAL/WebGAL/releases/download/4.6.4/WebGAL-4.6.4-web.zip",
+    "sha256": "f7dbb153c0372044055ad167eeddc7202c5978bf661983328490ecd8d0a391ae",
+    "source": "https://github.com/OpenWebGAL/WebGAL/tree/4.6.4"
+  },
+  "webview2Sdk": {
+    "version": "1.0.4191.47",
+    "file": "microsoft.web.webview2.1.0.4191.47.nupkg",
+    "url": "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/1.0.4191.47/microsoft.web.webview2.1.0.4191.47.nupkg",
+    "sha256": "f492bbf547d0da329553b6727435b677579b1e9f91cc9e4a1ad029366d5f23d0"
+  },
+  "node": {
+    "version": "22.20.0",
+    "file": "node-v22.20.0-win-x64.zip",
+    "url": "https://nodejs.org/dist/v22.20.0/node-v22.20.0-win-x64.zip",
+    "sha256": "bb819d6eb8f5bfda294bbc83a7e4ec6539da67c4233d54b0d655b9248b15e29d",
+    "checksums": "https://nodejs.org/dist/v22.20.0/SHASUMS256.txt"
+  },
+  "webview2Bootstrap": {
+    "file": "MicrosoftEdgeWebview2Setup.exe",
+    "url": "https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/1c9db68b-8343-4d70-85c2-d3e3735cdf15/MicrosoftEdgeWebview2Setup.exe",
+    "sha256": "81c01751c8cc385a5991abb104205d42ac70094350ee8fb9e8ea580b51bb9554",
+    "source": "https://developer.microsoft.com/en-us/microsoft-edge/webview2/",
+    "resolvedFrom": "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+  },
+  "stagedFiles": {
+    "Microsoft.Web.WebView2.Core.dll": "e6f54c8ce208e3797c427d01ad671b47cb25abc85604753d6ec2546d0ffef550",
+    "Microsoft.Web.WebView2.WinForms.dll": "cc3d2937c350a4f5e20399855bcab4fe695a395308feb2ed67394faa6a1ae849",
+    "WebView2Loader.dll": "c66e4a92fdc7a216118e43b7a5024ea2200e8c43f9310bf20d96a0084f82c5bc",
+    "licenses/WebView2-SDK-LICENSE.txt": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55",
+    "ai-runtime/node.exe": "fdddbf4581e046b8102815d56208d6a248950bb554570b81519a8a5dacfee95d",
+    "ai-runtime/LICENSE-Node.txt": "339c50294da6a84322dcbe7285b57b248123bd4d9e37a2f72d68d5abf2574783"
+  },
+  "ffmpegTest": {
+    "version": "9.0.1",
+    "file": "ffmpeg-9.0.1-essentials_build.zip",
+    "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0.1/ffmpeg-9.0.1-essentials_build.zip",
+    "sha256": "fec81ae03971d9dd4be3ebe02e263bd2ec1d789483f931bdba5f5715e65da2e9",
+    "purpose": "CI-only video export regression; matches installer runtime pin and is not bundled by preparation"
+  }
+}
