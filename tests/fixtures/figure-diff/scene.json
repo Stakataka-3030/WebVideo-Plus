@@ -1,0 +1,146 @@
+[
+  {
+    "id": "background",
+    "source": "changeBg:black.png -duration=0 -next;"
+  },
+  {
+    "id": "hide-textbox",
+    "source": "setTextbox:hide -next;"
+  },
+  {
+    "id": "enter-red",
+    "source": "changeFigure:red.png -id=hero -left -duration=0 -next;"
+  },
+  {
+    "id": "position-dim",
+    "source": "setTransform:{\"position\":{\"x\":120,\"y\":-80},\"brightness\":0.5} -target=hero -duration=0 -next;"
+  },
+  {
+    "id": "initial-settle",
+    "source": "wait:500;"
+  },
+  {
+    "id": "initial-cut",
+    "source": "Narrator:Safe boundary initial -next;"
+  },
+  {
+    "id": "initial-hold",
+    "source": "wait:1000;"
+  },
+  {
+    "id": "first-diff",
+    "source": "changeFigureDiff:green.png -id=hero -right -transform={\"position\":{\"x\":500},\"brightness\":1} -next;"
+  },
+  {
+    "id": "first-diff-settle",
+    "source": "wait:500;"
+  },
+  {
+    "id": "first-diff-cut",
+    "source": "Narrator:Safe boundary first-diff -next;"
+  },
+  {
+    "id": "first-diff-hold",
+    "source": "wait:1000;"
+  },
+  {
+    "id": "same-image",
+    "source": "changeFigureDiff:green.png -id=hero -next;"
+  },
+  {
+    "id": "same-image-settle",
+    "source": "wait:500;"
+  },
+  {
+    "id": "same-image-cut",
+    "source": "Narrator:Safe boundary same-image -next;"
+  },
+  {
+    "id": "same-image-hold",
+    "source": "wait:1000;"
+  },
+  {
+    "id": "current",
+    "source": "setTransform:{\"position\":{\"x\":200}} -target=hero -duration=0 -transformFrom=current -next;"
+  },
+  {
+    "id": "current-settle",
+    "source": "wait:500;"
+  },
+  {
+    "id": "current-cut",
+    "source": "Narrator:Safe boundary current -next;"
+  },
+  {
+    "id": "current-hold",
+    "source": "wait:1000;"
+  },
+  {
+    "id": "default",
+    "source": "setTransform:{\"position\":{\"x\":280}} -target=hero -duration=0 -transformFrom=default -ignoreDefault -next;"
+  },
+  {
+    "id": "default-settle",
+    "source": "wait:500;"
+  },
+  {
+    "id": "default-cut",
+    "source": "Narrator:Safe boundary default -next;"
+  },
+  {
+    "id": "default-hold",
+    "source": "wait:1000;"
+  },
+  {
+    "id": "second-diff",
+    "source": "changeFigureDiff:red.png -id=hero -next;"
+  },
+  {
+    "id": "second-diff-settle",
+    "source": "wait:500;"
+  },
+  {
+    "id": "second-diff-cut",
+    "source": "Narrator:Safe boundary second-diff -next;"
+  },
+  {
+    "id": "second-diff-hold",
+    "source": "wait:1000;"
+  },
+  {
+    "id": "remove",
+    "source": "changeFigureDiff:none -id=hero -next;"
+  },
+  {
+    "id": "removed-settle",
+    "source": "wait:500;"
+  },
+  {
+    "id": "removed-cut",
+    "source": "Narrator:Safe boundary removed -next;"
+  },
+  {
+    "id": "removed-hold",
+    "source": "wait:1000;"
+  },
+  {
+    "id": "reenter",
+    "source": "changeFigureDiff:green.png -id=hero -left -duration=0 -next;"
+  },
+  {
+    "id": "reentered-settle",
+    "source": "wait:500;"
+  },
+  {
+    "id": "reentered-cut",
+    "source": "Narrator:Safe boundary reentered -next;"
+  },
+  {
+    "id": "reentered-hold",
+    "source": "wait:1000;"
+  },
+  {
+    "id": "end",
+    "source": "end:;"
+  }
+]

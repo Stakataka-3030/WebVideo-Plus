@@ -75,28 +75,18 @@ Write-Utf8 (Join-Path $project 'game/userStyleSheet.css') ''
 # Explicit arguments are supported by the pinned bundle: Swe (image diff),
 # uC (transformFrom precedence), uTe (setTransform), KCe (wait). Image diff
 # intentionally ignores transform/position when a target image already exists.
-$lines = @(
-  'changeBg:black.png -duration=0 -next;'
-  'setTextbox:hide -next;'
-  'changeFigure:red.png -id=hero -left -duration=0 -next;'
-  'setTransform:{"position":{"x":120,"y":-80},"brightness":0.5} -target=hero -duration=0 -next;'
-  'wait:1500;'
-  'changeFigureDiff:green.png -id=hero -right -transform={"position":{"x":500},"brightness":1} -next;'
-  'wait:1500;'
-  'changeFigureDiff:green.png -id=hero -next;'
-  'wait:1500;'
-  'setTransform:{"position":{"x":200}} -target=hero -duration=0 -transformFrom=current -next;'
-  'wait:1500;'
-  'setTransform:{"position":{"x":280}} -target=hero -duration=0 -transformFrom=default -ignoreDefault -next;'
-  'wait:1500;'
-  'changeFigureDiff:red.png -id=hero -next;'
-  'wait:1500;'
-  'changeFigureDiff:none -id=hero -next;'
-  'wait:1500;'
-  'changeFigureDiff:green.png -id=hero -left -duration=0 -next;'
-  'wait:1500;'
-  'end:;'
-)
+# Real dialogue events are the planner's preferred cut candidates. Each one
+# follows 500 ms of settled state, outside the 200 ms diff blend and zero-time
+# transforms; the remaining 1000 ms preserves the original 1500 ms hold.
+# Wait-only scenes legitimately have no dialogue/scene cut pool.
+$steps = Get-Content (Join-Path $PSScriptRoot 'fixtures/figure-diff/scene.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$anchors = @{}
+$lines = @()
+foreach ($step in $steps) {
+  if (-not $step.id -or $anchors.ContainsKey($step.id) -or -not $step.source -or $step.source -match "[\r\n]") { throw 'Invalid named fixture step.' }
+  $lines += [string]$step.source
+  $anchors[$step.id] = $lines.Count
+}
 Write-Utf8 (Join-Path $project 'game/scene/start.txt') (($lines -join "`n") + "`n")
 $ffmpeg = Find-MediaTool 'ffmpeg'
 $ffprobe = Find-MediaTool 'ffprobe'
@@ -128,22 +118,24 @@ foreach ($workers in @(1,2)) {
 if ($exports[0].result.totalFrames -ne $exports[1].result.totalFrames) { throw 'Worker counts changed the total number of frames.' }
 $totalFrames = [int]$exports[0].result.totalFrames
 $fps = 30
-function Line-Time([int]$line) {
+function Line-Time([string]$anchor) {
+  if (-not $anchors.ContainsKey($anchor)) { throw "Unknown scene anchor: $anchor" }
+  $line = [int]$anchors[$anchor]
   if ($line -lt 1 -or $line -gt $timing.lineTimes.Count -or $null -eq $timing.lineTimes[$line-1]) { throw "Runtime did not execute fixture line $line" }
   return [double]$timing.lineTimes[$line-1]
 }
 function Frame-At([double]$ms) { return [Math]::Min($totalFrames-1,[Math]::Max(0,[int][Math]::Floor($ms*$fps/1000.0))) }
 $samples = [ordered]@{
-  beforeDiff=(Frame-At ((Line-Time 6)-200))
-  afterDiff=(Frame-At ((Line-Time 8)-200))
-  sameImage=(Frame-At ((Line-Time 10)-200))
-  current=(Frame-At ((Line-Time 12)-200))
-  default=(Frame-At ((Line-Time 14)-200))
-  secondDiff=(Frame-At ((Line-Time 16)-200))
-  removed=(Frame-At ((Line-Time 18)-200))
-  reentered=(Frame-At ((Line-Time 20)-200))
+  beforeDiff=(Frame-At ((Line-Time 'first-diff')-200))
+  afterDiff=(Frame-At ((Line-Time 'same-image')-200))
+  sameImage=(Frame-At ((Line-Time 'current')-200))
+  current=(Frame-At ((Line-Time 'default')-200))
+  default=(Frame-At ((Line-Time 'second-diff')-200))
+  secondDiff=(Frame-At ((Line-Time 'remove')-200))
+  removed=(Frame-At ((Line-Time 'reenter')-200))
+  reentered=(Frame-At ((Line-Time 'end')-200))
 }
-foreach ($offset in @(34,100,167)) { $samples["blend$offset"] = Frame-At ((Line-Time 6)+$offset) }
+foreach ($offset in @(34,100,167)) { $samples["blend$offset"] = Frame-At ((Line-Time 'first-diff')+$offset) }
 foreach ($range in @($exports[1].result.segmentRanges | Select-Object -Skip 1)) {
   foreach ($offset in @(-2,-1,0,1,2)) { $frame=[int]$range.startFrame+$offset; if ($frame -ge 0 -and $frame -lt $totalFrames) { $samples["seam$($range.startFrame)_$offset"]=$frame } }
 }
@@ -212,5 +204,5 @@ foreach ($workers in @(1,2)) {
 # Re-read only the original pinned bundle to prove fixture work did not mutate it.
 $bundle=Join-Path $RuntimeRoot 'assets/index-CC7KTie-.js'
 if ((Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant() -ne '356f7184c80af8da4dd782e25c5b3fb89f55f1e8b9e9e18be6f50035763dc6b6') { throw 'Source runtime bundle changed during the fixture.' }
-[PSCustomObject]@{ passed=$true; runtime='WebView2'; version='4.6.5'; sourceKind='project-runtime'; runtimeParity=$true; totalFrames=$totalFrames; samples=$samples; measurements=$measurements; comparisons=$comparisons; segmentRanges=$exports[1].result.segmentRanges } | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath (Join-Path $run 'native-summary.json') -Encoding UTF8
+[PSCustomObject]@{ passed=$true; runtime='WebView2'; version='4.6.5'; sourceKind='project-runtime'; runtimeParity=$true; totalFrames=$totalFrames; anchors=$anchors; samples=$samples; measurements=$measurements; comparisons=$comparisons; segmentRanges=$exports[1].result.segmentRanges } | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath (Join-Path $run 'native-summary.json') -Encoding UTF8
 Write-Host "Native figure-diff regression passed. Diagnostics: $run"
