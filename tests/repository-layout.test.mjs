@@ -38,6 +38,7 @@ test('build entrypoints resolve relocated helpers and fixed inputs',()=>{
    assert.ok(fs.existsSync(path.join(root,match[1])),`${file}: missing input ${match[1]}`);
   }
  }
- assert.ok(read('.github/workflows/native-smoke.yml').includes('scripts/build-timeline.mjs'));
+ assert.ok(read('.github/workflows/native-smoke.yml').includes('build-product.ps1'));
+ assert.ok(read('build-product.ps1').includes('scripts/build-timeline.mjs'));
  assert.ok(read('scripts/build-feature-assets.mjs').includes("fs.cpSync(path.join(root,'docs'),path.join(pkg,'docs'),{recursive:true})"));
 });

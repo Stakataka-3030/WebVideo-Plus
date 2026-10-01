@@ -1,45 +1,73 @@
 # 构建与发布
 
-当前分支产品版本 **1.1.4**，产品内部开发标识 **0.8.8**，安装器 Win32 版本 **1.1.4.0**，导出内核 **0.6.48**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建 bootstrap 仍固定使用已发布的 **0.4.10.2** 安装器，以保证第三方运行资源来源和校验值可复现。
+当前分支产品版本 **1.1.4**，产品内部开发标识 **0.8.8**，安装器 Win32 版本 **1.1.4.0**，导出内核 **0.6.48**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`scripts/manifest.mjs`、`build-product.ps1`、`scripts/configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
 更新检查读取 GitHub 正式 Release 列表。发布 1.1.4 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"webgal":["4.6.4"]} -->` 一并放进 Release 正文，并按实际适配基线更新数组；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
 
-## 初次准备
+## 初次准备（不需要旧安装器）
 
-1. 使用 Windows PowerShell 5.1 或 PowerShell 7，安装 Node.js 22.20.0 或兼容版本。
-2. 从 GitHub Release 下载当前已发布的 `WebVideo+-Setup-0.4.10.2.exe`。构建脚本从其中抽取固定的 WebGAL/WebView2 运行资源和既有许可文件，不会启动安装程序。该旧安装器不包含编译期 managed WebView2 SDK，因此 `prepare-build.ps1` 另行固定下载 Microsoft.Web.WebView2 `1.0.4191.47`，并保留其许可文本；不会解析 latest。
-3. 在仓库目录执行：
+在 Windows 上安装 PowerShell 5.1 / 7 和 Node.js 22.20.0，然后从仓库根目录运行：
 
 ```powershell
-.\prepare-build.ps1 -InstallerPath C:\Downloads\WebVideo+-Setup-0.4.10.2.exe
+.\prepare-build.ps1
 Push-Location ai-runtime
 npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
 Pop-Location
 .\build-product.ps1
 ```
 
-国内网络可为 `npm ci` 附加 `--registry=https://registry.npmmirror.com`。以提交的锁文件和完整性校验值为准，不重新解析 latest。
+准备脚本直接下载 `build/dependencies.lock.json` 中的固定输入，每个归档都验证 SHA-256，不解析 `latest`：
 
-固定构建 bootstrap（0.4.10.2）安装器 SHA-256：
+- WebGAL 4.6.4 官方 Web 发行包：只选择 16 份导出运行文件，并用 `build/runtime-patches.json` 的明确锚点重建导出探针；逐文件验证输出哈希，与此前发布的运行快照完全一致，不复制示例游戏素材
+- Microsoft.Web.WebView2 1.0.4191.47：固定 `net462` managed DLL、x64 loader 和 SDK 许可证；不再按递归搜索的第一个 DLL 猜测架构
+- Microsoft 官方 WebView2 安装引导程序：固定最终下载地址和 SHA-256；Windows 上同时验证 Microsoft Authenticode 签名，准备阶段不运行安装程序。安装器使用同一锁文件生成校验值
+- Node.js 22.20.0 Windows x64：固定官方 ZIP 和许可证，用于可选 AI 运行时；不再把构建机器上任意 PATH Node 当作发布输入
 
-```text
-a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378
+`component.json` 和 .NET 4.8 配置由 `build/templates/` 的源码模板生成，内核版本来自 `version.json`。准备成功后写入 `package/BUILD-INPUTS.json`，随包保留来源和校验信息；运行时来源与独立许可见 [`../licenses/WEBGAL-RUNTIME-SOURCES.md`](../licenses/WEBGAL-RUNTIME-SOURCES.md)。
+
+准备过程先在 `.build/` 下创建临时 staging，完整验证后才替换 `package/`。下载或校验失败不会替换既有 package；下载缓存保存在 `.build/downloads/`，重复准备不会清除它。`ai-runtime/node_modules/` 也不会被准备脚本清空。
+
+```powershell
+# 已经在线准备过后，仅从本地校验过的归档重新准备
+.\prepare-build.ps1 -Offline
+# 可选：使用另一个下载缓存目录
+.\prepare-build.ps1 -CacheDirectory D:\BuildCache\WebVideoPlus
 ```
 
-为兼容发布前的维护环境，`prepare-build.ps1` 也继续接受旧 bootstrap SHA-256：
+`-Offline` 只适用于构建输入准备，不等同于 `npm ci` 离线；首次恢复 AI npm 依赖仍需要网络或已有 npm 缓存。缺失或损坏的离线输入会明确报错，不会绕过校验。
 
-```text
-1ed9f61ab893f32c59c84a5b1a0865fea760789b1e5b71d79fd8083e7b00ed2d
+输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正式安装器为 `dist/WebVideo+-Setup-1.1.4.exe`，Win32 文件版本 `1.1.4.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
+
+### 旧 bootstrap 的显式迁移入口
+
+正常构建和 CI 不依赖 0.4.10.2。仅为兼容已有维护缓存，仍可传入 `-InstallerPath`，从已知旧安装器导入相同的 WebGAL 运行快照；SDK、Node 和 WebView2 引导程序仍按当前锁文件准备。该路径不会运行安装器，且同时规范化 ZIP 的正/反斜杠并验证运行文件哈希。
+
+```powershell
+.\prepare-build.ps1 -InstallerPath C:\Downloads\WebVideo+-Setup-0.4.10.2.exe
 ```
 
-`prepare-build.ps1` 会先清空并重建 `package/` 与 `.build/`，避免旧构建文件残留。之后再执行 `npm ci`；不要在安装依赖后重复运行 `prepare-build.ps1`。
+仅接受以下历史 SHA-256，不接受任意安装器或未知运行资源：
 
-输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules` 都不提交。脚本不依赖维护者个人目录；Node 位置由当前 PATH 解析。
+- 发布版：`a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378`
+- 旧维护版：`1ed9f61ab893f32c59c84a5b1a0865fea760789b1e5b71d79fd8083e7b00ed2d`
 
-按当前 `version.json`，构建产物为 `dist/WebVideo+-Setup-1.1.4.exe`；Win32 安装器内部文件版本使用数字形式 `1.1.4.0`。面向最终用户的 Release 只需要对应版本的安装器；安装器不依赖同名 `.exe.config` sidecar。`webvideo-plus.zip` 及其 SHA-256 文件只是安装器构建中间产物。
+## 构建脚本分工与验证
 
+- `prepare-build.ps1` → `scripts/prepare-build-inputs.ps1`：下载校验、运行快照重建、SDK/Node 与许可准备
+- `build.ps1`：导出内核、process guard、Terre launcher 的原生编译与生命周期检查
+- `build-product.ps1`：组合 AI、时间线、安装器源码、管理器、功能模块、manifest、ZIP 和安装器
+- `scripts/build-ai.ps1`：复制锁定 npm 依赖、提示词与已固定的 Node；统一 staged package/lock 根版本
+- `scripts/build-ai-metadata.mjs`：用 Node 同步 AI package/lock 根版本，避免 PowerShell 5.1 对空键的限制
+- `scripts/build-timeline.mjs` / `build-navigation-metadata.mjs`：验证 Terre 挂载锚点并生成界面资源
+- `scripts/configure-installer.mjs`：从源码模板生成安装器及锁定的 bootstrap 校验值
+- `scripts/build-feature-assets.mjs` / `manifest.mjs`：打包模块、文档、源码、产品元数据和逐文件清单
+- `scripts/verify-build-inputs.mjs` / `verify-package.mjs`：检查运行快照、二进制、许可、版本和清单哈希
+- `scripts/verify-installer.ps1`：不执行安装器，直接检查 Win32 版本、嵌入 ZIP / manifest 哈希及逐文件完整性
+- `scripts/compare-gpu-scaling.ps1`：分析导出结果，不参与构建
+
+Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复准备、回归检查、完整产品安装器编译和清单校验；不运行生成的安装器，也不发布 Release。修改依赖锁文件时应同时核对官方来源、许可、运行快照和完整 CI，不要只替换版本字符串。
 
 ## 开发快速构建
 
@@ -123,13 +151,13 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 
 ## 当前边界
 
-这是一份整理后的现有工程，而不是重新编写的独立编辑器。首次构建仍从固定安装器中抽取 WebGAL 运行快照和 WebView2 二进制资源；没有宣称从源码重建全部第三方引擎和 SDK。C# 内核、管理器、安装器、process-guard、launcher 及浏览器扩展均从本仓库源码构建。
+这是一份整理后的现有工程，而不是重新编写的独立编辑器。首次构建直接从已锁定的官方归档重建所需 WebGAL 运行快照并准备 WebView2 SDK；不依赖旧安装器，也不宣称从源码重新编译全部第三方引擎和 SDK。C# 内核、管理器、安装器、process-guard、launcher 及浏览器扩展均从本仓库源码构建。
 
 精确补丁使用 `baseline/terre-4.6.4.js`，与 Terre 4.6.4 对应。更新上游时需要重新核对补丁锚点，不能只修改版本号。对于前端被重新打包但挂载语义未变化的 Terre 4.6.4 变体，部分锚点允许在限定结构范围内使用正则匹配；仍要求目标唯一，避免把兼容性放宽成无条件写入。
 
 安装器的 AI 勾选框位于主界面，标记 Beta，并有 API Key 提示。AI 运行环境随包离线提供，仅启用时部署。
 
-源码可复现当前 WebVideo+ 自有部分的构建；由固定安装器抽取的第三方二进制仍按其各自来源与许可处理。完整来源和许可说明见 `NOTICE.md` 与 `licenses/THIRD-PARTY.md`。
+源码可复现当前 WebVideo+ 自有部分的构建；由固定官方归档准备的第三方二进制仍按其各自来源与许可处理。完整来源和许可说明见 `NOTICE.md` 与 `licenses/THIRD-PARTY.md`。
 逐字文字动画优化：WebGAL 会预先把整句文字节点放入 DOM，并通过 `.Textelement_start` 上的约 1s opacity 动画和逐字 animation-delay 实现淡入。DOM GPU PoC 因此在真正 DOM refresh 时同时缓存两张 overlay（动态文字隐藏的 static UI、动态文字强制最终态的 final UI），随后用 Pixi RenderTexture alpha mask 按每个文字元素的实时 computed opacity 在 GPU 上逐帧还原淡入；这类文字动画不再触发 CDP screenshot。结果中的 `domRefreshCount` 是 DOM 内容/非文字动画触发的重新 rasterize 次数，`domCaptureCount` 是实际 screenshot 次数（每次 refresh 当前为两张），`domAnimationSeconds` 是 GPU mask 更新耗时。
 
 对话框整体淡入进一步走 GPU：WebGAL 默认 TextBox 根容器使用约 0.7s 的 opacity `showSoftly` 动画，60fps 下本身就会造成约 42 次 DOM refresh。DOM 缓存现拆成 base / textbox / text 三层：base 不含 TextBox；textbox 捕获对话框、姓名、头像等静态内容并强制根 opacity=1；text 仅捕获逐字文字最终态。运行时 Pixi 每帧读取真实 TextBox 根节点 computed opacity，直接设置 textbox GPU container alpha，并继续用逐字 alpha mask 控制 text 层。因此默认 TextBox 整体淡入和逐字淡入都不再触发截图。若自定义主题给 TextBox 根节点使用 transform/filter 等非 opacity 动画，仍保留 DOM refresh fallback 以优先保证正确性。

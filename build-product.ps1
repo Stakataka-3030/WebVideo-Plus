@@ -33,6 +33,10 @@ if($LASTEXITCODE -ne 0){throw 'Product manager build failed'}
 if($LASTEXITCODE -ne 0){throw 'Feature assets failed'}
 & node (Join-Path $taskRoot 'scripts/manifest.mjs') @taskNodeArgs
 if($LASTEXITCODE -ne 0){throw 'Package manifest failed'}
+& node (Join-Path $taskRoot 'scripts/verify-build-inputs.mjs')
+if($LASTEXITCODE -ne 0){throw 'Packaged build input verification failed'}
+& node (Join-Path $taskRoot 'scripts/verify-package.mjs')
+if($LASTEXITCODE -ne 0){throw 'Full package verification failed'}
 $taskArchive=Join-Path $taskRoot ('dist/'+$taskPackageFolderLabel+'.zip')
 if($Fast){
  Write-Output 'Fast build: creating development payload without normal ZIP compression'
@@ -72,6 +76,7 @@ $taskInstallerConfig=$taskInstaller+'.config'
 if(Test-Path $taskInstallerConfig){Remove-Item -LiteralPath $taskInstallerConfig -Force}
 & $taskCompiler /nologo /target:winexe /platform:x64 /optimize+ /main:InstallerMain ('/win32manifest:'+(Join-Path $taskRoot 'native.manifest')) ('/win32icon:'+(Join-Path $taskRoot 'WebVideo+_icon.ico')) ('/out:'+$taskInstaller) /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll ('/resource:'+$taskArchive+',payload.zip') (Join-Path $taskRoot 'installer/Installer.cs') (Join-Path $taskRoot 'src/UpdatePreferences.cs') $taskGenerated (Join-Path $taskRoot 'manager/ModuleCatalog.cs')
 if($LASTEXITCODE -ne 0){throw 'Installer build failed'}
+& (Join-Path $taskRoot 'scripts/verify-installer.ps1') -InstallerPath $taskInstaller
 $taskHash+'  '+(Split-Path -Leaf $taskArchive) | Set-Content -LiteralPath ($taskArchive+'.sha256') -Encoding ascii
 if($InternalBuild){Write-Output ('Internal build '+$taskInternalVersion+' complete; product upgrade version remains '+$taskProductVersion+'.')}elseif($Fast){Write-Output 'Fast development build complete. Run a normal build before release.'}
 Get-Item -LiteralPath $taskInstaller | Select-Object Name,Length

@@ -30,11 +30,11 @@
 ## 文档与开发
 
 - [使用指南](docs/USER_GUIDE.md)：详细功能、安装/卸载、数据目录、AI 配置和上游致谢
-- [构建与发布](docs/BUILDING.md)：Windows 工具链、固定 bootstrap、正式/内部构建及验证
+- [构建与发布](docs/BUILDING.md)：Windows 工具链、固定上游依赖、正式/内部构建及验证
 - [发行说明索引](docs/releases/README.md)与[完整变更记录](CHANGELOG.md)：保留历史说明，按版本查阅
 - [仓库结构](docs/REPOSITORY.md)：源码、工厂数据、构建脚本与测试的位置
 
-根目录保留三个常用构建入口：`prepare-build.ps1`、`build.ps1`、`build-product.ps1`。辅助脚本位于 `scripts/`，回归检查位于 `tests/`；请从仓库根目录按[构建说明](docs/BUILDING.md)操作。
+从源码构建不需要先下载旧版安装器；第三方输入按官方来源及 SHA-256 锁定，支持缓存和离线重新准备。根目录保留三个常用构建入口：`prepare-build.ps1`、`build.ps1`、`build-product.ps1`。辅助脚本位于 `scripts/`，回归检查位于 `tests/`；请从仓库根目录按[构建说明](docs/BUILDING.md)操作。
 
 ## 许可证与致谢
 
