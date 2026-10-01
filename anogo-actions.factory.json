@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "rows": [
+    {
+      "names": "生气",
+      "motion": "angry",
+      "expression": "angry"
+    },
+    {
+      "names": "告别",
+      "motion": "bye",
+      "expression": "bye"
+    },
+    {
+      "names": "哭泣",
+      "motion": "cry",
+      "expression": "cry"
+    },
+    {
+      "names": "感动",
+      "motion": "kandou",
+      "expression": "kandou"
+    },
+    {
+      "names": "决心",
+      "motion": "kime",
+      "expression": "kime"
+    },
+    {
+      "names": "悲伤",
+      "motion": "sad",
+      "expression": "sad"
+    },
+    {
+      "names": "认真",
+      "motion": "serious",
+      "expression": "serious"
+    },
+    {
+      "names": "害羞",
+      "motion": "shame",
+      "expression": "shame"
+    },
+    {
+      "names": "微笑",
+      "motion": "smile",
+      "expression": "smile"
+    },
+    {
+      "names": "惊讶",
+      "motion": "surprised",
+      "expression": "surprised"
+    },
+    {
+      "names": "思考",
+      "motion": "thinking",
+      "expression": "thinking"
+    }
+  ]
+}

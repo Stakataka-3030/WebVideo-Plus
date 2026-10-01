@@ -1,0 +1,1028 @@
+{
+  "schemaVersion": 1,
+  "effects": [
+    {
+      "id": "original-39",
+      "name": "立绘·接吻前奏（凑近）",
+      "category": "人物演出",
+      "code": "setTransform:{\"scale\":{\"x\":1.4,\"y\":1.4},\"position\":{\"y\":200}} -target=fig-center -duration=1000;",
+      "source": "原特效库 #39"
+    },
+    {
+      "id": "original-40",
+      "name": "立绘灵体化/幽灵（一）",
+      "category": "登场与退场",
+      "code": "setTransform:{\"alpha\":0.6,\"bloom\":1,\"brightness\":1.2} -target=fig-center -duration=1000;",
+      "source": "原特效库 #40"
+    },
+    {
+      "id": "original-41",
+      "name": "立绘·暗淡退场",
+      "category": "登场与退场",
+      "code": "setTransform:{\"brightness\":0.5,\"alpha\":0.5} -target=fig-center -duration=500;",
+      "source": "原特效库 #41"
+    },
+    {
+      "id": "original-47",
+      "name": "极速冲刺",
+      "category": "光色与氛围",
+      "code": "setTransform:{\"blur\":10,\"position\":{\"x\":-50}} -target=bg-main -duration=200;",
+      "source": "原特效库 #47"
+    },
+    {
+      "id": "original-48",
+      "name": "背景纵向压缩",
+      "category": "光色与氛围",
+      "code": "setTransform:{\"scale\":{\"y\":0.85}} -target=bg-main -duration=1000;",
+      "source": "原特效库 #48"
+    },
+    {
+      "id": "original-51",
+      "name": "缓慢推近",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1}},{\"duration\":3000,\"scale\":{\"x\":1.2,\"y\":1.2}}] -target=bg-main;",
+      "source": "原特效库 #51"
+    },
+    {
+      "id": "original-52",
+      "name": "快速拉远",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1.3,\"y\":1.3}},{\"duration\":400,\"scale\":{\"x\":1,\"y\":1}}] -target=bg-main -next;",
+      "source": "原特效库 #52"
+    },
+    {
+      "id": "original-53",
+      "name": "横向摇摄·向右",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1.1,\"y\":1.1},\"position\":{\"x\":-50,\"y\":0}},{\"duration\":4000,\"position\":{\"x\":50,\"y\":0}}] -target=bg-main;",
+      "source": "原特效库 #53"
+    },
+    {
+      "id": "original-54",
+      "name": "纵向摇摄·向上",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1.1,\"y\":1.1},\"position\":{\"x\":0,\"y\":50}},{\"duration\":4000,\"position\":{\"x\":0,\"y\":-50}}] -target=bg-main;",
+      "source": "原特效库 #54"
+    },
+    {
+      "id": "original-55",
+      "name": "镜头左摇",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":2000,\"position\":{\"x\":100,\"y\":0}}] -target=bg-main;",
+      "source": "原特效库 #55"
+    },
+    {
+      "id": "original-56",
+      "name": "镜头右摇",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":2000,\"position\":{\"x\":-100,\"y\":0}}] -target=bg-main;",
+      "source": "原特效库 #56"
+    },
+    {
+      "id": "original-57",
+      "name": "仰视天空",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":2000,\"position\":{\"x\":0,\"y\":100},\"scale\":{\"x\":1.05,\"y\":1.05}}] -target=bg-main;",
+      "source": "原特效库 #57"
+    },
+    {
+      "id": "original-58",
+      "name": "俯视地面",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":2000,\"position\":{\"x\":0,\"y\":-100},\"scale\":{\"x\":1.05,\"y\":1.05}}] -target=bg-main;",
+      "source": "原特效库 #58"
+    },
+    {
+      "id": "original-59",
+      "name": "荷兰式倾斜",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"rotation\":0,\"scale\":{\"x\":1.2,\"y\":1.2}},{\"duration\":2000,\"rotation\":0.1}] -target=bg-main;",
+      "source": "原特效库 #59"
+    },
+    {
+      "id": "original-60",
+      "name": "急剧对焦",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"blur\":30},{\"duration\":800,\"blur\":0}] -target=bg-main -next;",
+      "source": "原特效库 #60"
+    },
+    {
+      "id": "original-61",
+      "name": "失焦模糊",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"blur\":0},{\"duration\":1500,\"blur\":20}] -target=bg-main -next;",
+      "source": "原特效库 #61"
+    },
+    {
+      "id": "original-62",
+      "name": "呼吸感镜头",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1}},{\"duration\":2000,\"scale\":{\"x\":1.03,\"y\":1.03}},{\"duration\":2000,\"scale\":{\"x\":1,\"y\":1}}] -target=bg-main;",
+      "source": "原特效库 #62"
+    },
+    {
+      "id": "original-63",
+      "name": "水平震颤",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":100,\"position\":{\"x\":5,\"y\":0}},{\"duration\":100,\"position\":{\"x\":-5,\"y\":0}},{\"duration\":100,\"position\":{\"x\":5,\"y\":0}},{\"duration\":100,\"position\":{\"x\":0,\"y\":0}}] -target=bg-main;",
+      "source": "原特效库 #63"
+    },
+    {
+      "id": "original-64",
+      "name": "瞬间黑屏转场",
+      "category": "转场与显隐",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1},{\"duration\":100,\"brightness\":0},{\"duration\":500,\"brightness\":0},{\"duration\":200,\"brightness\":1}] -target=bg-main -next;",
+      "source": "原特效库 #64"
+    },
+    {
+      "id": "original-65",
+      "name": "惊恐心跳",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"colorGreen\":255,\"colorBlue\":255},{\"duration\":100,\"scale\":{\"x\":1.05,\"y\":1.05},\"colorGreen\":200,\"colorBlue\":200},{\"duration\":300,\"scale\":{\"x\":1,\"y\":1},\"colorGreen\":255,\"colorBlue\":255}] -target=bg-main;",
+      "source": "原特效库 #65"
+    },
+    {
+      "id": "original-67",
+      "name": "闪回白光",
+      "category": "转场与显隐",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1,\"blur\":0},{\"duration\":200,\"brightness\":5,\"blur\":10},{\"duration\":1500,\"brightness\":1,\"blur\":0}] -target=bg-main -next;",
+      "source": "原特效库 #67"
+    },
+    {
+      "id": "original-68",
+      "name": "灰暗绝望",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"saturation\":1},{\"duration\":2000,\"saturation\":0,\"brightness\":0.8}] -target=bg-main;",
+      "source": "原特效库 #68"
+    },
+    {
+      "id": "original-69",
+      "name": "愤怒爆发",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorGreen\":255,\"colorBlue\":255},{\"duration\":200,\"colorGreen\":100,\"colorBlue\":100,\"position\":{\"x\":10,\"y\":10}},{\"duration\":200,\"position\":{\"x\":-10,\"y\":-10}},{\"duration\":200,\"position\":{\"x\":0,\"y\":0}}] -target=bg-main;",
+      "source": "原特效库 #69"
+    },
+    {
+      "id": "original-70",
+      "name": "中毒/眩晕",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorRed\":255,\"colorGreen\":255,\"colorBlue\":255,\"blur\":0},{\"duration\":1000,\"colorRed\":200,\"colorGreen\":100,\"colorBlue\":255,\"blur\":5},{\"duration\":1000,\"colorRed\":255,\"colorGreen\":255,\"colorBlue\":255,\"blur\":0}] -target=bg-main;",
+      "source": "原特效库 #70"
+    },
+    {
+      "id": "original-71",
+      "name": "冰冻/寒冷",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorRed\":255,\"colorGreen\":255,\"contrast\":1},{\"duration\":1000,\"colorRed\":150,\"colorGreen\":200,\"contrast\":1.2}] -target=bg-main;",
+      "source": "原特效库 #71"
+    },
+    {
+      "id": "original-72",
+      "name": "警报红光闪烁",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorGreen\":255,\"colorBlue\":255},{\"duration\":500,\"colorGreen\":100,\"colorBlue\":100},{\"duration\":500,\"colorGreen\":255,\"colorBlue\":255}] -target=bg-main;",
+      "source": "原特效库 #72"
+    },
+    {
+      "id": "original-73",
+      "name": "眨眼",
+      "category": "转场与显隐",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1},{\"duration\":100,\"brightness\":0},{\"duration\":50,\"brightness\":0},{\"duration\":100,\"brightness\":1}] -target=bg-main -next;",
+      "source": "原特效库 #73"
+    },
+    {
+      "id": "original-74",
+      "name": "昏昏欲睡",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1,\"blur\":0},{\"duration\":3000,\"brightness\":0.5,\"blur\":10},{\"duration\":200,\"brightness\":1,\"blur\":0}] -target=bg-main -next;",
+      "source": "原特效库 #74"
+    },
+    {
+      "id": "original-75",
+      "name": "灵感/发现",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1},{\"duration\":100,\"brightness\":1.5},{\"duration\":300,\"brightness\":1}] -target=bg-main;",
+      "source": "原特效库 #75"
+    },
+    {
+      "id": "original-76",
+      "name": "受击震动",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":50,\"position\":{\"x\":20,\"y\":-15}},{\"duration\":50,\"position\":{\"x\":-15,\"y\":20}},{\"duration\":50,\"position\":{\"x\":-10,\"y\":-10}},{\"duration\":50,\"position\":{\"x\":0,\"y\":0}}] -target=bg-main -next;",
+      "source": "原特效库 #76"
+    },
+    {
+      "id": "original-77",
+      "name": "致命一击",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1},{\"duration\":50,\"brightness\":-1},{\"duration\":50,\"brightness\":1}] -target=bg-main -next;",
+      "source": "原特效库 #77"
+    },
+    {
+      "id": "original-78",
+      "name": "躲闪",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":100,\"position\":{\"x\":-200,\"y\":0}},{\"duration\":200,\"position\":{\"x\":0,\"y\":0}}] -target=bg-main -next;",
+      "source": "原特效库 #78"
+    },
+    {
+      "id": "original-79",
+      "name": "后坐力",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1}},{\"duration\":50,\"scale\":{\"x\":1.05,\"y\":1.05}},{\"duration\":200,\"scale\":{\"x\":1,\"y\":1}}] -target=bg-main;",
+      "source": "原特效库 #79"
+    },
+    {
+      "id": "original-80",
+      "name": "跌倒",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"rotation\":0,\"position\":{\"y\":0}},{\"duration\":600,\"rotation\":0.1,\"position\":{\"y\":300},\"alpha\":0}] -target=bg-main -next;",
+      "source": "原特效库 #80"
+    },
+    {
+      "id": "original-81",
+      "name": "蓄力",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"brightness\":1},{\"duration\":1000,\"scale\":{\"x\":0.95,\"y\":0.95},\"brightness\":0.7}] -target=bg-main;",
+      "source": "原特效库 #81"
+    },
+    {
+      "id": "original-82",
+      "name": "冲击波释放",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":0.95,\"y\":0.95},\"brightness\":0.7},{\"duration\":100,\"scale\":{\"x\":1.1,\"y\":1.1},\"brightness\":1.5},{\"duration\":300,\"scale\":{\"x\":1,\"y\":1},\"brightness\":1}] -target=bg-main -next;",
+      "source": "原特效库 #82"
+    },
+    {
+      "id": "original-83",
+      "name": "拔刀/斩击",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":50,\"position\":{\"x\":50,\"y\":50}},{\"duration\":50,\"position\":{\"x\":-50,\"y\":-50}},{\"duration\":50,\"position\":{\"x\":0,\"y\":0}}] -target=bg-main -next;",
+      "source": "原特效库 #83"
+    },
+    {
+      "id": "original-84",
+      "name": "地震",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"y\":0}},{\"duration\":100,\"position\":{\"y\":10}},{\"duration\":100,\"position\":{\"y\":-10}},{\"duration\":100,\"position\":{\"y\":10}},{\"duration\":100,\"position\":{\"y\":0}}] -target=bg-main;",
+      "source": "原特效库 #84"
+    },
+    {
+      "id": "original-85",
+      "name": "时间停止",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"saturation\":1},{\"duration\":100,\"saturation\":0,\"brightness\":0.8}] -target=bg-main;",
+      "source": "原特效库 #85"
+    },
+    {
+      "id": "original-86",
+      "name": "立绘跳跃",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"y\":0}},{\"duration\":150,\"position\":{\"y\":-50}},{\"duration\":150,\"position\":{\"y\":0}}] -target=fig-center;",
+      "source": "原特效库 #86"
+    },
+    {
+      "id": "original-87",
+      "name": "立绘震惊",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1}},{\"duration\":50,\"scale\":{\"x\":1.1,\"y\":1.1},\"position\":{\"x\":10,\"y\":0}},{\"duration\":50,\"scale\":{\"x\":1.1,\"y\":1.1},\"position\":{\"x\":-10,\"y\":0}},{\"duration\":50,\"scale\":{\"x\":1.1,\"y\":1.1},\"position\":{\"x\":0,\"y\":0}}] -target=fig-center;",
+      "source": "原特效库 #87"
+    },
+    {
+      "id": "original-88",
+      "name": "立绘点头",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"y\":0}},{\"duration\":150,\"position\":{\"y\":20}},{\"duration\":150,\"position\":{\"y\":0}}] -target=fig-center;",
+      "source": "原特效库 #88"
+    },
+    {
+      "id": "original-89",
+      "name": "立绘摇头/拒绝",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0}},{\"duration\":100,\"position\":{\"x\":-15}},{\"duration\":100,\"position\":{\"x\":15}},{\"duration\":100,\"position\":{\"x\":0}}] -target=fig-center;",
+      "source": "原特效库 #89"
+    },
+    {
+      "id": "original-90",
+      "name": "立绘逼近",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1}},{\"duration\":500,\"scale\":{\"x\":1.3,\"y\":1.3}}] -target=fig-center;",
+      "source": "原特效库 #90"
+    },
+    {
+      "id": "original-91",
+      "name": "立绘后退",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1}},{\"duration\":500,\"scale\":{\"x\":0.8,\"y\":0.8},\"alpha\":0.8}] -target=fig-center;",
+      "source": "原特效库 #91"
+    },
+    {
+      "id": "original-92",
+      "name": "立绘叹气/沮丧",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"position\":{\"y\":0}},{\"duration\":600,\"scale\":{\"x\":1.02,\"y\":0.98},\"position\":{\"y\":5}},{\"duration\":600,\"scale\":{\"x\":1,\"y\":1},\"position\":{\"y\":0}}] -target=fig-center;",
+      "source": "原特效库 #92"
+    },
+    {
+      "id": "original-93",
+      "name": "立绘闪亮登场",
+      "category": "登场与退场",
+      "code": "setTempAnimation:[{\"duration\":0,\"alpha\":0,\"brightness\":2},{\"duration\":500,\"alpha\":1,\"brightness\":1}] -target=fig-center;",
+      "source": "原特效库 #93"
+    },
+    {
+      "id": "original-94",
+      "name": "立绘灵体化/幽灵（二）",
+      "category": "登场与退场",
+      "code": "setTempAnimation:[{\"duration\":0,\"alpha\":1},{\"duration\":1000,\"alpha\":0.5}] -target=fig-center;",
+      "source": "原特效库 #94"
+    },
+    {
+      "id": "original-95",
+      "name": "立绘跌倒/被推倒",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"rotation\":0,\"position\":{\"y\":0}},{\"duration\":300,\"rotation\":-1.5,\"position\":{\"y\":300,\"x\":-200}}] -target=fig-center;",
+      "source": "原特效库 #95"
+    },
+    {
+      "id": "original-96",
+      "name": "立绘登场（滑入）",
+      "category": "登场与退场",
+      "code": "setTempAnimation:[{\"duration\":0,\"alpha\":0,\"position\":{\"x\":-100}},{\"duration\":600,\"alpha\":1,\"position\":{\"x\":0}}] -target=fig-center;",
+      "source": "原特效库 #96"
+    },
+    {
+      "id": "original-97",
+      "name": "立绘暗淡",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1},{\"duration\":300,\"brightness\":0.6}] -target=fig-center;",
+      "source": "原特效库 #97"
+    },
+    {
+      "id": "original-98",
+      "name": "立绘点亮",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":0.6},{\"duration\":300,\"brightness\":1}] -target=fig-center;",
+      "source": "原特效库 #98"
+    },
+    {
+      "id": "original-99",
+      "name": "立绘左右张望",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0}},{\"duration\":400,\"position\":{\"x\":-30}},{\"duration\":800,\"position\":{\"x\":30}},{\"duration\":400,\"position\":{\"x\":0}}] -target=fig-center;",
+      "source": "原特效库 #99"
+    },
+    {
+      "id": "original-100",
+      "name": "打雷闪电",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1},{\"duration\":50,\"brightness\":3},{\"duration\":50,\"brightness\":1},{\"duration\":100,\"brightness\":2},{\"duration\":800,\"brightness\":1}] -target=bg-main;",
+      "source": "原特效库 #100"
+    },
+    {
+      "id": "original-101",
+      "name": "日出/天亮",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":0.3,\"colorBlue\":200,\"colorRed\":100},{\"duration\":3000,\"brightness\":1,\"colorBlue\":255,\"colorRed\":255}] -target=bg-main;",
+      "source": "原特效库 #101"
+    },
+    {
+      "id": "original-102",
+      "name": "日落/黄昏",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1,\"colorBlue\":255},{\"duration\":3000,\"brightness\":0.8,\"colorBlue\":150,\"colorGreen\":200}] -target=bg-main;",
+      "source": "原特效库 #102"
+    },
+    {
+      "id": "original-103",
+      "name": "夜晚降临",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1,\"colorRed\":255},{\"duration\":3000,\"brightness\":0.4,\"colorRed\":100,\"colorGreen\":100,\"colorBlue\":255}] -target=bg-main;",
+      "source": "原特效库 #103"
+    },
+    {
+      "id": "original-105",
+      "name": "逐渐石化",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"saturation\":1},{\"duration\":2000,\"saturation\":0}] -target=bg-main;",
+      "source": "原特效库 #105"
+    },
+    {
+      "id": "original-106",
+      "name": "神秘氛围",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"contrast\":1,\"brightness\":1},{\"duration\":2000,\"contrast\":1.5,\"brightness\":0.8}] -target=bg-main;",
+      "source": "原特效库 #106"
+    },
+    {
+      "id": "original-107",
+      "name": "梦幻柔光动画",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"bloom\":0},{\"duration\":1500,\"bloom\":1.5},{\"duration\":1500,\"bloom\":0}] -target=bg-main;",
+      "source": "原特效库 #107"
+    },
+    {
+      "id": "original-109",
+      "name": "结束/谢幕",
+      "category": "登场与退场",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1,\"alpha\":1},{\"duration\":2000,\"brightness\":5,\"alpha\":0}] -target=bg-main -next;",
+      "source": "原特效库 #109"
+    },
+    {
+      "id": "original-110",
+      "name": "拉镜聚焦",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1.2,\"y\":1.2},\"blur\":20,\"brightness\":2},{\"duration\":1500,\"scale\":{\"x\":1,\"y\":1},\"blur\":0,\"brightness\":1}] -target=bg-main -next;",
+      "source": "原特效库 #110"
+    },
+    {
+      "id": "original-111",
+      "name": "苏醒/睁眼（主观视角）",
+      "category": "转场与显隐",
+      "code": "setTempAnimation:[{\"duration\":0,\"blur\":20,\"brightness\":0},{\"duration\":1500,\"blur\":15,\"brightness\":0.6},{\"duration\":200,\"blur\":20,\"brightness\":0},{\"duration\":1500,\"blur\":5,\"brightness\":0.8},{\"duration\":1300,\"blur\":0,\"brightness\":1}] -target=bg-main -next;",
+      "source": "原特效库 #111"
+    },
+    {
+      "id": "original-112",
+      "name": "严重眩晕/醉酒",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"rotation\":0,\"scale\":{\"x\":1,\"y\":1},\"blur\":0},{\"duration\":2000,\"rotation\":0.05,\"scale\":{\"x\":1.1,\"y\":1.1},\"blur\":4},{\"duration\":2000,\"rotation\":-0.05,\"scale\":{\"x\":1.1,\"y\":1.1},\"blur\":6},{\"duration\":2000,\"rotation\":0,\"scale\":{\"x\":1,\"y\":1},\"blur\":0}] -target=bg-main -next;",
+      "source": "原特效库 #112"
+    },
+    {
+      "id": "original-115",
+      "name": "寒冷",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"contrast\":1,\"colorRed\":255},{\"duration\":2000,\"contrast\":1.2,\"colorRed\":180,\"colorGreen\":220}] -target=bg-main;",
+      "source": "原特效库 #115"
+    },
+    {
+      "id": "original-116",
+      "name": "老电视开机",
+      "category": "转场与显隐",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"y\":0},\"brightness\":5},{\"duration\":300,\"scale\":{\"y\":1},\"brightness\":1}] -target=bg-main -next;",
+      "source": "原特效库 #116"
+    },
+    {
+      "id": "original-117",
+      "name": "老电视关机",
+      "category": "转场与显隐",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"y\":1}},{\"duration\":300,\"scale\":{\"y\":0.01},\"position\":{\"y\":360}},{\"duration\":100,\"scale\":{\"x\":0},\"alpha\":0}] -target=bg-main -next;",
+      "source": "原特效库 #117"
+    },
+    {
+      "id": "original-118",
+      "name": "对焦切换",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"blur\":0},{\"duration\":800,\"blur\":15},{\"duration\":1200,\"blur\":0}] -target=bg-main -next;",
+      "source": "原特效库 #118"
+    },
+    {
+      "id": "original-119",
+      "name": "震动推近",
+      "category": "镜头运动",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"position\":{\"x\":0,\"y\":0}},{\"duration\":2000,\"scale\":{\"x\":1.1,\"y\":1.1},\"position\":{\"x\":3,\"y\":3}},{\"duration\":50,\"position\":{\"x\":-3,\"y\":-3}},{\"duration\":50,\"position\":{\"x\":3,\"y\":3}},{\"duration\":50,\"position\":{\"x\":0,\"y\":0}}] -target=bg-main;",
+      "source": "原特效库 #119"
+    },
+    {
+      "id": "original-120",
+      "name": "剧烈地震",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":50,\"position\":{\"x\":20,\"y\":-20}},{\"duration\":50,\"position\":{\"x\":-20,\"y\":20}},{\"duration\":50,\"position\":{\"x\":15,\"y\":15}},{\"duration\":50,\"position\":{\"x\":-15,\"y\":-15}},{\"duration\":50,\"position\":{\"x\":0,\"y\":0}}] -target=bg-main -next;",
+      "source": "原特效库 #120"
+    },
+    {
+      "id": "original-121",
+      "name": "车辆颠簸",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"y\":0}},{\"duration\":200,\"position\":{\"y\":3},\"scale\":{\"x\":1.01,\"y\":1.01}},{\"duration\":200,\"position\":{\"y\":-3}},{\"duration\":200,\"position\":{\"y\":0}}] -target=bg-main;",
+      "source": "原特效库 #121"
+    },
+    {
+      "id": "original-122",
+      "name": "回忆杀·纯白淡入",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":5,\"blur\":10},{\"duration\":3000,\"brightness\":1,\"blur\":0}] -target=bg-main -next;",
+      "source": "原特效库 #122"
+    },
+    {
+      "id": "original-123",
+      "name": "甜蜜眩晕·呼吸感",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"rotation\":0},{\"duration\":2500,\"scale\":{\"x\":1.02,\"y\":1.02},\"rotation\":0.015},{\"duration\":2500,\"scale\":{\"x\":1,\"y\":1},\"rotation\":-0.015}] -target=bg-main;",
+      "source": "原特效库 #123"
+    },
+    {
+      "id": "original-124",
+      "name": "时间定格·一见钟情",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"saturation\":1,\"contrast\":1},{\"duration\":100,\"saturation\":0,\"contrast\":1.5},{\"duration\":3000,\"saturation\":1,\"contrast\":1}] -target=bg-main -next;",
+      "source": "原特效库 #124"
+    },
+    {
+      "id": "original-125",
+      "name": "小鹿乱撞·快速心跳",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1}},{\"duration\":80,\"scale\":{\"x\":1.03,\"y\":1.03},\"colorGreen\":200},{\"duration\":80,\"scale\":{\"x\":1,\"y\":1},\"colorGreen\":255},{\"duration\":80,\"scale\":{\"x\":1.05,\"y\":1.05},\"colorGreen\":180},{\"duration\":200,\"scale\":{\"x\":1,\"y\":1},\"colorGreen\":255}] -target=bg-main -next;",
+      "source": "原特效库 #125"
+    },
+    {
+      "id": "original-126",
+      "name": "七彩棱镜·炫光",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"rgbFilm\":1},{\"duration\":2000,\"rgbFilm\":1,\"blur\":2,\"brightness\":1.2},{\"duration\":2000,\"rgbFilm\":0,\"blur\":0,\"brightness\":1}] -target=bg-main;",
+      "source": "原特效库 #126"
+    },
+    {
+      "id": "original-127",
+      "name": "灵魂出窍·升天",
+      "category": "登场与退场",
+      "code": "setTempAnimation:[{\"duration\":0,\"alpha\":1,\"position\":{\"y\":0}},{\"duration\":4000,\"alpha\":0,\"position\":{\"y\":-100}}] -target=bg-main -next;",
+      "source": "原特效库 #127"
+    },
+    {
+      "id": "original-129",
+      "name": "压迫感·缓慢逼近",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"brightness\":1},{\"duration\":5000,\"scale\":{\"x\":1.3,\"y\":1.3},\"brightness\":0.6,\"colorRed\":255,\"colorGreen\":150,\"colorBlue\":150}] -target=bg-main;",
+      "source": "原特效库 #129"
+    },
+    {
+      "id": "original-130",
+      "name": "心碎·冲击波",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"shockwaveFilter\":0},{\"duration\":1500,\"shockwaveFilter\":0.5},{\"duration\":100,\"shockwaveFilter\":-1}] -target=bg-main -next;",
+      "source": "原特效库 #130"
+    },
+    {
+      "id": "original-131",
+      "name": "坏掉的电视",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"glitchFilm\":0},{\"duration\":100,\"glitchFilm\":1},{\"duration\":100,\"glitchFilm\":0},{\"duration\":100,\"glitchFilm\":1}] -target=bg-main;",
+      "source": "原特效库 #131"
+    },
+    {
+      "id": "original-132",
+      "name": "不安的搏动",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorRed\":255},{\"duration\":1000,\"colorRed\":150,\"colorGreen\":200},{\"duration\":1000,\"colorRed\":255}] -target=bg-main;",
+      "source": "原特效库 #132"
+    },
+    {
+      "id": "original-133",
+      "name": "破碎预警",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0},\"glitchFilm\":0},{\"duration\":50,\"position\":{\"x\":5},\"glitchFilm\":1},{\"duration\":50,\"position\":{\"x\":-5}},{\"duration\":50,\"position\":{\"x\":0},\"glitchFilm\":0}] -target=bg-main;",
+      "source": "原特效库 #133"
+    },
+    {
+      "id": "original-134",
+      "name": "立绘·丝滑登场",
+      "category": "登场与退场",
+      "code": "setTempAnimation:[{\"duration\":0,\"alpha\":0,\"position\":{\"y\":100}},{\"duration\":600,\"alpha\":1,\"position\":{\"y\":0}}] -target=fig-center -next;",
+      "source": "原特效库 #134"
+    },
+    {
+      "id": "original-135",
+      "name": "立绘·生气/发抖",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0}},{\"duration\":30,\"position\":{\"x\":3}},{\"duration\":30,\"position\":{\"x\":-3}},{\"duration\":30,\"position\":{\"x\":3}},{\"duration\":30,\"position\":{\"x\":0}}] -target=fig-center;",
+      "source": "原特效库 #135"
+    },
+    {
+      "id": "original-136",
+      "name": "吃醋·世界扭曲",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"rotation\":0,\"scale\":{\"x\":1,\"y\":1}},{\"duration\":3000,\"rotation\":0.2,\"scale\":{\"x\":1.5,\"y\":1.5}}] -target=bg-main;",
+      "source": "原特效库 #136"
+    },
+    {
+      "id": "original-137",
+      "name": "聚光灯开启",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"radiusAlphaFilter\":0},{\"duration\":1500,\"radiusAlphaFilter\":1.5}] -target=bg-main -next;",
+      "source": "原特效库 #137"
+    },
+    {
+      "id": "original-138",
+      "name": "聚光灯关闭",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"radiusAlphaFilter\":1.5},{\"duration\":1500,\"radiusAlphaFilter\":0}] -target=bg-main -next;",
+      "source": "原特效库 #138"
+    },
+    {
+      "id": "original-139",
+      "name": "清晨苏醒",
+      "category": "转场与显隐",
+      "code": "setTempAnimation:[{\"duration\":0,\"blur\":20,\"brightness\":2},{\"duration\":3000,\"blur\":0,\"brightness\":1}] -target=bg-main -next;",
+      "source": "原特效库 #139"
+    },
+    {
+      "id": "original-140",
+      "name": "瞬间心动·粉色冲击",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"bloom\":0},{\"duration\":150,\"scale\":{\"x\":1.05,\"y\":1.05},\"bloom\":2,\"colorRed\":255,\"colorGreen\":220,\"colorBlue\":230},{\"duration\":1000,\"scale\":{\"x\":1,\"y\":1},\"bloom\":0.5,\"colorRed\":255,\"colorGreen\":255,\"colorBlue\":255}] -target=bg-main -next;",
+      "source": "原特效库 #140"
+    },
+    {
+      "id": "original-141",
+      "name": "满眼都是你·聚光",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"radiusAlphaFilter\":0},{\"duration\":2000,\"radiusAlphaFilter\":0.6}] -target=bg-main;",
+      "source": "原特效库 #141"
+    },
+    {
+      "id": "original-143",
+      "name": "柔光环绕",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"bloom\":0,\"brightness\":1},{\"duration\":2000,\"bloom\":1.2,\"bloomBlur\":3,\"brightness\":1.05},{\"duration\":2000,\"bloom\":0,\"brightness\":1}] -target=bg-main;",
+      "source": "原特效库 #143"
+    },
+    {
+      "id": "original-144",
+      "name": "甜度升温",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorRed\":255,\"colorGreen\":230,\"colorBlue\":220,\"scale\":{\"x\":1,\"y\":1}},{\"duration\":3000,\"colorRed\":255,\"colorGreen\":240,\"colorBlue\":225,\"scale\":{\"x\":1.02,\"y\":1.02}}] -target=bg-main;",
+      "source": "原特效库 #144"
+    },
+    {
+      "id": "original-145",
+      "name": "靠近对视",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"position\":{\"x\":0,\"y\":0}},{\"duration\":2500,\"scale\":{\"x\":1.2,\"y\":1.2},\"position\":{\"x\":0,\"y\":-10}}] -target=fig-center;",
+      "source": "原特效库 #145"
+    },
+    {
+      "id": "original-146",
+      "name": "害羞低头",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"y\":0},\"alpha\":1},{\"duration\":800,\"position\":{\"y\":15},\"alpha\":0.95},{\"duration\":800,\"position\":{\"y\":0},\"alpha\":1}] -target=fig-center;",
+      "source": "原特效库 #146"
+    },
+    {
+      "id": "original-147",
+      "name": "脸颊微红",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorRed\":255,\"colorGreen\":255,\"colorBlue\":255,\"bloom\":0},{\"duration\":1500,\"colorRed\":255,\"colorGreen\":235,\"colorBlue\":235,\"bloom\":0.8},{\"duration\":1500,\"colorRed\":255,\"colorGreen\":255,\"colorBlue\":255,\"bloom\":0}] -target=fig-center;",
+      "source": "原特效库 #147"
+    },
+    {
+      "id": "original-149",
+      "name": "星光闪烁",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"bloom\":0.5,\"brightness\":1},{\"duration\":1000,\"bloom\":0.8,\"brightness\":1.1},{\"duration\":1000,\"bloom\":0.5,\"brightness\":1},{\"duration\":1000,\"bloom\":0.8,\"brightness\":1.1},{\"duration\":1000,\"bloom\":0.5,\"brightness\":1}] -target=bg-main;",
+      "source": "原特效库 #149"
+    },
+    {
+      "id": "original-150",
+      "name": "花瓣飘落感（画面轻移）",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0},\"blur\":0},{\"duration\":5000,\"position\":{\"x\":20,\"y\":-10},\"blur\":0.5},{\"duration\":5000,\"position\":{\"x\":-20,\"y\":10},\"blur\":0.5}] -target=bg-main;",
+      "source": "原特效库 #150"
+    },
+    {
+      "id": "original-151",
+      "name": "雨夜浪漫",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorRed\":200,\"colorGreen\":220,\"colorBlue\":255,\"blur\":1},{\"duration\":4000,\"colorRed\":230,\"colorGreen\":240,\"colorBlue\":255,\"blur\":0.5}] -target=bg-main;",
+      "source": "原特效库 #151"
+    },
+    {
+      "id": "original-153",
+      "name": "初见闪回",
+      "category": "转场与显隐",
+      "code": "setTempAnimation:[{\"duration\":0,\"bloom\":2,\"blur\":10,\"brightness\":1.5},{\"duration\":1000,\"bloom\":0,\"blur\":0,\"brightness\":1}] -target=bg-main -next;",
+      "source": "原特效库 #153"
+    },
+    {
+      "id": "original-154",
+      "name": "细节回忆",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"bloom\":0},{\"duration\":3000,\"scale\":{\"x\":1.1,\"y\":1.1},\"bloom\":0.7},{\"duration\":2000,\"scale\":{\"x\":1.1,\"y\":1.1},\"bloom\":0.7},{\"duration\":3000,\"scale\":{\"x\":1,\"y\":1},\"bloom\":0}] -target=bg-main;",
+      "source": "原特效库 #154"
+    },
+    {
+      "id": "original-155",
+      "name": "告白瞬间",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"bloom\":0,\"brightness\":1,\"colorRed\":255,\"colorGreen\":255,\"colorBlue\":255},{\"duration\":1500,\"bloom\":2,\"brightness\":1.2,\"colorRed\":255,\"colorGreen\":245,\"colorBlue\":250},{\"duration\":2000,\"bloom\":0,\"brightness\":1}] -target=bg-main -next;",
+      "source": "原特效库 #155"
+    },
+    {
+      "id": "original-156",
+      "name": "点头回应",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"y\":0}},{\"duration\":300,\"position\":{\"y\":-10}},{\"duration\":300,\"position\":{\"y\":0}},{\"duration\":300,\"position\":{\"y\":-10}},{\"duration\":300,\"position\":{\"y\":0}}] -target=fig-center;",
+      "source": "原特效库 #156"
+    },
+    {
+      "id": "original-157",
+      "name": "拥抱预热（左立绘）",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":-50,\"y\":0}},{\"duration\":3000,\"position\":{\"x\":0,\"y\":0}}] -target=fig-left;",
+      "source": "原特效库 #157"
+    },
+    {
+      "id": "original-158",
+      "name": "拥抱预热（右立绘）",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":50,\"y\":0}},{\"duration\":3000,\"position\":{\"x\":0,\"y\":0}}] -target=fig-right;",
+      "source": "原特效库 #158"
+    },
+    {
+      "id": "original-159",
+      "name": "心动确认",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"bloom\":0,\"rotation\":0},{\"duration\":1000,\"bloom\":1,\"rotation\":0.02},{\"duration\":1000,\"bloom\":1,\"rotation\":-0.02},{\"duration\":1000,\"bloom\":0,\"rotation\":0}] -target=fig-center;",
+      "source": "原特效库 #159"
+    },
+    {
+      "id": "original-160",
+      "name": "耳鬓厮磨",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"position\":{\"x\":0,\"y\":0}},{\"duration\":1800,\"scale\":{\"x\":1.1,\"y\":1.1},\"position\":{\"x\":-10,\"y\":5}}] -target=fig-center;",
+      "source": "原特效库 #160"
+    },
+    {
+      "id": "original-161",
+      "name": "温柔注视",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1,\"bloom\":0},{\"duration\":1500,\"brightness\":1.1,\"bloom\":1,\"bloomThreshold\":0.2},{\"duration\":1500,\"brightness\":1,\"bloom\":0}] -target=fig-center;",
+      "source": "原特效库 #161"
+    },
+    {
+      "id": "original-162",
+      "name": "樱花氛围",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorRed\":255,\"colorGreen\":245,\"colorBlue\":250,\"blur\":0},{\"duration\":2500,\"colorRed\":255,\"colorGreen\":250,\"colorBlue\":255,\"blur\":0.3},{\"duration\":2500,\"colorRed\":255,\"colorGreen\":245,\"colorBlue\":250,\"blur\":0}] -target=bg-main;",
+      "source": "原特效库 #162"
+    },
+    {
+      "id": "original-164",
+      "name": "月下告白",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorRed\":200,\"colorGreen\":220,\"colorBlue\":255,\"bloom\":0},{\"duration\":3000,\"colorRed\":220,\"colorGreen\":230,\"colorBlue\":255,\"bloom\":1.5},{\"duration\":3000,\"colorRed\":230,\"colorGreen\":240,\"colorBlue\":255,\"bloom\":0}] -target=bg-main;",
+      "source": "原特效库 #164"
+    },
+    {
+      "id": "original-165",
+      "name": "害羞躲闪",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":300,\"position\":{\"x\":15,\"y\":0}},{\"duration\":300,\"position\":{\"x\":-10,\"y\":0}},{\"duration\":300,\"position\":{\"x\":0,\"y\":0}}] -target=fig-center;",
+      "source": "原特效库 #165"
+    },
+    {
+      "id": "original-167",
+      "name": "惊喜瞬间",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1,\"bloom\":0},{\"duration\":200,\"brightness\":1.5,\"bloom\":1.8},{\"duration\":800,\"brightness\":1,\"bloom\":0}] -target=bg-main -next;",
+      "source": "原特效库 #167"
+    },
+    {
+      "id": "original-168",
+      "name": "并肩同行",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":5000,\"position\":{\"x\":30,\"y\":0}}] -target=fig-left;",
+      "source": "原特效库 #168",
+      "aliases": [
+        "并肩同行（右立绘）"
+      ]
+    },
+    {
+      "id": "original-170",
+      "name": "温柔告别",
+      "category": "登场与退场",
+      "code": "setTempAnimation:[{\"duration\":0,\"alpha\":1,\"bloom\":0},{\"duration\":3000,\"alpha\":0.8,\"bloom\":0.7},{\"duration\":2000,\"alpha\":0.5,\"bloom\":0.5}] -target=fig-center;",
+      "source": "原特效库 #170"
+    },
+    {
+      "id": "original-171",
+      "name": "告白成功",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"bloom\":0,\"brightness\":1,\"colorRed\":255,\"colorGreen\":240,\"colorBlue\":230},{\"duration\":1500,\"bloom\":2,\"brightness\":1.3,\"colorRed\":255,\"colorGreen\":220,\"colorBlue\":210},{\"duration\":1500,\"bloom\":0,\"brightness\":1}] -target=bg-main -next;",
+      "source": "原特效库 #171"
+    },
+    {
+      "id": "original-173",
+      "name": "复古回忆（背景动画）",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"blur\":0},{\"duration\":5000,\"blur\":3}] -target=bg-main;",
+      "source": "原特效库 #173"
+    },
+    {
+      "id": "original-175",
+      "name": "复古回忆（人物动画）",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1}},{\"duration\":4000,\"scale\":{\"x\":1.02,\"y\":1.02}}] -target=fig-center;",
+      "source": "原特效库 #175"
+    },
+    {
+      "id": "original-177",
+      "name": "赛博波动（背景动画）",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorRed\":180},{\"duration\":1000,\"colorRed\":200},{\"duration\":1000,\"colorRed\":180}] -target=bg-main;",
+      "source": "原特效库 #177"
+    },
+    {
+      "id": "original-179",
+      "name": "赛博波动（人物动画）",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":0.8},{\"duration\":500,\"brightness\":1.2},{\"duration\":500,\"brightness\":0.8}] -target=fig-center;",
+      "source": "原特效库 #179"
+    },
+    {
+      "id": "original-180",
+      "name": "渐变显示（背景）",
+      "category": "登场与退场",
+      "code": "setTempAnimation:[{\"duration\":0,\"alpha\":0,\"brightness\":0.5},{\"duration\":2000,\"alpha\":1,\"brightness\":1}] -target=bg-main -next;",
+      "source": "原特效库 #180"
+    },
+    {
+      "id": "original-181",
+      "name": "渐变显示（人物）",
+      "category": "登场与退场",
+      "code": "setTempAnimation:[{\"duration\":0,\"alpha\":0,\"position\":{\"y\":50}},{\"duration\":2500,\"alpha\":1,\"position\":{\"y\":0}}] -target=fig-center;",
+      "source": "原特效库 #181"
+    },
+    {
+      "id": "original-182",
+      "name": "轻微旋转",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"rotation\":0},{\"duration\":6000,\"rotation\":0.05},{\"duration\":6000,\"rotation\":-0.05},{\"duration\":6000,\"rotation\":0}] -target=fig-center;",
+      "source": "原特效库 #182"
+    },
+    {
+      "id": "original-183",
+      "name": "快速抖动",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":50,\"position\":{\"x\":15,\"y\":-10}},{\"duration\":50,\"position\":{\"x\":-20,\"y\":15}},{\"duration\":50,\"position\":{\"x\":10,\"y\":-5}},{\"duration\":50,\"position\":{\"x\":0,\"y\":0}}] -target=bg-main -next;",
+      "source": "原特效库 #183"
+    },
+    {
+      "id": "original-184",
+      "name": "模糊渐变",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"blur\":0},{\"duration\":1000,\"blur\":15},{\"duration\":1000,\"blur\":0}] -target=bg-main -next;",
+      "source": "原特效库 #184"
+    },
+    {
+      "id": "original-185",
+      "name": "色彩漂移（背景）",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorRed\":255,\"colorGreen\":255,\"colorBlue\":255},{\"duration\":1500,\"colorRed\":240,\"colorGreen\":255,\"colorBlue\":240},{\"duration\":1500,\"colorRed\":255,\"colorGreen\":240,\"colorBlue\":250},{\"duration\":1500,\"colorRed\":255,\"colorGreen\":255,\"colorBlue\":255}] -target=bg-main -next;",
+      "source": "原特效库 #185"
+    },
+    {
+      "id": "original-186",
+      "name": "色彩漂移（人物）",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"colorRed\":255,\"colorGreen\":255,\"colorBlue\":255},{\"duration\":1500,\"colorRed\":245,\"colorGreen\":255,\"colorBlue\":245},{\"duration\":1500,\"colorRed\":255,\"colorBlue\":255},{\"duration\":1500,\"colorRed\":255,\"colorGreen\":255,\"colorBlue\":255}] -target=fig-center;",
+      "source": "原特效库 #186"
+    },
+    {
+      "id": "original-187",
+      "name": "闪烁强调",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1},{\"duration\":100,\"brightness\":1.8},{\"duration\":100,\"brightness\":1},{\"duration\":100,\"brightness\":1.8},{\"duration\":100,\"brightness\":1}] -target=fig-center -next;",
+      "source": "原特效库 #187"
+    },
+    {
+      "id": "original-188",
+      "name": "左右摇摆",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"x\":0}},{\"duration\":800,\"position\":{\"x\":-20}},{\"duration\":1600,\"position\":{\"x\":20}},{\"duration\":800,\"position\":{\"x\":0}}] -target=fig-center;",
+      "source": "原特效库 #188"
+    },
+    {
+      "id": "original-189",
+      "name": "聚焦效果",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"blur\":5},{\"duration\":1500,\"scale\":{\"x\":1.2,\"y\":1.2},\"blur\":0}] -target=fig-center;",
+      "source": "原特效库 #189"
+    },
+    {
+      "id": "original-190",
+      "name": "散焦退场",
+      "category": "登场与退场",
+      "code": "setTempAnimation:[{\"duration\":0,\"alpha\":1,\"blur\":0,\"scale\":{\"x\":1,\"y\":1}},{\"duration\":1500,\"alpha\":0,\"blur\":10,\"scale\":{\"x\":0.9,\"y\":0.9}}] -target=fig-center -next;",
+      "source": "原特效库 #190"
+    },
+    {
+      "id": "original-191",
+      "name": "地震震动（长版）",
+      "category": "震动与冲击",
+      "code": "setTempAnimation:[{\"duration\":0,\"position\":{\"y\":0}},{\"duration\":100,\"position\":{\"y\":20}},{\"duration\":100,\"position\":{\"y\":-20}},{\"duration\":100,\"position\":{\"y\":15}},{\"duration\":100,\"position\":{\"y\":-15}},{\"duration\":100,\"position\":{\"y\":10}},{\"duration\":100,\"position\":{\"y\":-10}},{\"duration\":200,\"position\":{\"y\":0}}] -target=bg-main;",
+      "source": "原特效库 #191"
+    },
+    {
+      "id": "original-192",
+      "name": "高光闪烁（背景）",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"bloom\":0.5},{\"duration\":800,\"bloom\":1.5},{\"duration\":800,\"bloom\":0.5}] -target=bg-main -next;",
+      "source": "原特效库 #192"
+    },
+    {
+      "id": "original-193",
+      "name": "高光闪烁（人物）",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"bloom\":0.3},{\"duration\":800,\"bloom\":1},{\"duration\":800,\"bloom\":0.3}] -target=fig-center;",
+      "source": "原特效库 #193"
+    },
+    {
+      "id": "original-194",
+      "name": "慢动作特写（立绘）",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"brightness\":1},{\"duration\":800,\"scale\":{\"x\":1.1,\"y\":1.1},\"brightness\":1.1,\"blur\":0.5},{\"duration\":2000,\"scale\":{\"x\":1,\"y\":1},\"brightness\":1,\"blur\":0}] -target=fig-center;",
+      "source": "原特效库 #194"
+    },
+    {
+      "id": "original-195",
+      "name": "慢动作特写（背景）",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"brightness\":1,\"blur\":0},{\"duration\":800,\"brightness\":0.8,\"blur\":2},{\"duration\":2000,\"brightness\":1,\"blur\":0}] -target=bg-main;",
+      "source": "原特效库 #195"
+    },
+    {
+      "id": "original-197",
+      "name": "神秘氛围动画",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"contrast\":1,\"brightness\":1,\"colorGreen\":255},{\"duration\":2000,\"contrast\":1.5,\"brightness\":0.8,\"colorGreen\":150}] -target=bg-main;",
+      "source": "原特效库 #197"
+    },
+    {
+      "id": "original-198",
+      "name": "水下波纹",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"reflectionFilm\":1,\"colorRed\":200,\"colorGreen\":220,\"colorBlue\":255,\"blur\":1},{\"duration\":1000,\"reflectionFilm\":1,\"colorRed\":200,\"colorGreen\":220,\"colorBlue\":255,\"blur\":1.5},{\"duration\":1000,\"reflectionFilm\":1,\"colorRed\":200,\"colorGreen\":220,\"colorBlue\":255,\"blur\":1}] -target=bg-main;",
+      "source": "原特效库 #198"
+    },
+    {
+      "id": "original-199",
+      "name": "热浪扭曲",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"reflectionFilm\":1,\"colorRed\":255,\"colorGreen\":240,\"colorBlue\":200,\"blur\":0.5},{\"duration\":500,\"reflectionFilm\":1,\"colorRed\":255,\"colorGreen\":240,\"colorBlue\":200,\"blur\":1},{\"duration\":500,\"reflectionFilm\":1,\"colorRed\":255,\"colorGreen\":240,\"colorBlue\":200,\"blur\":0.5}] -target=bg-main;",
+      "source": "原特效库 #199"
+    },
+    {
+      "id": "original-200",
+      "name": "雨滴感（画面抖动）",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"blur\":0,\"position\":{\"x\":0,\"y\":0}},{\"duration\":50,\"blur\":0.5,\"position\":{\"x\":2,\"y\":2}},{\"duration\":50,\"blur\":0.5,\"position\":{\"x\":-2,\"y\":-2}},{\"duration\":50,\"blur\":0.5,\"position\":{\"x\":2,\"y\":2}},{\"duration\":50,\"blur\":0,\"position\":{\"x\":0,\"y\":0}}] -target=bg-main;",
+      "source": "原特效库 #200"
+    },
+    {
+      "id": "original-202",
+      "name": "完全重置（立绘）",
+      "category": "重置",
+      "code": "setTransform:{\"alpha\":1,\"scale\":{\"x\":1,\"y\":1},\"position\":{\"x\":0,\"y\":0},\"rotation\":0,\"blur\":0,\"brightness\":1,\"contrast\":1,\"saturation\":1,\"gamma\":1,\"colorRed\":255,\"colorGreen\":255,\"colorBlue\":255,\"bloom\":0,\"bevel\":0} -target=fig-center -duration=500;",
+      "source": "原特效库 #202"
+    },
+    {
+      "id": "original-extra-2",
+      "name": "同步呼吸",
+      "category": "人物演出",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1}},{\"duration\":2000,\"scale\":{\"x\":1.03,\"y\":1.03}},{\"duration\":2000,\"scale\":{\"x\":1,\"y\":1}}] -target=fig-left;",
+      "source": "原特效库 补充2",
+      "aliases": [
+        "「同步呼吸」（fig-right 版本）"
+      ]
+    },
+    {
+      "id": "original-extra-4",
+      "name": "「心动共鸣」",
+      "category": "光色与氛围",
+      "code": "setTempAnimation:[{\"duration\":0,\"scale\":{\"x\":1,\"y\":1},\"colorRed\":255,\"colorGreen\":245,\"colorBlue\":250},{\"duration\":1000,\"scale\":{\"x\":1.02,\"y\":1.02},\"colorRed\":255,\"colorGreen\":235,\"colorBlue\":240},{\"duration\":1000,\"scale\":{\"x\":1,\"y\":1},\"colorRed\":255,\"colorGreen\":245,\"colorBlue\":250}] -target=bg-main;",
+      "source": "原特效库 补充4"
+    },
+    {
+      "id": "weather-rain",
+      "name": "雨",
+      "category": "天气与粒子",
+      "code": "pixiPerform:rain;"
+    },
+    {
+      "id": "weather-snow",
+      "name": "雪",
+      "category": "天气与粒子",
+      "code": "pixiPerform:snow;"
+    },
+    {
+      "id": "weather-heavySnow",
+      "name": "大雪",
+      "category": "天气与粒子",
+      "code": "pixiPerform:heavySnow;"
+    },
+    {
+      "id": "weather-cherryBlossoms",
+      "name": "樱花",
+      "category": "天气与粒子",
+      "code": "pixiPerform:cherryBlossoms;"
+    },
+    {
+      "id": "weather-clear",
+      "name": "清除天气与粒子",
+      "category": "天气与粒子",
+      "code": "pixiInit:;"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "terre": "4.6.4",
+  "kernel": "0.3.7-internal",
+  "files": [
+    {
+      "file": "component.json",
+      "match": true,
+      "sha256": "41de71dad6f6fc085f9c57e76f80de091b75fc6667f5278e65c76b95070ffd17"
+    },
+    {
+      "file": "WebGAL.Video.exe",
+      "match": true,
+      "sha256": "88ac5c46760c6aea3564eec433d9a680ca693d8cad31c8b5c34096b30e09ec63"
+    },
+    {
+      "file": "integration/terre-export-component.js",
+      "match": true,
+      "sha256": "be5629abb324d3e3b4f3925e62e01997cde63ee7d9bad4b89cc048aa6e2766f4"
+    },
+    {
+      "file": "browser/settings.js",
+      "match": true,
+      "sha256": "fdfe89c7ec49f8f9ddca7cbbcbb6f1250de64a2186e5acd3fad75d46178fd8bd"
+    },
+    {
+      "file": "browser/mygo-mouth.js",
+      "match": true,
+      "sha256": "19d756380fa31421b598fd1166ca869209e1dd412eae29b445881859bc9dfa2b"
+    }
+  ],
+  "baseBundle": "index-bf351481.js",
+  "baseHash": "3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133"
+}
