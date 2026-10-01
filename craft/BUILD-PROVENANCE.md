@@ -13,3 +13,5 @@
 - Canonical 4.6.4 native export subsequently passed (219 frames, 7.3 seconds, 1280×720/30 fps, exact project runtime). The 4.6.5 render exposed a language-selection overlay despite correct engine metadata; that visual result is rejected. Locale capture and job-local initialization now preserve explicit preview/project language, with native visual acceptance pending.
 
 - Full native locale matrix passed on 565c851: unchanged 4.6.5 fixture with explicit Japanese preview choice, preview-over-project-default precedence, default-only and missing-locale cases, decoded figure/opacity frames and two-worker seams, plus 4.6.4 regression. Exact 4.6.5 is now enabled in ordinary entry; unknown or modified runtime profiles remain rejected.
+
+- Final enabled-feature acceptance passed on product commit 6e38878188b447cb8cc5ddf5f6b3eccf71634833, including installed-package timed-hint completion/cancellation/navigation, media content checks and all five installer transaction groups. See FINAL-ACCEPTANCE.md for exact scope and remaining updater, external-AI, entrypoint and native-log isolation limits. Subsequent acceptance documentation changes do not alter the tested product.
