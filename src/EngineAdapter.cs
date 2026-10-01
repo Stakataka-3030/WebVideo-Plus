@@ -145,7 +145,29 @@ namespace NativeVideo {
    if(FindMygo(gamesRoot,terreDir)!=null)options.Add(J.O("value","mygo","label","MyGO 3.2.1"));
    return options.ToArray();
   }
+  public static void ValidateRuntimeRequest(object request) {
+   if(!J.B(request,"requireRuntimeParity",false))return;
+   // Validate before any project/machine derivative discovery or cache reuse.
+   string expected=J.S(request,"expectedRuntimeVersion"),expectedId=J.S(request,"expectedRuntimeId","open-webgal.webgal");
+   string selected=J.S(J.Get(request,"settings"),"engine","webgal");
+   if(expectedId!="open-webgal.webgal"||selected!="webgal")throw new IOException("严格绑定导出只允许请求匹配的官方 WebGAL 引擎；禁止 MyGO 或其它引擎替代");
+   if(WebgalEngineProfile.ForVersion(expected)==null)throw new IOException("严格绑定导出缺少受支持的明确 WebGAL 版本");
+  }
+  public static void ValidateRuntimeContract(object request,object metadata) {
+   if(!J.B(request,"requireRuntimeParity",false))return;
+   ValidateRuntimeRequest(request);
+   string expected=J.S(request,"expectedRuntimeVersion"),kind=J.S(metadata,"sourceKind");
+   var actual=WebgalEngineProfile.FromHash(J.S(metadata,"sourceHash"));
+   bool boundProject=!string.IsNullOrWhiteSpace(J.S(request,"project"));
+   if(J.S(metadata,"id")!="webgal"||J.S(metadata,"version")!=expected||!J.B(metadata,"runtimeParity",false)||actual==null||actual.Version!=expected||(boundProject?kind!="project-runtime":kind!="terre-template"))throw new IOException("严格绑定导出拒绝了不匹配的引擎身份、版本或运行时来源");
+  }
   public static EngineAdapter Select(object request) {
+   ValidateRuntimeRequest(request);
+   var adapter=SelectCore(request);
+   if(J.B(request,"requireRuntimeParity",false))ValidateRuntimeContract(request,adapter.Describe());
+   return adapter;
+  }
+  static EngineAdapter SelectCore(object request) {
    var selected=J.S(J.Get(request,"settings"),"engine","webgal");
    if(selected=="webgal") {
     bool strict=J.B(request,"requireRuntimeParity",false);

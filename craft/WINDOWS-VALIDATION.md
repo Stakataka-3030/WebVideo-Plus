@@ -40,3 +40,9 @@ The one kernel has exact identity-selected 4.6.4 and 4.6.5 profiles; neither cro
 Test the new timed single-line hint in actual preview: save a paired choose/label fixture, synchronize before it, execute the snippet, verify one matching reserved choice disappears after its configured delay. Cancel during initial synchronization and during timing; another navigation/choice must never be clicked.
 
 The update observer is now a packaged compiled helper using a transient event subscription filtered to the exact owned host PID, with an immediate process handle. Re-run the same 600ms synthetic fixtures; do not lengthen them to manufacture a passing result. Missed/uninspectable children remain indeterminate, and no result enables official-update gates.
+
+## Canonical engine regression repair
+
+Rebuild root build.ps1 and the source receipt after the strict-runtime repair; old native binaries cannot be reused. Rebuild the Craft package and install only into the closed disposable test copy. Run craft/tests/runtime-contract.test.ps1 against the rebuilt dist package: it seeds isolated MyGO settings, verifies canonical config/persisted engine identity, rejects mismatched requests, and runs actual cached-plan analysis/audio/video rejection paths without a renderer. Run the dual-profile actual-assembly suite (77 checks) again.
+
+Repeat real MP4 exports with a registry-bound official 4.6.4 fixture, then isolated 4.6.5. Inspect request.json AND resulting engine metadata: expectedRuntimeId=open-webgal.webgal, matching expectedRuntimeVersion, settings.engine=webgal, result.engine.id=webgal, exact version/canonical sourceHash, sourceKind=project-runtime, runtimeParity=true. An MP4 file alone is insufficient. The previous MyGO output is rejected evidence. Confirm strict session logs show no machine derivative-engine roots and no legacy user-data import marker. Official update installation stays disabled.

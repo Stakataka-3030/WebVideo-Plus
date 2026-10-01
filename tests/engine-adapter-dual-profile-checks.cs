@@ -86,6 +86,28 @@ public static class EngineAdapterDualProfileChecks {
     Check(version+" rejects descriptor deletion after strict selection",()=>{string root=Shell(version,"descriptor-deleted");var a=EngineAdapter.Select(Request(root,version));File.Delete(Path.Combine(root,"webgal-engine.json"));Reject(()=>a.Prepare(NewDirectory("descriptor-deleted-output")),"strict descriptor disappearing during Prepare");});
     Check(version+" missing bound runtime cannot fall through to template",()=>Reject(()=>EngineAdapter.Select(Request(NewDirectory("empty-project"),version,template)),"empty bound project fallback"));
    }
+   foreach(string version in Versions){
+    Check(version+" strict MyGO selection rejects before project or machine derivative discovery",()=>{string root=Shell(version,"strict-mygo"),machine=NewDirectory("machine-mygo");Descriptor(machine,"3.2.1","4.6.4","webgal-mygo.mygo");var request=Request(root,version);J.D(request)["settings"]=J.O("engine","mygo");J.D(request)["mygoRoot"]=machine;try{EngineAdapter.Select(request);throw new Exception("MyGO selection bypassed strict binding");}catch(IOException error){Assert(error.Message.Contains("禁止 MyGO"),"Wrong strict rejection; derivative discovery must not be attempted");}});
+    Check(version+" strict MyGO project descriptor cannot change the bound engine",()=>{string root=Shell(version,"strict-project-mygo");Descriptor(root,"3.2.1","4.6.4","webgal-mygo.mygo");var request=Request(root,version);J.D(request)["settings"]=J.O("engine","mygo");try{EngineAdapter.Select(request);throw new Exception("Project MyGO bypassed strict binding");}catch(IOException error){Assert(error.Message.Contains("禁止 MyGO"),"Project derivative inspection occurred before strict engine validation");}});
+    Check(version+" strict unknown engine selection is rejected globally",()=>{var request=Request(Shell(version,"strict-unknown"),version);J.D(request)["settings"]=J.O("engine","unknown");Reject(()=>EngineAdapter.Select(request),"unknown strict engine");});
+    Check(version+" strict wrong bound engine ID is rejected",()=>{var request=Request(Shell(version,"strict-id"),version);J.D(request)["expectedRuntimeId"]="webgal-mygo.mygo";Reject(()=>EngineAdapter.Select(request),"wrong bound engine identity");});
+    Check(version+" strict missing bound version is rejected",()=>Reject(()=>EngineAdapter.Select(Request(Shell(version,"strict-no-version"),null)),"missing strict version"));
+   }
+   foreach(string version in Versions){
+    var bound=Request("bound-project",version);
+    var valid=J.O("id","webgal","version",version,"runtimeParity",true,"sourceKind","project-runtime","sourceHash",Hashes[version]);
+    Check(version+" accepts exact cached runtime contract",()=>EngineAdapter.ValidateRuntimeContract(bound,valid));
+    foreach(string fault in new[]{"id","version","runtimeParity","sourceKind","sourceHash","missing"})Check(version+" rejects cached runtime contract "+fault,()=>{
+     var metadata=J.O("id","webgal","version",version,"runtimeParity",true,"sourceKind","project-runtime","sourceHash",Hashes[version]);
+     if(fault=="missing")metadata=null;
+     else J.D(metadata)[fault]=fault=="runtimeParity"?(object)false:fault=="id"?"mygo":fault=="version"?"3.2.1":fault=="sourceKind"?"bundled-runtime":new string('0',64);
+     Reject(()=>EngineAdapter.ValidateRuntimeContract(bound,metadata),"cached engine metadata "+fault);
+    });
+    Check(version+" accepts exact unbound template contract",()=>EngineAdapter.ValidateRuntimeContract(Request(null,version),J.O("id","webgal","version",version,"runtimeParity",true,"sourceKind","terre-template","sourceHash",Hashes[version])));
+    Check(version+" rejects template contract for bound project",()=>Reject(()=>EngineAdapter.ValidateRuntimeContract(bound,J.O("id","webgal","version",version,"runtimeParity",true,"sourceKind","terre-template","sourceHash",Hashes[version])),"bound project cannot reuse template contract"));
+    Check(version+" rejects stale MyGO preference even with canonical cache",()=>{var request=Request("bound-project",version);J.D(request)["settings"]=J.O("engine","mygo");Reject(()=>EngineAdapter.ValidateRuntimeContract(request,valid),"cached MyGO selected request");});
+   }
+   Check("legacy nonstrict metadata validation remains a no-op",()=>EngineAdapter.ValidateRuntimeContract(J.O("requireRuntimeParity",false),null));
    Check("strict unrecognized expected version is rejected",()=>{string root=Shell("4.6.5","unsupported-expected");Reject(()=>EngineAdapter.Select(Request(root,"4.6.6")),"unsupported requested profile");});
    Check("canonical prepared 4.6.4 remains an exact accepted identity",()=>{string root=Shell("4.6.4","canonical-prepared");Files.Atomic(Path.Combine(root,Bundles["4.6.4"]),prepared464);var a=EngineAdapter.Select(Request(root,"4.6.4"));Assert(a.Version=="4.6.4"&&J.S(a.Describe(),"sourceHash")==Prepared464,"Prepared source identity was lost");string patched=a.Patch(prepared464);Probes(patched,"4.6.4");Files.Atomic(Path.Combine(home,"patched-4.6.4-canonical.mjs"),patched);string output=NewDirectory("prepared-canonical");a.Prepare(output);Assert(Files.Hash(Path.Combine(root,Bundles["4.6.4"]))==Prepared464,"Prepared source mutated");Assert(J.S(J.Read(Path.Combine(output,"export-engine.json")),"sourceHash")==Prepared464,"Prepared identity changed during snapshot");Probes(File.ReadAllText(Path.Combine(output,Bundles["4.6.4"])),"4.6.4");});
    Check("4.6.5 Patch rejects canonical prepared 4.6.4",()=>{string root=Shell("4.6.5","cross-prepared");var a=EngineAdapter.Select(Request(root,"4.6.5"));Reject(()=>a.Patch(prepared464),"prepared cross-profile patch");});
