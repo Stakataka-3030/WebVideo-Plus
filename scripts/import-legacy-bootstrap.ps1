@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$InstallerPath,[Parameter(Mandatory=$true)][string]$Destination,[Parameter(Mandatory=$true)][string]$WorkDirectory)
+param([Parameter(Mandatory=$true)][string]$InstallerPath,[Parameter(Mandatory=$true)][string]$Destination,[Parameter(Mandatory=$true)][string]$WorkDirectory,[Parameter(Mandatory=$true)][string]$FontPath)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'build-common.ps1')
 $installer=(Resolve-Path -LiteralPath $InstallerPath).Path
@@ -16,6 +16,6 @@ $extract=Join-Path $WorkDirectory 'legacy'
 Expand-CheckedBuildArchive $archive $extract
 $runtime=Join-Path $extract 'webvideo-plus/runtime/web'
 if(-not(Test-Path -LiteralPath $runtime -PathType Container)){throw 'Legacy runtime directory missing'}
-New-Item -ItemType Directory -Path (Split-Path $Destination -Parent) -Force | Out-Null
-Copy-Item -LiteralPath $runtime -Destination $Destination -Recurse -Force
-# The caller verifies the exact runtime inventory against the same pinned output hashes.
+# Reconstruct the current snapshot; never carry the old OPPO font into the payload.
+& node (Join-Path $PSScriptRoot 'prepare-webgal-runtime.mjs') $runtime $Destination $FontPath --legacy
+if($LASTEXITCODE -ne 0){throw 'Legacy runtime upgrade failed'}

@@ -10,7 +10,7 @@ if([string]::IsNullOrWhiteSpace($CacheDirectory)){$CacheDirectory=Join-Path $wor
 $CacheDirectory=[IO.Path]::GetFullPath($CacheDirectory)
 # Resolve and validate inputs before touching the previously prepared package.
 $archives=@{}
-foreach($name in @('webview2Sdk','webview2Bootstrap','node')){$archives[$name]=Get-PinnedBuildInput $lock.$name $CacheDirectory -Offline:$Offline}
+foreach($name in @('webview2Sdk','webview2Bootstrap','node','sourceHanSans')){$archives[$name]=Get-PinnedBuildInput $lock.$name $CacheDirectory -Offline:$Offline}
 if([string]::IsNullOrWhiteSpace($InstallerPath)){$archives.webgal=Get-PinnedBuildInput $lock.webgal $CacheDirectory -Offline:$Offline}
 else{$InstallerPath=(Resolve-Path -LiteralPath $InstallerPath).Path}
 $stage=Join-Path $work ('prepare-'+[Guid]::NewGuid().ToString('N'))
@@ -22,11 +22,11 @@ try{
  if([string]::IsNullOrWhiteSpace($InstallerPath)){
   $webgal=Join-Path $stage 'webgal'
   Expand-CheckedBuildArchive $archives.webgal $webgal
-  & node (Join-Path $PSScriptRoot 'prepare-webgal-runtime.mjs') $webgal (Join-Path $out 'runtime/web')
+  & node (Join-Path $PSScriptRoot 'prepare-webgal-runtime.mjs') $webgal (Join-Path $out 'runtime/web') $archives.sourceHanSans
   if($LASTEXITCODE -ne 0){throw 'WebGAL runtime reconstruction failed'}
  }else{
   # Explicit migration aid only. Never silently fall back to historical installers.
-  & (Join-Path $PSScriptRoot 'import-legacy-bootstrap.ps1') -InstallerPath $InstallerPath -Destination (Join-Path $out 'runtime/web') -WorkDirectory $stage
+  & (Join-Path $PSScriptRoot 'import-legacy-bootstrap.ps1') -InstallerPath $InstallerPath -Destination (Join-Path $out 'runtime/web') -WorkDirectory $stage -FontPath $archives.sourceHanSans
  }
  $sdk=Join-Path $stage 'webview2-sdk'
  Expand-CheckedBuildArchive $archives.webview2Sdk $sdk

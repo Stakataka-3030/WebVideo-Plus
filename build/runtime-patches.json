@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "engine": "WebGAL",
   "version": "4.6.4",
   "source": {
@@ -7,14 +7,15 @@
     "sha256": "f7dbb153c0372044055ad167eeddc7202c5978bf661983328490ecd8d0a391ae",
     "size": 74986038
   },
-  "description": "Runtime file selection and deterministic export instrumentation. All output bytes match the previously shipped WebGAL 4.6.4 runtime; no legacy installer is needed.",
+  "description": "Pinned WebGAL runtime with byte-exact export instrumentation and an unmodified OFL Source Han Sans UI font replacing OPPO Sans. Relative to the prior snapshot, only the font asset and its CSS reference change.",
   "files": [
     {
-      "path": "assets/OPPOSans-R-tAcFw8I3.ttf",
-      "sourceSize": 10152780,
-      "sourceSha256": "ea92535935f8b5da18b64bb23e5ffbfef1417b7ae4ff3fc15372a65ee95a9580",
-      "outputSize": 10152780,
-      "outputSha256": "ea92535935f8b5da18b64bb23e5ffbfef1417b7ae4ff3fc15372a65ee95a9580"
+      "path": "assets/SourceHanSansSC-Regular.otf",
+      "sourceSize": 16437608,
+      "sourceSha256": "84bbd4ace91d327b3ad1a581c688196278a4e41308520176f419180064e4af2b",
+      "outputSize": 16437608,
+      "outputSha256": "84bbd4ace91d327b3ad1a581c688196278a4e41308520176f419180064e4af2b",
+      "external": "sourceHanSans"
     },
     {
       "path": "assets/ResourceHanRoundedCN-Regular-C1HdCLVq.ttf",
@@ -55,8 +56,8 @@
       "path": "assets/index-Dch1g2w9.css",
       "sourceSize": 47833,
       "sourceSha256": "ea9ea5a2be73a70eb62a83976394862149755450ca84d20870d76b6192299cb7",
-      "outputSize": 47833,
-      "outputSha256": "ea9ea5a2be73a70eb62a83976394862149755450ca84d20870d76b6192299cb7"
+      "outputSize": 47837,
+      "outputSha256": "d5855014a2324329dc60ecf12046f5977d0c0b0ac92ccc7f7e5b0fbc3cbb0f95"
     },
     {
       "path": "assets/index-R1tKotR6.js",
@@ -183,5 +184,24 @@
     ],
     "append": "\r\n;globalThis.__wgProbe={core:I,store:Pe};\r\n\nObject.assign(globalThis.__wgProbe,{parseScene:xo});\n\nObject.assign(globalThis.__wgProbe,{stageManager:Y});\n",
     "bodyNewlines": "crlf"
+  },
+  "styles": {
+    "path": "assets/index-Dch1g2w9.css",
+    "patches": [
+      {
+        "id": "licensed-ui-font",
+        "find": "url(./OPPOSans-R-tAcFw8I3.ttf) format(\"truetype\")",
+        "replace": "url(./SourceHanSansSC-Regular.otf) format(\"opentype\")"
+      }
+    ],
+    "append": ""
+  },
+  "fontReplacement": {
+    "removedPath": "assets/OPPOSans-R-tAcFw8I3.ttf",
+    "removedSha256": "ea92535935f8b5da18b64bb23e5ffbfef1417b7ae4ff3fc15372a65ee95a9580",
+    "replacementPath": "assets/SourceHanSansSC-Regular.otf",
+    "cssFamily": "WebgalUI",
+    "license": "OFL-1.1",
+    "unchangedLegacyFileCount": 14
   }
 }

@@ -1,6 +1,6 @@
 # WebGAL 4.6.4 runtime: sources and license exceptions
 
-The build selects 16 files (39,644,610 output bytes) from the official
+The build assembles 16 runtime files from selected official WebGAL assets and an unmodified OFL UI font. WebGAL assets come from the official
 [WebGAL 4.6.4 web release](https://github.com/OpenWebGAL/WebGAL/releases/tag/4.6.4).
 The archive is
 [`WebGAL-4.6.4-web.zip`](https://github.com/OpenWebGAL/WebGAL/releases/download/4.6.4/WebGAL-4.6.4-web.zip),
@@ -20,16 +20,15 @@ Paths below are relative to `runtime/web/` in the built package:
 - Styles: `assets/index-Dch1g2w9.css`
 - Images: `assets/cherryBlossoms-DzBBkOW8.webp`, `assets/rain-Bd8ZRQ7x.png`, `assets/snow-CJh9m2KR.png`
 - Sounds: `assets/dialog-BDvwibdp.mp3`, `assets/page-flip-1-CZ8VQh4O.mp3`, `assets/switch-1-DI-7VpPw.mp3`
-- Fonts: `assets/OPPOSans-R-tAcFw8I3.ttf`, `assets/ResourceHanRoundedCN-Regular-C1HdCLVq.ttf`, `assets/SourceHanSerifCN-Regular-B_f-kQ2u.ttf`
+- Fonts: `assets/SourceHanSansSC-Regular.otf`, `assets/ResourceHanRoundedCN-Regular-C1HdCLVq.ttf`, `assets/SourceHanSerifCN-Regular-B_f-kQ2u.ttf`
 
-Fifteen files are unchanged upstream bytes. The main bundle has 11 checked
+Thirteen files are unchanged WebGAL upstream bytes; the UI font comes from Adobe, and the CSS changes only its font URL/format. The main bundle has 11 checked
 replacements and a probe suffix: export command/core/parser/stage access,
 microtask-based asset scheduling, and removal of an unused polling interval.
 The original shipped mixed newline encoding is reproduced explicitly.
 Its upstream SHA-256 is `e49e15f0db25c95556b6b1eccad89d6e77a32e284cd4e4852fad7dc9a3019902`;
 the output SHA-256 is `d9efa39b4eabdb3a54c3d209ca5db6cb04d1cc60fdef3acdcd2532712a8a6d10`.
-All 16 output files were compared byte-for-byte with the previously shipped
-runtime. That comparison is a compatibility check, not a license grant.
+Fourteen files (including the instrumented main bundle) remain byte-for-byte equal to the previously shipped runtime. The old OPPO font is removed, the unmodified Source Han Sans font is added, and one CSS URL/format is updated. Font rendering is deliberately not claimed to be pixel-identical. The compatibility comparison is not a license grant.
 
 WebGAL-authored source and the export changes are covered by
 [upstream MPL-2.0](https://github.com/OpenWebGAL/WebGAL/blob/60ad94f4b21288783cb9964dc70f82535ba2e2b1/LICENSE),
@@ -56,22 +55,33 @@ repository's MPL-2.0 notice; this document is not a complete transitive-dependen
   for `page-flip-1.mp3` and `switch-1.wav`; the release contains the latter as MP3.
   The full upstream notice also mentions sounds outside this selected runtime.
 
-## OPPO Sans: unresolved redistribution scope
+## UI font: Source Han Sans SC Regular 2.004R
 
-`OPPOSans-R-tAcFw8I3.ttf` identifies version 1.00 and copyright 2019 OPPO.
-No standalone license for this exact font was found in the pinned WebGAL source
-or release. The [official ColorOS announcement](https://www.coloros.com/article/A00000050/)
-confirms the 2019 free-use announcement, including commercial use, but its current
-OPPO Sans 3.0 terms also prohibit font modification, font sales, and providing
-other download channels. Those terms do not establish the precise redistribution
-permission for the bundled version 1.00. The older official download URL now
-returns a 3.0 font archive, without a matching 1.00 license notice.
+The unmodified static OpenType font is downloaded from
+[Adobe's pinned 2.004R source commit](https://github.com/adobe-fonts/source-han-sans/blob/a8b073bbf80f7226af03abeeb31e27017d5e3f67/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf).
+It is 16,437,608 bytes, SHA-256 `84bbd4ace91d327b3ad1a581c688196278a4e41308520176f419180064e4af2b`.
+The exact upstream [license](https://github.com/adobe-fonts/source-han-sans/blob/a8b073bbf80f7226af03abeeb31e27017d5e3f67/LICENSE.txt)
+is copied as [`LICENSE-SourceHanSans-OFL-1.1.txt`](LICENSE-SourceHanSans-OFL-1.1.txt),
+SHA-256 `f55c2d43dd905011515f5e46ba78d180027e314ef8ccaaf53a9e88fe316767cd`.
+It preserves copyright 2014–2021 Adobe and the Reserved Font Name `Source` under SIL OFL 1.1.
+No conversion, subsetting, internal renaming or glyph modification is performed.
+The existing CSS family alias `WebgalUI` is retained for application compatibility;
+its source is now `SourceHanSansSC-Regular.otf` with `format("opentype")`.
+The font remains independently licensed under OFL, not MPL.
 
-The build preserves the existing font for rendering parity; this must not be
-read as clearance to redistribute it or as an MPL/OFL grant. Before publishing
-binary packages, establish the applicable version 1.00 redistribution permission,
-or make a separately tested change to an appropriately licensed font. No new
-OPPO license text or permission has been invented here.
+The font adds about 6.28 MB uncompressed relative to the previous file. CJK sample
+advances are similar, but Latin/digit widths and some symbol coverage differ;
+existing system fallbacks are retained. This is not a blanket glyph-coverage
+superset or an assertion of unchanged line wrapping in every user theme.
+
+## Removed legacy OPPO font
+
+The earlier snapshot included `OPPOSans-R-tAcFw8I3.ttf` (2019 OPPO, version 1.00)
+without a matching, verified redistribution notice. Current OPPO Sans 3.0 website
+terms do not establish the exact grant for that older binary. The build now excludes
+that asset entirely, including when importing a pinned legacy installer. The upstream
+WebGAL download may still contain it in the build cache, but it is not selected or
+copied into the runtime, package, or installer. No OPPO permission is inferred or invented.
 
 The three copied notice files are byte-identical to their linked sources:
 

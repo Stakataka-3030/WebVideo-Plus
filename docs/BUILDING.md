@@ -20,9 +20,10 @@ Pop-Location
 
 准备脚本直接下载 `build/dependencies.lock.json` 中的固定输入，每个归档都验证 SHA-256，不解析 `latest`：
 
-- WebGAL 4.6.4 官方 Web 发行包：只选择 16 份导出运行文件，并用 `build/runtime-patches.json` 的明确锚点重建导出探针；逐文件验证输出哈希，与此前发布的运行快照完全一致，不复制示例游戏素材
+- WebGAL 4.6.4 官方 Web 发行包：选择必要导出运行文件，并用 `build/runtime-patches.json` 的明确锚点重建导出探针；另用官方 OFL 思源黑体替换授权未核实的 OPPO 字体。最终 16 份文件逐一验证输出哈希，相对旧快照仅字体及 CSS 引用改变，其余 14 份字节一致，不复制示例游戏素材
 - Microsoft.Web.WebView2 1.0.4191.47：固定 `net462` managed DLL、x64 loader 和 SDK 许可证；不再按递归搜索的第一个 DLL 猜测架构
 - Microsoft 官方 WebView2 安装引导程序：固定最终下载地址和 SHA-256；Windows 上同时验证 Microsoft Authenticode 签名，准备阶段不运行安装程序。安装器使用同一锁文件生成校验值
+- Source Han Sans SC Regular 2.004R：固定 Adobe 官方提交中的静态 OTF，保持原字节/名称，随包提供完整 SIL OFL 1.1 及版权声明；不子集化、不转换格式
 - Node.js 22.20.0 Windows x64：固定官方 ZIP 和许可证，用于可选 AI 运行时；不再把构建机器上任意 PATH Node 当作发布输入
 
 `component.json` 和 .NET 4.8 配置由 `build/templates/` 的源码模板生成，内核版本来自 `version.json`。准备成功后写入 `package/BUILD-INPUTS.json`，随包保留来源和校验信息；运行时来源与独立许可见 [`../licenses/WEBGAL-RUNTIME-SOURCES.md`](../licenses/WEBGAL-RUNTIME-SOURCES.md)。
@@ -42,7 +43,7 @@ Pop-Location
 
 ### 旧 bootstrap 的显式迁移入口
 
-正常构建和 CI 不依赖 0.4.10.2。仅为兼容已有维护缓存，仍可传入 `-InstallerPath`，从已知旧安装器导入相同的 WebGAL 运行快照；SDK、Node 和 WebView2 引导程序仍按当前锁文件准备。该路径不会运行安装器，且同时规范化 ZIP 的正/反斜杠并验证运行文件哈希。
+正常构建和 CI 不依赖 0.4.10.2。仅为兼容已有维护缓存，仍可传入 `-InstallerPath`，从已知旧安装器导入 WebGAL 运行快照并执行相同的字体替换；SDK、Node 和 WebView2 引导程序仍按当前锁文件准备。该路径不会运行安装器，且同时规范化 ZIP 的正/反斜杠并验证运行文件哈希。
 
 ```powershell
 .\prepare-build.ps1 -InstallerPath C:\Downloads\WebVideo+-Setup-0.4.10.2.exe
@@ -66,6 +67,8 @@ Pop-Location
 - `scripts/verify-build-inputs.mjs` / `verify-package.mjs`：检查运行快照、二进制、许可、版本和清单哈希
 - `scripts/verify-installer.ps1`：不执行安装器，直接检查 Win32 版本、嵌入 ZIP / manifest 哈希及逐文件完整性
 - `scripts/compare-gpu-scaling.ps1`：分析导出结果，不参与构建
+
+字体回归还会用 Edge/Chromium 检查中文、日文、数字、显式换行、排版边界及原字体对照，并用固定 FFmpeg 做 WebView2 实际导出和解码帧检查。CI 仅保存合成测试的 PNG/JSON/log，不上传字体、测试 MP4 或安装器。`ffmpegTest` 是 CI 专用依赖，不改变安装器的现有 FFmpeg 获取流程。
 
 Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复准备、回归检查、完整产品安装器编译和清单校验；不运行生成的安装器，也不发布 Release。修改依赖锁文件时应同时核对官方来源、许可、运行快照和完整 CI，不要只替换版本字符串。
 

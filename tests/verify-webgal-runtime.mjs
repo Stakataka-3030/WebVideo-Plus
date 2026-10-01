@@ -33,7 +33,10 @@ try{
     const bundle=runtimeManifest.files.find(file=>file.path===runtimeManifest.bundle.path);
     assert.equal(bundle.sourceSha256,'e49e15f0db25c95556b6b1eccad89d6e77a32e284cd4e4852fad7dc9a3019902');
     assert.equal(bundle.outputSha256,'d9efa39b4eabdb3a54c3d209ca5db6cb04d1cc60fdef3acdcd2532712a8a6d10');
-    assert.equal(runtimeManifest.files.filter(file=>file.sourceSha256!==file.outputSha256).length,1);
+    assert.equal(runtimeManifest.files.filter(file=>file.sourceSha256!==file.outputSha256).length,2);
+    assert.equal(runtimeManifest.files.find(file=>file.external==='sourceHanSans').path,'assets/SourceHanSansSC-Regular.otf');
+    assert.ok(!runtimeManifest.files.some(file=>file.path.includes('OPPOSans')));
+    assert.equal(runtimeManifest.fontReplacement.unchangedLegacyFileCount,14);
   });
   check('stages only selected files with exact UTF-8 output bytes',()=>{
     assert.deepEqual(prepareRuntime(source,output,manifest),{files:2,reused:false});
@@ -112,14 +115,33 @@ try{
     const result=spawnSync(process.execPath,[path.join(root,'scripts/prepare-webgal-runtime.mjs')],{encoding:'utf8'});
     assert.equal(result.status,1);assert.match(result.stderr,/Usage:/);
   });
-  // Optional integration inputs keep CI offline and avoid committing third-party binaries.
-  // node tests/verify-webgal-runtime.mjs <official-extracted-root> [legacy-runtime-root]
-  if(process.argv[2])check('official WebGAL release reproduces the pinned runtime',()=>{
-    const actual=path.join(temporary,'official-output');
-    assert.equal(prepareRuntime(process.argv[2],actual).files,16);
+  check('external font inputs are required, hash-checked and selected without old assets',()=>{
+    const font=Buffer.from('unmodified licensed font'),fontPath=path.join(temporary,'font.otf');fs.writeFileSync(fontPath,font);
+    const extended=clone(manifest);extended.files.push({...record('assets/licensed.otf',font),external:'sourceHanSans'});
+    const target=path.join(temporary,'external-output');
+    assert.throws(()=>prepareRuntime(source,target,extended),/Missing pinned external/);
+    assert.equal(fs.existsSync(target),false);
+    const options={externalFiles:{sourceHanSans:fontPath}};
+    assert.equal(prepareRuntime(source,target,extended,options).files,3);
+    assert.deepEqual(fs.readFileSync(path.join(target,'assets/licensed.otf')),font);
+    fs.writeFileSync(fontPath,'corrupt');
+    assert.throws(()=>validateRuntimeSource(source,extended,options),/source integrity/);
+  });
+  // Optional integration: <official-extracted-root> <pinned-font-file> [legacy-runtime-root].
+  if(process.argv[2])check('official runtime replaces only font and CSS relative to the legacy snapshot',()=>{
+    const actual=path.join(temporary,'official-output'),options={externalFiles:{sourceHanSans:process.argv[3]}};
+    assert.equal(prepareRuntime(process.argv[2],actual,runtimeManifest,options).files,16);
     assert.equal(verifyRuntimeOutput(actual),16);
-    if(process.argv[3])for(const file of runtimeManifest.files)assert.deepEqual(fs.readFileSync(path.join(actual,file.path)),fs.readFileSync(path.join(process.argv[3],file.path)),file.path);
-    assert.equal(prepareRuntime(process.argv[2],actual).reused,true);
+    assert.equal(fs.existsSync(path.join(actual,runtimeManifest.fontReplacement.removedPath)),false);
+    if(process.argv[4]){
+      const unchanged=runtimeManifest.files.filter(file=>!file.external&&file.path!==runtimeManifest.styles.path);
+      assert.equal(unchanged.length,14);
+      for(const file of unchanged)assert.deepEqual(fs.readFileSync(path.join(actual,file.path)),fs.readFileSync(path.join(process.argv[4],file.path)),file.path);
+      const upgraded=path.join(temporary,'legacy-upgraded');
+      prepareRuntime(process.argv[4],upgraded,runtimeManifest,{...options,legacy:true});
+      for(const file of runtimeManifest.files)assert.deepEqual(fs.readFileSync(path.join(actual,file.path)),fs.readFileSync(path.join(upgraded,file.path)),file.path);
+    }
+    assert.equal(prepareRuntime(process.argv[2],actual,runtimeManifest,options).reused,true);
   });
   console.log('WebGAL runtime checks passed: '+checks);
 }finally{fs.rmSync(temporary,{recursive:true,force:true});}

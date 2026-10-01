@@ -33,6 +33,22 @@
     "WebView2Loader.dll": "c66e4a92fdc7a216118e43b7a5024ea2200e8c43f9310bf20d96a0084f82c5bc",
     "licenses/WebView2-SDK-LICENSE.txt": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55",
     "ai-runtime/node.exe": "fdddbf4581e046b8102815d56208d6a248950bb554570b81519a8a5dacfee95d",
-    "ai-runtime/LICENSE-Node.txt": "339c50294da6a84322dcbe7285b57b248123bd4d9e37a2f72d68d5abf2574783"
+    "ai-runtime/LICENSE-Node.txt": "339c50294da6a84322dcbe7285b57b248123bd4d9e37a2f72d68d5abf2574783",
+    "licenses/LICENSE-SourceHanSans-OFL-1.1.txt": "f55c2d43dd905011515f5e46ba78d180027e314ef8ccaaf53a9e88fe316767cd"
+  },
+  "sourceHanSans": {
+    "version": "2.004R",
+    "file": "SourceHanSansSC-Regular-2.004R.otf",
+    "url": "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/a8b073bbf80f7226af03abeeb31e27017d5e3f67/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf",
+    "sha256": "84bbd4ace91d327b3ad1a581c688196278a4e41308520176f419180064e4af2b",
+    "license": "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/a8b073bbf80f7226af03abeeb31e27017d5e3f67/LICENSE.txt",
+    "licenseSha256": "f55c2d43dd905011515f5e46ba78d180027e314ef8ccaaf53a9e88fe316767cd"
+  },
+  "ffmpegTest": {
+    "version": "9.0.1",
+    "file": "ffmpeg-9.0.1-essentials_build.zip",
+    "url": "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-9.0.1-essentials_build.zip",
+    "sha256": "fec81ae03971d9dd4be3ebe02e263bd2ec1d789483f931bdba5f5715e65da2e9",
+    "purpose": "CI-only video export regression; matches installer runtime pin and is not bundled by preparation"
   }
 }
