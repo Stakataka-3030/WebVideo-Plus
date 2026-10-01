@@ -4,7 +4,7 @@ $taskOut = Join-Path $taskRoot 'package'
 $taskCompiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 $taskBrowser=Join-Path $taskOut 'browser'
 $taskIcon=Join-Path $taskRoot 'WebVideo+_icon.ico'
-& node (Join-Path $taskRoot 'verify-export-lifecycle.mjs')
+& node (Join-Path $taskRoot 'tests/verify-export-lifecycle.mjs')
 if($LASTEXITCODE -ne 0){throw 'Export lifecycle regression checks failed'}
 New-Item -ItemType Directory -Path $taskBrowser -Force | Out-Null
 Copy-Item -Path (Join-Path $taskRoot 'browser/*.js') -Destination $taskBrowser -Force

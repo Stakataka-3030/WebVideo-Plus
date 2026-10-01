@@ -1,5 +1,5 @@
 import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';import {spawnSync} from 'node:child_process';
-const root=path.dirname(fileURLToPath(import.meta.url)),pkg=path.join(root,'package'),versions=JSON.parse(fs.readFileSync(path.join(root,'version.json'),'utf8'));const internalAt=process.argv.indexOf('--internal-version'),internalVersion=internalAt>=0?process.argv[internalAt+1]:'';if(internalAt>=0&&!internalVersion)throw Error('--internal-version requires a value');
+const root=path.dirname(path.dirname(fileURLToPath(import.meta.url))),pkg=path.join(root,'package'),versions=JSON.parse(fs.readFileSync(path.join(root,'version.json'),'utf8'));const internalAt=process.argv.indexOf('--internal-version'),internalVersion=internalAt>=0?process.argv[internalAt+1]:'';if(internalAt>=0&&!internalVersion)throw Error('--internal-version requires a value');
 const modules={generativeAI:'ai-module.js',expressionPrep:'expression-preparation.js',filter:'batch-filter-panel.js',filterEdit:'filter-edit.js',batchNext:'batch-next.js',autoExit:'auto-exit.js',presetEffects:'preset-ui.js',backups:'backup-panel.js',idTools:'id-tools.js',videoWorkflow:'video-workflow.js',musicTimeline:'music-timeline.js',textImport:'text-import.js',checks:'checks.js'};
 const filterSource=fs.readFileSync(path.join(root,'browser/batch-filter.js'),'utf8'),filterAt=filterSource.indexOf('function WebVideoBatchFilterPanel');fs.writeFileSync(path.join(root,'browser/batch-filter-panel.js'),filterSource.slice(filterAt));fs.writeFileSync(path.join(root,'browser/filter-helpers.js'),filterSource.slice(0,filterAt));
 for(const d of ['features/core','features/modules'])fs.mkdirSync(path.join(pkg,d),{recursive:true});
@@ -19,4 +19,5 @@ const component=JSON.parse(fs.readFileSync(path.join(pkg,'component.json')));com
 fs.mkdirSync(path.join(pkg,'source/app'),{recursive:true});for(const file of fs.readdirSync(path.join(root,'src')).filter(f=>f.endsWith('.cs')))fs.copyFileSync(path.join(root,'src',file),path.join(pkg,'source/app',file));
 fs.mkdirSync(path.join(pkg,'source/browser'),{recursive:true});for(const file of ['audio.js','workload.js','timeline.js'])fs.copyFileSync(path.join(root,'browser',file),path.join(pkg,'source/browser',file));
 fs.copyFileSync(path.join(root,'README.md'),path.join(pkg,'README.md'));
+fs.cpSync(path.join(root,'docs'),path.join(pkg,'docs'),{recursive:true});
 console.log('Feature assets: '+Object.keys(modules).length+' optional modules, catalog from native resolver.');

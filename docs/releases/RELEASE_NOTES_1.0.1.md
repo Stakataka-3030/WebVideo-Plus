@@ -20,4 +20,4 @@
 - 导出内核：`0.6.42`
 - 适配基线：WebGAL Terre `4.6.4`
 
-正式安装器文件名为 `WebVideo+-Setup-1.0.1.exe`；发布后可从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases) 获取。完整的逐版本变更见 [CHANGELOG.md](CHANGELOG.md)。
+正式安装器文件名为 `WebVideo+-Setup-1.0.1.exe`；发布后可从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases) 获取。完整的逐版本变更见 [CHANGELOG.md](../../CHANGELOG.md)。

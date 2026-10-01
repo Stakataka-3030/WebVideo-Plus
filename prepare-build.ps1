@@ -6,7 +6,7 @@ $taskAcceptedHashes=@(
  'a31a3d0ba1c76a3dd033d8027b7998c98de24a668db2501038196f8da1fe9378', # published v0.4.10.2 installer
  '1ed9f61ab893f32c59c84a5b1a0865fea760789b1e5b71d79fd8083e7b00ed2d'  # legacy pre-release bootstrap
 )
-if($taskAcceptedHashes -notcontains $taskInstallerHash){throw 'Unsupported bootstrap installer. Use the published WebVideo+-Setup-0.4.10.2.exe or the legacy pinned bootstrap listed in BUILDING.md.'}
+if($taskAcceptedHashes -notcontains $taskInstallerHash){throw 'Unsupported bootstrap installer. Use the published WebVideo+-Setup-0.4.10.2.exe or the legacy pinned bootstrap listed in docs/BUILDING.md.'}
 $taskRoot=$PSScriptRoot
 $taskOut=Join-Path $taskRoot 'package'
 $taskCache=Join-Path $taskRoot '.build'
