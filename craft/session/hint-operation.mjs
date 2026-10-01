@@ -52,7 +52,7 @@ export function hintPageOperation(expected) {
       const keys=Object.keys(v);
       if(keys.length>10000)throw Error('hint-game-state-too-large');
       if(Object.getOwnPropertySymbols(v).length)throw Error('hint-game-state-unsupported');
-      if(Array.isArray(v)&&keys.some(k=>! /^(0|[1-9][0-9]*)$/.test(k)||Number(k)>=v.length))throw Error('hint-game-state-unsupported');
+      if(Array.isArray(v)&&(keys.length!==v.length||keys.some(k=>! /^(0|[1-9][0-9]*)$/.test(k)||Number(k)>=v.length)))throw Error('hint-game-state-unsupported');
       seen.add(v);
       const result=Array.isArray(v)?['array',Array.from(v,x=>encode(x,depth+1))]:
         ['object',keys.sort().map(k=>[text(k),encode(v[k],depth+1)])];

@@ -41,3 +41,5 @@ test('array and in-place primitive changes cancel despite stable container ident
 test('cyclic, unsupported and excessive-depth variable state fail closed',()=>{const cyclic={};cyclic.self=cyclic;let deep={};for(let i=0;i<40;i++)deep={child:deep};for(const game of [cyclic,deep,{bad:()=>{}},{bad:NaN}]){const f=fixture();f.state.userData.globalGameVar=game;f.invoke();f.advance(100);assert.equal(f.clicks(),0);assert.equal(f.invoke('status').state,'failed')}});
 
 test('variable encoder bounds strings, keys and arrays and rejects array extra properties',()=>{const extra=[];extra.foo=1;for(const game of [{large:'x'.repeat(262145)},{['x'.repeat(262145)]:1},{list:new Array(10001)},{list:extra}]){const f=fixture();f.state.userData.globalGameVar=game;f.invoke();assert.equal(f.invoke('status').state,'failed');assert.equal(f.clicks(),0)}});
+
+test('deleting an undefined array entry fails closed rather than equating a hole',()=>{const f=fixture();f.state.userData.globalGameVar={list:[undefined]};f.invoke();delete f.state.userData.globalGameVar.list[0];f.advance(100);assert.equal(f.clicks(),0);assert.equal(f.invoke('status').state,'failed')});
