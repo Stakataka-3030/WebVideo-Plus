@@ -58,6 +58,10 @@ jobs:
           node scripts/build-timeline.mjs
           if ($LASTEXITCODE -ne 0) { throw "Timeline metadata preparation failed" }
 
+      - name: Verify optional Live2D preflight against referenced assets
+        shell: powershell
+        run: .\tests\font-render-preflight.test.ps1
+
       - name: Render and decode a multilingual native export
         shell: pwsh
         run: |

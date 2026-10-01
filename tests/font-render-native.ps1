@@ -47,9 +47,18 @@ $video = Join-Path $run 'font-export.mp4'
 $work = Join-Path $run 'work'
 $arguments = @('export', '--project', ('"' + $project + '"'), '--scene', 'start.txt', '--out', ('"' + $video + '"'), '--work-dir', ('"' + $work + '"'), '--width', '1280', '--height', '720', '--fps', '30', '--workers', '1', '--mode', 'manual', '--hold', '1', '--text-speed', '100', '--gpu-raw-export', 'traditional')
 Invoke-Checked $exe $arguments 'export'
+# The CLI can return exit 0 for a needs_attention scan result. Require its
+# terminal state explicitly and preserve the actual preflight reason in CI.
+$statusPath = Join-Path $work 'status.json'
+if (-not (Test-Path -LiteralPath $statusPath)) { throw "Export produced no terminal status; diagnostics: $run" }
+$status = Get-Content -LiteralPath $statusPath -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($status.state -ne 'completed') {
+  $issues = @($status.scanReport.issues | ForEach-Object { "$($_.kind): $($_.file): $($_.message)" }) -join '; '
+  throw "Export did not complete: state=$($status.state), phase=$($status.phase); $($status.message); $issues; diagnostics: $run"
+}
 $resultPath = [IO.Path]::ChangeExtension($video, '.json')
 if (-not (Test-Path -LiteralPath $resultPath)) { throw 'Export produced no metadata.' }
-$result = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
+$result = Get-Content -LiteralPath $resultPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($result.host -ne 'webview2' -or $result.engine.sourceKind -ne 'bundled-runtime') { throw 'Fixture did not exercise bundled WebView2 runtime.' }
 if ($result.totalFrames -lt 60 -or $result.durationSeconds -le 0 -or $result.pipeline -ne 'jpeg') { throw 'Export timing or pipeline was unexpected.' }
 $probeArgs = @('-v', 'error', '-count_frames', '-show_streams', '-show_format', '-of', 'json', ('"' + $video + '"'))
