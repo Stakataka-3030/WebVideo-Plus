@@ -81,7 +81,7 @@
       if (fresh.sourceHash !== refreshed.sourceHash || fresh.seconds !== refreshed.seconds) throw Error('Native cache freshness check returned a different measurement');
       record('timing-cache-validated', { seconds: fresh.seconds, dependencyHash: fresh.dependencyHash });
       const cfg = await bridge.service('/api/config'), prefix = 'native-media-' + Date.now();
-      const base = { scene: captured.sceneRelativePath, sourceText: captured.source, outputDir: options.outputDir, storyScope: 'sceneOnly', exportKind: 'full', useMusicTimeline: true, replaceGameBgm: true, settings: { ...cfg.settings, ...fresh.settings, width: 640, height: 360, fps: 24, workers: 1, mode: 'auto', bgmBaseMode: 'auto' } };
+      const base = { scene: captured.sceneRelativePath, sourceText: captured.source, outputDir: options.outputDir, storyScope: 'sceneOnly', exportKind: 'full', useMusicTimeline: true, replaceGameBgm: true, settings: { ...cfg.settings, ...fresh.settings, width: 1280, height: 720, fps: 30, workers: 1, mode: 'auto', bgmBaseMode: 'auto' } };
       for (const mode of ['soft', 'burn']) {
         await sameProject();
         const request = { ...base, fileName: prefix + '-' + mode + '.mp4', subtitle: { sourcePath: options.subtitlePath, mode, anchor: { type: 'video' } } };

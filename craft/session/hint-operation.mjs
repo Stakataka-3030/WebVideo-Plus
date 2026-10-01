@@ -9,7 +9,7 @@ export function hintPageOperation(expected) {
   const old = window[slot];
   const describe = record => ({state:record.state,ticket:record.ticket,clicked:record.clicked===true,
     duration:record.duration,elapsedMs:record.startedAt===null?0:Math.max(0,performance.now()-record.startedAt),
-    ...(record.reason?{reason:record.reason}:{})});
+    ...(record.reason?{reason:record.reason}:{}),...(record.guardChanges?{guardChanges:record.guardChanges}:{})});
   if (expected.action === 'status') {
     return old?.version === 1 && old.ticket === expected.ticket ? describe(old) :
       {state:'cancelled',ticket:expected.ticket,clicked:false,reason:'navigation-ticket-changed'};
@@ -33,6 +33,33 @@ export function hintPageOperation(expected) {
     }
   };
   record.stop=stop;
+  // Redux may replace globalGameVar with an equal object during preview housekeeping.
+  // Compare a captured, bounded semantic value instead of the container reference.
+  // Tags retain undefined vs missing, array vs object and non-string primitive types.
+  function variableState(value) {
+    let count=0,characters=0;const seen=new Set();
+    const text=value=>{characters+=value.length;if(characters>262144)throw Error('hint-game-state-too-large');return value;};
+    function encode(v,depth){
+      if(++count>10000||depth>32)throw Error('hint-game-state-too-large');
+      if(v===null)return ['null'];
+      if(v===undefined)return ['undefined'];
+      if(typeof v==='string')return ['string',text(v)];
+      if(typeof v==='boolean')return ['boolean',v];
+      if(typeof v==='number'&&Number.isFinite(v))return ['number',Object.is(v,-0)?'-0':v];
+      if(typeof v!=='object'||seen.has(v))throw Error('hint-game-state-unsupported');
+      if(!Array.isArray(v)&&Object.prototype.toString.call(v)!=='[object Object]')throw Error('hint-game-state-unsupported');
+      if(Array.isArray(v)&&v.length>10000)throw Error('hint-game-state-too-large');
+      const keys=Object.keys(v);
+      if(keys.length>10000)throw Error('hint-game-state-too-large');
+      if(Object.getOwnPropertySymbols(v).length)throw Error('hint-game-state-unsupported');
+      if(Array.isArray(v)&&keys.some(k=>! /^(0|[1-9][0-9]*)$/.test(k)||Number(k)>=v.length))throw Error('hint-game-state-unsupported');
+      seen.add(v);
+      const result=Array.isArray(v)?['array',Array.from(v,x=>encode(x,depth+1))]:
+        ['object',keys.sort().map(k=>[text(k),encode(v[k],depth+1)])];
+      seen.delete(v);return result;
+    }
+    return JSON.stringify(encode(value,0));
+  }
   function view() {
     const container=document.getElementById('chooseContainer');
     const main=container?.firstElementChild;
@@ -65,9 +92,13 @@ export function hintPageOperation(expected) {
         option.showCondition!==undefined || option.enableCondition!==undefined) return null;
     const state=store.getState();
     if(!state.GUI||!state.userData?.globalGameVar) return null;
-    return {container,item,handler,store,choices,option,gui:state.GUI,game:state.userData.globalGameVar};
+    return {container,item,handler,store,choices,option,gui:state.GUI,game:state.userData.globalGameVar,gameState:variableState(state.userData.globalGameVar)};
   }
   let captured=null,mutated=false;
+  const identities=['container','item','handler','store','choices','option','gui','gameState'];
+  const changedKeys=(a,b)=>[...new Set([...Object.keys(a||{}),...Object.keys(b||{})])].filter(k=>a?.[k]!==b?.[k]);
+  function changes(current){return {identities:current?identities.filter(k=>current[k]!==captured[k]):['view-unavailable'],
+    mutated,guiFields:changedKeys(captured.gui,current?.gui),gameFields:changedKeys(captured.game,current?.game)};}
   const tick=()=>{
     try {
     record.timer=null;
@@ -82,15 +113,15 @@ export function hintPageOperation(expected) {
       captured=current;record.startedAt=performance.now();record.state='showing';
       record.observer=new MutationObserver(()=>{mutated=true;});
       record.observer.observe(captured.container,{childList:true,subtree:true,attributes:true,characterData:true});
-    } else if(mutated||!current||['container','item','handler','store','choices','option','gui','game'].some(k=>current[k]!==captured[k])) {
-      stop('cancelled','提示或游戏状态已变化，未自动选择');return;
+    } else if(mutated||!current||identities.some(k=>current[k]!==captured[k])) {
+      record.guardChanges=changes(current);stop('cancelled','提示或游戏状态已变化，未自动选择');return;
     }
     const remaining=expected.duration-(performance.now()-record.startedAt);
     if(remaining>0){record.timer=setTimeout(tick,Math.min(40,remaining));return;}
     // Re-check immediately before the single native click. No await lies between check and click.
     const last=view();
-    if(mutated||window[slot]!==record||!samePage()||!last||['container','item','handler','store','choices','option','gui','game'].some(k=>last[k]!==captured[k])){
-      stop('cancelled','提示在结束前变化，未自动选择');return;
+    if(mutated||window[slot]!==record||!samePage()||!last||identities.some(k=>last[k]!==captured[k])){
+      record.guardChanges=changes(last);stop('cancelled','提示在结束前变化，未自动选择');return;
     }
     record.observer?.disconnect();record.observer=null;
     record.clicked=true;captured.item.click();record.state='completed';

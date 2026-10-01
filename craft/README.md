@@ -36,6 +36,8 @@
 
 Windows 原生回归：`tests/font-render-preflight.test.ps1` 验证普通项目不会因未用的 Live2D SDK 被阻挡；`craft/tests/native-update-observer.ps1` 只编译、运行写入隔离标记文件的合成宿主/安装器，不升级 Craft。合成安装器通过也不代表官方 NSIS 升级已验证。
 
-当前会话日志在适配目录的 `state/sessions/<sessionId>`，内核用户配置位于独立的 `state/kernel/user-data`。不会自动导入旧 Terre 的用户配置、凭据或模型列表；AI 请求只由显式功能操作启动。
+适配器会话日志在适配目录的 `state/sessions/<sessionId>`，内核用户配置位于独立的 `state/kernel/user-data`。不会自动导入旧 Terre 的用户配置、凭据或模型列表；AI 请求只由显式功能操作启动。
 
 安装和卸载校验清单、文件哈希与归属。未知或已被官方更新替换的主程序不会被旧备份覆盖。未能证明安装完成时，不自动声明修复成功。
+
+隔离测试限制：WebView2 的独立 profile 只隔离网页数据；官方 Craft 原生日志仍写入同一 Windows 用户的固定应用日志目录，可能追加和轮转。现有测试验证正式宿主 EXE、生产 profile、项目及注册配置未变化，但不能声称所有生产文件均未变化。该发行版没有已确认的会话级日志目录开关；测试过程不删除或改写既有日志。
