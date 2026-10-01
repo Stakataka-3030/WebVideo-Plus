@@ -51,6 +51,23 @@ jobs:
           node tests/font-render.mjs --runtime package/runtime/web --baseline .build/font-baseline --out .build/font-render
           if ($LASTEXITCODE -ne 0) { throw "Font rendering comparison failed" }
 
+      - name: Compile native exporter for early font smoke
+        shell: powershell
+        run: |
+          .\build.ps1
+          node scripts/build-timeline.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Timeline metadata preparation failed" }
+
+      - name: Render and decode a multilingual native export
+        shell: pwsh
+        run: |
+          . .\scripts\build-common.ps1
+          $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
+          $archive = Get-PinnedBuildInput $lock.ffmpegTest (Join-Path $PWD '.build/downloads')
+          Expand-CheckedBuildArchive $archive (Join-Path $PWD '.build/ffmpeg-test')
+          $env:PATH = (Join-Path $PWD ('.build/ffmpeg-test/ffmpeg-' + $lock.ffmpegTest.version + '-essentials_build/bin')) + ';' + $env:PATH
+          .\tests\font-render-native.ps1
+
       - name: Restore locked optional AI dependencies
         shell: pwsh
         working-directory: ai-runtime
@@ -74,16 +91,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Full package verification failed" }
           $version = (Get-Content version.json -Raw | ConvertFrom-Json).productVersion
           if(-not(Test-Path -LiteralPath "dist/WebVideo+-Setup-$version.exe")){throw "Installer output is missing"}
-
-      - name: Render and decode a multilingual native export
-        shell: pwsh
-        run: |
-          . .\scripts\build-common.ps1
-          $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
-          $archive = Get-PinnedBuildInput $lock.ffmpegTest (Join-Path $PWD '.build/downloads')
-          Expand-CheckedBuildArchive $archive (Join-Path $PWD '.build/ffmpeg-test')
-          $env:PATH = (Join-Path $PWD ('.build/ffmpeg-test/ffmpeg-' + $lock.ffmpegTest.version + '-essentials_build/bin')) + ';' + $env:PATH
-          .\tests\font-render-native.ps1
 
       - name: Preserve synthetic font regression diagnostics
         if: always()
