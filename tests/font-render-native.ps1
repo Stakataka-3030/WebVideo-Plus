@@ -26,12 +26,12 @@ if (-not (Test-Path -LiteralPath $exe)) { throw "Build the native executable fir
 $run = Join-Path $OutputRoot ([Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $run -Force | Out-Null
 $project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'fixtures/font-render/project'))
-$font = Join-Path $PackageRoot 'runtime/web/assets/SourceHanSansSC-Regular.otf'
-if (-not (Test-Path -LiteralPath $font)) { throw 'Replacement font is missing from the package.' }
+$font = Join-Path $PackageRoot 'runtime/web/assets/OPPOSans-R-tAcFw8I3.ttf'
+if (-not (Test-Path -LiteralPath $font)) { throw 'Original WebGAL font is missing from the package.' }
 $fontHash = (Get-FileHash -LiteralPath $font -Algorithm SHA256).Hash.ToLowerInvariant()
-if ($fontHash -ne '84bbd4ace91d327b3ad1a581c688196278a4e41308520176f419180064e4af2b') { throw 'Unexpected Source Han Sans SC Regular font bytes.' }
-$legacyFonts = Get-ChildItem -LiteralPath (Join-Path $PackageRoot 'runtime/web') -Recurse -File | Where-Object Name -Match 'OPPO'
-if ($legacyFonts) { throw 'Legacy OPPO font remains in packaged runtime.' }
+if ($fontHash -ne 'ea92535935f8b5da18b64bb23e5ffbfef1417b7ae4ff3fc15372a65ee95a9580') { throw 'Unexpected original OPPO Sans font bytes.' }
+$replacementFonts = Get-ChildItem -LiteralPath (Join-Path $PackageRoot 'runtime/web') -Recurse -File | Where-Object Name -Match 'SourceHanSansSC'
+if ($replacementFonts) { throw 'Unexpected replacement font remains in packaged runtime.' }
 
 $runtimeCheck = Start-Process -FilePath $exe -ArgumentList @('check-runtime') -Wait -PassThru -NoNewWindow -RedirectStandardOutput (Join-Path $run 'webview2.json') -RedirectStandardError (Join-Path $run 'webview2-error.log')
 if ($runtimeCheck.ExitCode -ne 0) { throw 'WebView2 Runtime is required on this Windows runner.' }

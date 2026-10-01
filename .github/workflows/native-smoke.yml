@@ -24,11 +24,17 @@ jobs:
       - name: Verify repository layout and browser regressions
         shell: pwsh
         run: |
-          node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs tests/build-inputs.test.mjs tests/ai-build-metadata.test.mjs tests/font-render.test.mjs
+          node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs tests/build-inputs.test.mjs tests/ai-build-metadata.test.mjs tests/font-render.test.mjs tests/terre-ui-font.test.mjs
           if ($LASTEXITCODE -ne 0) { throw "Node regression checks failed" }
           node tests/update-check-and-atlas.mjs
           if ($LASTEXITCODE -ne 0) { throw "Update and atlas checks failed" }
           .\tests\build-inputs.test.ps1
+
+      - name: Verify injected controls inherit Terre host typography
+        shell: pwsh
+        run: |
+          node tests/terre-ui-font-render.mjs --out .build/terre-ui-font
+          if ($LASTEXITCODE -ne 0) { throw "Terre UI font inheritance checks failed" }
 
       - name: Prepare pinned upstream dependencies from a clean checkout
         shell: powershell
@@ -104,6 +110,8 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
           path: |
+            .build/terre-ui-font/*.png
+            .build/terre-ui-font/*.json
             .build/font-render/*.png
             .build/font-render/*.json
             .build/font-render/native/*/*.png

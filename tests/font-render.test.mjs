@@ -9,10 +9,13 @@ test('accepts loaded, contained multilingual text',()=>assert.equal(validateMeas
 test('rejects unloaded, fallback, clipping, misplaced, and lost-break regressions',()=>{
  for(const mutate of [r=>r.ok=false,r=>r.platformFonts.dialogue=[],r=>r.platformFonts.ja[0].isCustomFont=false,r=>r.samples.digits.scrollWidth=900,r=>r.samples.dialogue.layers[0].width=1900,r=>r.samples.explicitBreak.lines.pop(),r=>r.samples.zh.box.y=710,r=>r.samples.latin.font='serif']){const report=good();mutate(report);assert.throws(()=>validateMeasurement(report));}
 });
-test('comparison reports expected differences and rejects broad metric drift',()=>{
- const old=good(),current=good();current.samples.latin.advance=95;const result=compareMeasurements(old,current);assert.ok(Math.abs(result.latin.advanceChangePercent+5)<0.001);current.samples.zh.advance=140;assert.throws(()=>compareMeasurements(old,current),/15%/);
+test('comparison requires exact source metrics, line wrapping, and resolved fonts',()=>{
+ const old=good(),current=good();assert.equal(compareMeasurements(old,current).latin.advanceChangePercent,0);
+ current.samples.latin.advance=95;assert.throws(()=>compareMeasurements(old,current),/original source/);
+ const differentWrap=good();differentWrap.samples.wrap.lines[0].text='different';assert.throws(()=>compareMeasurements(old,differentWrap),/line layout/);
+ const differentFace=good();differentFace.platformFonts.ja[0].familyName='Replacement';assert.throws(()=>compareMeasurements(old,differentFace),/resolved font/);
 });
-test('unchanged rounded font is an independent layout control',()=>{const old=good(),current=good();current.samples.rounded.advance=102;assert.throws(()=>compareMeasurements(old,current),/control moved/);});
+test('unchanged rounded font remains an independent exact-layout control',()=>{const old=good(),current=good();current.samples.rounded.advance=102;assert.throws(()=>compareMeasurements(old,current),/original source/);});
 test('native fixture cannot select a project-provided runtime or font',()=>{
  const project=new URL('./fixtures/font-render/project/',import.meta.url);
  assert.equal(fs.existsSync(new URL('index.html',project)),false);
@@ -22,11 +25,12 @@ test('native fixture cannot select a project-provided runtime or font',()=>{
 });
 test('runtime CSS points to the existing pinned font when build inputs are present',()=>{
  const root=new URL('../package/runtime/web/',import.meta.url);if(!fs.existsSync(new URL('index.html',root)))return;
- const lock=JSON.parse(fs.readFileSync(new URL('../build/dependencies.lock.json',import.meta.url),'utf8'));
- assert.equal(runtimeStyles(fileURLToPath(root)).fontSha256,lock.sourceHanSans.sha256);
+ const manifest=JSON.parse(fs.readFileSync(new URL('../build/runtime-patches.json',import.meta.url),'utf8'));
+ const original=manifest.files.find(file=>file.path==='assets/OPPOSans-R-tAcFw8I3.ttf');
+ assert.ok(original);const actual=runtimeStyles(fileURLToPath(root));assert.equal(actual.font,original.path);assert.equal(actual.fontSha256,original.sourceSha256);assert.equal(original.outputSha256,original.sourceSha256);
 });
 
-test('legacy baseline may record existing fallback without relaxing replacement or layout checks',()=>{
+test('original runtime may preserve existing fallback without relaxing layout checks',()=>{
  const report=good();report.platformFonts.ja.push({familyName:'Yu Gothic',isCustomFont:false});
  assert.throws(()=>validateMeasurement(report),/fallback|fell back/);
  assert.equal(validateMeasurement(report,{allowExistingFallback:true}),true);

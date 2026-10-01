@@ -88,7 +88,9 @@ const WebVideoUpdates=(()=>{
  WebVideoUpdates.subscribe(status=>{
   if(!status.visible){notice?.remove();notice=null;return;}
   if(!document.body)return;
-  if(!notice){notice=document.createElement('aside');notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');notice.style.cssText='position:fixed;right:20px;bottom:20px;z-index:1100;max-width:370px;width:min(370px,calc(100vw - 40px));box-sizing:border-box;padding:16px;border:1px solid var(--colorNeutralStroke2,#bbb);border-radius:10px;background:var(--colorNeutralBackground1,#fff);color:var(--colorNeutralForeground1,#222);box-shadow:0 8px 28px #0003;font-family:system-ui,"Microsoft YaHei UI",sans-serif;font-size:13px;line-height:1.55';document.body.appendChild(notice);}
+  if(!notice){notice=document.createElement('aside');notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');notice.style.cssText='position:fixed;right:20px;bottom:20px;z-index:1100;max-width:370px;width:min(370px,calc(100vw - 40px));box-sizing:border-box;padding:16px;border:1px solid var(--colorNeutralStroke2,#bbb);border-radius:10px;background:var(--colorNeutralBackground1,#fff);color:var(--colorNeutralForeground1,#222);box-shadow:0 8px 28px #0003;font-family:inherit;font-size:13px;line-height:1.55';document.body.appendChild(notice);}
+  // Terre mounts its typography/theme on FluentProvider, not necessarily body.
+  const host=document.querySelector('#root .fui-FluentProvider')||document.body;if(notice.parentElement!==host)host.appendChild(notice);
   notice.replaceChildren();const title=node('strong','WebVideo+ 更新检查');title.style.cssText='display:block;font-size:15px;margin-bottom:6px';notice.append(title,node('div',status.message));
   const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px';
   if(status.url){const link=node('a','查看发行页');link.href=status.url;link.target='_blank';link.rel='noopener noreferrer';link.style.cssText=buttonStyle+';text-decoration:none;background:var(--colorBrandBackground,#0f6cbd);color:var(--colorNeutralForegroundOnBrand,#fff)';actions.appendChild(link);}

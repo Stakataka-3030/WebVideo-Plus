@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>Terre host font inheritance regression</title>
+<style>
+:root { --fontFamilyBase: 'Unused UI token', fantasy; --fontFamilyMonospace: 'Host Mono A', monospace; }
+body { margin:24px; background:#f3f6fa; color:#203044; font-family:'Host UI A',serif; font-size:16px; line-height:1.5; }
+h1 { font-size:24px; margin:0 0 12px; }
+#nativeHost { margin-bottom:16px; padding:12px; border:2px solid #5d738d; }
+#nativeHost input { color:#253a54; border:1px solid #567; }
+.fixture-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.fixture-box { padding:12px; border:1px solid #bdcada; background:#fff; min-width:0; }
+.fixture-box h2 { font-size:16px; margin:0 0 10px; }
+.fixture-box :is(.wvp-dialog,.wvp-tool-dialog,.wvp-ai-dialog,.wvp-add-dialog,.wvp-character-map,.wvp-native-popover,.wvp-preview-bar) { position:static!important; transform:none!important; width:auto!important; height:auto!important; min-height:0!important; max-height:none!important; padding:8px!important; }
+.fixture-box .wvp-nav { width:auto!important; min-width:0!important; }
+.fixture-box input,.fixture-box select,.fixture-box textarea { max-width:100%; box-sizing:border-box; }
+.fixture-box .wvp-ai-config { display:block!important; min-height:0!important; }
+.fixture-box .wvp-add-body { max-height:none!important; }
+#nestedHost { font-family:'Nested host UI',sans-serif; }
+#status { padding:12px; margin-top:18px; background:#e5f2e7; }
+</style>
+<body>
+<h1>Terre 原生字体继承 / Host font inheritance</h1>
+<div id="nativeHost"><span id="nativeText">Unrelated Terre text 中文</span> <button id="nativeButton">Native button</button> <input id="nativeInput" value="Native input"><select id="nativeSelect"><option>Native select</option></select><textarea id="nativeTextarea">Native textarea</textarea></div>
+<div id="root"><div class="fixture-grid">
+<section class="fixture-box"><h2>Navigation</h2><div class="wvp-nav" data-theme="light"><span id="navText" data-family="body">剧情导航 中文</span><button id="navButton" data-family="body">打开</button><input id="navInput" data-family="body" value="查找"><select id="navSelect" data-family="body"><option>全部</option></select><textarea id="navTextarea" data-family="body">普通输入</textarea></div></section>
+<section class="fixture-box"><h2>Dialog and code</h2><div class="wvp-dialog wvp-tool-dialog"><div class="wvp-tool-content"><label><input id="dialogInput" data-family="body" value="字段"></label><select id="dialogSelect" data-family="body"><option>选项</option></select><button id="dialogButton" data-family="body">应用</button><textarea id="codeTextarea" data-family="body">say:中文 0123;</textarea><div class="wvp-change-preview"><pre id="codePre" data-family="mono">changeFigure:hero.png;</pre><code id="codeInline" data-family="mono">0123 code</code></div><input id="fileInput" data-family="body" type="file"></div></div></section>
+<section class="fixture-box"><h2>Ribbon and nested host</h2><div class="wvp-ribbon"><button id="ribbonButton" class="wvp-ribbon-button" data-family="body">工具</button><input id="ribbonInput" data-family="body" value="Ribbon input"></div><div id="nestedHost"><div class="wvp-native-popover"><button id="nestedButton" class="wvp-native-command" data-family="nestedHost">Nearest ancestor font</button></div></div></section>
+<section class="fixture-box"><h2>Add command</h2><div class="wvp-add-dialog"><div class="wvp-add-body"><div class="wvp-add-heading"><h2 id="addHeading" data-family="body">添加语句</h2></div><input id="addSearch" class="wvp-add-search" data-family="body" value="查找语句"><button id="addCommand" class="wvp-add-command" data-family="body">插入对话</button></div></div><button id="gameLink" class="wvp-game-page-link" data-family="body">打开游戏</button></section>
+<section class="fixture-box"><h2>AI native controls</h2><div class="wvp-ai-dialog"><div class="wvp-ai-config"><div class="wvp-ai-provider-list"><button id="providerButton" data-family="body">Provider</button></div><input id="aiInput" data-family="body" value="输入"><select id="aiSelect" data-family="body"><option>选择</option></select></div></div></section>
+<section class="fixture-box"><h2>Character map and preview</h2><div class="wvp-character-map"><input id="mapInput" data-family="body" value="人物"><button id="mapButton" data-family="body">保存</button></div><div class="wvp-preview-bar"><span id="previewText" data-family="body">Preview</span><button id="previewButton" data-family="body">关闭</button></div></section>
+</div></div><div id="status">Loading actual WebVideo+ styles…</div>
+<script>
+(async()=>{
+ try {
+  const mode=new URL(location.href).searchParams.get('mode')||'combined';
+  const files=mode==='toolbar'?['toolbar.css']:mode==='tools'?['tools.css']:['timeline.css','timeline-theme.css','toolbar.css','tools.css'];
+  const groups={toolbar:['ribbonButton','ribbonInput','nestedButton','addHeading','addSearch','addCommand','gameLink','providerButton','aiInput','aiSelect','mapInput','mapButton'],tools:['dialogInput','dialogSelect','dialogButton','codeTextarea','codePre','codeInline','fileInput','previewText','previewButton']};
+  const hostIds=['nativeHost','nativeText','nativeButton','nativeInput','nativeSelect','nativeTextarea'];
+  const props=['fontFamily','fontSize','fontWeight','lineHeight','color','backgroundColor','borderTopWidth','borderTopColor','paddingTop'];
+  const styleOf=element=>Object.fromEntries(props.map(prop=>[prop,getComputedStyle(element)[prop]]));
+  const hostStyles=()=>Object.fromEntries(hostIds.map(id=>[id,styleOf(document.getElementById(id))]));
+  const before=hostStyles(),links=[];
+  for(const file of files)await new Promise((resolve,reject)=>{const link=document.createElement('link');link.rel='stylesheet';link.href='/browser/'+file;link.onload=resolve;link.onerror=()=>reject(Error('Failed to load '+file));links.push(link);document.head.append(link);});
+  // Exercise the real update notice renderer with an offline-only request mock.
+  window.WebVideoUpdateContext={productVersion:'1.1.0',engineId:'open-webgal.webgal',engineVersion:'4.6.4'};
+  window.fetch=async value=>{const url=new URL(String(value),location.href);if(url.pathname==='/assets/video-export-service.json')return {ok:true,json:async()=>({baseUrl:location.origin,token:'test-only'})};if(url.pathname==='/api/update-preferences')return {ok:true,json:async()=>({mode:'on'})};throw Error('Fixture deliberately offline');};
+  await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/browser/update-check.js';script.onload=resolve;script.onerror=reject;document.body.append(script);});
+  await window.WebVideoUpdates.check(true);
+  const notice=document.querySelector('aside[role="status"]');if(!notice)throw Error('Production update notice did not render');
+  notice.id='updateNotice';notice.dataset.family='body';for(const [i,control]of [...notice.querySelectorAll('button,select,a')].entries()){control.id='updateControl'+i;control.dataset.family='body';}
+  function snapshot(name){
+   for(const [i,control]of [...notice.querySelectorAll('button,select,a')].entries()){control.id='updateControl'+i;control.dataset.family='body';}
+   for(const link of links)link.disabled=true;const hostWithout=hostStyles();
+   for(const link of links)link.disabled=false;const hostWith=hostStyles();
+   const bodyFamily=getComputedStyle(document.body).fontFamily;
+   const provider=document.getElementById('provider');const host=provider||document.body;const hostFamily=getComputedStyle(host).fontFamily;
+   const monoProbe=document.createElement('span');monoProbe.style.fontFamily='var(--fontFamilyMonospace,monospace)';host.append(monoProbe);const monoFamily=getComputedStyle(monoProbe).fontFamily;monoProbe.remove();
+   return {name,bodyFamily,hostFamily,monoFamily,hostWithout,hostWith,noticeParent:notice.parentElement.id||notice.parentElement.tagName,expectedNoticeParent:provider?'provider':'BODY',nodes:[...document.querySelectorAll('[data-family]')].filter(element=>mode==='combined'||groups[mode].includes(element.id)||element.id.startsWith('update')).map(element=>({id:element.id,expected:element.dataset.family==='mono'?monoFamily:element.dataset.family==='body'?hostFamily:getComputedStyle(document.getElementById(element.dataset.family)).fontFamily,style:styleOf(element)}))};
+  }
+  const phases=[snapshot('initial')];
+  document.body.style.fontFamily='"Host UI B", sans-serif';document.documentElement.style.setProperty('--fontFamilyMonospace','"Host Mono B", monospace');phases.push(snapshot('host-family-and-mono-changed'));
+  document.documentElement.style.setProperty('--fontFamilyBase','"Unused UI token changed", cursive');phases.push(snapshot('base-token-only-changed'));
+  const provider=document.createElement('section');provider.id='provider';provider.className='fui-FluentProvider';provider.style.fontFamily='var(--fontFamilyBase)';document.documentElement.style.setProperty('--fontFamilyBase','"Provider UI A", serif');document.getElementById('root').append(provider);provider.append(document.querySelector('.fixture-grid'));await window.WebVideoUpdates.check(true);phases.push(snapshot('provider-added'));
+  document.documentElement.style.setProperty('--fontFamilyBase','"Provider UI B", sans-serif');provider.style.setProperty('--fontFamilyMonospace','"Provider Mono", monospace');phases.push(snapshot('provider-family-changed'));
+  document.documentElement.style.setProperty('--fontFamilyMonospace','initial');provider.style.setProperty('--fontFamilyMonospace','initial');phases.push(snapshot('mono-token-unset'));
+  document.getElementById('status').textContent='Captured '+phases.length+' host states; '+phases[0].nodes.length+' injected nodes per state';
+  window.terreUiFontResult={ok:true,mode,before,phases};
+ }catch(error){window.terreUiFontResult={ok:false,error:String(error.stack||error)};document.getElementById('status').textContent=String(error);}
+})();
+</script>
+</body></html>

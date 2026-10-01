@@ -5,8 +5,8 @@
 ## 当前运行与构建依赖
 
 - **OpenWebGAL / WebGAL Terre 4.6.4**：WebVideo+ 的编辑器基座。仓库中的 `baseline/terre-4.6.4.js` 用于精确挂载定位；相关 MPL-2.0 文本保存在本目录。
-- **OpenWebGAL / WebGAL 4.6.4**：播放引擎和导出运行资源的上游。构建时从固定官方 Web 发行包选择运行文件并重建导出探针，再以官方 OFL 思源黑体替换 OPPO 字体；最终 16 份文件有固定输出哈希，除字体及 CSS 引用外的 14 份文件与原快照一致；不重新编译整个 WebGAL。见 `build/runtime-patches.json` 与 [运行资源来源说明](WEBGAL-RUNTIME-SOURCES.md)。
-- **Source Han Sans SC Regular 2.004R（思源黑体）**：Adobe 官方静态 OTF，按 SIL OFL 1.1 原样提供，完整版权与保留字体名称声明见 `LICENSE-SourceHanSans-OFL-1.1.txt`。替换内置运行时旧 OPPO Sans；不把字体改授 MPL，不再打包旧 OPPO 字体。
+- **OpenWebGAL / WebGAL 4.6.4**：播放引擎和导出运行资源的上游。构建时从固定官方 Web 发行包选择运行文件并重建导出探针；最终 16 份文件与原导出快照字节一致，不重新编译整个 WebGAL。见 `build/runtime-patches.json` 与 [运行资源来源说明](WEBGAL-RUNTIME-SOURCES.md)。
+- **OPPO Sans v1.00**：保留上游原始字体与 `WebgalUI` CSS，不进行字体替换、修改或重新授权。本项目暂按 OPPO 历史公开免费商用许可涵盖软件内嵌分发理解；公开限制和解释边界见上述来源说明。资源圆体与思源宋体仍分别适用其原有 OFL 许可。
 - **Microsoft WebView2**：C# 原生导出与嵌入浏览器运行环境。managed SDK/loader 固定使用 Microsoft.Web.WebView2 1.0.4191.47 官方 NuGet 包；安装引导程序固定 Microsoft 官方最终下载地址及 SHA-256，Windows 上验证签名。两者不再要求旧安装器，不解析 latest，并随包保留相应许可文本。
 - **FFmpeg / ffprobe**：视频编码、媒体探测和音频混合。安装器在缺少可用版本时按固定版本获取；FFmpeg 适用其自身许可。
 - **Node.js**：仅用于可选 AI 运行环境及构建工具。准备时下载官方 Node.js 22.20.0 Windows x64 ZIP，验证 SHA-256；启用 AI 模块时随其运行目录提供固定可执行文件和许可证。

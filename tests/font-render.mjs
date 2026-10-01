@@ -1,4 +1,4 @@
-// Dependency-free Chromium/Edge CSS + font regression. Node 22+.
+// Dependency-free Chromium/Edge original WebGAL font parity regression. Node 22+.
 // node tests/font-render.mjs --runtime package/runtime/web [--baseline OLD_RUNTIME]
 //   [--browser /path/to/chromium] [--out .build/font-render]
 // This fixture uses actual runtime CSS but does not boot the game. The separate
@@ -33,7 +33,7 @@ export function runtimeStyles(root) {
   const fontPath=path.resolve(root,path.dirname(cssPath),url);
   assert.ok(fontPath.startsWith(path.resolve(root)+path.sep),'Font must be inside runtime');
   const bytes=fs.readFileSync(fontPath);
-  return {cssPath,font:path.relative(root,fontPath).replaceAll('\\','/'),fontSha256:sha256(bytes),fontBytes:bytes.length};
+  return {cssPath,cssSha256:sha256(Buffer.from(css)),font:path.relative(root,fontPath).replaceAll('\\','/'),fontSha256:sha256(bytes),fontBytes:bytes.length};
 }
 
 export function validateMeasurement(report,{allowExistingFallback=false}={}) {
@@ -69,17 +69,23 @@ export function validateMeasurement(report,{allowExistingFallback=false}={}) {
 
 export function compareMeasurements(before,after) {
   const comparison={};
-  for(const id of sampleIds) {
+  for(const id of [...sampleIds,'extended']) {
     const old=before.samples[id], current=after.samples[id];
+    if(!old&&!current)continue;
+    assert.ok(old&&current,`${id} is absent from one side`);
     comparison[id]={oldAdvance:old.advance,newAdvance:current.advance,advanceChangePercent:100*(current.advance/old.advance-1),oldLines:old.lines.map(line=>line.text),newLines:current.lines.map(line=>line.text)};
-    // This replacement is intentionally not pixel-identical. Catch severe layout
-    // regressions while reporting exact mixed Latin/numeric wrap differences.
-    assert.ok(Math.abs(comparison[id].advanceChangePercent)<15,`${id} advance changed by >=15%`);
-    assert.ok(Math.abs(current.lines.length-old.lines.length)<=1,`${id} gained/lost more than one line`);
+    assert.equal(current.advance,old.advance,`${id} advance differs from original source`);
+    assert.deepEqual(current.lines,old.lines,`${id} line layout differs from original source`);
+    assert.deepEqual(current.box,old.box,`${id} bounds differ from original source`);
+    const ordered=fonts=>(fonts||[]).map(font=>({familyName:font.familyName,postScriptName:font.postScriptName,isCustomFont:font.isCustomFont,glyphCount:font.glyphCount})).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+    assert.deepEqual(ordered(after.platformFonts[id]),ordered(before.platformFonts[id]),`${id} resolved font/fallback differs from original source`);
   }
-  assert.ok(Math.abs(comparison.rounded.advanceChangePercent)<0.01,'Unchanged rounded font control moved');
-  assert.deepEqual(comparison.rounded.oldLines,comparison.rounded.newLines,'Rounded font wrapping changed');
-  if(before.samples.extended&&after.samples.extended) comparison.extended={reportedOnly:true,note:'The replacement is not a Unicode coverage superset; platform fallback is expected for some extended Latin/Cyrillic/subscript/superscript glyphs.',oldAdvance:before.samples.extended.advance,newAdvance:after.samples.extended.advance,oldFonts:before.platformFonts.extended,newFonts:after.platformFonts.extended};
+  for(const id of ['dialogue','speaker'])assert.deepEqual(after.samples[id],before.samples[id],`${id} styling differs from original source`);
+  if(before.runtime&&after.runtime){
+    assert.equal(after.runtime.fontSha256,before.runtime.fontSha256,'UI font bytes differ from original source');
+    assert.equal(after.runtime.cssSha256,before.runtime.cssSha256,'Runtime CSS bytes differ from original source');
+  }
+  comparison.policy='Exact original-font, CSS, metrics, wrapping and resolved-fallback parity; no replacement-font tolerance';
   return comparison;
 }
 
@@ -157,9 +163,9 @@ async function render(browser,runtime,label,out) {
     fs.writeFileSync(path.join(out,label+'.json'),JSON.stringify(report,null,2)+'\n');
     assert.ok(requests.some(request=>request.path==='/runtime/'+styles.font),'UI font was not requested');
     assert.ok(!requests.some(request=>request.status!==200&&request.path!=='/favicon.ico'),'Runtime asset request failed');
-    // The legacy OPPO font already used system fallback for Japanese; record
-    // that baseline accurately without weakening replacement coverage checks.
-    validateMeasurement(report,{allowExistingFallback:label==='baseline'});return report;
+    // Original WebGAL uses system fallback for some Japanese/extended glyphs.
+    // Preserve it on both sides; compareMeasurements requires exact parity.
+    validateMeasurement(report,{allowExistingFallback:true});return report;
   } finally {if(targetId)await browser.send('Target.closeTarget',{targetId});await new Promise(resolve=>server.close(resolve));}
 }
 
@@ -170,9 +176,13 @@ async function main() {
   const out=path.resolve(options.out||path.join(here,'../.build/font-render'));fs.mkdirSync(out,{recursive:true});
   const browser=await launchBrowser(findBrowser(options.browser));
   try {
-    const expected=JSON.parse(fs.readFileSync(path.join(here,'../build/dependencies.lock.json'),'utf8')).sourceHanSans;
-    assert.equal(runtimeStyles(runtime).fontSha256,expected.sha256,'Replacement runtime font hash differs from dependency lock');
-    const result=await render(browser,runtime,'replacement',out);
+    const manifest=JSON.parse(fs.readFileSync(path.join(here,'../build/runtime-patches.json'),'utf8'));
+    const expected=manifest.files.find(file=>file.path==='assets/OPPOSans-R-tAcFw8I3.ttf');
+    assert.ok(expected,'Original WebGAL UI font is absent from runtime manifest');
+    assert.equal(expected.outputSha256,expected.sourceSha256,'Bundled UI font must remain byte-exact to upstream');
+    const actual=runtimeStyles(runtime);assert.equal(actual.font,expected.path,'Runtime is not using the original WebGAL UI face');
+    assert.equal(actual.fontSha256,expected.sourceSha256,'Runtime UI font bytes differ from the pinned original');
+    const result=await render(browser,runtime,'restored',out);
     if(options.baseline) {const before=await render(browser,path.resolve(options.baseline),'baseline',out);const comparison=compareMeasurements(before,result);fs.writeFileSync(path.join(out,'comparison.json'),JSON.stringify(comparison,null,2)+'\n');console.log(JSON.stringify(comparison,null,2));}
     console.log(`Font rendering passed: ${result.runtime.font}; screenshots and metrics: ${out}`);
   } finally {await browser.close();}
