@@ -8,18 +8,16 @@ export const runtimeManifest=JSON.parse(fs.readFileSync(path.join(root,'build/ru
 export const sha256=data=>crypto.createHash('sha256').update(data).digest('hex');
 
 function entries(manifest){
-  if(![1,2].includes(manifest.schemaVersion)||!Array.isArray(manifest.files)||!manifest.files.length)throw Error('Invalid WebGAL runtime manifest');
+  if(manifest.schemaVersion!==1||!Array.isArray(manifest.files)||!manifest.files.length)throw Error('Invalid WebGAL runtime manifest');
   const names=new Set();
   for(const file of manifest.files){
     if(typeof file.path!=='string'||!file.path.split('/').every(part=>/^[A-Za-z0-9_.-]+$/.test(part)&&part!=='.'&&part!=='..')||names.has(file.path))throw Error('Invalid or duplicate runtime path: '+file.path);
     names.add(file.path);
-    if(file.external!==undefined&&!/^[A-Za-z][A-Za-z0-9]*$/.test(file.external))throw Error('Invalid external runtime input: '+file.path);
     for(const phase of ['source','output']){
       if(!/^[0-9a-f]{64}$/.test(file[phase+'Sha256'])||!Number.isSafeInteger(file[phase+'Size'])||file[phase+'Size']<0)throw Error('Invalid runtime integrity record: '+file.path);
     }
   }
   if(!manifest.bundle||!names.has(manifest.bundle.path)||!Array.isArray(manifest.bundle.patches)||typeof manifest.bundle.append!=='string')throw Error('Invalid WebGAL bundle patch manifest');
-  if(manifest.styles&&(!names.has(manifest.styles.path)||!Array.isArray(manifest.styles.patches)||typeof manifest.styles.append!=='string'))throw Error('Invalid runtime CSS patch manifest');
   return manifest.files;
 }
 
@@ -52,17 +50,13 @@ export function transformBundle(text,bundle=runtimeManifest.bundle){
   return text+bundle.append;
 }
 
-export function validateRuntimeSource(sourceDirectory,manifest=runtimeManifest,options={}){
+export function validateRuntimeSource(sourceDirectory,manifest=runtimeManifest){
   const source=path.resolve(sourceDirectory);
   if(!fs.lstatSync(source).isDirectory()||fs.lstatSync(source).isSymbolicLink())throw Error('WebGAL source must be a regular directory');
   return entries(manifest).map(file=>{
-    const external=file.external?options.externalFiles?.[file.external]:null;
-    if(file.external&&!external)throw Error('Missing pinned external runtime input: '+file.external);
-    const original=fs.readFileSync(external?plainFile(path.dirname(path.resolve(external)),path.basename(external)):plainFile(source,file.path));
-    const legacyBundle=options.legacy&&file.path===manifest.bundle.path;
-    checkBytes(original,file,legacyBundle?'output':'source');
-    const transform=file.path===manifest.bundle.path&&!legacyBundle?manifest.bundle:file.path===manifest.styles?.path?manifest.styles:null;
-    const output=transform?Buffer.from(transformBundle(original.toString('utf8'),transform),'utf8'):original;
+    const original=fs.readFileSync(plainFile(source,file.path));
+    checkBytes(original,file,'source');
+    const output=file.path===manifest.bundle.path?Buffer.from(transformBundle(original.toString('utf8'),manifest.bundle),'utf8'):original;
     checkBytes(output,file,'output');
     return {file,output};
   });
@@ -94,11 +88,11 @@ function nested(parent,child){
   return relative===''||(!relative.startsWith('..'+path.sep)&&relative!=='..'&&!path.isAbsolute(relative));
 }
 
-export function prepareRuntime(sourceDirectory,outputDirectory,manifest=runtimeManifest,options={}){
+export function prepareRuntime(sourceDirectory,outputDirectory,manifest=runtimeManifest){
   const source=path.resolve(sourceDirectory),output=path.resolve(outputDirectory);
   if(nested(source,output)||nested(output,source))throw Error('WebGAL source and output directories must not overlap');
   // Validate every input and output byte before touching the destination.
-  const prepared=validateRuntimeSource(source,manifest,options);
+  const prepared=validateRuntimeSource(source,manifest);
   if(fs.existsSync(output)){
     const stat=fs.lstatSync(output);
     if(!stat.isDirectory()||stat.isSymbolicLink())throw Error('Runtime output must be a regular directory');
@@ -125,13 +119,13 @@ export function prepareRuntime(sourceDirectory,outputDirectory,manifest=runtimeM
 }
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  if(process.argv.length<5||process.argv.length>6||(process.argv[5]!==undefined&&process.argv[5]!=='--legacy')){
-    console.error('Usage: node scripts/prepare-webgal-runtime.mjs <extracted-upstream-root> <output-runtime-directory> <pinned-font-file> [--legacy]');
+  if(process.argv.length!==4){
+    console.error('Usage: node scripts/prepare-webgal-runtime.mjs <extracted-upstream-root> <output-runtime-directory>');
     process.exitCode=1;
   }else{
     try{
-      const result=prepareRuntime(process.argv[2],process.argv[3],runtimeManifest,{externalFiles:{sourceHanSans:process.argv[4]},legacy:process.argv[5]==='--legacy'});
-      console.log('WebGAL '+runtimeManifest.version+': '+result.files+' pinned runtime files '+(result.reused?'verified':'prepared')+'; export instrumentation preserved; licensed UI font staged.');
+      const result=prepareRuntime(process.argv[2],process.argv[3]);
+      console.log('WebGAL '+runtimeManifest.version+': '+result.files+' pinned runtime files '+(result.reused?'verified':'prepared')+'; export instrumentation matches the shipped snapshot.');
     }catch(error){console.error(error.message);process.exitCode=1;}
   }
 }

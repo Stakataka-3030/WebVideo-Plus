@@ -6,7 +6,7 @@ const read=file=>fs.readFileSync(new URL(file,root),'utf8');
 const lock=JSON.parse(read('build/dependencies.lock.json'));
 test('every direct build dependency is versioned, HTTPS and SHA-256 pinned',()=>{
  assert.equal(lock.schemaVersion,1);
- for(const name of ['webgal','webview2Sdk','webview2Bootstrap','node','sourceHanSans','ffmpegTest']){
+ for(const name of ['webgal','webview2Sdk','webview2Bootstrap','node','ffmpegTest']){
   assert.match(lock[name].url,/^https:\/\//);
   assert.match(lock[name].sha256,/^[a-f0-9]{64}$/);
   assert.doesNotMatch(lock[name].url,/\/latest\//);
@@ -24,15 +24,16 @@ test('default preparation and CI do not require a legacy installer',()=>{
  assert.doesNotMatch(read('scripts/build-ai.ps1'),/Get-Command node/);
 });
 
-test('bundled UI font is pinned OFL Source Han Sans with no OPPO output path',()=>{
+test('bundled UI font and CSS preserve the original WebGAL bytes',()=>{
  const runtime=JSON.parse(read('build/runtime-patches.json'));
- const font=runtime.files.find(file=>file.external==='sourceHanSans');
- assert.equal(font.sourceSha256,lock.sourceHanSans.sha256);
- assert.equal(font.outputSha256,font.sourceSha256);
- assert.equal(lock.stagedFiles['licenses/LICENSE-SourceHanSans-OFL-1.1.txt'],lock.sourceHanSans.licenseSha256);
- assert.ok(!runtime.files.some(file=>/OPPO/i.test(file.path)));
- assert.match(runtime.styles.patches[0].replace,/SourceHanSansSC-Regular\.otf.*opentype/);
- assert.match(read('licenses/LICENSE-SourceHanSans-OFL-1.1.txt'),/SIL OPEN FONT LICENSE Version 1.1/);
+ const font=runtime.files.find(file=>file.path==='assets/OPPOSans-R-tAcFw8I3.ttf');
+ assert.equal(font.outputSha256,'ea92535935f8b5da18b64bb23e5ffbfef1417b7ae4ff3fc15372a65ee95a9580');
+ assert.equal(font.sourceSha256,font.outputSha256);
+ const css=runtime.files.find(file=>file.path.endsWith('.css'));
+ assert.equal(css.sourceSha256,css.outputSha256);
+ assert.equal(runtime.styles,undefined);
+ assert.equal(lock.sourceHanSans,undefined);
+ assert.ok(!runtime.files.some(file=>/SourceHanSansSC/.test(file.path)));
 });
 
 test('CI media encoder pin matches the installer runtime pin',()=>{
