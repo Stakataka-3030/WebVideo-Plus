@@ -36,7 +36,7 @@ export function runtimeStyles(root) {
   return {cssPath,font:path.relative(root,fontPath).replaceAll('\\','/'),fontSha256:sha256(bytes),fontBytes:bytes.length};
 }
 
-export function validateMeasurement(report) {
+export function validateMeasurement(report,{allowExistingFallback=false}={}) {
   assert.equal(report.ok,true,report.error||'Fixture did not finish');
   assert.deepEqual(report.viewport,{width:1920,height:1080});
   for(const id of sampleIds) {
@@ -47,14 +47,14 @@ export function validateMeasurement(report) {
     assert.ok(sample.box.y+sample.box.height<710,`${id} overlaps dialogue`);
     for(const line of sample.lines) assert.ok(line.width<=sample.clientWidth+1,`${id} line is too wide`);
     assert.ok(report.platformFonts[id]?.length,`${id} has no rendered platform font`);
-    for(const font of report.platformFonts[id]) assert.equal(font.isCustomFont,true,`${id} silently fell back to ${font.familyName}`);
+    if(!allowExistingFallback) for(const font of report.platformFonts[id]) assert.equal(font.isCustomFont,true,`${id} silently fell back to ${font.familyName}`);
   }
   assert.equal(report.samples.explicitBreak.lines.length,2,'Explicit line break changed');
   assert.ok(report.samples.wrap.lines.length>=2,'Wrapping fixture no longer wraps');
   for(const id of ['zh','zhHant','ja','digits','latin','wrap','explicitBreak','dialogue','speaker']) {
     assert.match(report.samples[id].font,/WebgalUI/,`${id} is not exercising the UI face`);
     assert.ok(report.platformFonts[id]?.length,`${id} has no rendered font`);
-    for(const font of report.platformFonts[id]) assert.equal(font.isCustomFont,true,`${id} uses fallback ${font.familyName}`);
+    if(!allowExistingFallback) for(const font of report.platformFonts[id]) assert.equal(font.isCustomFont,true,`${id} uses fallback ${font.familyName}`);
   }
   const dialogue=report.samples.dialogue;
   assert.ok(dialogue.scrollWidth<=dialogue.clientWidth+1,'Dialogue clips horizontally');
@@ -157,7 +157,9 @@ async function render(browser,runtime,label,out) {
     fs.writeFileSync(path.join(out,label+'.json'),JSON.stringify(report,null,2)+'\n');
     assert.ok(requests.some(request=>request.path==='/runtime/'+styles.font),'UI font was not requested');
     assert.ok(!requests.some(request=>request.status!==200&&request.path!=='/favicon.ico'),'Runtime asset request failed');
-    validateMeasurement(report);return report;
+    // The legacy OPPO font already used system fallback for Japanese; record
+    // that baseline accurately without weakening replacement coverage checks.
+    validateMeasurement(report,{allowExistingFallback:label==='baseline'});return report;
   } finally {if(targetId)await browser.send('Target.closeTarget',{targetId});await new Promise(resolve=>server.close(resolve));}
 }
 

@@ -25,3 +25,11 @@ test('runtime CSS points to the existing pinned font when build inputs are prese
  const lock=JSON.parse(fs.readFileSync(new URL('../build/dependencies.lock.json',import.meta.url),'utf8'));
  assert.equal(runtimeStyles(fileURLToPath(root)).fontSha256,lock.sourceHanSans.sha256);
 });
+
+test('legacy baseline may record existing fallback without relaxing replacement or layout checks',()=>{
+ const report=good();report.platformFonts.ja.push({familyName:'Yu Gothic',isCustomFont:false});
+ assert.throws(()=>validateMeasurement(report),/fallback|fell back/);
+ assert.equal(validateMeasurement(report,{allowExistingFallback:true}),true);
+ report.samples.wrap.scrollWidth=999;
+ assert.throws(()=>validateMeasurement(report,{allowExistingFallback:true}),/overflow/);
+});
