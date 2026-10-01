@@ -6,6 +6,17 @@ param(
 # project runtime/fonts are present, so the exporter must use bundled-runtime.
 # Keep MP4 locally; CI should upload only the synthetic PNG/JSON/log diagnostics.
 $ErrorActionPreference = 'Stop'
+function Get-FontSampleFrame([double]$NextStart, [double]$Duration, [int]$FrameCount, [int]$Fps = 30) {
+  # A bare 0 lets PowerShell select Math.Max(int,int), rounding fractional
+  # seconds before frame selection. Force the double overload explicitly.
+  $seconds = [Math]::Max([double]0, [Math]::Min($Duration - 0.05, $NextStart - 0.15))
+  return [Math]::Min($FrameCount - 1, [Math]::Max(0, [int][Math]::Floor($seconds * $Fps)))
+}
+# Pure numerical regression for the fixture's observed 113-frame timing.
+foreach ($sample in @(@(1.24, 32), @(2.49, 70), @((113 / 30.0), 108))) {
+  $actual = Get-FontSampleFrame -NextStart $sample[0] -Duration (113 / 30.0) -FrameCount 113
+  if ($actual -ne [int]$sample[1]) { throw "Font sample frame calculation changed: expected $($sample[1]), got $actual" }
+}
 if ($env:OS -ne 'Windows_NT') { throw 'Native font regression requires Windows and WebView2.' }
 $PackageRoot = [IO.Path]::GetFullPath($PackageRoot)
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
@@ -75,12 +86,11 @@ if ($performs.Count -ne 3) { throw "Expected three dialogue events, got $($perfo
 for ($index = 0; $index -lt $performs.Count; $index++) {
   $event = $performs[$index]
   $nextStart = if ($index + 1 -lt $performs.Count) { [double]$performs[$index + 1].startMs / 1000 } else { [double]$result.durationSeconds }
-  $seconds = [Math]::Max(0, [Math]::Min($result.durationSeconds - 0.05, $nextStart - 0.15))
-  $frameIndex = [Math]::Min([int]$stream.nb_read_frames - 1, [Math]::Max(0, [int][Math]::Floor($seconds * 30)))
+  $frameIndex = Get-FontSampleFrame -NextStart $nextStart -Duration $result.durationSeconds -FrameCount ([int]$stream.nb_read_frames)
   $seconds = $frameIndex / 30.0
   $png = Join-Path $run ("dialogue-{0}.png" -f ($index + 1))
-  # Decode from the beginning and select an exact frame. Fast input seeking can
-  # return no frame near the final GOP while still exiting successfully.
+  # Decode from the beginning and select an exact frame instead of relying
+  # on timestamp seeking; the integer frame index is also recorded below.
   $select = 'select=eq(n\,' + $frameIndex + ')'
   Invoke-Checked $ffmpeg @('-v', 'error', '-y', '-i', ('"' + $video + '"'), '-vf', $select, '-fps_mode', 'passthrough', '-frames:v', '1', ('"' + $png + '"')) ("frame-{0}" -f $index)
   if (-not (Test-Path -LiteralPath $png) -or (Get-Item -LiteralPath $png).Length -eq 0) { throw "FFmpeg emitted no PNG for dialogue $($index+1), frame $frameIndex; diagnostics: $run" }
