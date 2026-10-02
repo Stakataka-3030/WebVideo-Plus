@@ -1,5 +1,74 @@
 // With GPU DOM compositing, draw the stage only at the final composite step.
 // Re-rendering WMDL Live2D models without an intervening update can lose clipping masks.
+// Exclude figure pixels without changing stage state, animation visibility or
+// Live2D's render-driven update. In the pinned runtime _render, not the ticker,
+// evaluates the model; skipping traversal (including alpha=0) changes its pose.
+// Only color writes into the figure's enclosing target are masked. Its private
+// clipping-mask/filter textures must still be produced normally, and stencil /
+// depth work is retained. Each original render/draw runs exactly once.
+globalThis.__exportInstallFigureOutputFilter=(stage,includeFigures=true)=>{
+  const renderer=stage?.currentApp?.renderer;
+  if(!renderer)throw new Error('Figure export requires the WebGAL Pixi renderer');
+  let state=renderer.__webvideoFigureOutput;
+  if(state){state.includeFigures=includeFigures!==false;return state;}
+  if(includeFigures!==false)return null;
+  state={includeFigures:false,stage,roots:new WeakMap(),contexts:new WeakMap(),figureRenders:0,maskedDraws:0};
+  renderer.__webvideoFigureOutput=state;
+  const contextFor=gl=>{
+    if(!gl)throw new Error('Figure export requires WebGL color-write filtering');
+    let context=state.contexts.get(gl);if(context)return context;
+    const binding=gl.DRAW_FRAMEBUFFER_BINDING??gl.FRAMEBUFFER_BINDING;
+    context={targets:[],binding};state.contexts.set(gl,context);
+    const masked=()=>!state.includeFigures&&context.targets.length>0&&context.targets.includes(gl.getParameter(binding));
+    const colorMask=gl.colorMask.bind(gl);
+    const wrap=(owner,name,blit=false)=>{
+      const original=owner?.[name];if(typeof original!=='function')return;
+      owner[name]=function(...args){
+        if(!masked())return original.apply(this,args);
+        state.maskedDraws++;
+        // blitFramebuffer ignores colorMask; preserve any depth/stencil copy.
+        if(blit){args[8]&=~gl.COLOR_BUFFER_BIT;return original.apply(this,args);}
+        const previous=gl.getParameter(gl.COLOR_WRITEMASK);
+        colorMask(false,false,false,false);
+        try{return original.apply(this,args);}finally{colorMask(...previous);}
+      };
+    };
+    for(const name of ['drawArrays','drawElements','drawArraysInstanced','drawElementsInstanced','drawRangeElements','clear','clearBufferfv','clearBufferiv','clearBufferuiv'])wrap(gl,name);
+    wrap(gl,'blitFramebuffer',true);
+    const instanced=gl.getExtension?.('ANGLE_instanced_arrays');
+    for(const name of ['drawArraysInstancedANGLE','drawElementsInstancedANGLE'])wrap(instanced,name);
+    return context;
+  };
+  const nativeRender=renderer.render;
+  renderer.render=function(...args){
+    if(!state.includeFigures){
+      contextFor(this.gl);
+      // figureObjects includes incoming/outgoing duplicates and every source
+      // supported by changeFigure (image/GIF, Live2D, Spine and custom children).
+      // getAllStageObj also contains backgrounds and must not be used here.
+      for(const object of stage.figureObjects||[]){
+        const root=object?.pixiContainer;if(!root||typeof root.render!=='function')continue;
+        const known=state.roots.get(root);if(known&&root.render===known)continue;
+        const original=root.render;
+        const filtered=function(activeRenderer,...rest){
+          if(state.includeFigures||!stage.figureObjects?.some(item=>item?.pixiContainer===this))return original.call(this,activeRenderer,...rest);
+          // Keep batching from mixing an earlier/later non-figure sibling into
+          // this scope. Live2D/plugin calls can change colorMask internally, so
+          // enforce the mask at each GL write, not just at scope entry.
+          activeRenderer.batch.flush();
+          const gl=activeRenderer.gl,context=contextFor(gl),target=gl.getParameter(context.binding);
+          context.targets.push(target);state.figureRenders++;
+          try{return original.call(this,activeRenderer,...rest);}
+          finally{try{activeRenderer.batch.flush();}finally{context.targets.pop();}}
+        };
+        state.roots.set(root,filtered);root.render=filtered;
+      }
+    }
+    return nativeRender.apply(this,args);
+  };
+  return state;
+};
+
 globalThis.__exportTextSettleApplies=(ownerKey,currentKey,force=false)=>!!force||(ownerKey!==null&&ownerKey!==undefined&&String(ownerKey)===String(currentKey));
 globalThis.__exportInstallTextSettleGuard=textSettleEvent=>{
   if(!textSettleEvent||textSettleEvent.__webvideoTextSettleGuarded)return;
@@ -245,7 +314,8 @@ globalThis.__exportResolveCubism4Blink=(elapsedSeconds,options={},key='')=>{
   }
   return {state:1,value:1,cycle:100000,phase:'interval',phaseSeconds:0,userTimeSeconds:0,nextBlinkingTime:interval,intervalSeconds:interval};
 };
-globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50,live2dLifetimes=[]})=>{
+globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50,live2dLifetimes=[],includeFigures=true})=>{
+  __exportInstallFigureOutputFilter(__wgProbe.core.gameplay.pixiStage,includeFigures);
   const pc=__wgProbe.core.gameplay.performController,arrange=pc.arrangeNewPerform;
   const dormantHoldCommands=new Set(['setAnimation','setTempAnimation','setTransform']);
   globalThis.__exportCurrentEvent=null;

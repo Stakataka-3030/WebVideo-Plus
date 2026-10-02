@@ -9,6 +9,7 @@ namespace NativeVideo {
   public static bool IsAudio(object request){return Kind(request)=="audio";}
   public static bool IsVisualOnly(object request){string kind=Kind(request);return kind=="stage"||kind=="dialog";}
   public static bool IncludeBackground(object request){return !IsStage(request)||J.B(request,"includeBackground",true);}
+  public static bool IncludeFigures(object request){return !IsStage(request)||J.B(request,"includeFigures",true);}
   public static bool SuppressBackground(object request){return IsStage(request)&&!IncludeBackground(request);}
   public static bool TransparentVideo(object request){return IsDialog(request)||SuppressBackground(request);}
   public static string TransparentFormat(object request){return J.S(request,"transparentFormat","mov")=="webm"?"webm":"mov";}

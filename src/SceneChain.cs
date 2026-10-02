@@ -52,7 +52,7 @@ namespace NativeVideo {
     int first=(int)J.N(candidate,"startLine",-1),last=(int)J.N(candidate,"endLine",first);if(first<0||last<first||last>=lines.Length)throw new IOException("场景跳转语句边界无效："+current);
     string targetFile;try{targetFile=Files.Under(snapshotRoot,target);}catch{Append(output,origins,lines,current);break;}if(!File.Exists(targetFile))throw new FileNotFoundException("场景跳转目标不存在："+target);
     var flattenedLines=(string[])lines.Clone();for(int i=first;i<=last;i++)flattenedLines[i]=i==first?"; WebVideo+ flattened changeScene -> "+target:"; WebVideo+ flattened changeScene";for(int i=last+1;i<flattenedLines.Length;i++)flattenedLines[i]="; WebVideo+ unreachable after changeScene";
-    Append(output,origins,flattenedLines,current);flattened.Add(J.O("from",current,"to",target,"line",first+1));current=target;
+    Append(output,origins,flattenedLines,current);flattened.Add(J.O("from",current,"to",target,"line",first+1,"endLine",last+1));current=target;
    }
    string signature=string.Join("\n",scenes.Select(x=>J.S(x,"scene")+":"+J.S(x,"hash")));return J.O("schemaVersion",2,"entryScene",entryScene,"script",string.Join("\n",output),"dependencyHash",Files.HashText(signature),"scenes",scenes.ToArray(),"flattened",flattened.ToArray(),"originMap",origins.ToArray());
   }

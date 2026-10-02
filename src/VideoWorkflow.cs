@@ -60,13 +60,13 @@ namespace NativeVideo {
    if(!ManualCuts.Enabled(settings))return Segments(plan,bounds,fps,workers);
    int start=(int)J.N(bounds,"startFrame"),end=(int)J.N(bounds,"endFrame"),total=end-start;
    if(start<0||total<=0)throw new ArgumentException("手动切点的导出范围无效");
-   var cuts=ManualCuts.Resolve(settings,fps,total);
+   var cuts=ManualCuts.Resolve(settings,plan,bounds,fps);
    // Manual mode has its own planner: no automatic candidates, safe-cut gate,
    // minimum duration, replay-cost budget, or worker-count reduction of the cuts.
    var ranges=SegmentPlan.CreateManual(plan,start,end,fps,cuts);
    int requested=Math.Max(1,workers),effective=Math.Min(requested,ranges.Length);
    long warmup=ranges.Sum(r=>(long)J.N(r,"warmupFrames"));
-   J.D(plan)["segmentDiagnostics"]=J.O("schemaVersion",1,"plannerMode","manual-exact","segmentCutMode","manual","manualCutPoints",J.S(settings,"manualCutPoints"),"manualCutFrames",cuts,"globalCutFrames",cuts.Select(frame=>frame+start).ToArray(),"frameOrigin","selected-output-start","timeRounding",ManualCuts.Rounding,"requestedWorkers",requested,"effectiveWorkers",effective,"selectedParts",ranges.Length,"reductionReason",effective<requested?"manual-cut-count":"","selectedStartFrame",start,"selectedEndFrame",end,"selectedFrames",total,"replayOverheadFrames",warmup,"rawReplayRatio",warmup/(double)total,"automaticCutsAdded",0,"continuityPolicy","user-forced","warning","按用户指定位置强制切段，不保证复杂演出或状态恢复的连续性。","attempts",new object[0]);
+   J.D(plan)["segmentDiagnostics"]=J.O("schemaVersion",1,"plannerMode","manual-exact","segmentCutMode","manual","manualCutPoints",J.S(settings,"manualCutPoints"),"manualCutFrames",cuts,"globalCutFrames",cuts.Select(frame=>frame+start).ToArray(),"frameOrigin","selected-output-start","timeRounding",ManualCuts.Rounding,"requestedWorkers",requested,"effectiveWorkers",effective,"selectedParts",ranges.Length,"reductionReason",effective<requested?"manual-cut-count":"","selectedStartFrame",start,"selectedEndFrame",end,"selectedFrames",total,"replayOverheadFrames",warmup,"rawReplayRatio",warmup/(double)total,"automaticCutsAdded",0,"continuityPolicy","user-forced","statementCuts",J.Get(plan,"manualCutResolution"),"warning","按用户指定位置强制切段，不保证复杂演出或状态恢复的连续性。","attempts",new object[0]);
    return ranges;
   }
   static double Number(object track,string key,double fallback,double min,double max){double n=fallback;if(J.D(track).ContainsKey(key)&&!double.TryParse(Convert.ToString(J.Get(track,key),System.Globalization.CultureInfo.InvariantCulture),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out n))throw new ArgumentException("音乐参数必须为数字："+key);if(double.IsNaN(n)||double.IsInfinity(n)||n<min||n>max)throw new ArgumentException("音乐参数无效："+key);return n;}

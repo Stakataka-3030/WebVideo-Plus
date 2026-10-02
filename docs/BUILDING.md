@@ -1,10 +1,10 @@
 # 构建与发布
 
-当前分支产品版本 **1.1.5**，产品内部开发标识 **0.8.9**，安装器 Win32 版本 **1.1.5.0**，导出内核 **0.6.49**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
+当前分支产品版本 **1.1.6**，产品内部开发标识 **0.8.10**，安装器 Win32 版本 **1.1.6.0**，导出内核 **0.6.50**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`scripts/manifest.mjs`、`build-product.ps1`、`scripts/configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
-更新检查读取 GitHub 正式 Release 列表。发布 1.1.5 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"webgal":["4.6.4"]} -->` 一并放进 Release 正文，并按实际适配基线更新数组；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
+更新检查读取 GitHub 正式 Release 列表。发布 1.1.6 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"webgal":["4.6.4"]} -->` 一并放进 Release 正文，并按实际适配基线更新数组；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
 
 ## 初次准备（不需要旧安装器）
 
@@ -39,7 +39,7 @@ Pop-Location
 
 `-Offline` 只适用于构建输入准备，不等同于 `npm ci` 离线；首次恢复 AI npm 依赖仍需要网络或已有 npm 缓存。缺失或损坏的离线输入会明确报错，不会绕过校验。
 
-输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正式安装器为 `dist/WebVideo+-Setup-1.1.5.exe`，Win32 文件版本 `1.1.5.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
+输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正式安装器为 `dist/WebVideo+-Setup-1.1.6.exe`，Win32 文件版本 `1.1.6.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
 
 ### 旧 bootstrap 的显式迁移入口
 
@@ -100,7 +100,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 .\build-product.ps1 -Fast -InternalBuild
 ```
 
-`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.1.5` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
+`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.1.6` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
 
 需要重现某个旧内部标识时，可直接覆盖：
 
@@ -108,7 +108,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 .\build-product.ps1 -Fast -InternalVersion 0.5.7
 ```
 
-指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.1.5`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
+指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.1.6`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
 
 ## 安装恢复与存储目录
 

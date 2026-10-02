@@ -32,7 +32,7 @@ New-Item -ItemType Directory -Path $temp | Out-Null
 try {
  $source=$shim+(SourceClass 'J')+(SourceClass 'Settings')+"`n}"
  $shimPath=Join-Path $temp 'Shim.cs';[IO.File]::WriteAllText($shimPath,$source,[Text.UTF8Encoding]::new($false))
- Add-Type -Path @($shimPath,(Join-Path $root 'src/ManualCuts.cs'),(Join-Path $root 'src/SegmentPlan.cs'),(Join-Path $root 'src/VideoWorkflow.cs'),(Join-Path $PSScriptRoot 'ManualCutChecks.cs'))
- $count=[NativeVideo.ManualCutChecks]::Run()
+ Add-Type -Path @($shimPath,(Join-Path $root 'src/ManualCuts.cs'),(Join-Path $root 'src/StatementCuts.cs'),(Join-Path $root 'src/SegmentPlan.cs'),(Join-Path $root 'src/VideoWorkflow.cs'),(Join-Path $PSScriptRoot 'ManualCutChecks.cs'),(Join-Path $PSScriptRoot 'StatementCutChecks.cs'))
+ $count=[NativeVideo.ManualCutChecks]::Run()+[NativeVideo.StatementCutChecks]::Run()
  Write-Output "PASS $count production C# manual-cut checks"
 }finally{Remove-Item -LiteralPath $temp -Recurse -Force}

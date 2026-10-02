@@ -64,6 +64,20 @@ namespace NativeVideo {
    var selectedBounds=VideoWorkflow.Bounds(timing,J.O("startLine",1,"endLine",1),30,"full");
    var selected=VideoWorkflow.Segments(J.O(),selectedBounds,30,4,SettingsFor("1s"));
    Check(J.N(selected[0],"startFrame")==300&&J.N(selected[0],"endFrame")==330&&J.N(selected[1],"endFrame")==360,"Selected-line output origin or endpoint is wrong");
+   var statementPlan=new System.Collections.Generic.Dictionary<string,object>(J.D(plan));
+   statementPlan["statementCuts"]=J.O("candidates",new object[]{J.O("source","marker","atMs",399000),J.O("source","marker","atMs",400000),J.O("source","selection","atMs",401010),J.O("source","marker","atMs",401010),J.O("source","marker","atMs",409999),J.O("source","marker","atMs",410000),J.O("source","marker","atMs",411000)},"warnings",new object[]{J.O("code","marker-no-target")});
+   var statementRanges=VideoWorkflow.Segments(statementPlan,bounds,30,1,SettingsFor(""));
+   Check(statementRanges.Length==2&&J.N(statementRanges[0],"endFrame")==12031,"Statement + marker union must keep the exact rounded boundary even inside unsafe windows");
+   var resolution=J.Get(J.Get(statementPlan,"segmentDiagnostics"),"statementCuts");var resolved=J.A(J.Get(resolution,"candidates"));
+   Check(resolved.Select(row=>J.S(row,"outcome")).SequenceEqual(new[]{"outside-range","output-start","selected","duplicate-frame","output-end","output-end","outside-range"}),"Statement scope/endpoint diagnostics are wrong");
+   Check(J.A(J.Get(resolution,"warnings")).Count==1,"Marker no-op warnings were lost");
+   Check(J.N(J.Get(statementPlan,"segmentDiagnostics"),"effectiveWorkers")==1,"Manual statement task count changed concurrency");
+   var numericAndStatements=VideoWorkflow.Segments(statementPlan,bounds,30,32,SettingsFor("31,100"));
+   Check(numericAndStatements.Length==3&&J.N(numericAndStatements[1],"endFrame")==12100,"Legacy CLI/API cuts must union and deduplicate with statement candidates");
+   statementPlan["statementCuts"]=J.O("candidates",new object[]{J.O("source","marker","atMs",400000),J.O("source","marker","atMs",410000)});
+   Check(VideoWorkflow.Segments(statementPlan,bounds,30,32,SettingsFor("")).Length==1,"Endpoint-only markers must not cause an automatic fallback");
+   autoPlan["statementCuts"]=J.O("candidates",new object[]{J.O("atMs",double.NaN)});
+   Check(VideoWorkflow.Segments(autoPlan,J.O("startFrame",0,"endFrame",900),30,2,Settings.Validate(null)).Length==2,"Auto mode must ignore statement/marker cuts completely");
    return checks;
   }
  }

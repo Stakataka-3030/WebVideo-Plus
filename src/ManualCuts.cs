@@ -32,5 +32,22 @@ namespace NativeVideo {
    foreach(int frame in frames)if(frame>=total)throw new ArgumentException("手动切点 "+frame+" 超出当前成片内部范围（需满足 0 < 切点 < "+total+" 帧）；起点和终点由导出器自动包含。");
    return frames;
   }
+  public static int[] Resolve(object settings,object plan,object bounds,int fps){
+   int start=(int)J.N(bounds,"startFrame"),end=(int)J.N(bounds,"endFrame");
+   var frames=new SortedSet<int>(Resolve(settings,fps,end-start));
+   var metadata=J.Get(plan,"statementCuts");var rows=new List<object>();
+   foreach(var candidate in J.A(J.Get(metadata,"candidates"))){
+    double at=J.N(candidate,"atMs",double.NaN),converted=Math.Ceiling(at*fps/1000-1e-7);
+    if(double.IsNaN(converted)||double.IsInfinity(converted)||converted<0||converted>int.MaxValue)throw new ArgumentException("语句切点的执行时间无效");
+    int global=(int)converted,relative=global-start;string outcome;
+    if(global<start||global>end)outcome="outside-range";
+    else if(global==start)outcome="output-start";
+    else if(global==end)outcome="output-end";
+    else outcome=frames.Add(relative)?"selected":"duplicate-frame";
+    var row=new Dictionary<string,object>(J.D(candidate));row["globalFrame"]=global;row["relativeFrame"]=relative;row["outcome"]=outcome;rows.Add(row);
+   }
+   J.D(plan)["manualCutResolution"]=J.O("boundary","before-statement","candidates",rows.ToArray(),"warnings",J.Get(metadata,"warnings")??new object[0],"legacyNumericInput",J.S(settings,"manualCutPoints"));
+   return frames.ToArray();
+  }
  }
 }

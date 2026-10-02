@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, feature/1.1.6-statements-and-figure-export]
   workflow_dispatch:
 
 permissions:
@@ -24,7 +24,7 @@ jobs:
       - name: Verify repository layout and browser regressions
         shell: pwsh
         run: |
-          node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs tests/build-inputs.test.mjs tests/ai-build-metadata.test.mjs tests/font-render.test.mjs tests/terre-ui-font.test.mjs tests/manual-cuts.test.mjs
+          node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs tests/build-inputs.test.mjs tests/ai-build-metadata.test.mjs tests/font-render.test.mjs tests/terre-ui-font.test.mjs tests/manual-cuts.test.mjs tests/figure-export.test.mjs tests/statement-cuts.test.mjs
           if ($LASTEXITCODE -ne 0) { throw "Node regression checks failed" }
           node tests/update-check-and-atlas.mjs
           if ($LASTEXITCODE -ne 0) { throw "Update and atlas checks failed" }
@@ -46,6 +46,8 @@ jobs:
         run: |
           node tests/verify-webgal-runtime.mjs
           if ($LASTEXITCODE -ne 0) { throw "Runtime reconstruction regression checks failed" }
+          node tests/figure-export-runtime.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Figure output clock/update parity checks failed" }
           node tests/cubism2-runtime-contract.mjs
           if ($LASTEXITCODE -ne 0) { throw "Cubism2 runtime motion contract checks failed" }
           .\prepare-build.ps1 -Offline
@@ -59,6 +61,12 @@ jobs:
           Expand-CheckedBuildArchive .build/downloads/WebGAL-4.6.4-web.zip .build/font-baseline
           node tests/font-render.mjs --runtime package/runtime/web --baseline .build/font-baseline --out .build/font-render
           if ($LASTEXITCODE -ne 0) { throw "Font rendering comparison failed" }
+
+      - name: Verify figure-only exclusion with pinned Pixi pixels
+        shell: pwsh
+        run: |
+          node tests/figure-export-render.mjs package/runtime/web .build/font-baseline .build/figure-export
+          if ($LASTEXITCODE -ne 0) { throw "Figure output pixel checks failed" }
 
       - name: Compile native exporter for early font smoke
         shell: powershell
@@ -92,6 +100,11 @@ jobs:
         shell: powershell
         run: |
           .\build-product.ps1
+          # Keep the verified compressed build before the repeat-build check
+          # replaces dist with a larger, uncompressed development payload.
+          $version = (Get-Content version.json -Raw | ConvertFrom-Json).productVersion
+          New-Item -ItemType Directory -Path .build/ci-installer -Force | Out-Null
+          Copy-Item -LiteralPath "dist/WebVideo+-Setup-$version.exe" -Destination .build/ci-installer
           # Repeat in the same host to catch locked outputs and stale staging.
           .\build-product.ps1 -Fast
 
@@ -105,6 +118,38 @@ jobs:
           $version = (Get-Content version.json -Raw | ConvertFrom-Json).productVersion
           if(-not(Test-Path -LiteralPath "dist/WebVideo+-Setup-$version.exe")){throw "Installer output is missing"}
 
+      - name: Record the validated installer source and checksums
+        shell: pwsh
+        run: |
+          $versions = Get-Content version.json -Raw | ConvertFrom-Json
+          $output = Join-Path $PWD '.build/ci-installer'
+          $guide = @(
+            "WebVideo+ $($versions.productVersion) Windows test installer"
+            "Source commit: $env:GITHUB_SHA"
+            "Source: https://github.com/$env:GITHUB_REPOSITORY/tree/$env:GITHUB_SHA"
+            "Build: https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+            "Installer version: $($versions.installerVersion); kernel: $($versions.kernelVersion)"
+            'Built with the canonical build-product.ps1 on the Windows CI runner.'
+            'This is the compressed installer preserved before the repeated fast-build check.'
+            'The workflow checks pinned runtime inputs, production C# logic, frame scheduling, synthetic Pixi pixels, native export and package integrity.'
+            'Unsigned test build. The installer wizard and the user original project have not been exercised.'
+            'No private Live2D SDK or model research inputs are included.'
+          )
+          $guide | Set-Content -LiteralPath (Join-Path $output 'BUILD-AND-CHECKS.txt') -Encoding utf8
+          Get-ChildItem -LiteralPath $output -File | Sort-Object Name | ForEach-Object {
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)"
+          } | Set-Content -LiteralPath (Join-Path $output 'SHA256SUMS.txt') -Encoding ascii
+
+      - name: Preserve the validated Windows test installer
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webvideo-windows-test-installer
+          retention-days: 7
+          if-no-files-found: error
+          path: .build/ci-installer/*
+
       - name: Preserve synthetic font regression diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -113,6 +158,8 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
           path: |
+            .build/figure-export/*.json
+            .build/figure-export/*.log
             .build/terre-ui-font/*.png
             .build/terre-ui-font/*.json
             .build/font-render/*.png
