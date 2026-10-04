@@ -10,13 +10,25 @@ const legacy=fs.readFileSync(path.join(root,'tests/fixtures/update-channel/terre
 const modern=fs.readFileSync(path.join(root,'browser/update-check.js'),'utf8');
 const stable=fs.readFileSync(path.join(root,'docs/releases/RELEASE_NOTES_1.1.7.md'),'utf8');
 const next='<!-- webvideo-compat: {"product":"terre","webgal":["4.6.5"]} -->';
+const firstLine=text=>text.split(/\r?\n/)[0];
+// Git may materialize text files with CRLF on Windows; compare canonical Git-source text.
+const sourceHash=text=>crypto.createHash('sha256').update(text.replace(/\r\n/g,'\n')).digest('hex');
+const legacyHash='3217652adbe928a7356021bf0990a2a353ab2719acb1135d72a96c4fe40d561e';
 const nextNotes=path.join(root,'docs/releases/RELEASE_NOTES_1.2.0.md');
-if(fs.existsSync(nextNotes))assert.equal(fs.readFileSync(nextNotes,'utf8').split('\n')[0],next);
+if(fs.existsSync(nextNotes))assert.equal(firstLine(fs.readFileSync(nextNotes,'utf8')),next);
 const craft='<!-- webvideo-compat: {"product":"craft","webgal":["4.6.4","4.6.5"]} -->';
 const rows=[{tag_name:'craft-v1.1.8.0c',body:craft},{tag_name:'v1.2.0',body:next},{tag_name:'v1.1.7',body:stable}].map(row=>({...row,draft:false,prerelease:false}));
 function load(source){const context={setTimeout,clearTimeout,AbortController,WebVideoUpdateContext:{productVersion:'1.1.6',engineId:'open-webgal.webgal',engineVersion:'4.6.4'},fetch:async()=>{throw Error('offline');}};context.globalThis=context;vm.runInNewContext(source,context);return context.WebVideoUpdates;}
-test('archived 1.1.6 browser updater remains byte-identical to published source',()=>{
- assert.equal(crypto.createHash('sha256').update(legacy).digest('hex'),'3217652adbe928a7356021bf0990a2a353ab2719acb1135d72a96c4fe40d561e');
+test('archived 1.1.6 browser updater retains canonical published source bytes',()=>{
+ assert.equal(sourceHash(legacy),legacyHash);
+});
+test('release-note headers accept LF and CRLF checkout lines',()=>{
+ for(const newline of ['\n','\r\n'])assert.equal(firstLine(next+newline+'# Release'),next);
+});
+test('archived updater identity accepts CRLF checkout without ignoring source changes',()=>{
+ const lf=legacy.replace(/\r\n/g,'\n');
+ assert.equal(sourceHash(lf.replace(/\n/g,'\r\n')),legacyHash);
+ assert.notEqual(sourceHash(lf+'// changed source\n'),legacyHash);
 });
 for(const [label,source] of [['published 1.1.6',legacy],['current',modern]]){
  test(`${label} updater keeps legacy464 on1.1.7 and routes465 to1.2.0`,()=>{const updates=load(source);const old=updates.classify(rows,'4.6.4','1.1.6');assert.equal(old.kind,'update');assert.match(old.url,/\/v1\.1\.7$/);assert.equal(updates.classify(rows,'4.6.4','1.1.7').kind,'keep');assert.match(updates.classify(rows,'4.6.5','1.1.6').url,/\/v1\.2\.0$/);assert.ok(!old.url.includes('craft'));});
