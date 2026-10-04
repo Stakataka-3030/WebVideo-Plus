@@ -151,7 +151,7 @@ public class InstallationState {
  }catch{state.UpdateAvailable=false;state.Message=state.Mounted?"已检测到挂载，但安装记录或版本无法读取；请查看安装目录。":"无法读取所选目录，请重新选择。";}return state;}
 }
 public class SetupForm:Form {
- TextBox terre,games,output,url;Label status,elapsed,headline;ProgressBar progress;Button install,cancel,remove,findTerre,selectTerre;Panel advanced;CheckBox advancedToggle,start;SetupEngine engine;RuntimePlan plan;bool busy,locatingTerre;DateTime phaseStart;string phase="";
+ TextBox terre,games,output,url;Label status,elapsed,headline;ProgressBar progress;Button install,cancel,remove,findTerre,selectTerre;Panel advanced;CheckBox advancedToggle,start;SetupEngine engine;RuntimePlan plan;bool busy,locatingTerre;int hostSelectionTicket;DateTime phaseStart;string phase="";
  public SetupForm(){
   Text="WebGAL 视频导出 · 安装";ClientSize=new Size(780,510);FormBorderStyle=FormBorderStyle.Sizable;MaximizeBox=false;MinimumSize=new Size(820,550);AutoScroll=true;StartPosition=FormStartPosition.CenterScreen;Font=new Font("Microsoft YaHei UI",10);BackColor=Color.FromArgb(248,249,251);AutoScaleMode=AutoScaleMode.Dpi;
   headline=new Label{Text="安装视频导出工具",Font=new Font(Font.FontFamily,19,FontStyle.Bold),Location=new Point(28,24),Size=new Size(720,42)};Controls.Add(headline);
@@ -169,7 +169,7 @@ public class SetupForm:Form {
   Controls.Add(new Label{Text="【内部版本 0.3.1 · C# / WebView2】",Location=new Point(30,72),Size=new Size(720,26),ForeColor=Color.FromArgb(150,75,20)});
   engine=new SetupEngine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGALVideoExporter"),Report);
   try{var f=Path.Combine(engine.Root,"last-install.json");if(File.Exists(f)){var recent=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(f));terre.Text=(string)recent["terreDir"];games.Text=(string)recent["gamesRoot"];output.Text=(string)recent["outputDir"];url.Text=(string)recent["terreUrl"];}}catch{}
-  var detection=new System.Windows.Forms.Timer{Interval=300};detection.Tick+=(s,e)=>{detection.Stop();if(!busy&&!locatingTerre)RefreshInstallation(true);};terre.TextChanged+=(s,e)=>{detection.Stop();detection.Start();};Shown+=async(s,e)=>await AutoFindTerre(true);FormClosed+=(s,e)=>detection.Dispose();
+  var detection=new System.Windows.Forms.Timer{Interval=300};detection.Tick+=(s,e)=>{detection.Stop();if(!busy&&!locatingTerre)RefreshInstallation(true);};terre.TextChanged+=(s,e)=>{hostSelectionTicket++;install.Enabled=remove.Enabled=false;detection.Stop();detection.Start();};Shown+=async(s,e)=>await AutoFindTerre(true);FormClosed+=(s,e)=>{hostSelectionTicket++;detection.Dispose();};
   var timer=new System.Windows.Forms.Timer{Interval=1000};timer.Tick+=(s,e)=>{if(busy)elapsed.Text="本步骤已用 "+(DateTime.Now-phaseStart).ToString(@"mm\:ss");};timer.Start();FormClosed+=(s,e)=>timer.Dispose();FormClosing+=(s,e)=>{if(busy){e.Cancel=true;engine.Canceled=true;status.Text="正在取消，请等待后台步骤结束。";}};
  }
  TextBox Field(Control parent,string name,string value,int top,bool browse){
@@ -194,11 +194,7 @@ public class SetupForm:Form {
   var type=Type.GetTypeFromProgID("WScript.Shell");if(type==null)return null;shell=Activator.CreateInstance(type);shortcut=type.InvokeMember("CreateShortcut",BindingFlags.InvokeMethod,null,shell,new object[]{link});
   return Convert.ToString(shortcut.GetType().InvokeMember("TargetPath",BindingFlags.GetProperty,null,shortcut,null));
  }catch{return null;}finally{try{if(shortcut!=null&&System.Runtime.InteropServices.Marshal.IsComObject(shortcut))System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shortcut);}catch{}try{if(shell!=null&&System.Runtime.InteropServices.Marshal.IsComObject(shell))System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell);}catch{}}}
- static string ResolveTerreSelection(string selected){try{
-  if(String.IsNullOrWhiteSpace(selected))return null;if(Directory.Exists(selected))return ValidTerreRoot(selected);if(!File.Exists(selected))return null;
-  if(Path.GetExtension(selected).Equals(".lnk",StringComparison.OrdinalIgnoreCase)){var target=ShortcutTarget(selected);return String.IsNullOrWhiteSpace(target)?null:ResolveTerreSelection(target);}
-  if(Path.GetExtension(selected).Equals(".exe",StringComparison.OrdinalIgnoreCase)&&IsTerreExeName(selected))return ValidTerreRoot(Path.GetDirectoryName(Path.GetFullPath(selected)));
- }catch{}return null;}
+ static string ResolveTerreSelection(string selected){var host=InstallerProductRouting.Detect(selected,ShortcutTarget);return host.Product=="terre"?host.Root:null;}
  static IEnumerable<string> WalkDirectories(string root,int maxDepth,int cap){
   if(String.IsNullOrWhiteSpace(root)||!Directory.Exists(root))yield break;var queue=new Queue<Tuple<string,int>>();var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);queue.Enqueue(Tuple.Create(Path.GetFullPath(root),0));int visited=0;
   while(queue.Count>0&&visited<cap){var item=queue.Dequeue();if(!seen.Add(item.Item1))continue;visited++;yield return item.Item1;if(item.Item2>=maxDepth)continue;string[] children;try{children=Directory.GetDirectories(item.Item1);}catch{continue;}
@@ -231,7 +227,7 @@ public class SetupForm:Form {
  string SelectTerreManually(IWin32Window owner){string selected=null;
   using(var f=new Form{Text="手动选择 WebGAL Terre",ClientSize=new Size(560,250),FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,StartPosition=FormStartPosition.CenterParent,Font=Font,BackColor=BackColor}){
    f.Controls.Add(new Label{Text="您可以选择 Terre 安装文件夹、WebGAL_Terre.exe 本身，或指向它的快捷方式。",Location=new Point(24,22),Size=new Size(510,48)});
-   Action<string> accept=value=>{var root=ResolveTerreSelection(value);if(root==null){MessageBox.Show(f,"所选项目不是有效的 WebGAL Terre。请确认其中包含 Terre 主程序和 public/index.html。","无法识别 Terre",MessageBoxButtons.OK,MessageBoxIcon.Warning);return;}selected=root;f.DialogResult=DialogResult.OK;f.Close();};
+   Action<string> accept=value=>{var host=InstallerProductRouting.Detect(value,ShortcutTarget);if(host.WrongForTerre){selected=host.Root;f.DialogResult=DialogResult.OK;f.Close();return;}var root=ResolveTerreSelection(value);if(root==null){MessageBox.Show(f,"所选项目不是有效的 WebGAL Terre。请确认其中包含 Terre 主程序和 public/index.html。","无法识别 Terre",MessageBoxButtons.OK,MessageBoxIcon.Warning);return;}selected=root;f.DialogResult=DialogResult.OK;f.Close();};
    var folder=new Button{Text="选择 Terre 文件夹",Location=new Point(24,92),Size=new Size(155,42)};folder.Click+=(sender,args)=>{using(var d=new FolderBrowserDialog{Description="选择 WebGAL Terre 安装文件夹",SelectedPath=terre.Text})if(d.ShowDialog(f)==DialogResult.OK)accept(d.SelectedPath);};f.Controls.Add(folder);
    var exe=new Button{Text="选择 EXE",Location=new Point(202,92),Size=new Size(155,42)};exe.Click+=(sender,args)=>{using(var d=new OpenFileDialog{Title="选择 WebGAL Terre 主程序",Filter="WebGAL Terre|WebGAL_Terre.exe;WebGAL Terre.exe|可执行文件|*.exe|所有文件|*.*",CheckFileExists=true})if(d.ShowDialog(f)==DialogResult.OK)accept(d.FileName);};f.Controls.Add(exe);
    var shortcut=new Button{Text="选择快捷方式",Location=new Point(380,92),Size=new Size(155,42)};shortcut.Click+=(sender,args)=>{using(var d=new OpenFileDialog{Title="选择 WebGAL Terre 快捷方式",Filter="快捷方式|*.lnk|所有文件|*.*",CheckFileExists=true})if(d.ShowDialog(f)==DialogResult.OK)accept(d.FileName);};f.Controls.Add(shortcut);
@@ -247,14 +243,14 @@ public class SetupForm:Form {
   }return selected;
  }
  async Task AutoFindTerre(bool promptWhenMissing){
-  if(busy||locatingTerre)return;locatingTerre=true;if(findTerre!=null)findTerre.Enabled=false;status.Text="正在自动查找 WebGAL Terre…";
+  if(busy||locatingTerre)return;if(InstallerProductRouting.Detect(terre.Text,ShortcutTarget).WrongForTerre){RefreshInstallation(true);return;}locatingTerre=true;install.Enabled=remove.Enabled=false;if(findTerre!=null)findTerre.Enabled=false;status.Text="正在自动查找 WebGAL Terre…";
   try{
-   string preferred=terre.Text;var candidates=await Task.Run(()=>DiscoverTerre(preferred));string selected=ChooseTerreCandidate(candidates);
+   string preferred=terre.Text;int selectionTicket=hostSelectionTicket;var candidates=await Task.Run(()=>DiscoverTerre(preferred));if(IsDisposed||selectionTicket!=hostSelectionTicket||terre.Text!=preferred)return;string selected=ChooseTerreCandidate(candidates);
    if(selected==null&&candidates.Length==0&&promptWhenMissing)selected=PromptMissingTerre();
-   if(selected!=null){terre.Text=selected;RefreshInstallation(false);status.Text="已找到 WebGAL Terre："+selected;}
+   if(selected!=null){terre.Text=selected;RefreshInstallation(false);status.Text=InstallerProductRouting.Detect(selected).WrongForTerre?InstallerProductRouting.Detect(selected).TerreGuidance:"已找到 WebGAL Terre："+selected;}
    else if(candidates.Length==0)status.Text="未找到 WebGAL Terre。请确认已安装 Terre，或点击“选择…”手动指定。";
    else status.Text="未选择 Terre。可以点击“自动查找”重新扫描，或点击“选择…”手动指定。";
-  }finally{locatingTerre=false;if(findTerre!=null)findTerre.Enabled=true;}
+  }finally{locatingTerre=false;if(!IsDisposed){if(findTerre!=null)findTerre.Enabled=!busy;if(!busy)RefreshInstallation(true);}}
  }
 
  void Report(SetupProgress p){if(IsDisposed)return;BeginInvoke((Action)(()=>{status.Text=p.Message;if(!p.Message.StartsWith("正在下载")&&phase!=p.Message){phase=p.Message;phaseStart=DateTime.Now;}progress.Style=p.Percent<0?ProgressBarStyle.Marquee:ProgressBarStyle.Continuous;if(p.Percent>=0)progress.Value=Math.Min(100,Math.Max(0,p.Percent));}));}

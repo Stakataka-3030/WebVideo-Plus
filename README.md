@@ -2,16 +2,18 @@
 
 面向 **WebGAL Terre 4.6.4** 的视觉小说视频制作辅助工具：批量编辑、剧情导航、音乐配置、备份与检查、Anogo 故事导入，以及本机视频导出。生成式 AI 是默认不安装的可选 Beta 组件，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [使用指南](docs/USER_GUIDE.md) · [1.1.6 发行说明](docs/releases/RELEASE_NOTES_1.1.6.md) · [构建说明](docs/BUILDING.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.7) · [使用指南](docs/USER_GUIDE.md) · [1.1.7 发行说明](docs/releases/RELEASE_NOTES_1.1.7.md) · [构建说明](docs/BUILDING.md)
 
-当前源码版本 **1.1.6**，内部开发标识 **0.8.10**，安装器 Win32 版本 **1.1.6.0**，导出内核 **0.6.50**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准；当前不声明兼容 Terre 4.6.5。
+当前源码版本 **1.1.7**，内部开发标识 **0.8.11**，安装器 Win32 版本 **1.1.7.0**，导出内核 **0.6.50**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.7) 为准；这是 WebGAL 4.6.4 / MyGO 3.2.1 的最终稳定通道；Terre / WebGAL 4.6.5 请使用 1.2.0 通道。
 
 ## 安装与开始使用
 
 1. 在 Windows 上准备已有的 **Terre 4.6.4** 安装目录。
-2. 从 [Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 下载 `WebVideo+-Setup-*.exe`，运行并选择 Terre 目录。
+2. 从 [Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.7) 下载 `WebVideo+-Setup-*.exe`，运行并选择 Terre 目录。
 3. 默认安装常用模块；高级选项可单独增删功能、设置数据与缓存目录。灰选模块是其他已选功能的依赖。
 4. 安装完成后照常启动 Terre，在编辑器中使用 WebVideo+ 工具。
+
+安装器发现 Craft 时会停止安装，并从已发布的 Craft 正式通道提供对应安装器。网络不可用或尚无正式包时会明确提示，不会跳转至其他产品或旧测试版。
 
 支持标准版及 Steam 版常见的 Terre 主程序命名。可选 MyGO 集成优先使用已有本机引擎，不捆绑角色素材或模型。
 

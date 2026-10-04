@@ -26,6 +26,10 @@ jobs:
         run: |
           node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs tests/build-inputs.test.mjs tests/ai-build-metadata.test.mjs tests/font-render.test.mjs tests/terre-ui-font.test.mjs tests/manual-cuts.test.mjs tests/figure-export.test.mjs tests/statement-cuts.test.mjs
           if ($LASTEXITCODE -ne 0) { throw "Node regression checks failed" }
+          pwsh -NoLogo -NoProfile -File .\tests\installer-product-routing.portable.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Installer product/channel checks failed" }
+          pwsh -NoLogo -NoProfile -File .\tests\recent-install-record.portable.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Recent install record isolation checks failed" }
           node tests/update-check-and-atlas.mjs
           if ($LASTEXITCODE -ne 0) { throw "Update and atlas checks failed" }
           .\tests\build-inputs.test.ps1

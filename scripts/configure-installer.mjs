@@ -26,7 +26,7 @@ replace('"--runtime-path",p.RuntimePath};','"--runtime-path",p.RuntimePath,"--mo
 replace('Run(p.Native,args,p.RuntimePath,p.Payload);if(start){','Run(Path.Combine(p.Payload,"WebVideoPlus.Manager.exe"),args,p.RuntimePath,p.Payload);if(start&&p.Modules.Length>0){');
 replace('Run(p.Native,new[]{"launch","--terre-dir",terre},p.RuntimePath,p.Payload);','Run(Path.Combine(p.Payload,"WebVideoPlus.Manager.exe"),new[]{"launch","--terre-dir",terre},p.RuntimePath,p.Payload);');
 between(' public static InstallationState Read(', '\n}\npublic class SetupForm', ` public static InstallationState Read(string directory,string packageVersion){var state=new InstallationState();try{
-  state.ValidTerre=File.Exists(Path.Combine(directory,"public/index.html"));string marker=Path.Combine(directory,"webvideo-plus.json");bool product=File.Exists(marker);state.Mounted=product||File.Exists(Path.Combine(directory,"video-export-wrapper.json"));
+  var host=InstallerProductRouting.Detect(directory);if(host.WrongForTerre){state.Message=host.TerreGuidance;return state;}state.ValidTerre=File.Exists(Path.Combine(directory,"public/index.html"));string marker=Path.Combine(directory,"webvideo-plus.json");bool product=File.Exists(marker);state.Mounted=product||File.Exists(Path.Combine(directory,"video-export-wrapper.json"));
   if(!state.Mounted){state.UpdateAvailable=true;state.Message=state.ValidTerre?"默认安装全部模块；可在高级选项中调整。":"请选择有效的 Terre 安装目录。";return state;}
   if(!product){state.UpdateAvailable=true;state.Message="检测到视频导出器，可升级为 WebVideo+ 并保留导出设置。";return state;}
   var json=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(marker));state.Version=Convert.ToString(json["version"]);string installedLabel=state.Version+(json.ContainsKey("internalVersion")&&!String.IsNullOrWhiteSpace(Convert.ToString(json["internalVersion"]))?"（内部 "+Convert.ToString(json["internalVersion"])+"）":"");int comparison=CompareVersions(packageVersion,state.Version);state.UpdateAvailable=comparison>=0;
@@ -84,7 +84,7 @@ if(!legacyToggle)throw Error('Legacy installer toggle layout missing');
 s=s.replace(legacyToggle[0],'');
 replace('\n }\n TextBox Field(', '\n  InitializeResponsiveLayout();\n  InitializeUpdateCheck();\n }\n TextBox Field(');
 replace('bool accepted=f.ShowDialog(this)==DialogResult.OK;', 'ConfigureUninstallLayout(f);bool accepted=f.ShowDialog(this)==DialogResult.OK;');
-s+='\n'+fs.readFileSync(path.join(root,'installer/Installer.layout.cs'),'utf8')+'\n'+fs.readFileSync(path.join(root,'installer/Installer.update.cs'),'utf8');
+s+='\n'+fs.readFileSync(path.join(root,'installer/Installer.product-routing.cs'),'utf8').replace(/^using [^;]+;\r?\n/gm,'')+'\n'+fs.readFileSync(path.join(root,'installer/Installer.layout.cs'),'utf8')+'\n'+fs.readFileSync(path.join(root,'installer/Installer.update.cs'),'utf8');
 
 fs.writeFileSync(path.join(root,'installer/Installer.cs'),s);
 console.log('WebVideo+ installer source generated.');
