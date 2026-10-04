@@ -91,3 +91,9 @@ The three copied notice files are byte-identical to their linked sources:
 - Resource Han Rounded: SHA-256 `8b219980c8603383dccc0d82c00e8be6880f0b91026e4509d41e0ad681a76b47`
 - Source Han Serif: SHA-256 `6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2`
 - WebGAL sounds: SHA-256 `498270c14ba7b0a1062ff79d5f948724d5015e6486b295ab01ae74dcd5e7bc04`
+
+## Additional 4.6.5 compatibility profile
+
+The 1.2.0 unreleased candidate also recognizes the exact official WebGAL 4.6.5 project/template runtime. Its [official Web release](https://github.com/OpenWebGAL/WebGAL/releases/tag/4.6.5) ZIP is pinned as `webgal465Test` in `build/dependencies.lock.json`; `build/runtime-4.6.5-test.json` records all selected original bytes used for regression fixtures. The main bundle SHA-256 is `356f7184c80af8da4dd782e25c5b3fb89f55f1e8b9e9e18be6f50035763dc6b6`. Export probes are added only to owned job snapshots. The user's runtime, fonts, CSS and original project files are not rewritten.
+
+This additional profile does not replace the 16-file bundled 4.6.4 fallback described above. Upstream WebGAL code and derived patch snippets remain under MPL-2.0, and embedded third-party materials retain their existing licenses.

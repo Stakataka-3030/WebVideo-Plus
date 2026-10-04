@@ -15,9 +15,13 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const serveOnly=process.argv.includes('--serve');
 const [runtimeArg='package/runtime/web',upstreamArg='.build/webgal-source',outArg='.build/figure-export']=process.argv.slice(2).filter(value=>value!=='--serve'),runtime=path.resolve(runtimeArg),upstream=path.resolve(upstreamArg),out=path.resolve(outArg);
 const hash=source=>crypto.createHash('sha256').update(source).digest('hex');
-const bundle=fs.readFileSync(path.join(runtime,'assets/index-R1tKotR6.js'),'utf8'),plugin=fs.readFileSync(path.join(runtime,'assets/index.es-erQsk_Nn.js'),'utf8');
-assert.equal(hash(bundle),'d9efa39b4eabdb3a54c3d209ca5db6cb04d1cc60fdef3acdcd2532712a8a6d10');
-assert.equal(hash(plugin),'46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505');
+const profiles=[
+ {version:'4.6.4',bundle:'index-R1tKotR6.js',bundleHash:'d9efa39b4eabdb3a54c3d209ca5db6cb04d1cc60fdef3acdcd2532712a8a6d10',plugin:'index.es-erQsk_Nn.js',pluginHash:'46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505'},
+ {version:'4.6.5',bundle:'index-CC7KTie-.js',bundleHash:'356f7184c80af8da4dd782e25c5b3fb89f55f1e8b9e9e18be6f50035763dc6b6',plugin:'index.es-0XzJiDJZ.js',pluginHash:'8b6c11ea8b4724dd8254d61a009c4d0e7cc7389f31f76570dac354c56b11a724'}
+];
+const profileInfo=profiles.find(p=>fs.existsSync(path.join(runtime,'assets',p.bundle)));assert.ok(profileInfo,'Unsupported runtime fixture');
+const bundle=fs.readFileSync(path.join(runtime,'assets',profileInfo.bundle),'utf8'),plugin=fs.readFileSync(path.join(runtime,'assets',profileInfo.plugin),'utf8');
+assert.equal(hash(bundle),profileInfo.bundleHash);assert.equal(hash(plugin),profileInfo.pluginHash);
 const start=plugin.indexOf('onTickerUpdate(){this.update(G.shared.deltaMS)}'),end=plugin.indexOf('destroy(t){',start);assert.ok(start>0&&end>start);const live2dMethods=plugin.slice(start,end);
 const renderSource=fs.readFileSync(path.join(root,'browser/render.js'),'utf8');
 const filter=renderSource.slice(renderSource.indexOf('globalThis.__exportInstallFigureOutputFilter='),renderSource.indexOf('globalThis.__exportTextSettleApplies='));

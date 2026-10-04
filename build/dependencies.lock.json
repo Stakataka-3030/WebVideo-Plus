@@ -41,5 +41,13 @@
     "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0.1/ffmpeg-9.0.1-essentials_build.zip",
     "sha256": "fec81ae03971d9dd4be3ebe02e263bd2ec1d789483f931bdba5f5715e65da2e9",
     "purpose": "CI-only video export regression; matches installer runtime pin and is not bundled by preparation"
+  },
+  "webgal465Test": {
+    "version": "4.6.5",
+    "file": "WebGAL-4.6.5-web.zip",
+    "url": "https://github.com/OpenWebGAL/WebGAL/releases/download/4.6.5/WebGAL-4.6.5-web.zip",
+    "sha256": "30a6a446121482cb431950c4d0457ee48f4af9652ca81250fc3f5e244537ce1b",
+    "source": "https://github.com/OpenWebGAL/WebGAL/tree/4.6.5",
+    "purpose": "Exact 4.6.5 project/template compatibility regression; bundled legacy fallback remains 4.6.4"
   }
 }

@@ -6,7 +6,7 @@
  const hidden=new Set([...controls,'label','unlockCg','unlockBgm','wait','applyStyle','callSteam','end','bgm']);
  const animations=new Set(['setAnimation','setComplexAnimation','setTransform','setTempAnimation','setTransition']);
  const specials=new Set(['video','playVideo','intro','filmMode','setTextbox','miniAvatar']);
- const labels={changeBg:'切换背景',changeFigure:'立绘调整',playEffect:'效果声音',setAnimation:'调用动画',setComplexAnimation:'复杂动画',setTransform:'单段动画',setTempAnimation:'多段动画',setTransition:'进出场动画',pixi:'使用特效',pixiPerform:'使用特效',pixiInit:'清除特效',video:'播放视频',playVideo:'播放视频',intro:'全屏文字',filmMode:'电影模式',setTextbox:'文本显示',miniAvatar:'角落头像'};
+ const labels={changeBg:'切换背景',changeFigure:'立绘调整',changeFigureDiff:'立绘差分',playEffect:'效果声音',setAnimation:'调用动画',setComplexAnimation:'复杂动画',setTransform:'单段动画',setTempAnimation:'多段动画',setTransition:'进出场动画',pixi:'使用特效',pixiPerform:'使用特效',pixiInit:'清除特效',video:'播放视频',playVideo:'播放视频',intro:'全屏文字',filmMode:'电影模式',setTextbox:'文本显示',miniAvatar:'角落头像'};
  const fmt=value=>typeof value==='boolean'?(value?'是':'否'):typeof value==='number'?String(value):Array.isArray(value)?value.map(fmt).join('，'):typeof value==='object'?JSON.stringify(value):String(value??'');
  const fileName=value=>String(value||'').replace(/\\/g,'/').split('/').at(-1)||'未填写';
  const parse=value=>{try{if(value&&typeof value==='object')return value;return JSON.parse(String(value||'{}'));}catch{return null;}};
@@ -25,13 +25,18 @@
   }
  }
  function derive(path,source,parsed,types,animationData){
-  const M=root.WebVideoNavigationMetadata,defaults=Object.fromEntries(Object.entries(M.fields).map(([k,v])=>[k,v.default]));
+  const {figureImage,figureModel,figureDiffRejected}=root.WebVideoTimelineCore;
+  const native465=root.WebVideoHostProfile?.transformFrom??Object.values(types||{}).includes('changeFigureDiff');
+  const M=root.WebVideoNavigationMetadataProfiles?.[native465?'4.6.5':'4.6.4']||root.WebVideoNavigationMetadata,defaults=Object.fromEntries(Object.entries(M.fields).map(([k,v])=>[k,v.default]));
   const lines=source.split('\n'),offsets=[0];for(let i=0;i<lines.length;i++)offsets.push(offsets[i]+lines[i].length+(i<lines.length-1?1:0));
   const statements=[],rows=[],figures=new Map(),effects=new Map(),transitions=new Map(),sounds=new Map(),groups=new Map();
   let speaker='',section=null,previous=null,group=0,firstManualLine=null,firstBgmLine=null,pending=[];
   const idLabel=value=>{const id=String(value??''),names=root.WebVideoCharacterMap?root.WebVideoCharacterMap.names():M.characterNames,key=id.toLowerCase();return own(names,key)&&names[key]?names[key]:id;};
   const targetLabel=value=>value==='bg-main'?'背景':value?.startsWith('fig-')&&M.positions[value.slice(4)]?M.positions[value.slice(4)]+'人物':idLabel(value)||'未填写';
   const flatten=value=>{const result={};if(!value||typeof value!=='object')return result;for(const [key,spec] of Object.entries(M.fields)){const v=get(value,spec.path)??value[key];if(v!==undefined)result[key]=number(v,v);}return result;};
+  const fromDefault=args=>native465&&own(args,'transformFrom')&&args.transformFrom!=null&&args.transformFrom!==''?args.transformFrom==='default':args.writeDefault===true;
+  // 4.6.5 gives an explicit transformFrom precedence over legacy flags.
+  const resetEffects=args=>fromDefault(args)&&args.parallel!==true&&(native465&&args.transformFrom==='default'||args.ignoreDefault!==true);
   const figureLabel=(args,id)=>String(args.id??'')?idLabel(id):targetLabel(id);
   const speakerSource=args=>{
    const characterNames=root.WebVideoCharacterMap?root.WebVideoCharacterMap.names():M.characterNames;
@@ -48,7 +53,7 @@
   };
   const effectParts=(row,raw,frameIndex,base,last)=>{
    const input=parse(raw);if(!input||Array.isArray(input))return {parts:[part(labels[row.command],['参数无法解析'])],state:last};
-   const reset=row.args.writeDefault===true&&!row.args.parallel&&!row.args.ignoreDefault;
+   const reset=resetEffects(row.args);
    const current={...(reset?defaults:base),...flatten(input)};
    const duration=number(input.duration??row.args.duration,row.command==='setTransform'?500:0),ease=input.ease??row.args.ease??'';
    const footer=duration!==0?(M.eases[ease]||ease||'默认')+' · '+fmt(duration):'';
@@ -60,7 +65,7 @@
   const moreParts=(args,old)=>{
    const next={general:{zIndex:-1,...(old?.general||{})},blink:{...(old?.blink||Object.fromEntries(Object.entries(M.blink).map(([k,v])=>[k,v.default])))},focus:{...(old?.focus||Object.fromEntries(Object.entries(M.focus).map(([k,v])=>[k,v.default])))}};
    const general={bounds:'自定义 Live2D 绘制范围',zIndex:'显示层级',skin:'皮肤',animationFlag:'图片差分',mouthOpen:'张开嘴',mouthHalfOpen:'半张嘴',mouthClose:'闭上嘴',eyesOpen:'睁开眼睛',eyesClose:'闭上眼睛'};
-   const parts=[];const changed=[];for(const [key,label] of Object.entries(general))if(own(args,key)){const value=number(args[key],args[key]);if(!equal(value,next.general[key]??''))changed.push(label+'：'+fmt(value));next.general[key]=value;}
+   const parts=[];const changed=[];for(const [key,label] of Object.entries(general))if(own(args,key)){const value=typeof args[key]==='boolean'?args[key]:number(args[key],args[key]);if(!equal(value,next.general[key]??''))changed.push(label+'：'+fmt(value));next.general[key]=value;}
    if(changed.length)parts.push(part('通用',changed));
    for(const [key,title] of [['blink','眨眼'],['focus','注视']])if(own(args,key)){const input=parse(args[key]);if(input){const current={...Object.fromEntries(Object.entries(M[key]).map(([k,v])=>[k,v.default])),...input};const fields=Object.keys(M[key]).filter(k=>!equal(current[k],next[key][k]));if(fields.length)parts.push(part(title,fields.map(k=>M[key][k].label+'：'+fmt(current[k]))));next[key]=current;}}
    return {parts,state:next};
@@ -89,14 +94,20 @@
     let old=figures.get(id);if(!old||old.file!==content)old=[...figures.values()].find(item=>item.file===content&&item.position===position);
     row.target=id;
     if(gone){row.kind='figure';row.main=true;row.title='人物离场 · '+figureLabel(args,id);row.parts=[part(row.title)];figures.delete(id);effects.delete(id);}
-    else if(!old||old.file!==content){old=null;const priorEffects=effects.get(id)||defaults;const more=moreParts(args,null);figures.set(id,{file:content,position,more:more.state,motion:own(args,'motion')?String(args.motion):old?.motion,expression:own(args,'expression')?String(args.expression):old?.expression});effects.set(id,{...defaults,...flatten(parse(args.transform))});row.kind='figure';row.main=true;row.figureEntering=true;if(own(args,'transform'))row.embeddedEffects=effectParts(row,args.transform,null,defaults,priorEffects).parts;row.title='人物登场 · '+figureLabel(args,id)+' · '+content;row.parts=[part(row.title)];}
-    else {const more=moreParts(args,old.more);figures.set(id,{file:content,position,more:more.state,motion:own(args,'motion')?String(args.motion):old?.motion,expression:own(args,'expression')?String(args.expression):old?.expression});row.kind='event';row.title='立绘调整';row.parts=more.parts;row.attachRule='figure';if(!row.parts.length)continue;}
+    else if(!old||old.file!==content){old=null;const priorEffects=effects.get(id)||defaults;const more=moreParts(args,null);figures.set(id,{file:content,position,liveRuntime:old?.liveRuntime||figureModel(content,args),more:more.state,motion:own(args,'motion')?String(args.motion):old?.motion,expression:own(args,'expression')?String(args.expression):old?.expression});effects.set(id,{...defaults,...flatten(parse(args.transform))});row.kind='figure';row.main=true;row.figureEntering=true;if(own(args,'transform'))row.embeddedEffects=effectParts(row,args.transform,null,defaults,priorEffects).parts;row.title='人物登场 · '+figureLabel(args,id)+' · '+content;row.parts=[part(row.title)];}
+    else {const more=moreParts(args,old.more);figures.set(id,{file:content,position,liveRuntime:old?.liveRuntime||figureModel(content,args),more:more.state,motion:own(args,'motion')?String(args.motion):old?.motion,expression:own(args,'expression')?String(args.expression):old?.expression});row.kind='event';row.title='立绘调整';row.parts=more.parts;row.attachRule='figure';if(!row.parts.length)continue;}
+   }else if(command==='changeFigureDiff'){
+    const position=positions.find(p=>args[p]===true)||'center',id=String(args.id??'')||'fig-'+position,old=figures.get(id),gone=!content||content==='none'||!old&&args.clear===true;row.target=id;
+    if(figureDiffRejected(old,content)){row.diffNoop=true;row.kind='event';row.title='立绘差分 · 图片不适用';row.parts=[part(row.title,['当前素材无法作为图片差分替换'])];row.attachRule='figure';}
+    else if(gone){row.figureGone=true;row.kind='figure';row.main=true;row.title='人物离场 · '+figureLabel(args,id);row.parts=[part(row.title)];figures.delete(id);effects.delete(id);}
+    else if(!old){const more=moreParts(args,null),priorEffects=effects.get(id)||defaults;figures.set(id,{file:content,position,liveRuntime:old?.liveRuntime||figureModel(content,args),more:more.state,motion:own(args,'motion')?String(args.motion):undefined,expression:own(args,'expression')?String(args.expression):undefined});effects.set(id,{...defaults,...flatten(parse(args.transform))});row.kind='figure';row.main=true;row.figureEntering=true;if(own(args,'transform'))row.embeddedEffects=effectParts(row,args.transform,null,defaults,priorEffects).parts;row.title='人物登场 · '+figureLabel(args,id)+' · '+content;row.parts=[part(row.title)];}
+    else {const associated=Object.fromEntries(['animationFlag','mouthOpen','mouthHalfOpen','mouthClose','eyesOpen','eyesClose'].map(key=>[key,own(args,key)?args[key]:false])),more=moreParts(associated,old.more);figures.set(id,{...old,file:content,more:more.state});row.kind='event';row.title='立绘差分 · '+fileName(content);row.parts=[part(row.title,['保留位置、层级和现有效果']),...more.parts];row.attachRule='figure';}
    }else if(command==='playEffect'){
     row.kind='event';row.title='效果声音';row.attachRule='sound';const id=String(args.id??''),old=id?sounds.get(id):null,on=!old?.active;const file=old?.active?old.file:fileName(content);
     if(id){row.parts=[part('效果声音',on?[file,'音量：'+fmt(number(args.volume,100)),'ID：'+idLabel(id),'启用']:[file,'ID：'+idLabel(id),'关闭'])];sounds.set(id,{active:on,file});}else row.parts=[part('效果声音',[fileName(content),'音量：'+fmt(number(args.volume,100))])];
    }else if(animations.has(command)){
     row.kind='event';row.target=String(args.target??'').trim()||null;row.attachRule='animation';row.title=labels[command];
-    if(command==='setAnimation'){const flags={writeDefault:'补充默认值',keep:'跨语句动画',parallel:'并行动画',ignoreDefault:'默认变换和效果'};row.parts=[part(row.title,['动画文件：'+(content||'未填写'),...Object.entries(flags).filter(([key])=>args[key]===true).map(([,label])=>label+'：是')])];if(row.target){const frames=own(animationData,content)?animationData[content]:animationCache.get(resourceKey(path,content))?.data;if(frames===undefined)effects.set(row.target,{});else if(frames?.length){const before=effects.get(row.target)||defaults,reset=args.writeDefault===true&&!args.parallel&&!args.ignoreDefault;effects.set(row.target,{...(reset?defaults:before),...flatten(frames.at(-1))});}}}
+    if(command==='setAnimation'){const flags={keep:'跨语句动画',parallel:'并行动画'};row.parts=[part(row.title,['动画文件：'+(content||'未填写'),'变换起点：'+(fromDefault(args)?'默认状态':'当前状态'),...Object.entries(flags).filter(([key])=>args[key]===true).map(([,label])=>label+'：是')])];if(row.target){const frames=own(animationData,content)?animationData[content]:animationCache.get(resourceKey(path,content))?.data;if(frames===undefined)effects.set(row.target,{});else if(frames?.length){const before=effects.get(row.target)||defaults,reset=resetEffects(args);effects.set(row.target,{...(reset?defaults:before),...flatten(frames.at(-1))});}}}
     else if(command==='setComplexAnimation'){row.parts=[part(row.title,['动画名：'+content,'持续时间：'+fmt(number(args.duration,0))])];const endings={universalSoftIn:{alpha:1},universalSoftOff:{alpha:0},testblur:{alpha:1}};if(row.target&&endings[content])effects.set(row.target,{...(effects.get(row.target)||defaults),...endings[content]});}
     else if(command==='setTransition'){const old=transitions.get(row.target)||{},items=[];for(const [key,label] of [['enter','进场动画'],['exit','出场动画']])if(own(args,key)){if(!equal(args[key],old[key]??''))items.push(label+'：'+(args[key]||'无'));old[key]=args[key];}if(args.ignoreDefault===true)items.push('默认变换和效果：是');transitions.set(row.target,{...old});row.parts=[part(row.title,items)];}
     else {const prior=row.target&&effects.has(row.target)?effects.get(row.target):{...defaults};const raw=parse(content),frames=command==='setTempAnimation'?(Array.isArray(raw)?raw:[]):[raw];let last=prior;
@@ -117,7 +128,7 @@
   // Match within the native contiguous -next chain. The final, unflagged statement is included.
   for(const members of groups.values()){
    let background=null;for(const row of members){if(row.command==='changeBg')background=row;if(row.attachRule==='effect'){if(background){row.parentId=background.id;row.attachment='after';}else row.main=true;}}
-   const nextFigure=new Map(),futureFigures=new Map();for(let index=members.length-1;index>=0;index--){const row=members[index];if(row.target)nextFigure.set(row.id,futureFigures.get(row.target));if(row.command==='changeFigure'&&row.main){if(row.figureEntering)futureFigures.set(row.target,row);else futureFigures.delete(row.target);}}
+   const nextFigure=new Map(),futureFigures=new Map();for(let index=members.length-1;index>=0;index--){const row=members[index];if(row.target)nextFigure.set(row.id,futureFigures.get(row.target));if(['changeFigure','changeFigureDiff'].includes(row.command)&&row.main){if(row.figureEntering)futureFigures.set(row.target,row);else futureFigures.delete(row.target);}}
    const nextMain=new Map();let following=null;for(let index=members.length-1;index>=0;index--){const row=members[index];nextMain.set(row.id,following);if(row.main&&!row.special)following=row;}
    let preceding=null;const byTarget=new Map();for(const row of members){
     if(row.main){if(!row.special){preceding=row;if(row.target)byTarget.set(row.target,row);}continue;}

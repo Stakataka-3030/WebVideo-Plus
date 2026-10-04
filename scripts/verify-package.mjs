@@ -13,6 +13,16 @@ assert.equal(manifest.version,versions.productVersion);
 assert.equal(manifest.kernelVersion,versions.kernelVersion);
 assert.equal(product.version,manifest.version);
 assert.equal(product.kernelVersion,manifest.kernelVersion);
+assert.deepEqual(product.supportedTerreVersions,['4.6.4','4.6.5'],'Both supported Terre host profiles must be packaged');
+for(const version of product.supportedTerreVersions){
+ const baseline=JSON.parse(fs.readFileSync(path.join(root,version==='4.6.4'?'baseline/local-baseline.json':'baseline/terre-'+version+'.json'),'utf8'));
+ assert.equal(product.hostProfiles[version].baseHash,baseline.baseHash);
+ assert.equal(product.hostProfiles[version].patchRoot,'hosts/'+version);
+ for(const file of ['product-ui/menu-patches.json','product-ui/character-map-patches.json','product-ui/game-patches.json','timeline/patches.json']){
+  const patches=read('hosts/'+version+'/'+file);assert.ok(Array.isArray(patches)&&patches.length>0,'Missing host patch '+version+'/'+file);
+ }
+}
+
 assert.equal(read('component.json').version,manifest.kernelVersion);
 assert.equal(read('ai-runtime/package.json').version,manifest.version);
 assert.equal(read('ai-runtime/package-lock.json').version,manifest.version);

@@ -6,7 +6,7 @@ const read=file=>fs.readFileSync(new URL(file,root),'utf8');
 const lock=JSON.parse(read('build/dependencies.lock.json'));
 test('every direct build dependency is versioned, HTTPS and SHA-256 pinned',()=>{
  assert.equal(lock.schemaVersion,1);
- for(const name of ['webgal','webview2Sdk','webview2Bootstrap','node','ffmpegTest']){
+ for(const name of ['webgal','webgal465Test','webview2Sdk','webview2Bootstrap','node','ffmpegTest']){
   assert.match(lock[name].url,/^https:\/\//);
   assert.match(lock[name].sha256,/^[a-f0-9]{64}$/);
   assert.doesNotMatch(lock[name].url,/\/latest\//);
@@ -40,4 +40,12 @@ test('CI media encoder pin matches the installer runtime pin',()=>{
  const installer=read('installer/Installer.base.cs');
  assert.ok(installer.includes(`FFVersion="${lock.ffmpegTest.version}"`));
  assert.ok(installer.includes(lock.ffmpegTest.sha256));
+});
+
+test('4.6.5 fixture lock matches its exact raw runtime inventory',()=>{
+ const fixture=JSON.parse(read('build/runtime-4.6.5-test.json'));
+ assert.equal(lock.webgal465Test.sha256,fixture.source.sha256);
+ assert.equal(lock.webgal465Test.url,fixture.source.url);
+ assert.equal(fixture.version,'4.6.5');
+ assert.ok(fixture.files.every(file=>file.sourceSha256===file.outputSha256));
 });

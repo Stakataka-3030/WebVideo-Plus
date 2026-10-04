@@ -19,7 +19,10 @@
     replacement=(at>0&&!/[\r\n]$/.test(model.source.slice(0,at))?eol:'')+value+eol;
    }else if(operation.type==='figureCue'){
     if(row.command!=='say')continue;
-    const figures=new Map();for(const statement of model.statements){if(statement.startLine>=row.startLine)break;if(statement.command!=='changeFigure')continue;if(statement.args.clear===true)figures.clear();const key=String(statement.args.id||'fig-'+(positions.find(p=>statement.args[p]===true)||'center'));if(statement.content==='none'||!statement.content)figures.delete(key);else figures.set(key,statement);}
+    const figures=new Map();for(const statement of model.statements){if(statement.startLine>=row.startLine)break;if(!['changeFigure','changeFigureDiff'].includes(statement.command))continue;const diff=statement.command==='changeFigureDiff';if(!diff&&statement.args.clear===true)figures.clear();const key=String(statement.args.id||'fig-'+(positions.find(p=>statement.args[p]===true)||'center')),prior=figures.get(key),gone=!statement.content||statement.content==='none'||diff&&!prior&&statement.args.clear===true;
+     if(diff&&root.WebVideoTimelineCore.figureDiffRejected(prior?{file:prior.content,liveRuntime:root.WebVideoTimelineCore.figureModel(prior.content,prior.args)}:null,statement.content))continue;
+     if(gone)figures.delete(key);else if(diff&&prior)figures.set(key,{...prior,content:statement.content});else figures.set(key,statement);
+    }
     let target=operation.target==='background'?'bg-main':operation.target==='speaker'?String(row.args.figureId||project.bindings[row.speaker]?.id||(positions.find(p=>row.args[p]===true)?'fig-'+positions.find(p=>row.args[p]===true):'')):'fig-'+operation.target;
     if(positions.includes(operation.target)){const matches=[...figures].filter(([id,item])=>(positions.find(p=>item.args[p]===true)||'center')===operation.target);if(matches.length===1)target=matches[0][0];else target='';}
     if(!target&&operation.target==='speaker'&&figures.size===1)target=[...figures.keys()][0];
@@ -44,7 +47,7 @@
     const args={figureId:safeId(binding.id)};for(const p of positions)args[p]=false;replacement=native.write(row,{args});
    }else if(operation.type==='explicitIds'){
     const position=positions.find(p=>row.args[p]===true)||'center';
-    if(row.command==='changeFigure'&&!row.args.id)replacement=native.write(row,{args:{id:'fig-'+position}});
+    if(['changeFigure','changeFigureDiff'].includes(row.command)&&!row.args.id)replacement=native.write(row,{args:{id:'fig-'+position}});
     else if(row.command==='say'&&!row.args.figureId&&positions.some(p=>row.args[p]===true)){const args={figureId:'fig-'+position};for(const p of positions)args[p]=false;replacement=native.write(row,{args});}else continue;
    }else throw Error('未知批量操作');
    replacement=norm(replacement).replace(/\n/g,eol);if(end>at&&/\n$/.test(row.source)&&!replacement.endsWith(eol))replacement+=eol;
@@ -66,7 +69,14 @@
   for(const s of model.statements){
    if(s.command==='changeFigure'){
     const implicit='fig-'+(positions.find(p=>s.args[p]===true)||'center'),id=String(s.args.id||implicit);
-    if(s.content==='none'||s.content===''||s.args.clear===true){states.delete(id);declared.delete(id);runs.delete(id);}else{declared.add(id);const previous=states.get(id),state=previous?.file===s.content?{...previous}:{file:s.content};if(previous?.file!==s.content)runs.delete(id);if(s.args.motion!==undefined)state.motion=String(s.args.motion);if(s.args.expression!==undefined)state.expression=String(s.args.expression);states.set(id,state);}
+    if(s.content==='none'||s.content===''||s.args.clear===true){states.delete(id);declared.delete(id);runs.delete(id);}else{declared.add(id);const previous=states.get(id),state=previous?.file===s.content?{...previous}:{file:s.content,liveRuntime:root.WebVideoTimelineCore.figureModel(s.content,s.args)};if(previous?.file!==s.content)runs.delete(id);state.liveRuntime=state.liveRuntime||root.WebVideoTimelineCore.figureModel(s.content,s.args);if(s.args.motion!==undefined)state.motion=String(s.args.motion);if(s.args.expression!==undefined)state.expression=String(s.args.expression);states.set(id,state);}
+   }
+   if(s.command==='changeFigureDiff'){
+    const id=String(s.args.id||'fig-'+(positions.find(p=>s.args[p]===true)||'center')),previous=states.get(id);
+    if(root.WebVideoTimelineCore.figureDiffRejected(previous,s.content))continue;
+    if(!s.content||s.content==='none'||!previous&&s.args.clear===true){states.delete(id);declared.delete(id);runs.delete(id);}
+    else if(!previous){states.set(id,{file:s.content,liveRuntime:root.WebVideoTimelineCore.figureModel(s.content,s.args)});declared.add(id);runs.delete(id);}
+    else {states.set(id,{...previous,file:s.content});runs.delete(id);}
    }
    if(s.command==='say'){
     const id=String(s.args.figureId||(positions.find(p=>s.args[p]===true)?'fig-'+positions.find(p=>s.args[p]===true):''));

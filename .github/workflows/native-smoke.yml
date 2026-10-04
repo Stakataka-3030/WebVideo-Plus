@@ -24,12 +24,20 @@ jobs:
       - name: Verify repository layout and browser regressions
         shell: pwsh
         run: |
-          node --test tests/cubism2-seam.test.mjs tests/update-check.test.mjs tests/repository-layout.test.mjs tests/build-inputs.test.mjs tests/ai-build-metadata.test.mjs tests/font-render.test.mjs tests/terre-ui-font.test.mjs tests/manual-cuts.test.mjs tests/figure-export.test.mjs tests/statement-cuts.test.mjs
+          node --test tests/*.test.mjs
           if ($LASTEXITCODE -ne 0) { throw "Node regression checks failed" }
+          pwsh -NoLogo -NoProfile -File .\tests\installer-product-routing.portable.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Installer product/channel checks failed" }
+          pwsh -NoLogo -NoProfile -File .\tests\recent-install-record.portable.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Recent install record isolation checks failed" }
           node tests/update-check-and-atlas.mjs
           if ($LASTEXITCODE -ne 0) { throw "Update and atlas checks failed" }
-          .\tests\build-inputs.test.ps1
-          .\tests\manual-cuts.test.ps1
+          pwsh -NoLogo -NoProfile -File .\tests\build-inputs.test.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Build input production checks failed" }
+          pwsh -NoLogo -NoProfile -File .\tests\manual-cuts.test.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Manual cut production checks failed" }
+          pwsh -NoLogo -NoProfile -File .\tests\terre-host-patch.test.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Dual host patch production checks failed" }
 
       - name: Verify injected controls inherit Terre host typography
         shell: pwsh
@@ -40,6 +48,25 @@ jobs:
       - name: Prepare pinned upstream dependencies from a clean checkout
         shell: powershell
         run: .\prepare-build.ps1
+
+      - name: Verify both exact official engine profiles
+        shell: pwsh
+        run: |
+          . .\scripts\build-common.ps1
+          $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
+          $archive = Get-PinnedBuildInput $lock.webgal465Test (Join-Path $PWD '.build/downloads')
+          Expand-CheckedBuildArchive $archive (Join-Path $PWD '.build/webgal-4.6.5')
+          Expand-CheckedBuildArchive .build/downloads/WebGAL-4.6.4-web.zip .build/webgal-4.6.4
+          pwsh -NoLogo -NoProfile -File .\tests\engine-adapter-dual-profile.test.ps1 -Webgal464Root .build/webgal-4.6.4 -Webgal465Root .build/webgal-4.6.5 -Portable
+          if ($LASTEXITCODE -ne 0) { throw "Dual engine profile production checks failed" }
+          pwsh -NoLogo -NoProfile -File .\tests\font-render-preflight.portable.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Portable scanner production checks failed" }
+          node tests/cubism2-runtime-465-contract.mjs .build/webgal-4.6.5/assets/index-CC7KTie-.js
+          if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.5 motion contract failed" }
+          node tests/figure-diff-runtime-contract.mjs .build/webgal-4.6.5/assets/index-CC7KTie-.js
+          if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.5 image diff contract failed" }
+          node tests/figure-export-runtime.mjs .build/webgal-4.6.5/assets/index.es-0XzJiDJZ.js
+          if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.5 figure frame/update contract failed" }
 
       - name: Verify runtime reconstruction and offline preparation
         shell: pwsh
@@ -67,6 +94,8 @@ jobs:
         run: |
           node tests/figure-export-render.mjs package/runtime/web .build/font-baseline .build/figure-export
           if ($LASTEXITCODE -ne 0) { throw "Figure output pixel checks failed" }
+          node tests/figure-export-render.mjs .build/webgal-4.6.5 .build/webgal-4.6.5 .build/figure-export-465
+          if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.5 figure output pixel checks failed" }
 
       - name: Compile native exporter for early font smoke
         shell: powershell
@@ -88,6 +117,7 @@ jobs:
           Expand-CheckedBuildArchive $archive (Join-Path $PWD '.build/ffmpeg-test')
           $env:PATH = (Join-Path $PWD ('.build/ffmpeg-test/ffmpeg-' + $lock.ffmpegTest.version + '-essentials_build/bin')) + ';' + $env:PATH
           .\tests\font-render-native.ps1
+          .\tests\figure-diff-native.ps1 -RuntimeRoot .build/webgal-4.6.5
 
       - name: Restore locked optional AI dependencies
         shell: pwsh
@@ -158,6 +188,11 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
           path: |
+            .build/figure-diff/native/*/*.png
+            .build/figure-diff/native/*/*.json
+            .build/figure-diff/native/*/*.log
+            .build/figure-export-465/*.json
+            .build/figure-export-465/*.log
             .build/figure-export/*.json
             .build/figure-export/*.log
             .build/terre-ui-font/*.png

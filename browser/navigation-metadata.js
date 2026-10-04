@@ -3267,3 +3267,5 @@ globalThis.WebVideoNavigationMetadata={
     "right14": "右侧 1/4"
   }
 };
+globalThis.WebVideoNavigationMetadataProfiles={"4.6.4":globalThis.WebVideoNavigationMetadata,"4.6.5":globalThis.WebVideoNavigationMetadata};
+globalThis.WebVideoNavigationMetadata=globalThis.WebVideoNavigationMetadataProfiles[globalThis.WebVideoHostProfile?.terreVersion]||globalThis.WebVideoNavigationMetadata;

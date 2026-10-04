@@ -25,7 +25,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   if(['changeScene','callScene','choose','jumpLabel','chooseLabel','if','getUserInput'].includes(cmd)&&!(cmd==='choose'&&hintMs))throw Error('无法导出第'+(range.start+1)+'行交互命令：'+cmd);
   if(cmd==='end')break;
   let snippet=raw,voiceMs=0;
-  const kind={changeBg:'background',changeFigure:'figure',miniAvatar:'figure',bgm:'bgm',playEffect:'vocal',playVideo:'video'}[cmd],name=kind?clean(kind,s.content):s.content;
+  const kind={changeBg:'background',changeFigure:'figure',changeFigureDiff:'figure',miniAvatar:'figure',bgm:'bgm',playEffect:'vocal',playVideo:'video'}[cmd],name=kind?clean(kind,s.content):s.content;
   if(cmd==='bgm'||cmd==='playEffect'){scheduleAudioCommand(audio,{command:cmd,name,file:name&&name!=='none'?local(kind,name):null,atMs:cursor,durationMs:info(kind,name).durationMs,params});continue;}
   if(cmd==='say'&&params.vocal){
    voiceMs=info('vocal',params.vocal).durationMs;
@@ -40,30 +40,44 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    transitionStates.set(target,state);
   }
   if(cmd==='wait'){if(!params.next)cursor+=Math.max(0,Number(s.content)||0);continue;}
-  let videoDuration=0;
-  if(cmd==='changeBg'||cmd==='changeFigure'){
-   const position=['left','right','left13','right13','left14','right14'].find(k=>params[k])||'center',target=cmd==='changeBg'?'bg-main':params.id||'fig-'+position,key=cmd+':'+target;
-   const visualName=cmd==='changeFigure'&&params.clear===true?'':name;
-   const oldIdentity=cmd==='changeFigure'?figureIdentities.get(target):null;
-   // Match WebGAL's numeric getOverrideBoundsArr / normalizeFigureBounds.
-   // Textually different but equal bounds must not create a fresh model epoch.
-   const rawBounds=String(params.bounds??''),boundsValues=rawBounds.split(',').map(Number);
+  let videoDuration=0,diffFallback=false;
+  if(cmd==='changeBg'||cmd==='changeFigure'||cmd==='changeFigureDiff'){
+   const isFigure=cmd!=='changeBg',isDiff=cmd==='changeFigureDiff',position=['left','right','left13','right13','left14','right14'].find(k=>params[k])||'center',target=isFigure?params.id||'fig-'+position:'bg-main',key=cmd+':'+target;
+   const oldIdentity=isFigure?figureIdentities.get(target):null;
+   const previous=isFigure?oldIdentity?.name:visualSources.get(key),previousPresent=previous!==undefined&&previous!==null&&previous!==''&&previous!=='none';
+   // The first/empty image diff delegates to ordinary changeFigure, including
+   // clear, bounds and entry/exit options. Existing-image replacement ignores them.
+   diffFallback=isDiff&&(!previousPresent||!name||name==='none');
+   const visualName=(cmd==='changeFigure'||diffFallback)&&params.clear===true?'':name;
+   // Match the supported engines' numeric bounds normalization. Diff keeps its
+   // existing identity and ignores overrides; ordinary changeFigure may reload.
+   const rawBounds=isDiff&&!diffFallback?'':String(params.bounds??''),boundsValues=rawBounds.split(',').map(Number);
    const parsedBounds=boundsValues.length===4&&boundsValues.every(x=>!Number.isNaN(x))?boundsValues.join(','):null;
    const defaultBounds='0,0,0,0',oldBounds=oldIdentity?.bounds??defaultBounds;
    const boundsChanged=!!rawBounds&&oldBounds!==(parsedBounds??defaultBounds);
-   const previous=cmd==='changeFigure'?oldIdentity?.name:visualSources.get(key);
-   const changed=cmd==='changeFigure'
+   const changed=isFigure
     ?(!oldIdentity||oldIdentity.name!==visualName||oldIdentity.position!==position||boundsChanged)
     :previous!==visualName;
-   const nextBounds=changed?(parsedBounds??defaultBounds):(parsedBounds??oldBounds);
-   const gone=!visualName||visualName==='none',previousPresent=previous!==undefined&&previous!==null&&previous!==''&&previous!=='none';
-   if(changed&&previousPresent){
+   const nextBounds=isDiff&&!diffFallback?oldBounds:changed?(parsedBounds??defaultBounds):(parsedBounds??oldBounds);
+   const gone=!visualName||visualName==='none';
+   const image=value=>/\.(png|jpe?g|webp|gif|bmp|avif|svg)([?#].*)?$/i.test(String(value||''));
+   const unsupportedDiff=value=>{try{const url=new URL(String(value||''),'http://localhost/'),extension=url.pathname.split('.').pop().toLowerCase();return extension==='json'||extension==='skel'||url.searchParams.get('type')==='spine';}catch{return false;}};
+   const diffReplacing=isDiff&&previousPresent&&!gone&&!unsupportedDiff(previous)&&!unsupportedDiff(name)&&image(previous)&&image(visualName);
+   // 4.6.5 rejects a model diff before its empty/none fallback. Keep model
+   // lifetimes (including unknown model-backed formats) until a real removal.
+   const modelDiffRemoval=isDiff&&gone&&previousPresent&&oldIdentity?.liveRuntime&&!image(previous);
+   const diffNoop=isDiff&&(unsupportedDiff(previous)||unsupportedDiff(name)||modelDiffRemoval||previousPresent&&!gone&&!diffReplacing);
+   if(diffFallback&&!diffNoop){ensureAnimation(params.enter);ensureAnimation(params.exit);}
+   if(changed&&previousPresent&&!diffReplacing&&!diffNoop){
     const state=transitionStates.get(target)||{},fallback=cmd==='changeBg'?1500:450;
     const exitMs=state.exitName?ensureAnimation(state.exitName):Math.max(0,Number.isFinite(Number(state.exitDuration))?Number(state.exitDuration):fallback);
     if(exitMs>0)exitReplay.push({startMs:cursor,triggerMs:cursor,endMs:cursor+exitMs,target,command:cmd==='changeBg'?'changeBg-exit':'changeFigure-exit',line:range.start+1,hold:false,dormantRestorable:false,rootReplay:false,noCut:false});
    }
    visualSources.set(key,visualName);
-   if(cmd==='changeFigure'){
+   if(isFigure&&diffReplacing){
+    // Diff ignores position/bounds arguments and no-ops when the image is unchanged.
+    if(previous!==visualName){figureIdentities.set(target,{...oldIdentity,name:visualName});softCutWindows.push({startMs:Math.round(cursor),endMs:Math.round(cursor+Math.max(0,Number(plannedPerform?.durationMs??200))),reason:'figure-diff',target,line:range.start+1});}
+   }else if(isFigure&&!diffNoop){
     const liveRuntime=!gone&&(/\.(json|jsonl|wmdl)([?#].*)?$/i.test(visualName)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(visualName)||!!params.motion||!!params.skin||!!params.expression||!!params.blink||!!params.focus||!!params.animationFlag||!!params.eyesOpen||!!params.eyesClose);
     const activeLifetime=activeLiveLifetimes.get(target);
     if(activeLifetime&&(gone||!liveRuntime||changed)){
@@ -73,10 +87,8 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
     }
     if(liveRuntime&&!activeLiveLifetimes.has(target))activeLiveLifetimes.set(target,{startMs:Math.round(cursor),endMs:null,target,source:visualName,position,bounds:nextBounds,line:range.start+1,motionEvents:[],expressionEvents:[],blinkEvents:[],focusEvents:[]});
     const currentLifetime=activeLiveLifetimes.get(target);
-    // WebGAL only writes same-identity motion state for a nonempty motion/skin
-    // or valid bounds. Its runtime guard does not restart the recorded group,
-    // even when that motion has finished. Scope this comparison to the lifetime:
-    // a new model still starts the same named motion at its own birth time.
+    // Same-identity motion writes are guarded by the engine; a repeated group
+    // keeps its existing epoch, while a fresh model starts its own lifetime.
     if(currentLifetime&&(changed||params.motion||params.skin||parsedBounds!==null)){
      const group=String(params.motion??''),previousGroup=currentLifetime.motionEvents.at(-1)?.group??'';
      if(group!==previousGroup)currentLifetime.motionEvents.push({atMs:Math.round(cursor),group,index:0,priority:3,line:range.start+1});
@@ -87,9 +99,9 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
     if(gone)figureIdentities.delete(target);else figureIdentities.set(target,{name:visualName,position,bounds:nextBounds,liveRuntime});
     if(liveRuntime)softCutWindows.push({startMs:Math.round(cursor),endMs:Math.round(cursor+1000),reason:'live2d-state-change',target,line:range.start+1});
    }
-   if(changed&&(/\.(webm|mp4|mov|mkv)([?#].*)?$/i.test(visualName)||/[?&]type=video(?:&|$)/i.test(visualName)))videoCues.push({path:'/game/'+kind+'/'+physical(visualName),target,atMs:Math.round(cursor),durationMs:info(kind,visualName).durationMs});
-   if(changed)transitionStates.delete(target);
-   if(!gone){
+   if(changed&&!diffReplacing&&!diffNoop&&(/\.(webm|mp4|mov|mkv)([?#].*)?$/i.test(visualName)||/[?&]type=video(?:&|$)/i.test(visualName)))videoCues.push({path:'/game/'+kind+'/'+physical(visualName),target,atMs:Math.round(cursor),durationMs:info(kind,visualName).durationMs});
+   if(changed&&!diffReplacing&&!diffNoop)transitionStates.delete(target);
+   if(!gone&&!diffReplacing&&!diffNoop){
     const state={...(transitionStates.get(target)||{})};
     if(params.exit!==undefined)state.exitName=String(params.exit||'');
     state.exitDuration=Math.max(0,Number(params.exitDuration??(cmd==='changeBg'?1500:450))||0);
@@ -113,7 +125,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    plannedDurationMs:Number.isFinite(Number(plannedPerform?.durationMs))?Number(plannedPerform.durationMs):null,
    voiceControlled:cmd==='say'&&!!params.vocal,
    mouthTarget:cmd==='say'?speakerTarget(params):null,
-   loads:['changeBg','changeFigure','playVideo'].includes(cmd)
+   loads:['changeBg','changeFigure','changeFigureDiff','playVideo'].includes(cmd)
   });
   if(cmd==='playVideo')events.push({atMs:Math.round(cursor+videoDuration),line:range.start+1,sourceIndex:i,command:'__finishVideo',script:'',loads:false});
   if(hintMs){
@@ -128,8 +140,8 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    cursor+=text?Math.max(1600,text.length*1000/22+(params.notend?0:900),voiceMs):350;
   }else if(cmd==='playVideo')cursor+=videoDuration;
   else if(cmd==='intro')cursor+=s.content.split('|').length*Number(params.delayTime??1500)+1000;
-  else if(['setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure'].includes(cmd)){
-   let ms=Number(params.duration??(cmd.startsWith('change')?350:500));
+  else if(['setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','changeFigureDiff'].includes(cmd)){
+   let ms=cmd==='changeFigureDiff'?Number(plannedPerform?.durationMs??(diffFallback?params.duration??350:200)):Number(params.duration??(cmd.startsWith('change')?350:500));
    if(cmd==='setTempAnimation')try{ms=JSON.parse(s.content).reduce((a,f)=>a+Number(f.duration||0),0);}catch{}
    if(cmd==='setAnimation')ms=namedDuration;
    if(!params.keep)cursor+=Math.max(0,ms);
@@ -153,7 +165,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   if(lifetime.endMs>lifetime.startMs)live2dLifetimes.push(lifetime);
  }
  live2dLifetimes.sort((a,b)=>a.startMs-b.startMs||String(a.target).localeCompare(String(b.target)));
- const dynamicCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','playVideo','intro','pixiPerform']);
+ const dynamicCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','changeFigureDiff','playVideo','intro','pixiPerform']);
  const dormantHoldCommands=new Set(['setTransform','setTempAnimation','setAnimation']);
  const decorativePixiNames=new Set(['rain','snow','heavySnow','cherryBlossoms']),relaxedDecorativePixi=[];
  for(const w of performWindows){

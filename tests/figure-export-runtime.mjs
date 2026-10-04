@@ -9,7 +9,8 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const plugin=fs.readFileSync(process.argv[2]||path.join(root,'package/runtime/web/assets/index.es-erQsk_Nn.js'),'utf8');
-assert.equal(crypto.createHash('sha256').update(plugin).digest('hex'),'46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505');
+const pluginHash=crypto.createHash('sha256').update(plugin).digest('hex'),versions={'46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505':'4.6.4','8b6c11ea8b4724dd8254d61a009c4d0e7cc7389f31f76570dac354c56b11a724':'4.6.5'};
+assert.ok(versions[pluginHash],'Only the exact official 4.6.4/4.6.5 plugins are supported');
 const from=plugin.indexOf('onTickerUpdate(){this.update(G.shared.deltaMS)}'),to=plugin.indexOf('destroy(t){',from);assert.ok(from>=0&&to>from);
 const render=fs.readFileSync(path.join(root,'browser/render.js'),'utf8');
 async function run(includeFigures,fps,composite){
@@ -49,4 +50,4 @@ for(const fps of [30,60])for(const composite of [false,true]){
  assert.equal(hidden.frames.length,fps*3);assert.equal(hidden.waits,2);assert.equal(hidden.commands.length,6);
  rows.push({fps,composite,frames:hidden.frames.length,commands:hidden.commands.length,waits:hidden.waits,updates:hidden.updates.length,draws:hidden.draws.length,shownVisibleDraws:a,hiddenVisibleDraws:b});
 }
-console.log('PASS pinned Live2D plugin + production frame scheduler figure on/off parity: '+JSON.stringify(rows));
+console.log('PASS '+versions[pluginHash]+' pinned Live2D plugin + production frame scheduler figure on/off parity: '+JSON.stringify(rows));

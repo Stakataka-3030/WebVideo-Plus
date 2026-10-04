@@ -5,6 +5,7 @@
 除 [`LICENSES.md`](LICENSES.md) 明确列出的第三方或独立许可材料外，WebVideo+ 的原创源代码、构建脚本、项目特定实现和原创数据采用 **Mozilla Public License 2.0（MPL-2.0）**。完整许可证文本见根目录 [`LICENSE`](LICENSE)。根许可证不会覆盖或替换其他权利人的既有条款。
 
 - **WebGAL / Terre**：编辑器与播放引擎基座遵循其各自 MPL-2.0 许可。`baseline/terre-4.6.4.js` 来源于 OpenWebGAL/WebGAL_Terre 4.6.4，用于精确挂载定位，SHA-256 为 `3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133`。
+- **Terre / WebGAL 4.6.5 适配**：新增未经修改的 `baseline/terre-4.6.5.js`（SHA-256 `1c4911a397ad887cba6a13eba4e16b58faea72c6595a6b4a14f146f200232cd4`）及对应补丁定义；运行时仅在独立任务副本适配固定官方 4.6.5 字节。上游来源与 MPL-2.0 归属保持不变。
 - **内置运行时字体**：`WebgalUI` 保留 WebGAL 4.6.4 所含未经修改的 OPPO Sans v1.00。OPPO 的历史公开说明允许个人和企业免费商用；本项目暂按允许软件内嵌分发理解该许可，并保留其使用限制，未宣称取得单独授权。公开来源、解释边界及其他字体许可见 `licenses/WEBGAL-RUNTIME-SOURCES.md`。
 - **WebView2 / FFmpeg / Node.js**：按各自许可用于原生导出、媒体处理和可选 AI 运行环境。WebView2 与 Node 构建输入按 `build/dependencies.lock.json` 从官方归档准备；FFmpeg 仍由安装器按独立固定版本与校验值获取。保留各自原有许可，不视为 WebVideo+ 自有代码。
 - **DeepSeek Harness / pi-ai**：可选 AI 组件使用 DSH 0.1.5-rc.1 与 pi-ai 0.85.1；依赖版本由 `ai-runtime/package-lock.json` 固定，相关第三方许可保留在依赖目录或上游包内。

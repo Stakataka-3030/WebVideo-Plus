@@ -57,7 +57,7 @@ public partial class SetupForm {
   updateAction.LinkClicked+=(s,e)=>{if(updateUrl!="")try{Process.Start(new ProcessStartInfo(updateUrl){UseShellExecute=true});}catch(Exception error){MessageBox.Show(this,"无法打开发行页："+error.Message,"打开链接失败");}};
   updateRetry.LinkClicked+=async(s,e)=>await CheckUpdatesAsync(true);
   updateTimer=new System.Windows.Forms.Timer{Interval=650};updateTimer.Tick+=async(s,e)=>{updateTimer.Stop();await CheckUpdatesAsync();};
-  terre.TextChanged+=(s,e)=>{updateTicket++;updateTimer.Stop();updateTimer.Start();};
+  terre.TextChanged+=(s,e)=>{updateTicket++;updateUrl="";updateAction.Visible=false;updateRetry.Enabled=true;updateStatus.Text="正在识别所选程序…";updateTimer.Stop();updateTimer.Start();};
   Shown+=(s,e)=>{updateTimer.Stop();updateTimer.Start();};
   FormClosed+=(s,e)=>{updateTicket++;updateTimer.Dispose();};
   ResponsiveLayout();
@@ -70,7 +70,17 @@ public partial class SetupForm {
   return Convert.ToString(version);
  }
  async Task CheckUpdatesAsync(bool manual=false){
-  int ticket=++updateTicket;updateUrl="";updateAction.Visible=false;updateRetry.Enabled=true;
+  int ticket=++updateTicket;updateUrl="";updateAction.Visible=false;updateAction.Text="查看发行页";updateRetry.Enabled=true;
+  var host=InstallerProductRouting.Detect(terre.Text,ShortcutTarget);
+  if(host.WrongForTerre){
+   updateStatus.Text=host.TerreGuidance;
+   if(host.Product=="ambiguous")return;
+   updateRetry.Enabled=false;
+   try{var download=await Task.Run(()=>InstallerProductRouting.Fetch("craft"));if(ticket!=updateTicket||IsDisposed)return;updateStatus.Text=host.TerreGuidance+" "+download.Message;updateUrl=download.Url;updateAction.Text="下载 Craft 安装器";updateAction.Visible=updateUrl!="";}
+   catch{if(ticket==updateTicket&&!IsDisposed)updateStatus.Text=host.TerreGuidance+" 无法检查下载地址，请联网后点“重新检查”。";}
+   finally{if(ticket==updateTicket&&!IsDisposed)updateRetry.Enabled=true;}
+   return;
+  }
   var preference=UpdatePreferences.Read();if(!manual&&Convert.ToString(preference["mode"])=="never"){updateStatus.Text="已关闭自动更新检查；可点“重新检查”手动查询。";return;}
   if(!File.Exists(Path.Combine(terre.Text,"public/index.html"))){updateStatus.Text="选择有效的 Terre 目录后检查更新。";return;}
   string engine;try{engine=DefaultEngineVersion();}catch{engine="";}

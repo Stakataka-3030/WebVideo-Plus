@@ -19,6 +19,15 @@ namespace NativeVideo {
    var type=Regex.Match(name,@"[?&]type=([^&#]*)",RegexOptions.IgnoreCase);if(type.Success&&!new[]{"image","img","video"}.Contains(type.Groups[1].Value,StringComparer.OrdinalIgnoreCase))return true;
    return !Regex.IsMatch(PhysicalName(name),@"\.(?:png|jpe?g|webp|gif|bmp|avif|svg|mp4|webm|mov|mkv)$",RegexOptions.IgnoreCase);
   }
+  static bool DiffUsesSpine(string name){
+   // URLSearchParams.get uses the first decoded, case-sensitive key/value.
+   string value=(name??"").Split('#')[0];int at=value.IndexOf('?');if(at<0)return false;
+   foreach(string item in value.Substring(at+1).Split('&')){
+    int equals=item.IndexOf('=');string key=equals<0?item:item.Substring(0,equals),raw=equals<0?"":item.Substring(equals+1);
+    try{if(Uri.UnescapeDataString(key.Replace("+"," "))=="type")return Uri.UnescapeDataString(raw.Replace("+"," "))=="spine";}catch{return true;}
+   }
+   return false;
+  }
   static string ModelLibraryHint(string name){
    var clean=PhysicalName(name??"");
    if(Regex.IsMatch(clean,@"(?:\.moc3|\.model3\.json)$",RegexOptions.IgnoreCase))return ModernLibrary;
@@ -106,9 +115,9 @@ namespace NativeVideo {
    var lines=Regex.Split(Script,"\r?\n");
    var sentences=J.A(J.Get(parsed,"sentenceList"));
    var forbidden=new HashSet<string>(new[]{"changeScene","callScene","return","choose","chooseLabel","jumpLabel","getUserInput","if","setVar","showVars"});
-   var known=new HashSet<string>(new[]{"say","changeBg","changeFigure","bgm","playVideo","pixiPerform","pixiInit","intro","miniAvatar","changeScene","choose","end","setComplexAnimation","setFilter","label","jumpLabel","chooseLabel","setVar","if","callScene","showVars","unlockCg","unlockBgm","filmMode","setTextbox","setAnimation","playEffect","setTempAnimation","comment","__commment","setTransform","setTransition","getUserInput","applyStyle","wait","callSteam","return"});
+   var known=new HashSet<string>(new[]{"say","changeBg","changeFigure","changeFigureDiff","bgm","playVideo","pixiPerform","pixiInit","intro","miniAvatar","changeScene","choose","end","setComplexAnimation","setFilter","label","jumpLabel","chooseLabel","setVar","if","callScene","showVars","unlockCg","unlockBgm","filmMode","setTextbox","setAnimation","playEffect","setTempAnimation","comment","__commment","setTransform","setTransition","getUserInput","applyStyle","wait","callSteam","return"});
    var sideEffects=new HashSet<string>(new[]{"unlockCg","unlockBgm","callSteam"});
-   var mapping=new Dictionary<string,string>{{"changeBg","background"},{"changeFigure","figure"},{"miniAvatar","figure"},{"bgm","bgm"},{"playEffect","vocal"},{"playVideo","video"}};
+   var mapping=new Dictionary<string,string>{{"changeBg","background"},{"changeFigure","figure"},{"changeFigureDiff","figure"},{"miniAvatar","figure"},{"bgm","bgm"},{"playEffect","vocal"},{"playVideo","video"}};
    var args=new Dictionary<string,string>{{"vocal","vocal"},{"backgroundImage","background"},{"mouthOpen","figure"},{"mouthClose","figure"},{"mouthHalfOpen","figure"},{"eyesOpen","figure"},{"eyesClose","figure"}};
    for(int i=0;i<lines.Length;i++){
     if(string.IsNullOrWhiteSpace(lines[i])||lines[i].TrimStart().StartsWith(";"))continue;
@@ -118,6 +127,8 @@ namespace NativeVideo {
     int first=Math.Max(0,(int)J.N(s,"startLine",i)),last=Math.Max(first,(int)J.N(s,"endLine",first)),line=first+1,endLine=last+1;
     string cmd=J.N(s,"command",-1)==0?"say":J.S(s,"commandRaw");
     var p=Params(s);
+    // Older parsers retain the reserved raw token but decode the new command as dialogue.
+    if(cmd!="changeFigureDiff"&&J.S(s,"commandRaw")=="changeFigureDiff")Add("unsupported",line,"changeFigureDiff","当前引擎将 changeFigureDiff 解析为对话；请使用已验证的 WebGAL 4.6.5 引擎");
     if(!known.Contains(cmd)){RequireModelLibraries(J.S(s,"content"),null,true);AddWarning("custom-command",line,cmd,"检测到非标准或深度定制引擎指令；WebVideo+ 会按当前运行时执行，但不保证其隐藏状态能够跨 Worker 恢复。");}
     if(RuntimeVariable(J.S(s,"content"))||p.Values.OfType<string>().Any(RuntimeVariable))AddWarning("runtime-variable",line,cmd,"检测到运行时变量插值。导出使用独立临时运行环境，不保证继承玩家存档中的变量值。");
     bool singleLineHint=SingleLineHint(cmd,s,p),convertibleSingleChoose=ConvertibleSingleChoose(cmd,s,p);
@@ -133,6 +144,13 @@ namespace NativeVideo {
      var value=J.S(s,"content");
      if(Regex.IsMatch(value,@"\.(skel|mkv)([?#].*)?$",RegexOptions.IgnoreCase)||value.Contains("type=spine"))Add("unsupported",line,value,"当前不支持此立绘格式");
      else if(!Adapter.IsMygo&&(Regex.IsMatch(value,@"\.(webm|mp4|mov|jsonl|wmdl)([?#].*)?$",RegexOptions.IgnoreCase)||value.Contains("type=video")))Add("unsupported",line,value,"此立绘需要选择已安装的 MyGO 3.2.1 引擎");
+    }
+    if(cmd=="changeFigureDiff"||p.ContainsKey("transformFrom")){
+     if(Adapter.IsMygo||Adapter.Version!="4.6.5")Add("unsupported",line,cmd,"changeFigureDiff / transformFrom 需要已验证的 WebGAL 4.6.5 引擎");
+     if(cmd=="changeFigureDiff"){
+      var value=J.S(s,"content");
+      if(!string.IsNullOrEmpty(value)&&value!="none"&&(DiffUsesSpine(value)||!Regex.IsMatch(value,@"\.(png|jpe?g|webp|gif|bmp|avif|svg)([?#].*)?$",RegexOptions.IgnoreCase)))Add("unsupported",line,value,"立绘差分只支持图片，不适用于 Live2D、Spine 或视频");
+     }
     }
     foreach(var a in args)if(p.ContainsKey(a.Key))Ref(a.Value,J.S(p,a.Key),line,J.O("line",line,"startLine",line,"endLine",endLine,"kind","remove-argument","key",a.Key));
     if(cmd=="setAnimation")Ref("animation",J.S(s,"content")+".json",line,skip);

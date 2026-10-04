@@ -8,7 +8,7 @@ function WebVideoAddSentenceDialog(props){
  const R=reactExports,h=R.createElement,[query,setQuery]=R.useState(''),[gamePage,setGamePage]=R.useState(!!props.gameOnly),[presetPage,setPresetPage]=R.useState(false);
  R.useEffect(()=>{if(props.open){setQuery('');setGamePage(!!props.gameOnly);setPresetPage(false);}},[props.open]);
  const c=commandType,groups=[
-  ['常规演出',[c.say,c.changeBg,c.changeFigure,c.video,c.playEffect],false],
+  ['常规演出',[c.say,c.changeBg,c.changeFigure,...(c.changeFigureDiff!==undefined?[c.changeFigureDiff]:[]),c.video,c.playEffect],false],
   ['舞台对象控制',[c.setAnimation,c.setComplexAnimation,c.setTransform,c.setTempAnimation,c.setTransition,c.pixi,c.pixiInit,c.intro,c.miniAvatar,c.setTextbox,c.filmMode],false],
   ['场景与分支',[c.callScene,c.changeScene,c.choose,c.label,c.jumpLabel,c.return],true],
   ['鉴赏',[c.unlockCg,c.unlockBgm],true],
