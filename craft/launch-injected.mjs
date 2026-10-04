@@ -42,7 +42,10 @@ const sessionId=crypto.randomUUID();
 const installLocks=[(config.adapterRoot||path.dirname(stateDir))+'.install-lock',(config.craftExe||craft)+'.webvideo.install-lock',path.join(stateDir,'update.lock')];const checkInstall=async()=>{for(const p of installLocks){if(await fs.stat(p).then(()=>true,e=>{if(e.code==='ENOENT')return false;throw e;}))throw Error('适配安装器正在运行，请稍后重试');}};await checkInstall();
 const lockPath=path.join(stateDir,'session.lock');let lock;try{lock=await fs.open(lockPath,'wx');await lock.writeFile(JSON.stringify({sessionId,pid:process.pid}));}catch(e){throw Error('另一个增强会话或未恢复的会话记录存在，请关闭 Craft 后使用安装器检查恢复');}
 try{await checkInstall();}catch(e){await lock.close();await fs.rm(lockPath,{force:true});throw e;}
-const root=path.join(stateDir,'sessions',sessionId);await fs.mkdir(root,{recursive:true});
+const sessionRoot=path.join(stateDir,'sessions',sessionId);await fs.mkdir(sessionRoot,{recursive:true});
+// Pin the filesystem spelling once. A legitimate Windows case/short-name alias
+// must not differ from discard's strict current-real-parent ownership check.
+const root=await fs.realpath(sessionRoot);
 const log=data=>fs.appendFile(path.join(root,'session.log'),JSON.stringify({at:new Date().toISOString(),...data})+'\n');
 const port=await new Promise((resolve,reject)=>{const s=net.createServer();s.once('error',reject);s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>resolve(p));});});
 const env={...process.env,WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:`--remote-debugging-address=127.0.0.1 --remote-debugging-port=${port}`};

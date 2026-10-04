@@ -1,6 +1,6 @@
 # WebVideo+ 使用指南
 
-本分支当前为 WebVideo+ Craft 1.1.11c（安装器 1.1.11.0c，内核 0.6.52）。请先阅读 [Craft 说明](../craft/README.md)；下文是保留的基础 Terre 用户指南，不代表 Craft 的界面或安装步骤。
+本分支当前为 WebVideo+ Craft 1.1.12c（安装器 1.1.12.0c，内核 0.6.52）。请先阅读 [Craft 说明](../craft/README.md)；下文是保留的基础 Terre 用户指南，不代表 Craft 的界面或安装步骤。
 
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
 

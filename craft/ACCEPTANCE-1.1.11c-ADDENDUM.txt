@@ -1,0 +1,117 @@
+WebVideoCraft 1.1.11c native confirmation acceptance addendum
+Review date: 2026-10-04 UTC
+
+Decision
+
+The modal-retention assertions do not block release of the exact tested
+1.1.11c candidate. The observed official-install confirmation is accepted for
+its tested consent, cancellation, repeat/reload and refusal-recovery behavior.
+No source change, rebuild, version increment or official-installer rerun is
+needed for this finding. Publication remains a separate release decision.
+
+This addendum corrects the acceptance criterion, not the raw test results.
+The original report and JSON assertions remain immutable: they accurately
+record that About/Details did not remain open. The previous blanket requirement
+that these informational dialogs must survive until an answer was too broad.
+The exact source's ACCEPTANCE-1.1.11c.md, update/README.md and handoff should be
+read together with this later native assessment. Their broad no-display-close
+wording is corrected to: the adapter does not explicitly close update displays
+before approval; upstream displays may close through their own UI lifecycle.
+
+Why Details closes
+
+The pinned official beta.2 UpdateDetailsModal.vue, lines 41-44, explicitly sets
+open=false before invoking onUpdateNow. Its official component spec, lines
+120-126, expects Update Now to close the dialog. The extracted real host bundle
+independently confirms that same ordering. Closing this informational Details
+panel is therefore expected official behavior. It does not imply consent to
+the enhancement's later installation request.
+
+Why About is not a proven product defect
+
+About disappeared in the scoped native test, but the cause is not established.
+The test replaces the action at a button-capture seam with the exact compiled
+native controller and an inert service. The driver selects the last globally
+visible matching update button, without restricting it to About's DOM; the
+pinned About component itself has an icon-only check-for-update action. This
+cannot establish the untouched About handler's behavior or attribute dismissal
+to a particular product event. The report's About-retention failure is retained
+as an observation with this test-attribution limit.
+
+The consequence observed was dismissal of an informational panel. The owned
+confirmation stayed visible with Cancel initially focused. Real Cancel and
+Install controls worked, and pointer-locked native-modal diagnostics also
+passed Escape. Native QA found no lingering focus/click block, premature host
+closure, document damage or unusable confirmation. About's disappearance alone
+therefore does not warrant another binary revision.
+
+Corrected acceptance criterion and observed outcome
+
+1. The installation request must have a visible, usable explicit confirmation.
+   Passed with the actual WebView HTML dialog and real mouse input; confirmation
+   results were not replaced. Cancel initially had focus.
+2. Before affirmative consent, no update.prepare, commit or abort request,
+   host closure or installer execution may occur. Passed while unanswered and
+   through Cancel, Escape, repeats, detached old controls and page reload in
+   the documented inert-transport fixtures. Read-only checking, the user-led
+   download and resource cleanup are not installer execution.
+3. Only the current dialog's explicit Install action may proceed. Passed:
+   one update.prepare occurred after the real Install click, followed by one
+   update.abort when the inert transport refused preparation. There was no
+   commit, normal-window-close call or installer in that flow.
+4. Cancellation/refusal must preserve Craft and the document and release its
+   pending route. Passed within the documented native cases. A native display
+   panel that closes through its own UI lifecycle need not be reconstructed.
+5. Genuine future signed installation must not be claimed from an inert test.
+   Still unproven. The three historical acceptance flags remain false.
+
+Other retained acceptance and limits
+
+The exact candidate passed 822 Node tests and 173 composed checks. Actual own
+updater check/download/hash/open, dirty/busy prevention, independent live-session
+Setup mutation refusal and normal Setup cancellation passed with explicitly
+local release inputs. Anogo preview/apply/undo and recommended NVENC export
+passed; the short video was 1280x720, 30 fps, 4.7 seconds and 141 frames.
+
+The unchanged helper retains the earlier 33 Windows C# contract assertions and
+8 actual inert-helper cases by source identity. Native cleanup restored all
+392 original file hashes and four registry groups; no owned process or lock
+remained. No official NSIS was run for this retest.
+
+Runtime officialAutoInstallEnabled=true remains the user's selected policy.
+updateObserverValidated=false, sameNameUpdateValidated=false and
+officialCleanUpdateValidated=false remain truthful historical evidence.
+There is no newer genuine signed target for a full forward-update acceptance
+run. Official installation is enabled with that disclosed uncertainty; an
+updated host needs a compatible enhancement installer for explicit re-adoption.
+Neither automatic enhancement remount nor full future-update success is claimed.
+
+Exact candidate identity
+
+Product: 1.1.11c; installer: 1.1.11.0c
+Commit: 2e07ab266746af641017203eb4bd03f18a8a4d2d
+Tree: 9c23c2be3d0a872c5db1566ef6b2e6735c078095
+EXE: 112760832 bytes
+SHA256: 536c0415bce298e82531e8425db9607fe83a00201faa5e199144be0654c966e9
+Package ZIP: 112685435 bytes
+SHA256: 863dbd594e2bc4773a36462f97938c33f3f491c6aee3f3fcf197f6c4c1485984
+Original source ZIP SHA256:
+804d09d7d7fb2a5cae5b29e85b704b795e6821283d1a1b24a9c87deae65d6828
+Native Work source ZIP SHA256 (same 373 verified source/history entries):
+fe0114ee504cc716ca2d4e95257c719bc4bb679ae6fa62d41ccd3ad9f6a5b443
+
+Evidence references
+
+Original native report: libfile_d600df627ecc81918126929dfce54efd
+Native evidence: libfile_f2bc66b21cb081919ea41815d87cb52f
+Evidence ZIP SHA256:
+d10adb586dc9997682402f48c294b2a471d17000513ce3a537880abead76934d
+Artifact manifest: libfile_3e7701b18db88191ae149270e3c54f52
+Key records: details-native-code.json, details-native-close-failure.json,
+html-confirmation-diagnostics.json, about-reload.json, about-state.json,
+qa-driver/about-reload.mjs, production-comparison.json,
+registry-comparison.json and final-process-probe.json.
+Official source: A-kirami/webgal-craft commit
+edccdf0d10572a31a3ee8619ad3b43d2ce5c91aa;
+src/components/modals/UpdateDetailsModal.vue and UpdateDetailsModal.spec.ts;
+src/components/modals/AboutModal.vue.

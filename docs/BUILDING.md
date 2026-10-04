@@ -1,6 +1,6 @@
 # 构建与发布
 
-本分支交付 WebVideo+ Craft 1.1.11c / 安装器 1.1.11.0c，原生内核 0.6.52，产品基线 1.1.2；请按 [Craft 构建说明](../craft/README.md) 打包。下述 Terre 产品流程是保留的基础工程文档，并非本分支的 Craft 产品版本。
+本分支交付 WebVideo+ Craft 1.1.12c / 安装器 1.1.12.0c，原生内核 0.6.52，产品基线 1.1.2；请按 [Craft 构建说明](../craft/README.md) 打包。下述 Terre 产品流程是保留的基础工程文档，并非本分支的 Craft 产品版本。
 
 以下保留的历史 Terre 流程对应产品版本 **1.1.4**，产品内部开发标识 **0.8.8**，安装器 Win32 版本 **1.1.4.0**，导出内核 **0.6.48**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
 

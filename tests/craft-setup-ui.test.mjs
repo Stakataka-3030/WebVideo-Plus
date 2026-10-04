@@ -37,7 +37,9 @@ test('Setup drains both coordinator pipes and validates typed completion includi
 test('Discovery and installed actions do not silently adopt a target or stale selection',()=>{
  assert.match(source,/choices.Length>1.*ChooseCandidate/);assert.match(source,/list.SelectedIndex>=0/);
  assert.match(source,/target.TextChanged\+=.*info=null;updateButtons\(\)/);assert.match(source,/craft.TextChanged\+=.*info=null;updateButtons\(\)/);
- assert.match(source,/finder.RunWorkerCompleted\+=.*\n.*if\(form.IsDisposed\|\|form.Disposing\)return/);
+ const discoveryCompletionGuard=/finder.RunWorkerCompleted\+=.*\r?\n.*if\(form.IsDisposed\|\|form.Disposing\)return/;
+ for(const newline of ['\n','\r\n'])assert.match(source.replace(/\r?\n/g,newline),discoveryCompletionGuard);
+ assert.doesNotMatch(source.replaceAll('if(form.IsDisposed||form.Disposing)return','/* missing disposal guard */'),discoveryCompletionGuard);
  assert.match(source,/repair.Enabled=.*info.Mode=="same-name"&&info.Status=="installed"&&File.Exists\(info.CraftExe\)/);
  assert.match(source,/matchesRecordedPath=CraftManifestVerifier.Same\(CraftSetupPaths.NormalizeFolder\(craft.Text\),info.CraftExe\)/);
  assert.match(source,/ResolveCraftSelection/);assert.match(paths,/MaxShortcutHops=8/);assert.match(paths,/MaxDiscoveryDirectories=160/);assert.doesNotMatch(paths,/GetLogicalDrives|GetDrives\(/);

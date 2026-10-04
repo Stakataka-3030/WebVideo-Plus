@@ -11,9 +11,9 @@ using System.Web.Script.Serialization;
 using System.Threading;
 using System.Security.Cryptography;
 using System.Text;
-[assembly: AssemblyVersion("1.1.11.0")]
-[assembly: AssemblyFileVersion("1.1.11.0")]
-[assembly: AssemblyInformationalVersion("1.1.11.0c")]
+[assembly: AssemblyVersion("1.1.12.0")]
+[assembly: AssemblyFileVersion("1.1.12.0")]
+[assembly: AssemblyInformationalVersion("1.1.12.0c")]
 
 static class CraftStarter {
  static string Q(string s){return "\""+System.Text.RegularExpressions.Regex.Replace(System.Text.RegularExpressions.Regex.Replace(s,@"(\\*)""","$1$1\\\""),@"(\\+)$","$1$1")+"\"";}

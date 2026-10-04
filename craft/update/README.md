@@ -1,4 +1,4 @@
-# Official Craft update bridge (1.1.11c)
+# Official Craft update bridge (1.1.12c)
 
 ## Runtime policy and historical acceptance
 
@@ -13,9 +13,12 @@ could begin preparation before any answer. That candidate is not accepted.
 Its Promise is awaited and only literal `true` from explicit Install permits
 progress. Cancel, Escape, page teardown, unavailable dialog support, rejected
 confirmation, stale document/Pinia/store/project/version and late answers fail
-closed before modal closure or preparation. Single-flight state remains active
-while the prompt is pending. Exact asynchronous/DOM contract tests accompany
-the fix; real Windows confirmation acceptance must be rerun.
+closed before the adapter explicitly closes update displays or prepares installation.
+Upstream Details closes itself before its callback, and informational native
+displays need not stay open while the owned confirmation is pending. Single-flight
+state remains active. The real Windows confirmation/Cancel/reload and inert-refusal
+flow passed; original retention failures and the About fixture attribution limit
+are preserved in [the acceptance addendum](../ACCEPTANCE-1.1.11c-ADDENDUM.txt).
 
 
 In 1.1.10c the package-bound `officialAutoInstallEnabled` policy is **true**.
@@ -126,8 +129,10 @@ download rather than reading Rust memory or inventing a resource extraction API.
    exposes the unchanged acceptance evidence rather than claiming a verified upgrade.
 2. Confirmation explains saved documents, completed native/background work,
    the second download, normal close and explicit enhancement re-adoption.
-   Declining does not close a native details dialog or Craft. After confirmation,
-   only the display-only AboutModal and UpdateDetailsModal are closed through their own supported store action;
+   Declining never asks the adapter to close Craft or its update displays. The
+   native Details button may already have closed its own informational panel.
+   After confirmation, any remaining display-only AboutModal and
+   UpdateDetailsModal are closed through their supported store action;
    other native modals, dirty documents, resource work and observable lazy ledgers
    block. An absent lazy runtime-task ledger is not fabricated and does not prove
    universal idle. Backend checks independently include WebVideo jobs, in-flight

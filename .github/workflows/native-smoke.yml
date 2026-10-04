@@ -16,6 +16,20 @@ jobs:
         with:
           node-version: '22.20.0'
 
+      - name: Prepare pinned ffprobe for Craft audio regressions
+        shell: pwsh
+        run: |
+          . ./scripts/build-common.ps1
+          $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
+          $toolsRoot = Join-Path $env:RUNNER_TEMP 'webvideo-craft-ci-tools'
+          $archive = Get-PinnedBuildInput $lock.ffmpegTest (Join-Path $toolsRoot 'downloads')
+          $expanded = Join-Path $toolsRoot 'ffmpeg'
+          Expand-CheckedBuildArchive $archive $expanded
+          $ffmpegBin = Join-Path $expanded ('ffmpeg-' + $lock.ffmpegTest.version + '-essentials_build/bin')
+          & (Join-Path $ffmpegBin 'ffprobe.exe') -version
+          if ($LASTEXITCODE -ne 0) { throw "Pinned ffprobe verification failed" }
+          $ffmpegBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: Verify complete Craft and shared Node regressions
         shell: pwsh
         run: |
