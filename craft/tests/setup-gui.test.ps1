@@ -8,7 +8,7 @@ New-Item -ItemType Directory -Path $temp | Out-Null
 try {
  $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
  $checks=Join-Path $temp 'SetupGuiChecks.exe'
- & $compiler /nologo /target:exe /main:SetupGuiChecks /platform:x64 ('/out:'+$checks) /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll (Join-Path $PSScriptRoot '../CraftSetup.cs') (Join-Path $PSScriptRoot '../installer/ManifestVerifier.cs') (Join-Path $PSScriptRoot 'SetupGuiChecks.cs')
+ & $compiler /nologo /target:exe /main:SetupGuiChecks /platform:x64 ('/out:'+$checks) /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll (Join-Path $PSScriptRoot '../CraftSetup.cs') (Join-Path $PSScriptRoot '../installer/ManifestVerifier.cs') (Join-Path $PSScriptRoot '../installer/SetupPaths.cs') (Join-Path $PSScriptRoot '../installer/ProductRouting.cs') (Join-Path $PSScriptRoot '../installer/SetupContracts.cs') (Join-Path $PSScriptRoot 'SetupGuiChecks.cs')
  if($LASTEXITCODE -ne 0){throw 'Setup GUI regression compilation failed'}
  $info=New-Object Diagnostics.ProcessStartInfo
  $info.FileName=$checks;$info.UseShellExecute=$false;$info.RedirectStandardOutput=$true;$info.RedirectStandardError=$true

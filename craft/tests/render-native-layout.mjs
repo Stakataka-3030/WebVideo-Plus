@@ -17,7 +17,7 @@ const out=process.argv[at+1];await fs.mkdir(out,{recursive:true});
 const server=http.createServer(async(req,res)=>{
   try{
     const name=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
-    if(!/^\/craft\/(ui|features|tests\/ui-fixture)\//.test(name)||name.split('/').includes('..'))throw Error('not found');
+    if(!/^\/(?:craft\/(ui|features|tests\/ui-fixture)\/|browser\/(?:navigation-metadata|timeline-core|filter-library|navigation-model)\.js$)/.test(name)||name.split('/').includes('..'))throw Error('not found');
     const file=path.join(root,name),content=await fs.readFile(file);
     res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(content);
   }catch{res.writeHead(404);res.end('Not found')}
@@ -29,9 +29,10 @@ try{
   const page=await browser.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
   const url=`http://127.0.0.1:${server.address().port}/craft/tests/ui-fixture/index.html`;
   await page.goto(url);await page.waitForFunction(()=>window.fixtureUI?.state().mounted);
-  const triggers={id:'batchMenu',expression:'batchMenu',next:'batchMenu',exits:'batchMenu',filter:'batchMenu',filterEdit:'batchMenu',selection:'productionMenu',checks:'productionMenu',backups:'productionMenu',anogo:'productionMenu',novel:'productionMenu',timing:'productionMenu',music:'mediaMenu',export:'mediaMenu',characterMap:'settingsMenu',ai:'settingsMenu',updates:'settingsMenu'};
+  const triggers={id:'batchMenu',expression:'batchMenu',next:'batchMenu',exits:'batchMenu',filter:'batchMenu',filterEdit:'batchMenu',checks:'productionMenu',backups:'productionMenu',anogo:'productionMenu',novel:'productionMenu',music:'mediaMenu',export:'mediaMenu',characterMap:'settingsMenu',ai:'settingsMenu',updates:'settingsMenu'};
   async function openTool(id){
-    if(id==='presets'||id==='hint')await page.locator(`[data-wvc-entry="${id}"]`).click();
+    if(id==='hint')await page.locator('[data-wvc-command="hint"]').click();
+    else if(id==='presets')await page.locator('[data-wvc-entry="presets"]').click();
     else{await page.locator(`[data-wvc-entry="${triggers[id]}"]`).click();await page.locator(`.wvc-menu [data-wvc-tool="${id}"]`).click()}
     await page.waitForFunction(id=>window.fixtureUI.state().open&&window.fixtureUI.state().tool===id,id);
   }
@@ -59,6 +60,23 @@ try{
     assert.ok(await page.locator('.wvc-dock').isVisible());
     await capture(`tool-${tool.id}`);
   }
+  await openTool('presets');
+  assert.equal(await page.getByLabel('预设代码',{exact:true}).isVisible(),false);
+  await page.getByLabel('分类 / 搜索结果',{exact:true}).selectOption('manual');
+  assert.equal(await page.getByLabel('预设代码',{exact:true}).isVisible(),true);
+  await capture('preset-manual-code');
+  assert.equal(await page.locator('.native-toolbar [data-wvc-entry]').count(),4);
+  assert.equal(await page.locator('.native-header [data-wvc-entry]').count(),0);
+  assert.equal(await page.locator('.native-command-top [data-wvc-entry="hint"]').count(),0);
+  await openTool('filter');
+  const compact = await page.locator('.wvc-filter-picker').evaluateAll(nodes => nodes.map(node => ({height:node.getBoundingClientRect().height,manual:node.querySelector('.wvc-filter-manual').hidden})));
+  assert.ok(compact.every(item => item.manual && item.height < 100),JSON.stringify(compact));
+  await page.getByLabel('背景滤镜',{exact:true}).selectOption('manual');
+  assert.ok(await page.locator('.wvc-filter-picker').first().evaluate(node => node.getBoundingClientRect().height) > compact[0].height + 90);
+  await page.getByLabel('背景滤镜',{exact:true}).selectOption('none');
+  assert.ok(await page.locator('.wvc-filter-picker').first().evaluate(node => node.getBoundingClientRect().height) < 100);
+  assert.equal(await page.getByRole('button',{name:'定位',exact:true}).count(),0);
+  await capture('filter-compact-readable-rows');
   // Host theme variables are OKLCH channel tuples. Invalid raw tuple use becomes transparent.
   const color=await page.locator('.wvc-dock').evaluate(node=>getComputedStyle(node).backgroundColor);
   assert.ok(/^(oklch|rgb)/.test(color)&&color!=='rgba(0, 0, 0, 0)',color);
@@ -68,8 +86,8 @@ try{
   const nativeDrawer=await page.locator('#fixture-native-effect-drawer').evaluate(node=>({width:node.getBoundingClientRect().width,owned:node.classList.contains('wvc-native-editor-layout')}));
   assert.equal(nativeDrawer.width,432);assert.equal(nativeDrawer.owned,false);
   await page.locator('#fixture-native-effect-drawer').evaluate(node=>node.remove());
-  await openTool('expression');await page.getByRole('button',{name:'选择范围…',exact:true}).click();
-  await page.getByRole('button',{name:'全选当前筛选',exact:true}).click();await page.getByRole('button',{name:'使用所选范围',exact:true}).click();
+  await openTool('expression');await page.getByRole('button',{name:'全选当前筛选',exact:true}).click();
+  assert.equal(await page.getByRole('button',{name:'选择范围…',exact:true}).count(),0);
   assert.equal(await page.evaluate(()=>fixtureUI.state().tool),'expression');assert.ok(await page.evaluate(()=>fixtureUI.state().selected.length)>1);
   await page.getByRole('button',{name:'关闭工具面板',exact:true}).click();assert.equal(await page.locator('.wvc-dock').isVisible(),false);
   await openTool('id');await page.getByRole('button',{name:'预览全场补全',exact:true}).click();

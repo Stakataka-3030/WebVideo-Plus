@@ -4,9 +4,11 @@ import vm from "node:vm";
 import fs from "node:fs";
 const context = vm.createContext({ console, URL });
 context.window = context;
+for (const file of ["navigation-metadata.js", "timeline-core.js", "filter-library.js", "navigation-model.js"]) vm.runInContext(fs.readFileSync(new URL("../../browser/" + file, import.meta.url), "utf8"), context);
 for (const file of [
   "vendor/webgal-parser-4.6.5.js",
   "script.js",
+  "navigation-description.js",
   "id-completion.js",
   "authoring.js",
 ])
@@ -445,4 +447,32 @@ test("ignored clear flag on an existing image difference cannot erase ID presenc
     rows(p.after).find((r) => r.command === "changeFigureDiff").content,
     "smile.png",
   );
+});
+
+test('feature selector exposes only applicable statement types and opt-in animation targets',()=>{
+  const s=snap('changeBg:room.png;\nchangeFigure:alice.png -id=alice;\nAlice:hello -figureId=alice;\nsetTransform:{"alpha":0.5} -target=alice;\nsetTransform:{"alpha":1};\nchangeFigure:none -id=alice;\nintro:title;\nwait:100;\n');
+  const filter=F.selectionRows(s,'filter');
+  assert.deepEqual(Array.from(filter,r=>r.command),['changeBg','changeFigure','setTransform','setTransform','changeFigure']);
+  assert.deepEqual(Array.from(filter,r=>r.eligible),[true,true,false,false,false]);
+  assert.deepEqual(Array.from(F.selectionRows(s,'filter',{allowAnimations:true}),r=>r.eligible),[true,true,true,false,false]);
+  const expression=F.selectionRows(s,'expression');assert.equal(expression.length,1);assert.equal(expression[0].eligible,true);
+  const next=F.selectionRows(s,'next',{commands:['say']});
+  assert.equal(next.filter(r=>r.eligible).length,1);assert.equal(next.find(r=>r.command==='intro').eligible,false);
+  assert.equal(next.some(r=>r.command==='wait'),false);
+});
+test('feature selector uses existing named-filter matches, not arbitrary transforms',()=>{
+  const s=snap('setTransform:{"alpha":0.5} -target=alice;\nsetTransform:{"scale":{"x":1.5}} -target=alice;\nAlice:hello;\n');
+  const library=[{id:'fade',name:'淡出',effects:[{alpha:0.5}]}];
+  const rows=F.selectionRows(s,'filterEdit',{library,presetId:'fade'});
+  assert.equal(rows.length,1);assert.equal(rows[0].startLine,1);assert.match(rows[0].title,/淡出/);
+  assert.equal(F.selectionRows(s,'filterEdit',{library,presetId:'missing'}).length,0);
+});
+test('hint selector protects multi-choice and hides reserved labels',()=>{
+  const s=snap('choose:one:__wvp_hint_a -wvpHint=1800 -defaultChoose=1;\nlabel:__wvp_hint_a;\nchoose:left:a|right:b;\nAlice:hello;\n');
+  const rows=F.selectionRows(s,'hint');assert.equal(rows.length,2);assert.equal(rows[0].eligible,true);assert.equal(rows[1].eligible,false);
+});
+test('automatic-exit selector excludes existing image differences and model differences but permits no-source fallback',()=>{
+  const s=snap('changeFigure:alice.png -id=alice;\nchangeFigureDiff:smile.png -id=alice;\nchangeFigureDiff:missing.png -id=bob;\nchangeFigure:live.model3.json -id=live;\nchangeFigureDiff:other.png -id=live;\nchangeFigure:none -id=alice;\n');
+  const rows=F.selectionRows(s,'exits');assert.deepEqual(Array.from(rows,r=>r.eligible),[true,false,true,true,false,false]);
+  assert.match(rows[1].reason,/不是入场/);assert.match(rows[4].reason,/跳过/);
 });

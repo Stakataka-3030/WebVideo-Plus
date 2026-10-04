@@ -33,3 +33,75 @@ test('timing dependencies invalidate when actual preview language changes',async
  const b=createBridge({getStores:()=>f.stores,registry:async()=>({enginePath:'C:/engine',runtimeVersion:'4.6.4',runtimeId:'open-webgal.webgal'}),invoke:async()=>{},rpc:async method=>{if(method==='snapshot.allocate')return{snapshotId:'owned',site:'C:/snapshot'};if(method==='snapshot.ready')return{snapshotId:'owned',dependencyHash:'unchanged-files'};if(method==='preview.settings')return{language,source:'preview'};if(method==='snapshot.discard'){discarded++;return; }throw Error('unexpected RPC');}});
  const one=await b.timingDependencyHash();language=2;assert.notEqual(await b.timingDependencyHash(),one);assert.equal(discarded,2);
 });
+
+test('export snapshot carries MyGO own version separately from base runtime version',async()=>{
+ const f=fixture();f.stores.editor.collectDocumentPathsUnder=()=>[];let allocated;
+ const b=createBridge({getStores:()=>f.stores,registry:async()=>({enginePath:'C:/mygo',engineVersion:'3.2.1',runtimeVersion:'4.6.4',runtimeId:'webgal-mygo.mygo'}),invoke:async()=>{},rpc:async(method,p)=>{if(method==='snapshot.allocate'){allocated=p;return{snapshotId:'owned',site:'C:/snapshot'};}if(method==='snapshot.ready')return{snapshotId:'owned'};throw Error(method);}});
+ await b.exportSnapshot();assert.equal(allocated.engineVersion,'3.2.1');assert.equal(allocated.runtimeVersion,'4.6.4');assert.equal(allocated.runtimeId,'webgal-mygo.mygo');assert.deepEqual(allocated.sources,['C:/project','C:/mygo']);
+ const snapshot=await b.snapshot();assert.equal(snapshot.runtimeCapabilities.changeFigureDiff,false);assert.equal(snapshot.runtimeCapabilities.transformFrom,false);
+});
+
+function exportFixture() {
+ const f=fixture(), calls=[]; let resolveRegistry=async()=>({enginePath:'C:/engine',runtimeVersion:'4.6.5',runtimeId:'open-webgal.webgal'}), onExport=async()=>{};
+ f.stores.workspace.currentGame.engineId='official465'; f.stores.editor.collectDocumentPathsUnder=()=>[f.stores.tabs.activeTab.path];
+ const b=createBridge({getStores:()=>f.stores,registry:(...args)=>resolveRegistry(...args),invoke:async()=>{calls.push('export_web');await onExport();},rpc:async(method,payload)=>{
+  calls.push([method,payload]);
+  if(method==='snapshot.allocate')return{snapshotId:'owned',site:'C:/snapshot'};
+  if(method==='snapshot.ready')return{snapshotId:'owned'};
+  if(method==='snapshot.discard')return;
+  if(method==='export.start')return{id:'job'};
+  throw Error(method);
+ }});
+ return {...f,b,calls,setRegistry:fn=>resolveRegistry=fn,setExport:fn=>onExport=fn};
+}
+test('export enforces its caller snapshot before native preparation even for identical scene text',async()=>{
+ for(const mutation of [f=>f.stores.workspace.currentGame.id='second',f=>{f.stores.workspace.currentGame.path='D:/project';f.stores.tabs.activeTab.path='D:/project/game/scene/start.txt';},f=>f.stores.workspace.currentGame.engineId='mygo321']){
+  const f=exportFixture(),snapshot=await f.b.snapshot();mutation(f);
+  await assert.rejects(f.b.exportVideo({snapshot,scene:snapshot.sceneRelativePath,sourceText:snapshot.source}),/变化/);
+  assert.equal(f.calls.length,0);
+ }
+});
+test('export expected snapshot catches rebinding inside asynchronous registry resolution',async()=>{
+ const f=exportFixture(),snapshot=await f.b.snapshot();let entered,release;
+ const started=new Promise(resolve=>entered=resolve),registry=new Promise(resolve=>release=resolve);
+ f.setRegistry(()=>{entered();return registry;});
+ const pending=f.b.exportVideo({snapshot,scene:snapshot.sceneRelativePath,sourceText:snapshot.source});await started;
+ f.stores.workspace.currentGame.engineId='mygo321';release({enginePath:'C:/mygo',runtimeVersion:'4.6.4',engineVersion:'3.2.1',runtimeId:'webgal-mygo.mygo'});
+ await assert.rejects(pending,/变化/);assert.equal(f.calls.length,0);
+});
+test('export removes caller-only snapshot metadata and discards prepared bytes after final source validation fails',async()=>{
+ const f=exportFixture(),snapshot=await f.b.snapshot();
+ await f.b.exportVideo({snapshot,scene:snapshot.sceneRelativePath,sourceText:snapshot.source,exportKind:'full'});
+ const start=f.calls.find(call=>call[0]==='export.start');assert.equal('snapshot' in start[1].options,false);assert.equal(start[1].options.exportKind,'full');
+ f.calls.length=0;f.setExport(()=>{f.stores.workspace.currentGame.engineId='changed';});
+ await assert.rejects(f.b.exportVideo({snapshot,scene:snapshot.sceneRelativePath,sourceText:snapshot.source}),/变化/);
+ assert.equal(f.calls.some(call=>call[0]==='export.start'),false);
+ assert.equal(f.calls.filter(call=>call[0]==='snapshot.discard').length,1);
+});
+test('host subscriptions observe project path and engine identity even without text or selection edits',async()=>{
+ const {readFileSync}=await import('node:fs'),{runInNewContext}=await import('node:vm');let tick;
+ const context={setInterval:callback=>{tick=callback;return 1;},clearInterval(){}};
+ runInNewContext(readFileSync(new URL('../host-bridge.js',import.meta.url),'utf8'),context);
+ const f=fixture(),b=context.WebVideoCraftCreateBridge({getStores:()=>f.stores});let changes=0;
+ const unsubscribe=b.subscribe(()=>changes++);tick();assert.equal(changes,1);
+ f.stores.workspace.currentGame.engineId='official465';tick();assert.equal(changes,2);
+ f.stores.workspace.currentGame.path='D:/project';tick();assert.equal(changes,3);
+ tick();assert.equal(changes,3);unsubscribe();
+});
+
+for(const [name,change] of [
+ ['project replacement',f=>f.stores.workspace.currentGame={...f.stores.workspace.currentGame,id:'new-project'}],
+ ['in-place project identity',f=>f.stores.workspace.currentGame.id='new-project'],
+ ['in-place engine binding',f=>f.stores.workspace.currentGame.engineId='changed-engine'],
+ ['unsaved document',f=>f.stores.editor.hasUnsavedDocuments=true],
+ ['native blocking-task failure',f=>f.stores.runtimeTask.beginBlockingTask=()=>{throw Error('native task unavailable');}],
+]) test('allocated export snapshot is cleaned when '+name+' changes before native export',async()=>{
+ const f=fixture();f.stores.workspace.currentGame.engineId='engine-one';f.stores.editor.collectDocumentPathsUnder=()=>[];f.stores.runtimeTask={beginBlockingTask:()=>()=>{}};
+ let release,entered;const allocated=new Promise(resolve=>release=resolve),started=new Promise(resolve=>entered=resolve),calls=[];
+ const b=createBridge({getStores:()=>f.stores,registry:async()=>({enginePath:'C:/engine',runtimeVersion:'4.6.5',runtimeId:'open-webgal.webgal'}),invoke:async()=>calls.push('native export'),rpc:async(method,params)=>{
+  calls.push([method,params]);if(method==='snapshot.allocate'){entered();return allocated;}if(method==='snapshot.discard')return;if(method==='snapshot.ready')return{snapshotId:'owned'};throw Error(method);
+ }});
+ const pending=b.exportSnapshot();await started;change(f);release({snapshotId:'owned',site:'C:/temporary'});
+ await assert.rejects(pending);assert.equal(calls.includes('native export'),false);
+ assert.deepEqual(calls.filter(call=>call[0]==='snapshot.discard'),[['snapshot.discard',{snapshotId:'owned'}]]);
+});

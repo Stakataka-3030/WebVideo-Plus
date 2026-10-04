@@ -9,9 +9,10 @@ export const requiredSourceFiles=[
  'bootstrap/process-guard.cs','launcher/TerreLauncher.cs',
  'ai-runtime/worker.mjs','ai-runtime/package.json','ai-runtime/package-lock.json','ai-runtime/novel-prompt.txt','ai-runtime/stage-prompt.txt',
  'browser/novel-core.js','browser/workload.js','browser/timeline.js','browser/render.js','browser/finish-timeline.js',
- 'vendor/js-yaml-4.1.1.min.js','vendor/js-yaml-LICENSE',
- 'craft/version.json','craft/CraftStarter.cs','craft/CraftSetup.cs','craft/LICENSE-Node-22.20.0.txt','craft/build-craft-kernel.mjs','craft/build-craft-package.ps1','craft/verify-craft-package.ps1','craft/installer/ManifestVerifier.cs','craft/installer/transaction.mjs','craft/installer/build-receipt.mjs',
- 'craft/update/InstallerObserver.cs','craft/launch-injected.mjs','craft/host-bridge.js','craft/update/observe-installer.ps1'
+ 'browser/navigation-metadata.js','browser/timeline-core.js','browser/filter-library.js','browser/navigation-model.js','craft/features/navigation-description.js',
+ 'vendor/js-yaml-4.1.1.min.js','vendor/js-yaml-LICENSE','craft/update/host-state.js','craft/update/client.js','craft/update/confirmation.js','craft/session/update-safety.mjs',
+ 'craft/version.json','craft/CraftStarter.cs','craft/CraftSetup.cs','craft/LICENSE-Node-22.20.0.txt','craft/build-craft-kernel.mjs','craft/build-craft-package.ps1','craft/verify-craft-package.ps1','craft/installer/ManifestVerifier.cs','craft/installer/SetupPaths.cs','craft/installer/ProductRouting.cs','craft/installer/SetupContracts.cs','craft/installer/transaction.mjs','craft/installer/build-receipt.mjs',
+ 'craft/update/InstallerObserver.cs','craft/update/OfficialInstallerLauncher.cs','craft/update/clean-coordinator.mjs','craft/update/clean-handoff.mjs','craft/update/minisign.mjs','craft/update/official-stage.mjs','craft/update/handoff.mjs','craft/update/handoff-state.mjs','craft/update/notify-result.ps1','craft/update/own-updates.mjs','craft/update/build-release-descriptor.mjs','craft/update/own-client.js','craft/launch-injected.mjs','craft/host-bridge.js','craft/update/observe-installer.ps1','craft/ui/actual-time.js','craft/ui/music-panel.js','craft/ui/music-panel.css'
 ];
 export function checkSourceInputs(root){
  const missing=requiredSourceFiles.filter(name=>{try{return !fs.statSync(path.join(root,name)).isFile()||fs.statSync(path.join(root,name)).size===0;}catch{return true;}});

@@ -39,7 +39,7 @@ namespace NativeVideo {
   static EngineAdapter BundledWebgal() {
    return new EngineAdapter("webgal","4.6.4",Path.Combine(Files.Root,"runtime/web"),BundledWebgalBundle,"bundled-runtime",false,false);
   }
-  static EngineAdapter TryMygoProjectRuntime(string root,out string fallbackReason) {
+  static EngineAdapter TryMygoProjectRuntime(string root,out string fallbackReason,bool strict=false) {
    fallbackReason=null;
    if(string.IsNullOrWhiteSpace(root))return null;
    try { root=Files.Full(root); } catch { return null; }
@@ -51,16 +51,18 @@ namespace NativeVideo {
     var metadata=J.Read(descriptor);
     if(J.S(metadata,"id")!="webgal-mygo.mygo")return null;
     string detectedVersion=J.S(metadata,"version");
+    if(strict&&(detectedVersion!="3.2.1"||J.S(metadata,"webgalVersion")!="4.6.4"))throw new IOException("MyGO 描述必须为 3.2.1 / WebGAL 4.6.4");
     string main=MainBundle(root);
     if(main==null||!File.Exists(main)||new FileInfo(main).Length>32L*1024*1024)throw new IOException("缺少可识别的主 bundle");
-    var adapter=new EngineAdapter("mygo",string.IsNullOrWhiteSpace(detectedVersion)?"project":detectedVersion,root,RelativeBundle(root,main),"mygo-project-runtime",false,false);
-    // Version is advisory for a per-game derivative runtime. Try the game's
-    // actual engine first; only the structural patch contract decides whether it
-    // is safe enough for offline export.
+    string hash=Files.Hash(main);
+    if(strict&&hash!=MygoHash)throw new IOException("MyGO 描述与已验证 3.2.1 bundle 哈希不匹配");
+    var adapter=new EngineAdapter("mygo",string.IsNullOrWhiteSpace(detectedVersion)?"project":detectedVersion,root,RelativeBundle(root,main),"mygo-project-runtime",false,strict,null,strict?hash:null,strict);
+    // Nonstrict legacy derivatives retain structural compatibility. Strict Craft
+    // additionally requires the exact descriptor and canonical bytes above.
     adapter.Patch(File.ReadAllText(main));
     return adapter;
    } catch(Exception e) {
-    fallbackReason="项目内 MyGO 无法直接用于导出，已回退到受支持的 MyGO 基线："+e.Message;
+    fallbackReason=(strict?"绑定项目 MyGO 无法直接用于导出：":"项目内 MyGO 无法直接用于导出，已回退到受支持的 MyGO 基线：")+e.Message;
     return null;
    }
   }
@@ -150,16 +152,21 @@ namespace NativeVideo {
    // Validate before any project/machine derivative discovery or cache reuse.
    string expected=J.S(request,"expectedRuntimeVersion"),expectedId=J.S(request,"expectedRuntimeId","open-webgal.webgal");
    string selected=J.S(J.Get(request,"settings"),"engine","webgal");
-   if(expectedId!="open-webgal.webgal"||selected!="webgal")throw new IOException("严格绑定导出只允许请求匹配的官方 WebGAL 引擎；禁止 MyGO 或其它引擎替代");
-   if(WebgalEngineProfile.ForVersion(expected)==null)throw new IOException("严格绑定导出缺少受支持的明确 WebGAL 版本");
+   string baseVersion=J.S(request,"expectedWebgalVersion",expectedId=="open-webgal.webgal"?expected:"");
+   bool official=expectedId=="open-webgal.webgal"&&selected=="webgal"&&WebgalEngineProfile.ForVersion(expected)!=null&&baseVersion==expected;
+   bool mygo=expectedId=="webgal-mygo.mygo"&&selected=="mygo"&&expected=="3.2.1"&&baseVersion=="4.6.4";
+   if(!official&&!mygo)throw new IOException("严格绑定导出只允许匹配的 WebGAL 4.6.4 / 4.6.5 或 MyGO 3.2.1（基础 WebGAL 4.6.4）；禁止 MyGO 或其它引擎替代不匹配的绑定。当前："+expectedId+" "+expected+" / WebGAL "+baseVersion);
   }
   public static void ValidateRuntimeContract(object request,object metadata) {
    if(!J.B(request,"requireRuntimeParity",false))return;
    ValidateRuntimeRequest(request);
    string expected=J.S(request,"expectedRuntimeVersion"),kind=J.S(metadata,"sourceKind");
+   bool mygo=J.S(request,"expectedRuntimeId")=="webgal-mygo.mygo";
    var actual=WebgalEngineProfile.FromHash(J.S(metadata,"sourceHash"));
    bool boundProject=!string.IsNullOrWhiteSpace(J.S(request,"project"));
-   if(J.S(metadata,"id")!="webgal"||J.S(metadata,"version")!=expected||!J.B(metadata,"runtimeParity",false)||actual==null||actual.Version!=expected||(boundProject?kind!="project-runtime":kind!="terre-template"))throw new IOException("严格绑定导出拒绝了不匹配的引擎身份、版本或运行时来源");
+   bool exact=mygo?J.S(metadata,"sourceHash")==MygoHash:actual!=null&&actual.Version==expected;
+   bool source=mygo?boundProject&&kind=="mygo-project-runtime":(boundProject?kind=="project-runtime":kind=="terre-template");
+   if(J.S(metadata,"id")!=(mygo?"mygo":"webgal")||J.S(metadata,"version")!=expected||!J.B(metadata,"runtimeParity",false)||!exact||!source)throw new IOException("严格绑定导出拒绝了不匹配的引擎身份、版本或运行时来源");
   }
   public static EngineAdapter Select(object request) {
    ValidateRuntimeRequest(request);
@@ -185,8 +192,10 @@ namespace NativeVideo {
    }
    if(selected!="mygo")throw new IOException("未知导出引擎");
    string mygoFallbackReason;
-   var projectMygo=TryMygoProjectRuntime(J.S(request,"project"),out mygoFallbackReason);
+   bool strictMygo=J.B(request,"requireRuntimeParity",false);
+   var projectMygo=TryMygoProjectRuntime(J.S(request,"project"),out mygoFallbackReason,strictMygo);
    if(projectMygo!=null)return projectMygo;
+   if(strictMygo)throw new IOException("绑定项目 MyGO 引擎无法安全接入导出；未改用机器上的 MyGO、模板或内置引擎。"+mygoFallbackReason);
    string source=J.S(request,"mygoRoot");
    if(string.IsNullOrEmpty(source))source=FindMygo(Path.GetDirectoryName(Files.Full(J.S(request,"project"))));
    if(source==null||!SupportedMygo(source))throw new IOException("当前游戏的 MyGO 运行时无法直接适配，且未检测到受支持的 MyGO 3.2.1 回退基线。请安装对应专版，或选择原版 WebGAL。");
@@ -213,13 +222,13 @@ namespace NativeVideo {
    if(!File.Exists(file))throw new IOException("导出运行时缺少主 bundle："+Bundle);
    if(IsMygo&&strictMygoHash&&Files.Hash(file)!=MygoHash)throw new IOException("MyGO 文件在准备过程中改变，请重新导出");
    if(!IsMygo){string hash=Files.Hash(file);var profile=WebgalEngineProfile.FromHash(hash);if(profile==null||profile.Version!=Version||sourceHash!=null&&hash!=sourceHash)throw new IOException("WebGAL 运行时在选择或准备后发生变化");}
-   if(!IsMygo){
+   if(!IsMygo||strictDescriptor){
     string descriptor=Path.Combine(root,"webgal-engine.json");
     if(strictDescriptor&&!File.Exists(descriptor))throw new IOException("绑定引擎描述在准备过程中丢失");
     if(File.Exists(descriptor)){
      if(new FileInfo(descriptor).Length>65536)throw new IOException("引擎描述文件过大");
      var metadata=J.Read(descriptor);
-     if(J.S(metadata,"id")!="open-webgal.webgal"||J.S(metadata,"version")!=Version||J.S(metadata,"webgalVersion")!=Version)throw new IOException("绑定引擎描述在准备过程中改变或与 bundle 不一致");
+     if(J.S(metadata,"id")!=(IsMygo?"webgal-mygo.mygo":"open-webgal.webgal")||J.S(metadata,"version")!=Version||J.S(metadata,"webgalVersion")!=(IsMygo?"4.6.4":Version))throw new IOException("绑定引擎描述在准备过程中改变或与 bundle 不一致");
     }
    }
    string text=File.ReadAllText(file);
@@ -255,6 +264,7 @@ namespace NativeVideo {
   }
   public string Patch(string text) {
    if(text.Contains("__nativeAdapterInstalled"))throw new IOException("工作副本不能重复适配");
+   if(IsMygo&&strictMygoHash&&Files.HashText(text)!=MygoHash)throw new IOException("MyGO bundle bytes do not match selected exact engine profile");
    var profile=IsMygo?null:WebgalEngineProfile.ForVersion(Version);
    if(!IsMygo)text=profile.Instrument(text);
    string core=IsMygo?"R":profile.Core, observe=IsMygo?"OP":profile.Observe, next=IsMygo?"vp":profile.Next, autoCallback=IsMygo?"dTe":profile.AutoCallback;

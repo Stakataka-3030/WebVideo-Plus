@@ -23,6 +23,13 @@ class RuntimeContractChecks {
    if(!failed)throw new Exception("Strict queue accepted noncanonical or missing engine contract");
   }
   if(Directory.GetFiles(Path.Combine(state,"jobs"),"request.json",SearchOption.AllDirectories).Length!=1)throw new Exception("Rejected request created a runnable job");
+  var mygoBody=J.O("project","fixture","scene","start.txt","sourceText","A:test;\n","expectedRuntimeId","webgal-mygo.mygo","expectedRuntimeVersion","3.2.1","expectedWebgalVersion","4.6.4","runtimeStartup",J.O("language",2,"source","preview"),"settings",J.O("engine","mygo","gpuRawMode","traditional"));
+  var mygoResponse=Call(service,new HttpRequest{Method="POST",Path="/api/timing",Body=Encoding.UTF8.GetBytes(J.Text(mygoBody))});if(mygoResponse.Status!=200)throw new Exception("MyGO queue rejected bound contract");
+  var allPaths=Directory.GetFiles(Path.Combine(state,"jobs"),"request.json",SearchOption.AllDirectories);if(allPaths.Length!=2)throw new Exception("Expected official and MyGO persisted requests");
+  object mygoPersisted=null;foreach(string path in allPaths){var item=J.Read(path);if(J.S(item,"expectedRuntimeId")=="webgal-mygo.mygo")mygoPersisted=item;}
+  if(mygoPersisted==null||J.S(mygoPersisted,"expectedRuntimeVersion")!="3.2.1"||J.S(mygoPersisted,"expectedWebgalVersion")!="4.6.4"||J.S(J.Get(mygoPersisted,"settings"),"engine")!="mygo"||J.S(mygoPersisted,"engineRoot")!=project||!string.IsNullOrEmpty(J.S(mygoPersisted,"mygoRoot")))throw new Exception("Queue lost MyGO identity or searched a foreign runtime");
+  foreach(string fault in new[]{"expectedRuntimeId","expectedRuntimeVersion","expectedWebgalVersion"}){var bad=new Dictionary<string,object>(mygoBody);bad[fault]=fault=="expectedRuntimeId"?"open-webgal.webgal":fault=="expectedRuntimeVersion"?"4.6.4":"4.6.5";bool failed=false;try{Call(service,new HttpRequest{Method="POST",Path="/api/timing",Body=Encoding.UTF8.GetBytes(J.Text(bad))});}catch(IOException){failed=true;}if(!failed)throw new Exception("Invalid MyGO queue contract passed: "+fault);}
+  if(Directory.GetFiles(Path.Combine(state,"jobs"),"request.json",SearchOption.AllDirectories).Length!=2)throw new Exception("Invalid MyGO contract created a runnable job");
   if(File.Exists(Path.Combine(state,"legacy-user-data-import.json")))throw new Exception("Craft imported legacy user data");
   foreach(string kind in new[]{"analysis","audio","full"}){
    string job=Path.Combine(root,"cached-"+kind),planning=Path.Combine(job,"planning");Directory.CreateDirectory(Path.Combine(planning,"prepared"));

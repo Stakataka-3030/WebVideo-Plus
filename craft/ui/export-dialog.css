@@ -1,0 +1,19 @@
+/* Scoped extension surfaces only; Craft keeps its font, native controls and theme. */
+.wvc-export-platforms,.wvc-native-export-config {
+ --wvc-bg:oklch(var(--background,1 0 0));--wvc-fg:oklch(var(--foreground,.141 .005 285.823));--wvc-soft:oklch(var(--muted-foreground,.552 .016 285.938));--wvc-line:oklch(var(--border,.92 .004 286.32));--wvc-accent:oklch(var(--accent,.967 .001 286.375));font:inherit;color:var(--wvc-fg);box-sizing:border-box
+}
+[data-wvc-export-hidden=true],.wvc-export-platforms[hidden],.wvc-export-form [hidden],.wvc-native-export-config [hidden] {display:none!important}
+.wvc-export-platforms{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wvc-export-label{grid-column:1/-1;font-size:12px;font-weight:500;color:var(--wvc-soft);margin:4px 0 0}
+.wvc-export-platform{display:flex;align-items:center;gap:12px;border:1px solid var(--wvc-line);border-radius:6px;background:transparent;text-align:left;color:inherit;padding:12px;min-width:0;cursor:pointer;font:inherit}
+.wvc-export-platform:hover,.wvc-export-back:hover{background:var(--wvc-accent)}
+.wvc-export-platform:focus-visible,.wvc-native-export-config button:focus-visible,.wvc-native-export-config input:focus-visible,.wvc-native-export-config select:focus-visible{outline:2px solid var(--wvc-soft);outline-offset:2px}
+.wvc-export-icon{width:20px;height:20px;flex:0 0 20px}.wvc-export-icon svg{width:100%;height:100%}
+.wvc-export-platform-text{min-width:0;display:grid;gap:3px}.wvc-export-platform-text strong{font-size:14px;font-weight:500}.wvc-export-platform-text>span{font-size:12px;line-height:1.4;color:var(--wvc-soft)}
+.wvc-native-export-config{min-width:0;display:grid;gap:14px}.wvc-native-export-config .wvc-export-back{justify-self:start}
+.wvc-native-export-config button,.wvc-native-export-config input,.wvc-native-export-config select{font:inherit;color:inherit;border:1px solid var(--wvc-line);border-radius:5px;background:var(--wvc-bg);padding:7px 10px;box-sizing:border-box;max-width:100%;min-width:0}
+.wvc-native-export-config button{cursor:pointer;font-size:13px}.wvc-native-export-config button:disabled{cursor:not-allowed;opacity:.5}
+.wvc-native-export-config input:not([type=checkbox]),.wvc-native-export-config select{width:100%;min-height:36px}
+.wvc-native-export-config input[type=checkbox]{accent-color:var(--wvc-fg);margin:0 5px 0 0;width:14px;height:14px}
+.wvc-export-form{display:flex;flex-direction:column;gap:14px}.wvc-export-form h3{font-size:16px;font-weight:600;margin:0}.wvc-export-form .wvc-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.wvc-export-form .wvc-field{display:flex;flex:1 1 160px;flex-direction:column;align-items:stretch;gap:6px;font-size:12px;min-width:0}.wvc-export-form>.wvc-field{flex:none}.wvc-export-form label:not(.wvc-field){display:flex;align-items:center;font-size:13px;gap:4px}.wvc-export-form .wvc-help{font-size:12px;line-height:1.55;color:var(--wvc-soft);margin:0;flex-basis:100%}.wvc-export-form .wvc-primary{background:var(--wvc-fg);color:var(--wvc-bg);border-color:var(--wvc-fg)}.wvc-export-advanced{border-top:1px solid var(--wvc-line);padding-top:12px}.wvc-export-advanced>summary{cursor:pointer;font-size:13px;color:var(--wvc-soft);margin-bottom:10px}.wvc-export-advanced>.wvc-actions{margin-bottom:12px}.wvc-export-jobs{display:grid;gap:8px}.wvc-export-job{border:1px solid var(--wvc-line);border-radius:5px;padding:10px;overflow-wrap:anywhere}.wvc-export-job>strong{font-size:12px}.wvc-export-ranges{display:grid;gap:6px;max-height:190px;overflow:auto;flex-basis:100%;border:1px solid var(--wvc-line);border-radius:5px;padding:8px}.wvc-export-ranges label{line-height:1.5;align-items:start!important}.wvc-export-ranges input{flex:0 0 14px;margin-top:3px!important}
+@media(max-width:540px){.wvc-export-platforms{grid-template-columns:1fr}.wvc-export-form .wvc-field{flex-basis:125px}}

@@ -11,9 +11,9 @@ using System.Web.Script.Serialization;
 using System.Threading;
 using System.Security.Cryptography;
 using System.Text;
-[assembly: AssemblyVersion("1.1.3.0")]
-[assembly: AssemblyFileVersion("1.1.3.0")]
-[assembly: AssemblyInformationalVersion("1.1.3.0c")]
+[assembly: AssemblyVersion("1.1.11.0")]
+[assembly: AssemblyFileVersion("1.1.11.0")]
+[assembly: AssemblyInformationalVersion("1.1.11.0c")]
 
 static class CraftStarter {
  static string Q(string s){return "\""+System.Text.RegularExpressions.Regex.Replace(System.Text.RegularExpressions.Regex.Replace(s,@"(\\*)""","$1$1\\\""),@"(\\+)$","$1$1")+"\"";}
@@ -75,12 +75,31 @@ static class CraftStarter {
   }
   internal string Diagnostic{get{lock(gate){return (failure.Length==0?"":failure+Environment.NewLine)+(lastWriteFailed?"日志未能写入磁盘；近期输出："+Environment.NewLine+String.Join("",recent.ToArray()):"启动日志："+target);}}}
  }
- internal static void HandleSessionOutput(string line,LaunchLog log,Action<string,bool> report){
+ internal static void HandleSessionOutput(string line,LaunchLog log,Action<string,bool> report,Action releaseWrapper=null){
   if(line==null)return;
   log.Write(line);
   const string prefix="WEBVIDEO_CRAFT_STATUS ";if(!line.StartsWith(prefix,StringComparison.Ordinal))return;
-  try{var update=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(line.Substring(prefix.Length));string stage=CraftManifestVerifier.Text(update,"stage"),message=CraftManifestVerifier.Text(update,"text");if(message.Length>0)report(message,stage=="ready");}
+  try{var update=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(line.Substring(prefix.Length));string stage=CraftManifestVerifier.Text(update,"stage"),message=CraftManifestVerifier.Text(update,"text");if(stage=="update-handoff"&&releaseWrapper!=null){releaseWrapper();return;}if(message.Length>0)report(message,stage=="ready");}
   catch(Exception error){log.Write("会话状态消息处理失败："+error.Message);}
+ }
+ internal sealed class LaunchArguments {
+  internal string StatePath;
+  internal readonly List<string> Coordinator=new List<string>(),Host=new List<string>();
+ }
+ internal static LaunchArguments ParseArguments(string[] args){
+  var parsed=new LaunchArguments();bool hostOnly=false,isolated=args.Contains("--isolated-test");
+  for(int i=0;i<args.Length;i++){
+   string value=args[i];if(hostOnly){parsed.Host.Add(value);continue;}
+   if(value=="--"){hostOnly=true;continue;}
+   if(value=="--state"||value=="--config"){
+    if(parsed.StatePath!=null||i+1>=args.Length||args[i+1].StartsWith("--",StringComparison.Ordinal))throw new IOException("启动状态参数无效或重复");
+    parsed.StatePath=Path.GetFullPath(args[++i]);continue;
+   }
+   if(value=="--isolated-test"||value=="--auto-click"){parsed.Coordinator.Add(value);continue;}
+   if(value=="--profile"&&isolated){if(i+1>=args.Length)throw new IOException("隔离 profile 参数缺失");parsed.Coordinator.Add(value);parsed.Coordinator.Add(Path.GetFullPath(args[++i]));continue;}
+   parsed.Host.Add(value);
+  }
+  return parsed;
  }
  static int Run(string[] args,Action<string,bool> report){
   string startupLog=Path.Combine(Path.GetTempPath(),"WebVideoCraft-Launcher-"+Guid.NewGuid().ToString("N")+".log");
@@ -88,22 +107,34 @@ static class CraftStarter {
   Action<string> record=log.Write;
   try{
    record("launcher-started");report("正在读取安装记录并校验全部启动文件…",false);
-   string self=Assembly.GetExecutingAssembly().Location,home=Path.GetDirectoryName(self),statePath=null;var forwarded=new List<string>();
-   for(int i=0;i<args.Length;i++){if(args[i]=="--"){forwarded.AddRange(args.Skip(i));break;}if((args[i]=="--state"||args[i]=="--config")&&i+1<args.Length){statePath=Path.GetFullPath(args[++i]);}else forwarded.Add(args[i]);}
+   string self=Assembly.GetExecutingAssembly().Location,home=Path.GetDirectoryName(self);var parsed=ParseArguments(args);string statePath=parsed.StatePath;
    if(statePath==null)statePath=File.Exists(Path.Combine(home,"config.json"))?Path.Combine(home,"config.json"):Path.Combine(home,"webvideo-craft.install.json");
    // Both entry points resolve the same adapter record before expensive work.
    // The mutex only coordinates startup; it never substitutes for verification.
-   string adapter=CraftManifestVerifier.Text(CraftManifestVerifier.Read(statePath),"adapterRoot");
+   var hint=CraftManifestVerifier.Read(statePath);string adapter=CraftManifestVerifier.Text(hint,"adapterRoot"),canonical=CraftManifestVerifier.Text(hint,"craftExe");
+   if(CraftManifestVerifier.Text(hint,"installMode")=="same-name"&&!CraftManifestVerifier.Same(self,canonical)){
+    // Legacy enhanced shortcuts redirect to the one original-name entry. The
+    // package template never creates a second independently enhanced session.
+    var legacy=CraftManifestVerifier.VerifyLaunch(statePath,self,message=>record(message));
+    Process.Start(new ProcessStartInfo(CraftManifestVerifier.Text(legacy,"craftExe"),String.Join(" ",args.Select(Q))){WorkingDirectory=Path.GetDirectoryName(canonical),UseShellExecute=false});return 0;
+   }
    launchMutex=AcquireLaunchMutex(adapter);
    var state=CraftManifestVerifier.VerifyLaunch(statePath,self,message=>{record(message);report(message,false);});string root=CraftManifestVerifier.Text(state,"adapterRoot"),stateDir=CraftManifestVerifier.Text(state,"stateDir");
+   if(File.Exists(Path.Combine(stateDir,"update.lock")))throw new IOException("Craft 官方更新仍在进行或结果待核对，请等安装器结束；如已退出，请用安装器检查过期更新记录。");
    if(!CraftManifestVerifier.Same(stateDir,Path.Combine(root,"state")))throw new IOException("会话目录不属于此适配器");CraftManifestVerifier.NoLinks(stateDir);Directory.CreateDirectory(Path.Combine(stateDir,"logs"));log.UsePrimary(Path.Combine(stateDir,"logs","launcher.log"));record("launcher-verified; startup log: "+startupLog);
    var package=CraftManifestVerifier.Get(state,"package");string node=CraftManifestVerifier.Under(root,CraftManifestVerifier.Text(package,"node")),script=CraftManifestVerifier.Under(root,CraftManifestVerifier.Text(package,"entry"));
-   var command=new[]{script,"--state",Path.Combine(root,"config.json"),"--craft",CraftManifestVerifier.Text(state,"originalExe"),"--kernel",CraftManifestVerifier.Text(state,"kernelExe"),"--wrapper-pid",Process.GetCurrentProcess().Id.ToString()}.Concat(forwarded);
+   var command=new[]{script,"--state",Path.Combine(root,"config.json"),"--craft",CraftManifestVerifier.Text(state,"originalExe"),"--kernel",CraftManifestVerifier.Text(state,"kernelExe"),"--wrapper-pid",Process.GetCurrentProcess().Id.ToString()}.Concat(parsed.Coordinator).Concat(new[]{"--"}).Concat(parsed.Host);
    // Only the child session configures WebView2. This wrapper never sets a
    // persistent environment variable, registry value or background service.
    report("启动文件校验完成，正在启动会话协调器…",false);
-   using(var process=Process.Start(new ProcessStartInfo(node,String.Join(" ",command.Select(Q))){WorkingDirectory=root,UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true})){
-    DataReceivedEventHandler append=(sender,e)=>HandleSessionOutput(e.Data,log,report);process.OutputDataReceived+=append;process.ErrorDataReceived+=append;process.BeginOutputReadLine();process.BeginErrorReadLine();process.WaitForExit();
+   using(var handoff=new ManualResetEvent(false))using(var exited=new ManualResetEvent(false))
+   using(var process=new Process{StartInfo=new ProcessStartInfo(node,String.Join(" ",command.Select(Q))){WorkingDirectory=root,UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true},EnableRaisingEvents=true}){
+    process.Exited+=(sender,e)=>{try{exited.Set();}catch(ObjectDisposedException){}};
+    DataReceivedEventHandler append=(sender,e)=>HandleSessionOutput(e.Data,log,report,()=>handoff.Set());process.OutputDataReceived+=append;process.ErrorDataReceived+=append;process.Start();process.BeginOutputReadLine();process.BeginErrorReadLine();
+    // Official NSIS addresses the original filename. Release this mapped EXE
+    // before the signed updater starts it; Node retains the session ownership.
+    if(WaitHandle.WaitAny(new WaitHandle[]{handoff,exited})==0){record("wrapper released for official update handoff");return 0;}
+    process.WaitForExit();
     // The session may hand an update to an external one-shot coordinator. Exit
     // immediately so the original-name executable is no longer mapped/locked.
     if(process.ExitCode==75)return 0;

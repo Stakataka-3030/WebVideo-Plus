@@ -1,8 +1,11 @@
 /* Craft import controllers. Plans are previews; only bridge.commit edits the open buffer.
  * Anogo format/compiler adapted from browser/anogo-import-core.js; AI source-range and
  * stage validation reuse browser/novel-core.js. No direct network, disk or credential access. */
-(function (root) {
+(function (root, sharedNovel) {
   'use strict';
+  // Craft uses its own source-preserving planner. Do not expose the shared
+  // Terre-only plan() dependency as part of the Craft novel contract.
+  const novelCore = sharedNovel && Object.freeze({prepare:sharedNovel.prepare,resolve:sharedNovel.resolve,validateStage:sharedNovel.validateStage});
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o || {}, k) ? o[k] : undefined;
   const fold = s => String(s ?? '').trim().toLowerCase();
   const clone = value => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
@@ -50,7 +53,7 @@
   }
   function create(options) {
     const {bridge, script = root.WebVideoCraftScript, yaml = root.WebVideoYaml || root.jsyaml,
-      novel = typeof WebVideoNovel !== 'undefined' ? WebVideoNovel : root.WebVideoNovel,
+      novel = novelCore,
       sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), onState = () => {}} = options;
     if (!bridge?.snapshot || !bridge?.commit || !script?.parse || !script?.append) error('Craft 编辑器桥或源文本解析器不可用');
     const loadCharacters = options.loadCharacters || (() => bridge.service('/api/character-map'));
@@ -232,4 +235,4 @@
   }
   const api = {create,parseAnogo}; root.WebVideoCraftImports = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
-})(globalThis);
+})(globalThis, typeof WebVideoNovel === 'undefined' ? undefined : WebVideoNovel);

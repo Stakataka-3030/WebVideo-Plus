@@ -14,7 +14,7 @@ async function runtimeSettings(expected) {
   if(!store)throw Error('实际预览设置尚未就绪');
   if(expected.startup){
     const raw=localStorage.getItem('lang'),language=store.getState().userData.optionData.language;
-    if(document.querySelector('._langWrapper_1oupq_10'))throw Error('请先在当前工程预览中完成语言选择');
+    if(document.querySelector('[class*=langWrapper_]'))throw Error('请先在当前工程预览中完成语言选择');
     if(typeof raw!=='string'||! /^[0-7]$/.test(raw)||!Number.isInteger(language)||Number(raw)!==language)throw Error('当前预览语言未完成初始化，请选择语言后重试');
     return {language,source:'preview'};
   }

@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 const code = await readFile(new URL('../features/media.js', import.meta.url), 'utf8');
 const context = { crypto: webcrypto, TextEncoder, setTimeout }; vm.createContext(context); vm.runInContext(code, context);
+for (const file of ['vendor/webgal-parser-4.6.5.js', 'script.js']) vm.runInContext(await readFile(new URL('../features/' + file, import.meta.url), 'utf8'), context);
 const { createController, normalizeMusic, availableStart, resolveSubtitleAnchor } = context.WebVideoCraftMedia;
 const track = (id, lane = 0, start = 0, duration = 10) => ({ id, file: `game/bgm/${id}.ogg`, lane, startSeconds: start, durationSeconds: duration, volume: 100 });
 const config = tracks => ({ schemaVersion: 2, enabled: true, players: 2, tracks });
@@ -114,7 +115,7 @@ test('legacy scene-relative tracks migrate using measured scene offsets and prob
 test('repeat clicks are serialized and stale music loads do not replace current state', async () => {
   const f = fixture(), c = createController(f.bridge); await c.loadMusic();
   let release; f.bridge.readProjectFile = () => new Promise(resolve => { release = resolve; });
-  const pending = c.loadMusic(); await new Promise(resolve => setTimeout(resolve, 0));
+  const pending = c.loadMusic({ reload: true }); await new Promise(resolve => setTimeout(resolve, 0));
   await assert.rejects(c.addPlayer(), /进行中/);
   f.snap.projectId = 'other'; release(JSON.stringify(config([track('other')])));
   await assert.rejects(pending, /已变化/); assert.equal(c.state().music.tracks[0].id, 'a');
@@ -141,4 +142,198 @@ test('manual preview speeds use engine adapter, validate range and invalidate ac
   await assert.rejects(c.writeSpeeds({ textSpeed: 101 }), /无效/);
   const result = await c.writeSpeeds({ textSpeed: 75 }); assert.equal(result.textSpeed, 75); assert.equal(result.autoSpeed, 50);
   await assert.rejects(c.getTiming(), /先测量/);
+});
+
+const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
+async function until(predicate) { for (let i = 0; i < 200; i++) { if (predicate()) return; await new Promise(resolve => setTimeout(resolve, 1)); } assert.fail('condition did not settle'); }
+const timingStarts = f => f.calls.filter(call => call[0] === '/api/timing');
+const timingCancels = f => f.calls.filter(call => /\/cancel$/.test(call[0]));
+
+test('Actual Time and Music share one timing task and independent progress/abort consumers', async () => {
+  const f = fixture(), poll = deferred(), original = f.bridge.service, a = new AbortController(), b = new AbortController();
+  f.bridge.service = async (...args) => { if (/^\/api\/timing\//.test(args[0])) await poll.promise; return original(...args); };
+  const c = createController(f.bridge), updates = [], firstProgress = [], secondProgress = [];
+  const unsubscribe = c.subscribe(state => updates.push(state));
+  const first = c.measure({ signal: a.signal, force: true, onProgress: p => firstProgress.push(p) });
+  const second = c.measure({ signal: b.signal, force: true, onProgress: p => secondProgress.push(p) });
+  await until(() => firstProgress.length && secondProgress.length && timingStarts(f).length);
+  a.abort(); await assert.rejects(first, /取消/);
+  assert.equal(timingStarts(f).length, 1); assert.equal(timingCancels(f).length, 0);
+  assert.equal(c.state().measuring, true); poll.resolve();
+  assert.equal((await second).seconds, 20); assert.equal(secondProgress.at(-1).state, 'completed');
+  assert.equal(c.state().measuring, false); assert.equal(c.state().timing.seconds, 20);
+  assert.equal(c.peekTiming(f.snap).seconds, 20);
+  assert.ok(updates.some(s => s.measuring)); assert.ok(updates.some(s => s.timing?.seconds === 20));
+  unsubscribe(); const count = updates.length; await c.readSpeeds(); assert.equal(updates.length, count);
+});
+
+test('last consumer abort cancels an already running timing job once and never publishes it', async () => {
+  const f = fixture(), poll = deferred(), original = f.bridge.service, a = new AbortController(), b = new AbortController();
+  f.bridge.service = async (...args) => { if (/^\/api\/timing\//.test(args[0])) await poll.promise; return original(...args); };
+  const c = createController(f.bridge); let joined = 0;
+  const first = c.measure({ signal: a.signal, onProgress: () => joined++ });
+  const second = c.measure({ signal: b.signal, onProgress: () => joined++ });
+  await until(() => joined >= 2 && timingStarts(f).length);
+  a.abort(); await assert.rejects(first, /取消/); b.abort(); await assert.rejects(second, /取消/);
+  assert.equal(timingCancels(f).length, 1); poll.resolve();
+  await new Promise(resolve => setTimeout(resolve, 2));
+  assert.equal(c.state().timing, null); assert.equal(timingCancels(f).length, 1);
+});
+
+test('abort while a queued job ID is pending cancels that job as soon as it is returned', async () => {
+  const f = fixture(), queue = deferred(), original = f.bridge.service, abort = new AbortController();
+  f.bridge.service = async (...args) => { const result = await original(...args); if (args[0] === '/api/timing') await queue.promise; return result; };
+  const c = createController(f.bridge), pending = c.measure({ signal: abort.signal });
+  await until(() => timingStarts(f).length); abort.abort(); await assert.rejects(pending, /取消/);
+  assert.equal(timingCancels(f).length, 0); queue.resolve(); await until(() => timingCancels(f).length);
+  assert.equal(timingCancels(f).length, 1); assert.equal(c.state().timing, null);
+  await c.measure(); assert.equal(timingStarts(f).length, 2);
+});
+
+test('controller-wide cancel rejects every consumer, including one still preparing', async () => {
+  const f = fixture(), dep = deferred(), original = f.bridge.timingDependencyHash;
+  f.bridge.timingDependencyHash = async () => { await dep.promise; return original(); };
+  const c = createController(f.bridge), first = c.measure(), second = c.measure();
+  await new Promise(resolve => setTimeout(resolve, 1)); await c.cancel(); dep.resolve();
+  await assert.rejects(first, /取消/); await assert.rejects(second, /取消/); assert.equal(timingStarts(f).length, 0);
+});
+
+test('late old-source result cannot replace the current-source cache', async () => {
+  const f = fixture(), old = deferred(), original = f.bridge.service;
+  f.bridge.service = async (...args) => { if (args[0] === '/api/timing/1') await old.promise; return original(...args); };
+  const c = createController(f.bridge), first = c.measure(); const failed = assert.rejects(first, /已变化/);
+  await until(() => timingStarts(f).length); f.snap.source += '\nAlice:New;'; f.snap.revision++;
+  const second = await c.measure(); old.resolve(); await failed;
+  assert.equal(c.state().timing.snapshot.source, f.snap.source); assert.equal(c.peekTiming(f.snap).sourceHash, second.sourceHash);
+  assert.equal(timingStarts(f).length, 2); assert.equal(timingCancels(f).length, 1);
+});
+
+test('runtime binding, speed, full settings and dependency changes invalidate measured cache', async () => {
+  for (const kind of ['binding', 'speed', 'config', 'dependency', 'sceneHash']) {
+    const f = fixture(), poll = deferred(), original = f.bridge.service; let extra = 1;
+    f.bridge.service = async (...args) => {
+      if (args[0] === '/api/config') return { settings: { voiceVolume: extra } };
+      if (/^\/api\/timing\//.test(args[0])) await poll.promise;
+      const result = await original(...args);
+      if (kind === 'sceneHash' && /^\/api\/timing\//.test(args[0])) result.timing.storyTimeline.scenes[0].hash = 'foreign';
+      return result;
+    };
+    const c = createController(f.bridge), pending = c.measure();
+    if (kind !== 'config') {
+      const rejected = assert.rejects(pending, /变化|不一致/); await until(() => timingStarts(f).length);
+      if (kind === 'binding') f.snap.runtimeBindingSignature = 'different-runtime';
+      if (kind === 'speed') f.setSpeeds({ textSpeed: 60, autoSpeed: 50 });
+      if (kind === 'dependency') f.setDependency('different-scene');
+      poll.resolve(); await rejected; assert.equal(c.peekTiming(f.snap), null);
+    } else {
+      poll.resolve(); await pending; extra = 2;
+      await assert.rejects(c.getTiming(), /设置已变化/); assert.equal(c.peekTiming(f.snap), null);
+      await c.measure(); assert.equal(timingStarts(f).length, 2);
+    }
+  }
+});
+
+test('dirty music survives remeasure, same-project source edits and ordinary reopen; discard restores baseline', async () => {
+  const f = fixture(), c = createController(f.bridge); await c.loadMusic(); assert.equal(c.state().dirty, false);
+  await c.updateTrack('a', { volume: 23 }); assert.equal(c.state().dirty, true);
+  await c.measure(); f.snap.source += '\nwait:10;'; f.snap.revision++; await c.measure();
+  await c.loadMusic(); assert.equal(c.state().music.tracks[0].volume, 23); assert.equal(c.state().dirty, true);
+  await assert.rejects(c.loadMusic({ reload: true }), /尚未保存/);
+  c.discardMusic(); assert.equal(c.state().music.tracks[0].volume, 100); assert.equal(c.state().dirty, false);
+  await c.moveTrack('a', 0, 0); assert.equal(c.state().dirty, false);
+  await c.addPlayer(); assert.equal(c.state().dirty, true); await c.saveMusic(); assert.equal(c.state().dirty, false);
+  assert.equal(f.calls.filter(call => call[0] === 'video-project.json').length, 1);
+});
+
+test('music drafts are scoped to project path and retained when returning to the original project', async () => {
+  const f = fixture(), c = createController(f.bridge); await c.loadMusic(); await c.updateTrack('a', { volume: 20 });
+  f.snap.projectPath = 'C:/other-copy'; f.setText(JSON.stringify(config([track('b')])));
+  await assert.rejects(c.saveMusic(), /先读取/); await c.loadMusic();
+  assert.equal(c.state().music.tracks[0].id, 'b'); assert.equal(c.state().dirty, false);
+  f.snap.projectPath = 'C:/p'; await c.loadMusic();
+  assert.equal(c.state().music.tracks[0].volume, 20); assert.equal(c.state().dirty, true);
+});
+
+test('failed backup or external CAS conflict leaves dirty draft and unknown metadata intact', async () => {
+  for (const failure of ['backup', 'cas']) {
+    const f = fixture(); f.setText(JSON.stringify({ ...config([{ ...track('a'), futureTrack: { keep: true } }]), futureTop: { keep: 'yes' } }));
+    const c = createController(f.bridge); await c.loadMusic(); await c.updateTrack('a', { volume: 42 });
+    if (failure === 'backup') f.failBackup(); else f.setText(JSON.stringify(config([])));
+    await assert.rejects(c.saveMusic());
+    assert.equal(c.state().dirty, true); assert.equal(c.state().music.tracks[0].volume, 42);
+    assert.equal(c.state().music.futureTop.keep, 'yes'); assert.equal(c.state().music.tracks[0].futureTrack.keep, true);
+  }
+});
+
+test('fit uses Terre dialogue formula before measured refinement and publishes exact matching timing', async () => {
+  const f = fixture(); f.snap.source = 'Alice:' + 'A'.repeat(100) + ';';
+  const duration = values => (100 * (3 + (100 - values.textSpeed) * 1.5) + 200 + (100 - values.textSpeed) * 15 + 250 + (100 - values.autoSpeed) * 15) / 1000;
+  f.durationModel(duration); const original = f.bridge.service;
+  f.bridge.service = async (...args) => {
+    if (args[0] === '/api/music/duration') return { durationSeconds: 7.75 };
+    const result = await original(...args);
+    if (/^\/api\/timing\//.test(args[0])) { result.timing.lineTimes = [0]; result.timing.elasticWindows = [{}]; result.timing.storyTimeline.scenes[0].lineTimes = [0]; }
+    return result;
+  };
+  const c = createController(f.bridge); await c.loadMusic(); await c.updateTrack('a', { volume: 30 });
+  const result = await c.fitToMusic({ textSpeed: true, autoSpeed: false });
+  assert.equal(timingStarts(f).length, 2); assert.equal(timingStarts(f)[1][1].settings.textSpeed, 62.122);
+  assert.equal(f.getSpeeds().autoSpeed, 50); assert.equal(result.matched, true); assert.ok(Math.abs(result.seconds - 7.75) < .001);
+  assert.equal(c.state().dirty, true); assert.equal(c.state().music.tracks[0].durationSeconds, 7.75);
+  const cached = await c.getTiming(); assert.equal(cached.seconds, result.seconds); assert.equal(c.peekTiming(f.snap).settings.textSpeed, 62.122);
+  await c.measure(); assert.equal(timingStarts(f).length, 2);
+});
+
+test('fit performs at most two actual refinements and retains a measured best candidate', async () => {
+  const f = fixture(); f.snap.source = 'Alice:' + 'A'.repeat(100) + ';';
+  f.durationModel(values => 40 - values.textSpeed * .05);
+  const original = f.bridge.service;
+  f.bridge.service = async (...args) => {
+    if (args[0] === '/api/music/duration') return { durationSeconds: 36.12 };
+    const result = await original(...args);
+    if (/^\/api\/timing\//.test(args[0])) { result.timing.lineTimes = [0]; result.timing.elasticWindows = [{}]; result.timing.storyTimeline.scenes[0].lineTimes = [0]; }
+    return result;
+  };
+  const c = createController(f.bridge); await c.loadMusic(); const result = await c.fitToMusic({ textSpeed: true, autoSpeed: false });
+  assert.ok(timingStarts(f).length <= 3); assert.equal(result.refinementsLimit, 2);
+  assert.equal((await c.getTiming()).seconds, result.seconds); assert.equal(result.settings.autoSpeed, 50);
+  assert.ok(timingStarts(f).some(call => call[1].settings.textSpeed === result.settings.textSpeed));
+});
+
+test('successful CAS followed by a project switch records saved baseline for the original project', async () => {
+  const f = fixture(), c = createController(f.bridge); await c.loadMusic(); await c.updateTrack('a', { volume: 40 });
+  const write = f.bridge.writeProjectFile;
+  f.bridge.writeProjectFile = async (...args) => { const result = await write(...args); if (args[0] === 'video-project.json') f.snap.projectId = 'other'; return result; };
+  await assert.rejects(c.saveMusic(), /已变化/);
+  assert.equal(c.state().dirty, false); assert.equal(c.state().music.tracks[0].volume, 40);
+  await c.loadMusic(); assert.equal(c.state().projectId, 'other');
+  f.snap.projectId = 'p'; await c.loadMusic(); await c.updateTrack('a', { volume: 45 });
+  f.bridge.writeProjectFile = write; await c.saveMusic(); assert.equal(c.state().dirty, false);
+  assert.equal(c.state().music.tracks[0].volume, 45);
+});
+
+test('timing-relevant config changes while a measurement runs reject the stale result', async () => {
+  const f = fixture(), poll = deferred(), original = f.bridge.service; let fps = 30;
+  f.bridge.service = async (...args) => { if (args[0] === '/api/config') return { settings: { fps } }; if (/^\/api\/timing\//.test(args[0])) await poll.promise; return original(...args); };
+  const c = createController(f.bridge), pending = c.measure(), rejected = assert.rejects(pending, /计时设置已变化/);
+  await until(() => timingStarts(f).length); fps = 60; poll.resolve(); await rejected;
+  assert.equal(c.state().timing, null);
+});
+
+test('discarding a schema-1 migration clears close guard without writing the original file', async () => {
+  const f = fixture(); f.setText(JSON.stringify({ schemaVersion: 1, enabled: true, tracks: [{ ...track('a'), scene: 'start.txt', startSeconds: 3 }], future: 'keep' }));
+  const c = createController(f.bridge); await c.measure(); await c.loadMusic(); assert.equal(c.state().dirty, true);
+  await c.updateTrack('a', { volume: 12 }); c.discardMusic();
+  assert.equal(c.state().dirty, false); assert.equal(c.state().music.tracks[0].volume, 100); assert.equal(c.state().music.future, 'keep');
+  await c.loadMusic(); assert.equal(c.state().dirty, false); assert.equal(f.calls.filter(call => call[0] === 'video-project.json').length, 0);
+  await c.saveMusic(); assert.equal(c.state().music.schemaVersion, 2);
+});
+
+test('one consumer can abort during shared dependency preparation without waiting or stopping the other', async () => {
+  const f = fixture(), dep = deferred(), original = f.bridge.timingDependencyHash, a = new AbortController(); let preparing = 0;
+  f.bridge.timingDependencyHash = async () => { preparing++; await dep.promise; return original(); };
+  const c = createController(f.bridge), first = c.measure({ signal: a.signal }), second = c.measure();
+  await until(() => preparing); a.abort(); await assert.rejects(first, /取消/);
+  assert.equal(timingStarts(f).length, 0); dep.resolve(); assert.equal((await second).seconds, 20);
+  assert.equal(timingStarts(f).length, 1); assert.equal(timingCancels(f).length, 0);
 });

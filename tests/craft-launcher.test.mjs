@@ -27,7 +27,7 @@ test('launcher shows responsive startup UI before verification and holds early c
 test('redirected output contains logging failures and retains fallback diagnostics',()=>{
  const handler=source.slice(source.indexOf('internal static void HandleSessionOutput'),source.indexOf(' static int Run('));
  const log=source.slice(source.indexOf('internal sealed class LaunchLog'),source.indexOf('internal static void HandleSessionOutput'));
- assert.match(source,/DataReceivedEventHandler append=\(sender,e\)=>HandleSessionOutput\(e.Data,log,report\)/);
+ assert.match(source,/DataReceivedEventHandler append=\(sender,e\)=>HandleSessionOutput\(e.Data,log,report,\(\)=>handoff.Set\(\)\)/);
  assert.doesNotMatch(handler,/File\.AppendAllText/);assert.match(handler,/log\.Write\(line\)/);assert.match(handler,/report\(message,stage=="ready"\)/);assert.match(handler,/catch\(Exception error\)/);
  assert.match(log,/try\{append\(target,line\).*catch\(Exception error\)/);assert.match(log,/target=fallback/);assert.match(log,/try\{append\(target,notice\+line\).*catch\(Exception error\)/);
  assert.match(log,/lock\(gate\)/);assert.match(log,/recentChars>16384/);assert.match(log,/line.Length>8192/);assert.match(log,/internal string Diagnostic/);

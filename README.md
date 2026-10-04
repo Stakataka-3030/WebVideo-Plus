@@ -4,9 +4,9 @@
 
 [下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [1.1.2 发行说明](RELEASE_NOTES_1.1.2.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前源码版本：1.1.2（内部开发标识 0.8.6；安装器 Win32 版本 1.1.2.0，导出内核 0.6.46）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
+**当前分支：WebVideo+ Craft 1.1.11c（安装器 1.1.11.0c；混合导出内核 0.6.52，产品基线 1.1.2）。** Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases) 为准。
 
-当前适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
+以下保留基础 Terre 产品说明；本分支的 Craft 支持范围请以上方链接为准。原基础适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
 
 ## 主要功能
 

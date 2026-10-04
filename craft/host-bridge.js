@@ -12,11 +12,13 @@
     function context() {
       const s = getStores(), game = s.workspace?.currentGame;
       if (!game?.id || !game.path || !s.editor || !s.tabs || !s.file) fail('Craft 编辑器桥尚未就绪，请打开工程');
-      return { ...s, game, projectPath: normal(game.path) };
+      // Pin scalar identity even if the host mutates its current-game object.
+      return { ...s, game: { ...game }, projectPath: normal(game.path) };
     }
     function assertContext(c) {
       const now = context();
       if (now.game.id !== c.game.id || now.projectPath !== c.projectPath) fail('工程已切换，请重新操作');
+      if (now.game.engineId !== c.game.engineId) fail('工程引擎已变化，请重新操作');
       return now;
     }
     async function refreshBinding(){if(!registry)return;const c=context(),resolved=await registry(c.game,invoke);assertContext(c);binding={projectId:c.game.id,projectPath:c.projectPath,engineId:c.game.engineId,resolved,signature:JSON.stringify(resolved)};}
@@ -99,7 +101,7 @@
         await c.editor.syncScenePreview(s.path,line,s.source.split('\n')[line-1],true);
       },
       subscribe(fn) {subscribers.add(fn);if(!subscriptionTimer)subscriptionTimer=setInterval(()=>{
-        let state;try{const c=context(),p=c.tabs.activeTab?.path;state=JSON.stringify([c.game.id,p,p&&c.editor.peekSceneRevision(p),p&&c.editor.getSceneSelection?.(p)]);}catch(e){state=e.message;}
+        let state;try{const c=context(),p=c.tabs.activeTab?.path;state=JSON.stringify([c.game.id,c.projectPath,c.game.engineId,p,p&&c.editor.peekSceneRevision(p),p&&c.editor.getSceneSelection?.(p)]);}catch(e){state=e.message;}
         if(state!==lastObserved){lastObserved=state;if(activeHint){try{const current=snapshotSync();if(current.projectId!==activeHint.projectId||current.path!==activeHint.path||current.revision!==activeHint.revision)void bridge.cancelHintPreview();}catch{void bridge.cancelHintPreview();}}changed();}
       },400);return()=>{subscribers.delete(fn);if(!subscribers.size){clearInterval(subscriptionTimer);subscriptionTimer=null;}};},
       capabilities() {
@@ -121,8 +123,18 @@
         if(document){await refreshBinding();validateSnapshot(document);}
         assertContext(c);return rpc('service.request',{project:{id:c.game.id,path:c.projectPath},endpoint,data,snapshotId});},
       async cancelJob(jobId){return rpc('job.cancel',{jobId});},
-      async exportVideo(options){const before=await bridge.snapshot();if(options?.sourceText!==undefined&&(options.sourceText!==before.source||options.scene!==before.sceneRelativePath))fail('导出选区已变化，请重新预览');
-        const snap=await bridge.exportSnapshot();await refreshBinding();validateSnapshot(before);return rpc('export.start',{snapshotId:snap.snapshotId,options});},
+      async exportVideo(options){
+        // The caller chooses a project before loading settings/anchors. Preserve
+        // that identity across this method's own asynchronous registry lookup.
+        const {snapshot:expected,...request}=options||{},captured=expected?{...expected}:null;
+        const before=await bridge.snapshot();
+        if(captured)validateSnapshot(captured);
+        if(request.sourceText!==undefined&&(request.sourceText!==before.source||request.scene!==before.sceneRelativePath))fail('导出选区已变化，请重新预览');
+        const snap=await bridge.exportSnapshot();
+        try{await refreshBinding();validateSnapshot(before);}
+        catch(error){await rpc('snapshot.discard',{snapshotId:snap.snapshotId}).catch(()=>{});throw error;}
+        return rpc('export.start',{snapshotId:snap.snapshotId,options:request});
+      },
       async exportSnapshot(){
         const c=context();
         if(c.editor.hasUnsavedDocuments) fail('请先保存 Craft 中所有文档，再进行导出或实际时间测量');
@@ -130,10 +142,11 @@
         const project=await registry(c.game,invoke); assertContext(c);
         const revisions=()=>JSON.stringify(c.editor.collectDocumentPathsUnder(c.projectPath).map(path=>[path,c.editor.peekSceneRevision(path)]).sort());
         const before=revisions();
-        const allocation=await rpc('snapshot.allocate',{project:{id:c.game.id,path:c.projectPath},engineVersion:project.runtimeVersion,runtimeId:project.runtimeId,sources:[c.projectPath,project.enginePath,project.templatePath].filter(Boolean)});
-        assertContext(c); if(c.editor.hasUnsavedDocuments) fail('整理工程前出现未保存文档');
-        const finish=c.runtimeTask?.beginBlockingTask('webvideo-snapshot-'+allocation.snapshotId);
+        const allocation=await rpc('snapshot.allocate',{project:{id:c.game.id,path:c.projectPath},engineVersion:project.engineVersion||project.runtimeVersion,runtimeVersion:project.runtimeVersion,runtimeId:project.runtimeId,sources:[c.projectPath,project.enginePath,project.templatePath].filter(Boolean)});
+        let finish;
         try {
+          assertContext(c); if(c.editor.hasUnsavedDocuments) fail('整理工程前出现未保存文档');
+          finish=c.runtimeTask?.beginBlockingTask('webvideo-snapshot-'+allocation.snapshotId);
           await invoke('export_web',{exportId:allocation.snapshotId,gamePath:c.projectPath,enginePath:project.enginePath,
             templatePath:project.templatePath,outputPath:allocation.site,gameName:c.game.metadata?.name||'WebGAL',replaceExisting:false});
           assertContext(c);if(c.editor.hasUnsavedDocuments||revisions()!==before) fail('整理工程期间剧本发生变化，请保存后重试');

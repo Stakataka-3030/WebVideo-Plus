@@ -16,6 +16,20 @@ jobs:
         with:
           node-version: '22.20.0'
 
+      - name: Verify complete Craft and shared Node regressions
+        shell: pwsh
+        run: |
+          $tests = @(Get-ChildItem -Path 'craft/tests/*.test.mjs', 'tests/*.test.mjs' -File | Sort-Object FullName | ForEach-Object { $_.FullName })
+          if ($tests.Count -eq 0) { throw "No Craft/shared regression files found" }
+          & node --test @tests
+          if ($LASTEXITCODE -ne 0) { throw "Craft/shared Node regression checks failed" }
+
+      - name: Verify composed Craft feature preflight
+        shell: pwsh
+        run: |
+          node craft/tests/composed-feature-preflight.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Composed Craft feature checks failed" }
+
       - name: Download fixed bootstrap installer
         shell: pwsh
         run: |

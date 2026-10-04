@@ -71,7 +71,16 @@
     }
   }
   function createController(bridge) {
-    let music = normalizeMusic(), loaded = false, baseText = null, musicScope = null, timing = null, serial = 0, activeJob = null, busy = false;
+    let music = normalizeMusic(), loaded = false, baseText = null, musicScope = null, musicProjectPath = null;
+    let baselineMusic = clone(music), baselineDirty = false, timing = null, serial = 0, busy = false, measuring = 0, progress = null;
+    let knownSettings = null, knownDependency = null;
+    const listeners = new Set(), running = new Map(), preparations = new Map(), musicProjects = new Map();
+    const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const dirty = () => baselineDirty || !equal(music, baselineMusic);
+    const state = () => ({ music: clone(music), loaded, dirty: dirty(), busy, measuring: measuring > 0, progress: progress ? clone(progress) : null,
+      musicScope, projectId: musicScope, musicProjectPath, timing: timing ? clone(timing.result) : null });
+    const emit = () => { for (const listener of listeners) { try { listener(state()); } catch {} } };
+    const changedMusic = next => { music = normalizeMusic(next); emit(); return clone(music); };
     const capability = async name => {
       const caps = await bridge.capabilities();
       if (caps[name] !== true) throw Error(caps.reason || `${name} 功能未绑定到当前 Craft 版本`);
@@ -81,68 +90,192 @@
       if (!value || typeof value.source !== 'string' || value.revision === undefined || !value.projectId || !value.path) throw Error('当前 Craft 文档快照不可用');
       return value;
     };
-    const identity = value => JSON.stringify([value.projectId, value.projectPath, value.path, value.revision, value.source]);
+    const identity = value => JSON.stringify([value.projectId, value.projectPath, value.path, value.revision, value.source, value.engineId, value.runtimeBindingSignature]);
+    const projectKey = value => JSON.stringify([value.projectId, value.projectPath]);
     const check = async (captured, ticket, signal) => {
       if (signal?.aborted || ticket !== serial) throw Error('操作已取消');
       if (identity(await snapshot()) !== identity(captured)) throw Error('工程或未保存的剧本已变化，请重新执行');
+      if (signal?.aborted || ticket !== serial) throw Error('操作已取消');
     };
     const settings = async () => {
       await capability('previewSettings');
       const values = await bridge.readPreviewSettings();
       for (const key of ['textSpeed', 'autoSpeed']) number(values[key], -100, 100, key);
-      return { textSpeed: values.textSpeed, autoSpeed: values.autoSpeed };
+      knownSettings = { textSpeed: values.textSpeed, autoSpeed: values.autoSpeed };
+      if (timing && !equal(knownSettings, timing.result.settings)) { timing = null; emit(); }
+      return clone(knownSettings);
     };
-    const dependency = async () => typeof bridge.timingDependencyHash === 'function' ? await bridge.timingDependencyHash() : null;
-    async function measureAt(captured, values, options, ticket) {
-      await capability('timing'); await check(captured, ticket, options.signal);
-      const sourceHash = await sha(captured.source), dependencyHash = await dependency();
-      const key = JSON.stringify([identity(captured), values, dependencyHash]);
-      if (!options.force && dependencyHash && timing?.key === key) return clone(timing.result);
-      const cfg = await bridge.service('/api/config');
-      await check(captured, ticket, options.signal);
-      const effective = { ...cfg.settings, ...values, mode: 'auto', bgmBaseMode: 'auto' };
-      const job = await bridge.service('/api/timing', { project: captured.projectId, scene: relative(captured.sceneRelativePath), sourceText: captured.source, settings: effective, linearTimeline: true });
-      if (!job?.id) throw Error('计时服务未返回任务 ID');
-      activeJob = job.id;
+    const dependency = async () => {
+      const value = typeof bridge.timingDependencyHash === 'function' ? await bridge.timingDependencyHash() : null;
+      knownDependency = value;
+      if (timing && value !== timing.result.dependencyHash) { timing = null; emit(); }
+      return value;
+    };
+    const validKnownTiming = captured => !!timing && !!captured && identity(captured) === identity(timing.result.snapshot)
+      && !!knownDependency && knownDependency === timing.result.dependencyHash && equal(knownSettings, timing.result.settings);
+    const publish = result => {
+      timing = { key: JSON.stringify([identity(result.snapshot), result.effectiveSettings, result.dependencyHash]), result: clone(result) };
+      emit();
+    };
+    async function cancelJob(entry) {
+      if (!entry.job || entry.cancelSent) return;
+      entry.cancelSent = true;
       try {
+        if (typeof bridge.cancelJob === 'function') await bridge.cancelJob(entry.job);
+        else await bridge.service('/api/jobs/' + encodeURIComponent(entry.job) + '/cancel', {});
+      } catch {}
+    }
+    function cancelEntry(entry) {
+      if (entry.done || entry.cancelled) return;
+      entry.cancelled = true;
+      entry.wake?.();
+      for (const user of [...entry.users]) user.cancel();
+      void cancelJob(entry);
+    }
+    function cancelTiming() {
+      serial++;
+      for (const entry of running.values()) cancelEntry(entry);
+    }
+    async function runTiming(entry) {
+      const { captured, values, effective, sourceHash, dependencyHash, ticket } = entry;
+      const ensure = async () => {
+        if (entry.cancelled) throw Error('操作已取消');
+        await check(captured, ticket);
+        if (entry.cancelled) throw Error('操作已取消');
+      };
+      try {
+        await ensure();
+        const job = await bridge.service('/api/timing', { project: captured.projectId, scene: relative(captured.sceneRelativePath), sourceText: captured.source, settings: effective, linearTimeline: true });
+        if (!job?.id) throw Error('计时服务未返回任务 ID');
+        entry.job = job.id;
+        // The last consumer can abort while the verified snapshot/job is still being created.
+        if (entry.cancelled) { await cancelJob(entry); throw Error('操作已取消'); }
         for (let i = 0; i < 3600; i++) {
-          await check(captured, ticket, options.signal);
+          await ensure();
           const data = await bridge.service('/api/timing/' + encodeURIComponent(job.id));
-          options.onProgress?.(data.job);
+          await ensure();
+          entry.progress = { ...data.job, message: data.job?.message || data.job?.phase || '正在分析故事', progress: Number(data.job?.progress) || 0, elapsed: (Date.now() - entry.started) / 1000 };
+          progress = entry.progress;
+          for (const user of entry.users) { try { user.onProgress?.(clone(entry.progress)); } catch {} }
+          emit();
           if (data.job?.state === 'completed') {
-            await check(captured, ticket, options.signal);
             if (data.sourceHash !== sourceHash) throw Error('计时结果与当前未保存剧本不一致');
             if (dependencyHash && await dependency() !== dependencyHash) throw Error('其他场景或计时依赖已变化');
+            const cfg = await bridge.service('/api/config');
+            if (!equal({ ...cfg.settings, ...values, mode: 'auto', bgmBaseMode: 'auto' }, effective)) throw Error('计时设置已变化，请重新测量');
+            await ensure();
             const seconds = number(data.timing?.storyTimeline?.durationSeconds ?? data.timing?.durationSeconds, 0, 86400, '故事实测时长');
             if (!data.timing?.storyTimeline?.scenes?.length) throw Error('服务没有返回实际多场景时间线');
-            const result = { seconds, timing: data.timing, settings: values, sourceHash, dependencyHash, snapshot: captured };
-            timing = { key, result: clone(result) };
+            const scene = data.timing.storyTimeline.scenes.find(item => item.scene === captured.sceneRelativePath);
+            if (!scene || scene.hash !== sourceHash) throw Error('实际时间线中的当前场景与剧本不一致');
+            const result = { seconds, timing: data.timing, settings: clone(values), effectiveSettings: clone(effective), sourceHash, dependencyHash, snapshot: clone(captured) };
             return result;
           }
           if (['failed', 'needs_attention', 'canceled', 'cancelled'].includes(data.job?.state)) throw Error(data.job.message || '实际时间计算失败');
-          await new Promise(resolve => setTimeout(resolve, options.pollInterval ?? 500));
+          await new Promise(resolve => { entry.wake = resolve; setTimeout(resolve, entry.pollInterval); });
+          entry.wake = null;
         }
         throw Error('实际时间计算超时');
       } catch (error) {
-        await bridge.service('/api/jobs/' + encodeURIComponent(job.id) + '/cancel', {}).catch(() => {});
+        await cancelJob(entry);
         throw error;
-      } finally { if (activeJob === job.id) activeJob = null; }
+      } finally {
+        entry.done = true;
+        if (running.get(entry.key) === entry) running.delete(entry.key);
+      }
+    }
+    function consume(entry, options) {
+      return new Promise((resolve, reject) => {
+        let finished = false;
+        const finish = (error, result) => {
+          if (finished) return;
+          finished = true;
+          options.signal?.removeEventListener('abort', user.cancel);
+          entry.users.delete(user);
+          if (!entry.done && entry.users.size === 0) cancelEntry(entry);
+          if (error) reject(error); else resolve(clone(result));
+        };
+        const user = { onProgress: options.onProgress, cancel: () => finish(Error('操作已取消')) };
+        entry.users.add(user);
+        options.signal?.addEventListener('abort', user.cancel, { once: true });
+        if (options.signal?.aborted || entry.cancelled) { user.cancel(); return; }
+        try { options.onProgress?.(clone(entry.progress)); } catch {}
+        if (!entry.promise) {
+          entry.promise = runTiming(entry);
+          entry.promise.catch(() => {});
+        }
+        entry.promise.then(result => finish(null, result), error => finish(error));
+      });
+    }
+    function abortable(promise, signal) {
+      if (!signal) return promise;
+      return new Promise((resolve, reject) => {
+        const abort = () => { signal.removeEventListener('abort', abort); reject(Error('操作已取消')); };
+        signal.addEventListener('abort', abort, { once: true });
+        if (signal.aborted) { abort(); return; }
+        promise.then(value => { signal.removeEventListener('abort', abort); resolve(value); }, error => { signal.removeEventListener('abort', abort); reject(error); });
+      });
+    }
+    async function measureAt(captured, values, options, ticket, expected = values, publishResult = true) {
+      await capability('timing'); await check(captured, ticket, options.signal);
+      const preparationKey = JSON.stringify([identity(captured), values, ticket]);
+      let preparation = preparations.get(preparationKey);
+      if (!preparation) {
+        preparation = Promise.all([sha(captured.source), dependency(), bridge.service('/api/config')]);
+        preparations.set(preparationKey, preparation);
+        preparation.finally(() => { if (preparations.get(preparationKey) === preparation) preparations.delete(preparationKey); }).catch(() => {});
+      }
+      const [sourceHash, dependencyHash, cfg] = await abortable(preparation, options.signal);
+      await check(captured, ticket, options.signal);
+      const effective = { ...cfg.settings, ...values, mode: 'auto', bgmBaseMode: 'auto' };
+      const key = JSON.stringify([identity(captured), effective, dependencyHash]);
+      let entry = running.get(key), result;
+      if (!entry || entry.cancelled) {
+        if (!options.force && validKnownTiming(captured) && timing.key === key) result = clone(timing.result);
+        else {
+          entry = { key, captured, values, effective, sourceHash, dependencyHash, ticket, job: null, users: new Set(), done: false, cancelled: false,
+            started: Date.now(), pollInterval: options.pollInterval ?? 500, progress: { message: '准备计算故事时间', progress: 0, elapsed: 0 } };
+          running.set(key, entry);
+        }
+      }
+      if (!result) result = await consume(entry, options);
+      await check(captured, ticket, options.signal);
+      if (!equal(await settings(), expected)) throw Error('预览速度已变化，请重新测量');
+      await check(captured, ticket, options.signal);
+      if (publishResult) publish(result);
+      return result;
     }
     async function freshTiming() {
       if (!timing) throw Error('请先测量实际时间');
-      const result = timing.result;
-      await check(result.snapshot, serial);
-      if (JSON.stringify(await settings()) !== JSON.stringify(result.settings)) throw Error('预览速度已变化，请重新测量');
+      const result = clone(timing.result), ticket = serial;
+      await check(result.snapshot, ticket);
+      if (!equal(await settings(), result.settings)) throw Error('预览速度已变化，请重新测量');
       if (!result.dependencyHash || await dependency() !== result.dependencyHash) throw Error('无法确认其他场景依赖仍有效，请重新测量');
-      return clone(result);
+      const cfg = await bridge.service('/api/config');
+      if (!equal({ ...cfg.settings, ...result.settings, mode: 'auto', bgmBaseMode: 'auto' }, result.effectiveSettings)) { timing = null; emit(); throw Error('计时设置已变化，请重新测量'); }
+      await check(result.snapshot, ticket);
+      return result;
     }
     async function assertMusicScope() {
-      if (!loaded || (await snapshot()).projectId !== musicScope) throw Error('请先读取当前工程的音乐配置');
+      const current = await snapshot();
+      if (!loaded || current.projectId !== musicScope || current.projectPath !== musicProjectPath) throw Error('请先读取当前工程的音乐配置');
     }
     const api = {
-      state: () => ({ music: clone(music), loaded, busy, timing: timing ? clone(timing.result) : null }),
-      async loadMusic() {
+      state,
+      subscribe(listener) { if (typeof listener !== 'function') throw Error('监听器无效'); listeners.add(listener); return () => listeners.delete(listener); },
+      peekTiming(captured) { return validKnownTiming(captured) ? clone(timing.result) : null; },
+      discardMusic() { if (busy) throw Error('已有媒体操作进行中'); music = clone(baselineMusic); baselineDirty = false; emit(); return clone(music); },
+      async loadMusic(options = {}) {
         await capability('projectFiles'); const captured = await snapshot();
+        const sameProject = loaded && captured.projectId === musicScope && captured.projectPath === musicProjectPath;
+        if (sameProject && !options.reload) return clone(music);
+        if (sameProject && dirty() && !options.discardDirty) throw Error('音乐配置尚未保存，请先保存或放弃修改');
+        if (loaded && !sameProject) musicProjects.set(JSON.stringify([musicScope, musicProjectPath]), { music, baselineMusic, baselineDirty, baseText });
+        const retained = !sameProject && !options.reload && musicProjects.get(projectKey(captured));
+        if (retained) {
+          ({ music, baselineMusic, baselineDirty, baseText } = retained);
+          loaded = true; musicScope = captured.projectId; musicProjectPath = captured.projectPath; emit(); return clone(music);
+        }
         const ticket = serial;
         const text = await bridge.readProjectFile('video-project.json', null);
         const value = text === null ? normalizeMusic() : JSON.parse(text);
@@ -170,7 +303,7 @@
           }
           next = normalizeMusic(next);
         }
-        await check(captured, ticket); music = next; baseText = text; loaded = true; musicScope = captured.projectId;
+        await check(captured, ticket); music = next; baselineMusic = clone(next); baselineDirty = value.schemaVersion === 1; baseText = text; loaded = true; musicScope = captured.projectId; musicProjectPath = captured.projectPath; emit();
         return clone(music);
       },
       async saveMusic(value = music) {
@@ -188,7 +321,14 @@
         await check(captured, ticket);
         const text = JSON.stringify(next, null, 2);
         await bridge.writeProjectFile('video-project.json', text, { expectedText: baseText, create: baseText === null });
-        baseText = text; music = next; return clone(music);
+        // Once CAS succeeds, remember the new baseline even if the user switches project
+        // before the final UI guard. Otherwise returning would retain a stale expectedText.
+        const saved = { music: clone(next), baselineMusic: clone(next), baselineDirty: false, baseText: text };
+        musicProjects.set(projectKey(captured), saved);
+        if (musicScope === captured.projectId && musicProjectPath === captured.projectPath) {
+          ({ music, baselineMusic, baselineDirty, baseText } = saved); emit();
+        }
+        await check(captured, ticket); return clone(next);
       },
       async addTracks(files, { lane = 0, startSeconds = null } = {}) {
         await assertMusicScope(); await capability('audioImport');
@@ -205,14 +345,18 @@
           cursor = availableStart(next.tracks, lane, cursor, duration);
           next.tracks.push({ id: root.crypto.randomUUID(), name: asset.name || asset.label || asset.file, file: asset.file, lane, startSeconds: cursor, durationSeconds: duration, volume: 100 }); cursor += duration;
         }
-        await check(captured, ticket); music = normalizeMusic(next); return clone(music);
+        await check(captured, ticket); return changedMusic(next);
       },
-      async moveTrack(id, lane, start) { await assertMusicScope(); const next = clone(music), track = next.tracks.find(t => t.id === id); if (!track) throw Error('音乐不存在'); integer(lane, 0, next.players - 1, '播放器'); track.startSeconds = availableStart(next.tracks, lane, start, track.durationSeconds, id); track.lane = lane; music = normalizeMusic(next); return clone(music); },
-      async updateTrack(id, patch) { await assertMusicScope(); if (Object.keys(patch).some(k => !['volume', 'enabled'].includes(k))) throw Error('仅可更新音量和启用状态'); const next = clone(music), track = next.tracks.find(t => t.id === id); if (!track) throw Error('音乐不存在'); Object.assign(track, patch); music = normalizeMusic(next); return clone(music); },
-      async removeTrack(id) { await assertMusicScope(); music = normalizeMusic({ ...music, tracks: music.tracks.filter(t => t.id !== id) }); return clone(music); },
-      async addPlayer() { await assertMusicScope(); music = normalizeMusic({ ...music, players: music.players + 1 }); return clone(music); },
-      async removePlayer(lane) { await assertMusicScope(); integer(lane, 0, music.players - 1, '播放器'); music = normalizeMusic({ ...music, players: music.players - 1, tracks: music.tracks.filter(t => t.lane !== lane).map(t => ({ ...t, lane: t.lane > lane ? t.lane - 1 : t.lane })) }); return clone(music); },
-      async measure(options = {}) { const ticket = ++serial; return measureAt(await snapshot(), await settings(), options, ticket); },
+      async moveTrack(id, lane, start) { await assertMusicScope(); const next = clone(music), track = next.tracks.find(t => t.id === id); if (!track) throw Error('音乐不存在'); integer(lane, 0, next.players - 1, '播放器'); track.startSeconds = availableStart(next.tracks, lane, start, track.durationSeconds, id); track.lane = lane; return changedMusic(next); },
+      async updateTrack(id, patch) { await assertMusicScope(); if (Object.keys(patch).some(k => !['volume', 'enabled'].includes(k))) throw Error('仅可更新音量和启用状态'); const next = clone(music), track = next.tracks.find(t => t.id === id); if (!track) throw Error('音乐不存在'); Object.assign(track, patch); return changedMusic(next); },
+      async removeTrack(id) { await assertMusicScope(); return changedMusic({ ...music, tracks: music.tracks.filter(t => t.id !== id) }); },
+      async addPlayer() { await assertMusicScope(); return changedMusic({ ...music, players: music.players + 1 }); },
+      async removePlayer(lane) { await assertMusicScope(); integer(lane, 0, music.players - 1, '播放器'); return changedMusic({ ...music, players: music.players - 1, tracks: music.tracks.filter(t => t.lane !== lane).map(t => ({ ...t, lane: t.lane > lane ? t.lane - 1 : t.lane })) }); },
+      async measure(options = {}) {
+        const ticket = serial; measuring++; emit();
+        try { return await measureAt(await snapshot(), await settings(), options, ticket); }
+        finally { measuring--; if (!measuring) progress = null; emit(); }
+      },
       getTiming: freshTiming,
       readSpeeds: settings,
       async writeSpeeds(values) {
@@ -221,10 +365,10 @@
         const captured = await snapshot(), ticket = serial, original = await settings();
         await check(captured, ticket);
         await bridge.writePreviewSettings(values, { expected: original, projectId: captured.projectId });
-        timing = null; return settings();
+        timing = null; knownDependency = null; cancelTiming(); emit(); return settings();
       },
-      invalidateTiming() { timing = null; serial++; },
-      async cancel() { serial++; if (activeJob) await bridge.service('/api/jobs/' + encodeURIComponent(activeJob) + '/cancel', {}); },
+      invalidateTiming() { timing = null; knownDependency = null; cancelTiming(); emit(); },
+      async cancel() { cancelTiming(); await Promise.all([...running.values()].map(cancelJob)); emit(); },
       async selectSegments(ranges) {
         const measured = await freshTiming(), captured = measured.snapshot, lines = captured.source.split('\n');
         if (!Array.isArray(ranges) || !ranges.length) throw Error('请选择剧情范围');
@@ -240,7 +384,7 @@
           number(end, start, 86400000, '片段结束时间');
           return { ...r, startOffset: offsets[r.startLine - 1], endOffset: Math.min(captured.source.length, offsets[r.endLine]), startSeconds: start / 1000, durationSeconds: (end - start) / 1000 };
         });
-        return { schemaVersion: 1, path: captured.path, revision: captured.revision, source: captured.source, mode: sorted.length === 1 ? 'range' : 'set', sourceHash: measured.sourceHash, ranges: selected };
+        return { schemaVersion: 1, projectId: captured.projectId, path: captured.path, revision: captured.revision, source: captured.source, mode: sorted.length === 1 ? 'range' : 'set', sourceHash: measured.sourceHash, ranges: selected };
       },
       async resolveSubtitle(anchor, bounds) { const measured = anchor?.type === 'timeline' ? await freshTiming() : null; if (anchor?.type === 'music') await assertMusicScope(); return resolveSubtitleAnchor(anchor, measured?.timing, bounds, music); },
       async fitToMusic(options = {}) {
@@ -249,40 +393,84 @@
         if (!keys.length) throw Error('请选择至少一种速度');
         const target = Math.max(0, ...music.tracks.filter(t => t.enabled !== false).map(t => t.startSeconds + t.durationSeconds));
         if (!target) throw Error('没有可匹配的音乐');
-        const captured = await snapshot(), original = await settings(), ticket = ++serial;
-        {
-          const base = await measureAt(captured, original, options, ticket), tolerance = Math.min(2, Math.max(.5, target * .003));
-          const lowLimit = Math.min(...keys.map(k => -100 - original[k])), highLimit = Math.max(...keys.map(k => 100 - original[k]));
-          let best = base, low = lowLimit, high = highLimit;
-          const at = delta => ({ ...original, ...Object.fromEntries(keys.map(k => [k, Math.round(Math.max(-100, Math.min(100, original[k] + delta)) * 1000) / 1000])) });
-          const budget = Math.max(2, 102 - original.textSpeed) + Math.max(16.667, 116.667 - original.autoSpeed);
-          let delta = Math.max(low, Math.min(high, (1 - target / Math.max(base.seconds, .001)) * budget / keys.length)), previous = { delta: 0, result: base };
-          for (let i = 0; i < 2 && Math.abs(best.seconds - target) > tolerance; i++) {
-            const result = await measureAt(captured, at(delta), { ...options, force: true }, ticket);
-            if (Math.abs(result.seconds - target) < Math.abs(best.seconds - target)) best = result;
-            if (delta <= lowLimit + .001 && result.seconds < target - tolerance) throw Error('音乐过长，速度范围内无法匹配');
-            if (delta >= highLimit - .001 && result.seconds > target + tolerance) throw Error('音乐过短，速度范围内无法匹配');
-            if (result.seconds > target) low = Math.max(low, delta); else high = Math.min(high, delta);
-            const slope = (result.seconds - previous.result.seconds) / (delta - previous.delta);
-            const candidate = Number.isFinite(slope) && slope < 0 ? delta + (target - result.seconds) / slope : (low + high) / 2;
-            previous = { delta, result }; delta = Math.max(low, Math.min(high, candidate));
-          }
-          await check(captured, ticket, options.signal);
-          if (JSON.stringify(await settings()) !== JSON.stringify(original)) throw Error('预览速度已被其他操作改变');
-          await bridge.writePreviewSettings(Object.fromEntries(keys.map(k => [k, best.settings[k]])), { expected: original, projectId: captured.projectId });
-          timing = null;
-          return { ...best, targetSeconds: target, errorSeconds: best.seconds - target, matched: Math.abs(best.seconds - target) <= tolerance, refinementsLimit: 2 };
+        const captured = await snapshot(), original = await settings(), ticket = serial;
+        const base = await measureAt(captured, original, options, ticket), tolerance = Math.min(2, Math.max(.5, target * .003));
+        const lowLimit = Math.min(...keys.map(k => -100 - original[k])), highLimit = Math.max(...keys.map(k => 100 - original[k]));
+        const at = delta => ({ ...original, ...Object.fromEntries(keys.map(k => [k, Math.round(Math.max(-100, Math.min(100, original[k] + delta)) * 1000) / 1000])) });
+        const textTime = (n, speed) => (n * (3 + (100 - speed) * 1.5) + 200 + (100 - speed) * 15) / 1000;
+        const autoTime = speed => (250 + (100 - speed) * 15) / 1000;
+        const scenes = base.timing.storyTimeline.scenes, currentScene = scenes.find(scene => scene.scene === captured.sceneRelativePath);
+        const times = base.timing.lineTimes || currentScene?.lineTimes || [], nextTimes = [], dialogues = [];
+        let nextTime = (currentScene?.endSeconds ?? base.seconds) * 1000;
+        for (let i = times.length; i >= 0; i--) { if (Number.isFinite(times[i])) nextTime = times[i]; nextTimes[i] = nextTime; }
+        // Use Craft's pinned upstream parser, including multiline statements and command arguments.
+        if (!root.WebVideoCraftScript?.parse) throw Error('Craft 官方剧本解析器尚未加载');
+        const model = root.WebVideoCraftScript.parse(captured.source, { path: captured.path, capabilities: captured.runtimeCapabilities || {} });
+        for (const row of model.statements) {
+          if (row.command !== 'say' || row.args.next || row.args.notend) continue;
+          const start = times.slice(row.startLine - 1, row.endLine).find(Number.isFinite);
+          if (start === undefined) continue;
+          const end = nextTimes[row.endLine] ?? base.seconds * 1000;
+          const n = [...row.content.replace(/\{[^}]*\}/g, '').replace(/\|/g, '')].length;
+          const old = textTime(n, base.settings.textSpeed), observed = Math.max(0, (end - start) / 1000 - autoTime(base.settings.autoSpeed));
+          dialogues.push({ n, old, floor: observed > old + .15 ? observed : 0 });
         }
+        const waits = base.timing.elasticWindows?.length ?? dialogues.length;
+        const predict = values => Math.max(0, base.seconds + dialogues.reduce((sum, d) => sum + Math.max(d.floor, textTime(d.n, values.textSpeed)) - Math.max(d.floor, d.old), 0) + waits * (autoTime(values.autoSpeed) - autoTime(base.settings.autoSpeed)));
+        function estimate(bias = 0, low = lowLimit, high = highLimit) {
+          for (let i = 0; i < 40; i++) { const middle = (low + high) / 2; if (predict(at(middle)) + bias > target) low = middle; else high = middle; }
+          return (low + high) / 2;
+        }
+        const multiScene = scenes.length > 1;
+        const budget = Math.max(2, 102 - original.textSpeed) + Math.max(16.667, 116.667 - original.autoSpeed);
+        let candidate = multiScene ? Math.max(lowLimit, Math.min(highLimit, (1 - target / Math.max(base.seconds, .001)) * budget / keys.length)) : estimate();
+        let best = base, low = lowLimit, high = highLimit;
+        const samples = [{ delta: 0, result: base }], cache = new Map([[JSON.stringify(original), base]]);
+        for (let i = 0; i < 2 && Math.abs(best.seconds - target) > tolerance; i++) {
+          await check(captured, ticket, options.signal);
+          const values = at(candidate), key = JSON.stringify(values);
+          options.onProgress?.({ message: `精确匹配：第 ${i + 1} / 2 次校准`, progress: i / 2 });
+          let result = cache.get(key);
+          if (!result) { result = await measureAt(captured, values, { ...options, force: true }, ticket, original, false); cache.set(key, result); }
+          if (!samples.some(sample => Math.abs(sample.delta - candidate) < .0001 && sample.result === result)) samples.push({ delta: candidate, result });
+          if (Math.abs(result.seconds - target) < Math.abs(best.seconds - target)) best = result;
+          if (Math.abs(result.seconds - target) <= tolerance) break;
+          if (candidate <= lowLimit + .002 && result.seconds < target - tolerance) throw Error('音乐过长，速度范围内无法匹配');
+          if (candidate >= highLimit - .002 && result.seconds > target + tolerance) throw Error('音乐过短，速度范围内无法匹配');
+          if (result.seconds > target) low = Math.max(low, candidate); else high = Math.min(high, candidate);
+          if (i === 1) break;
+          let next = multiScene ? (low + high) / 2 : estimate(result.seconds - predict(values), low, high);
+          const anchor = samples.filter(sample => Math.abs(sample.delta - candidate) > .0001 && Math.abs(sample.result.seconds - result.seconds) > .01).sort((a, b) => Math.abs(a.delta - candidate) - Math.abs(b.delta - candidate))[0];
+          if (anchor) {
+            const linear = anchor.delta + (target - anchor.result.seconds) * (candidate - anchor.delta) / (result.seconds - anchor.result.seconds);
+            if (Number.isFinite(linear)) next = linear;
+          }
+          next = Math.max(low, Math.min(high, next));
+          if (cache.has(JSON.stringify(at(next)))) next = (low + high) / 2;
+          candidate = next;
+        }
+        await check(captured, ticket, options.signal);
+        if (!equal(await settings(), original)) throw Error('预览速度已被其他操作改变');
+        if (!best.dependencyHash || await dependency() !== best.dependencyHash) throw Error('其他场景或计时依赖已变化');
+        const cfg = await bridge.service('/api/config');
+        if (!equal({ ...cfg.settings, ...best.settings, mode: 'auto', bgmBaseMode: 'auto' }, best.effectiveSettings)) throw Error('计时设置已变化，请重新测量');
+        await check(captured, ticket, options.signal);
+        await bridge.writePreviewSettings(Object.fromEntries(keys.map(k => [k, best.settings[k]])), { expected: original, projectId: captured.projectId });
+        if (!equal(await settings(), best.settings)) { timing = null; emit(); throw Error('预览速度未应用，请重新测量'); }
+        await check(captured, ticket, options.signal);
+        publish(best);
+        return { ...best, targetSeconds: target, errorSeconds: best.seconds - target, matched: Math.abs(best.seconds - target) <= tolerance, refinementsLimit: 2 };
       }
     };
-    for (const name of ['loadMusic', 'saveMusic', 'addTracks', 'moveTrack', 'updateTrack', 'removeTrack', 'addPlayer', 'removePlayer', 'measure', 'fitToMusic', 'writeSpeeds']) {
+    for (const name of ['loadMusic', 'saveMusic', 'addTracks', 'moveTrack', 'updateTrack', 'removeTrack', 'addPlayer', 'removePlayer', 'fitToMusic', 'writeSpeeds']) {
       const operation = api[name];
       api[name] = async (...args) => {
         if (busy) throw Error('已有媒体操作进行中');
-        busy = true;
-        try { return await operation(...args); } finally { busy = false; }
+        busy = true; emit();
+        try { return await operation(...args); } finally { busy = false; emit(); }
       };
     }
+
     return api;
   }
   root.WebVideoCraftMedia = { createController, normalizeMusic, availableStart, resolveSubtitleAnchor };

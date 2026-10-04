@@ -1,7 +1,11 @@
 /* Craft source-preserving adapters around the same upstream parser used by Craft.
  * No disk IO, host discovery, or hidden editor state access in this module. */
-(function (root) {
+(function (root, library) {
   "use strict";
+  // The bundled vendor may be lexical inside the composed payload. Capture its
+  // explicit dependency here; never resolve an unrelated/mutable host global.
+  if (typeof library?.default !== "function" || !Array.isArray(library.SCRIPT_CONFIG))
+    throw Error("Craft 官方剧本解析器尚未加载");
   const POSITIONS = [
     "center",
     "left",
@@ -77,9 +81,6 @@
     return out;
   }
   function parserFor(capabilities = {}) {
-    const library = root.webgalParser;
-    if (!library?.default || !library.SCRIPT_CONFIG)
-      throw Error("Craft 官方剧本解析器尚未加载");
     const config = library.SCRIPT_CONFIG.filter(
       (c) =>
         !(
@@ -419,4 +420,5 @@
     figureKind,
     POSITIONS,
   };
-})(typeof window === "undefined" ? globalThis : window);
+})(typeof window === "undefined" ? globalThis : window,
+   typeof webgalParser === "undefined" ? undefined : webgalParser);

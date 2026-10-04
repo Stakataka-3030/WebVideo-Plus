@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using System.Linq;
 using System.Web.Script.Serialization;
 
 static class LauncherGuiChecks {
@@ -17,9 +18,21 @@ static class LauncherGuiChecks {
   }
   try{
    Control.CheckForIllegalCrossThreadCalls=true;Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);Application.EnableVisualStyles();
-   CheckLogging();CheckVerifier();CheckMutex();RunCase(false,false);RunCase(true,false);RunCase(false,true);
+   CheckArguments();CheckLogging();CheckVerifier();CheckMutex();RunCase(false,false);RunCase(true,false);RunCase(false,true);
    Console.WriteLine("PASS actual launcher: responsive progress, close guard, readiness hides without exiting, no restart on reshow, visible failure and shared early mutex");return 0;
   }catch(Exception error){Console.Error.WriteLine(error);return 1;}
+ }
+ static void CheckArguments(){
+  var plain=CraftStarter.ParseArguments(new[]{"C:\\游戏目录\\项目.craft","--open","a b","", "尾部\\"});
+  Check(plain.Host.SequenceEqual(new[]{"C:\\游戏目录\\项目.craft","--open","a b","", "尾部\\"})&&plain.Coordinator.Count==0,"Ordinary host arguments were dropped");
+  var state=Path.Combine(Path.GetTempPath(),"状态 config.json");
+  var parsed=CraftStarter.ParseArguments(new[]{"--state",state,"--isolated-test","--profile",Path.GetTempPath(),"--","--state","host-value","--profile"});
+  Check(parsed.StatePath==Path.GetFullPath(state)&&parsed.Host.SequenceEqual(new[]{"--state","host-value","--profile"})&&parsed.Coordinator.Count==3,"Internal/host separator contract changed");
+  MustReject(()=>CraftStarter.ParseArguments(new[]{"--state"}),"Missing state accepted");
+  MustReject(()=>CraftStarter.ParseArguments(new[]{"--state",state,"--config",state}),"Duplicate state accepted");
+  int released=0;var log=new CraftStarter.LaunchLog(Path.Combine(Path.GetTempPath(),"inert.log"),(file,text)=>{});
+  CraftStarter.HandleSessionOutput("WEBVIDEO_CRAFT_STATUS {\"stage\":\"update-handoff\",\"text\":\"fixture\"}",log,(text,ready)=>{},()=>released++);
+  Check(released==1,"Official update handoff did not release wrapper wait");Console.WriteLine("PASS launcher arguments and explicit update handoff signal");
  }
  static void CheckLogging(){
   string root=Path.Combine(Path.GetTempPath(),"craft-launch-log-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);

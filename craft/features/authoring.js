@@ -1008,6 +1008,7 @@
         capabilities: snapshot.runtimeCapabilities || snapshot.capabilities,
       }),
       query = String(options.query || "").toLowerCase(),
+      descriptions = root.WebVideoCraftNavigation?.describe(m) || new Map(),
       hints = new Map(
         S()
           .hintPairs(m)
@@ -1041,6 +1042,7 @@
         return {
           ...r,
           title: title + (detail ? " · " + detail : ""),
+          ...descriptions.get(r.id),
           kind: hint ? "hint" : r.command,
           manualFlow: r.command === "choose" && !hint,
           staticSceneTransition:
@@ -1055,9 +1057,66 @@
         (r) =>
           !r.hiddenReservedLabel &&
           (!query ||
-            (r.title + " " + r.speaker).toLowerCase().includes(query)) &&
+            [r.title, r.summary, r.details, r.searchText, r.source, r.speaker].filter(Boolean).join(" ").toLowerCase().includes(query)) &&
           (!options.kind || r.kind === options.kind),
       );
+  }
+  // One eligibility contract drives the embedded picker and its bulk-selection paths.
+  function selectionRows(snapshot, tool, options = {}) {
+    const nav = navigation(snapshot, options), m = S().parse(snapshot.source, { path: snapshot.path, capabilities: snapshot.runtimeCapabilities || snapshot.capabilities });
+    const animations = new Set(["setAnimation", "setComplexAnimation", "setTransform", "setTempAnimation", "setTransition"]);
+    const expression = tool === "expression" ? new Map(stageScan(m).rows.map(item => [item.row.id, item])) : null;
+    const filters = tool === "filterEdit" ? new Map(findFilters(snapshot, options.library || []).filter(item => !options.presetId || item.matches.some(match => String(match.preset.id) === options.presetId)).map(item => [item.row.id, item])) : null;
+    const enabled = new Set(options.commands || [...NEXT_COMMANDS].filter(command => command !== "say"));
+    const entrances = new Map();
+    if (tool === "exits") {
+      const stage = new Map();
+      for (const row of m.statements) {
+        if (!["changeFigure", "changeFigureDiff"].includes(row.command)) continue;
+        const flags = P.filter(p => row.args[p] === true), pos = position(row), explicit = scalar(row.args.id), key = explicit || "fig-" + pos;
+        if (flags.length > 1) { entrances.set(row.id, "角色位置不明确"); continue; }
+        if (row.command === "changeFigureDiff") {
+          const previous = stage.get(key);
+          if (isModel(row.content) || isModel(previous?.file)) { entrances.set(row.id, "模型差分被引擎跳过"); continue; }
+          if (previous && row.content && row.content !== "none") { previous.file = row.content; entrances.set(row.id, "已有图片的差分不是入场"); continue; }
+        }
+        if (!row.content || row.content === "none" || row.args.clear === true) {
+          entrances.set(row.id, "只选择入场语句");
+          if (explicit) stage.delete(key); else for (const [id, value] of stage) if (value.pos === pos) stage.delete(id);
+        } else { entrances.set(row.id, ""); stage.set(key, { file: row.content, pos }); }
+      }
+    }
+    return nav.flatMap(row => {
+      let eligible = true, reason = "";
+      if (tool === "expression") {
+        const item = expression.get(row.id);
+        if (!item) return [];
+        eligible = !!(item.eligible || options.allowNonRecommended && item.manualEligible) && (!item.alreadyPrepared || options.force === true);
+        reason = item.alreadyPrepared && !options.force ? "已有预位表情" : item.reason;
+      } else if (tool === "filter") {
+        if (!["changeBg", "changeFigure"].includes(row.command) && !animations.has(row.command)) return [];
+        const departure = row.command === "changeFigure" && (!row.content || row.content === "none" || row.args.clear === true);
+        const target = targetOf(row), validTarget = !!target && !/[\s;|]/.test(target);
+        eligible = !departure && validTarget && (!animations.has(row.command) || options.allowAnimations === true);
+        reason = departure ? "离场语句不适用" : !validTarget ? "未指定有效目标" : animations.has(row.command) && !options.allowAnimations ? "需允许选择动画" : "";
+      } else if (tool === "next") {
+        if (!NEXT_COMMANDS.has(row.command) && row.command !== "intro") return [];
+        eligible = NEXT_COMMANDS.has(row.command) && enabled.has(row.command) && row.args.next !== true;
+        reason = !NEXT_COMMANDS.has(row.command) ? "不支持 -next" : row.args.next === true ? "已有 -next" : !enabled.has(row.command) ? "未勾选此类型" : "";
+      } else if (tool === "exits") {
+        if (!["changeFigure", "changeFigureDiff"].includes(row.command)) return [];
+        reason = entrances.get(row.id) || "";
+        eligible = entrances.has(row.id) && !reason;
+      } else if (tool === "filterEdit") {
+        if (!filters.has(row.id)) return [];
+        row = { ...row, title: filters.get(row.id).matches.map(match => match.preset.name).join(" / "), summary: row.summary || targetOf(row) };
+      } else if (tool === "hint") {
+        if (row.command !== "choose") return [];
+        eligible = !/(?<!\\)\|/.test(row.content);
+        reason = eligible ? "" : "多选分支不能转换";
+      }
+      return [{ ...row, eligible, reason: eligible ? "" : reason }];
+    });
   }
   root.WebVideoCraftFeatures = {
     model,
@@ -1078,6 +1137,7 @@
     recognizePresets,
     checks,
     navigation,
+    selectionRows,
     NEXT_COMMANDS,
   };
 })(typeof window === "undefined" ? globalThis : window);

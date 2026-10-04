@@ -1,5 +1,74 @@
 // With GPU DOM compositing, draw the stage only at the final composite step.
 // Re-rendering WMDL Live2D models without an intervening update can lose clipping masks.
+// Exclude figure pixels without changing stage state, animation visibility or
+// Live2D's render-driven update. In the pinned runtime _render, not the ticker,
+// evaluates the model; skipping traversal (including alpha=0) changes its pose.
+// Only color writes into the figure's enclosing target are masked. Its private
+// clipping-mask/filter textures must still be produced normally, and stencil /
+// depth work is retained. Each original render/draw runs exactly once.
+globalThis.__exportInstallFigureOutputFilter=(stage,includeFigures=true)=>{
+  const renderer=stage?.currentApp?.renderer;
+  if(!renderer)throw new Error('Figure export requires the WebGAL Pixi renderer');
+  let state=renderer.__webvideoFigureOutput;
+  if(state){state.includeFigures=includeFigures!==false;return state;}
+  if(includeFigures!==false)return null;
+  state={includeFigures:false,stage,roots:new WeakMap(),contexts:new WeakMap(),figureRenders:0,maskedDraws:0};
+  renderer.__webvideoFigureOutput=state;
+  const contextFor=gl=>{
+    if(!gl)throw new Error('Figure export requires WebGL color-write filtering');
+    let context=state.contexts.get(gl);if(context)return context;
+    const binding=gl.DRAW_FRAMEBUFFER_BINDING??gl.FRAMEBUFFER_BINDING;
+    context={targets:[],binding};state.contexts.set(gl,context);
+    const masked=()=>!state.includeFigures&&context.targets.length>0&&context.targets.includes(gl.getParameter(binding));
+    const colorMask=gl.colorMask.bind(gl);
+    const wrap=(owner,name,blit=false)=>{
+      const original=owner?.[name];if(typeof original!=='function')return;
+      owner[name]=function(...args){
+        if(!masked())return original.apply(this,args);
+        state.maskedDraws++;
+        // blitFramebuffer ignores colorMask; preserve any depth/stencil copy.
+        if(blit){args[8]&=~gl.COLOR_BUFFER_BIT;return original.apply(this,args);}
+        const previous=gl.getParameter(gl.COLOR_WRITEMASK);
+        colorMask(false,false,false,false);
+        try{return original.apply(this,args);}finally{colorMask(...previous);}
+      };
+    };
+    for(const name of ['drawArrays','drawElements','drawArraysInstanced','drawElementsInstanced','drawRangeElements','clear','clearBufferfv','clearBufferiv','clearBufferuiv'])wrap(gl,name);
+    wrap(gl,'blitFramebuffer',true);
+    const instanced=gl.getExtension?.('ANGLE_instanced_arrays');
+    for(const name of ['drawArraysInstancedANGLE','drawElementsInstancedANGLE'])wrap(instanced,name);
+    return context;
+  };
+  const nativeRender=renderer.render;
+  renderer.render=function(...args){
+    if(!state.includeFigures){
+      contextFor(this.gl);
+      // figureObjects includes incoming/outgoing duplicates and every source
+      // supported by changeFigure (image/GIF, Live2D, Spine and custom children).
+      // getAllStageObj also contains backgrounds and must not be used here.
+      for(const object of stage.figureObjects||[]){
+        const root=object?.pixiContainer;if(!root||typeof root.render!=='function')continue;
+        const known=state.roots.get(root);if(known&&root.render===known)continue;
+        const original=root.render;
+        const filtered=function(activeRenderer,...rest){
+          if(state.includeFigures||!stage.figureObjects?.some(item=>item?.pixiContainer===this))return original.call(this,activeRenderer,...rest);
+          // Keep batching from mixing an earlier/later non-figure sibling into
+          // this scope. Live2D/plugin calls can change colorMask internally, so
+          // enforce the mask at each GL write, not just at scope entry.
+          activeRenderer.batch.flush();
+          const gl=activeRenderer.gl,context=contextFor(gl),target=gl.getParameter(context.binding);
+          context.targets.push(target);state.figureRenders++;
+          try{return original.call(this,activeRenderer,...rest);}
+          finally{try{activeRenderer.batch.flush();}finally{context.targets.pop();}}
+        };
+        state.roots.set(root,filtered);root.render=filtered;
+      }
+    }
+    return nativeRender.apply(this,args);
+  };
+  return state;
+};
+
 globalThis.__exportTextSettleApplies=(ownerKey,currentKey,force=false)=>!!force||(ownerKey!==null&&ownerKey!==undefined&&String(ownerKey)===String(currentKey));
 globalThis.__exportInstallTextSettleGuard=textSettleEvent=>{
   if(!textSettleEvent||textSettleEvent.__webvideoTextSettleGuarded)return;
@@ -245,7 +314,8 @@ globalThis.__exportResolveCubism4Blink=(elapsedSeconds,options={},key='')=>{
   }
   return {state:1,value:1,cycle:100000,phase:'interval',phaseSeconds:0,userTimeSeconds:0,nextBlinkingTime:interval,intervalSeconds:interval};
 };
-globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50,live2dLifetimes=[]})=>{
+globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50,live2dLifetimes=[],includeFigures=true})=>{
+  __exportInstallFigureOutputFilter(__wgProbe.core.gameplay.pixiStage,includeFigures);
   const pc=__wgProbe.core.gameplay.performController,arrange=pc.arrangeNewPerform;
   const dormantHoldCommands=new Set(['setAnimation','setTempAnimation','setTransform']);
   globalThis.__exportCurrentEvent=null;
@@ -291,16 +361,17 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     const selected=entries.find(x=>x.index===state.index);if(!selected)return null;
     return {...state,kind:'idle',group,priority:1,motion:selected.motion,originMs:idleStart};
   };
-  // Rebuild only saved motion parameters for a completed non-looping motion.
+  // Rebuild saved motion parameters after completion or an explicit stop.
   // Do not restart a static model or replay rendered frames from its birth.
   const restoreCompletedCubism2Motion=async(manager,core,target,lifetime,nowMs)=>{
     if(!lifetime||typeof MotionQueueManager==='undefined'||typeof UtSystem==='undefined')return false;
     const idleDefs=manager.definitions?.[manager.groups?.idle];if(Array.isArray(idleDefs)&&idleDefs.length)return false;
     const epochs=(lifetime.motionEvents||[]).filter(e=>Number(e.atMs)<=nowMs+.01).sort((a,b)=>Number(a.atMs)-Number(b.atMs));
-    if(!epochs.length||!epochs[epochs.length-1].group)return false;
+    if(!epochs.length||!epochs.some(e=>e.group))return false;
     const motions=[];
     for(const epoch of epochs){const entries=await cubism2Entries(manager,String(epoch.group||'')),selected=entries.find(e=>e.index===(Number(epoch.index)||0));if(epoch.group&&!selected)return false;motions.push({epoch,selected});}
-    const last=motions[motions.length-1];if(!last.selected||last.selected.loop||nowMs<Number(last.epoch.atMs)+last.selected.durationMs)return false;
+    const last=motions[motions.length-1],stopped=!last.epoch.group;
+    if(!stopped&&(!last.selected||last.selected.loop||nowMs<Number(last.epoch.atMs)+last.selected.durationMs))return false;
     const seen=new WeakSet();
     const findDefinitions=(obj,depth=0)=>{if(!obj||typeof obj!=='object'||seen.has(obj)||depth>4)return null;seen.add(obj);if(Array.isArray(obj)){if(obj.length&&obj.every(x=>x&&typeof x.getDefaultValue==='function'&&typeof x.getParamID==='function'))return obj;return null;}for(const value of Object.values(obj)){const found=findDefinitions(value,depth+1);if(found)return found;}return null;};
     const definitions=findDefinitions(core.getModelImpl?.());if(!definitions)return false;
@@ -327,7 +398,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
       }
     }finally{UtSystem.getUserTimeMSec=originalTime;queue.stopAllMotions();}
     manager.stopAllMotions?.();for(const index of touched)core.setParamFloat(index,values.get(index));core.saveParam();
-    manager.__webVideoIdleSeekLast={target,startMs:Number(lifetime.startMs),group:String(last.epoch.group),index:last.selected.index,kind:'completed',originMs:Number(last.epoch.atMs),offsetMs:last.selected.durationMs,rebased:true,rebaseMode:'terminal-replay',replayFrames};
+    manager.__webVideoIdleSeekLast={target,startMs:Number(lifetime.startMs),group:String(last.epoch.group),index:last.selected?.index??0,kind:stopped?'stopped':'completed',originMs:Number(last.epoch.atMs),offsetMs:last.selected?.durationMs??0,rebased:true,rebaseMode:'terminal-replay',replayFrames};
     return true;
   };
 
@@ -384,21 +455,28 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     return {...state,kind:'idle',group,priority:1,motion:selected.motion,loopFadeIn:selected.loopFadeIn,originMs:idleStart};
   };
   const restoreCompletedCubism4Motion=async(manager,queue,coreModel,target,lifetime,nowMs)=>{
-    const epoch=globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);if(!epoch||!String(epoch.group??''))return false;
+    const latest=globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);if(!latest)return false;
+    const stopped=!String(latest.group??''),stopFrame=stopped?Math.ceil(Number(latest.atMs)*fps/1000-.000001):null;
+    // A stop retains the last rendered motion pose, not the model defaults.
+    // Sample the frame before the stop command, including for looping motions.
+    const sampleMs=stopped?Math.round((stopFrame-1)*1000/fps):nowMs;
+    const epoch=stopped?globalThis.__exportCubism2MotionEpoch(lifetime,sampleMs):latest;if(!epoch||!String(epoch.group??''))return false;
     const epochTime=Math.round(Math.ceil(Number(epoch.atMs)*fps/1000-.000001)*1000/fps),entries=await cubism4Entries(manager,String(epoch.group)),index=Number.isInteger(Number(epoch.index))?Number(epoch.index):0,selected=entries.find(x=>x.index===index);
-    if(!selected||selected.loop||Math.max(0,Math.round(nowMs)-epochTime)<selected.durationMs)return false;
+    const elapsed=Math.max(0,Math.round(sampleMs)-epochTime);
+    if(!selected||(!stopped&&(selected.loop||elapsed<selected.durationMs)))return false;
     const idle=await cubism4Entries(manager,manager.groups?.idle);if(idle.length)return false;
     manager.stopAllMotions?.();
     const ok=await manager.startMotion(String(epoch.group),index,Number(epoch.priority)||3);
     const motions=Array.from(queue._motions||queue.motions||[]),entry=motions[motions.length-1];
     if(!ok&&entry?._motion!==selected.motion)return false;
-    const state={offsetMs:selected.durationMs,elapsedMs:selected.durationMs,durationMs:selected.durationMs,loop:false,loopFadeIn:selected.loopFadeIn};
+    const terminal=!selected.loop&&elapsed>=selected.durationMs,offsetMs=selected.loop?elapsed%selected.durationMs:Math.min(elapsed,selected.durationMs);
+    const state={offsetMs,elapsedMs:selected.loop?elapsed:offsetMs,durationMs:selected.durationMs,loop:selected.loop,loopFadeIn:selected.loopFadeIn};
     const runtimeNowMs=performance.now();
-    const rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,runtimeNowMs,state,{terminal:true});if(!rebased){manager.stopAllMotions?.();return false;}
+    const rebased=globalThis.__exportRebaseCubism4QueueEntry(entry,runtimeNowMs,state,{terminal});if(!rebased){manager.stopAllMotions?.();return false;}
     queue.doUpdateMotion?.(coreModel,runtimeNowMs/1000);
     manager.stopAllMotions?.();coreModel?.saveParameters?.();
-    manager.__webVideoCubism4SeekLast={target,startMs:Number(lifetime.startMs),group:String(epoch.group),index,kind:'completed',originMs:epochTime,offsetMs:selected.durationMs,rebased:true,rebaseMode:'queue-seconds-terminal'};
-    manager.__webVideoNoMotionOriginMs=epochTime+selected.durationMs;
+    manager.__webVideoCubism4SeekLast={target,startMs:Number(lifetime.startMs),group:String(epoch.group),index,kind:stopped?'stopped':'completed',originMs:epochTime,offsetMs,rebased:true,rebaseMode:'queue-seconds-terminal'};
+    manager.__webVideoNoMotionOriginMs=stopped?Number(latest.atMs):epochTime+selected.durationMs;
     return true;
   };
   const seekCubism4State=async(manager,queue,coreModel,target,lifetime,nowMs)=>{

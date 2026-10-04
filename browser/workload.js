@@ -45,12 +45,17 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    const isFigure=cmd!=='changeBg',isDiff=cmd==='changeFigureDiff',position=['left','right','left13','right13','left14','right14'].find(k=>params[k])||'center',target=isFigure?params.id||'fig-'+position:'bg-main',key=cmd+':'+target;
    const visualName=cmd==='changeFigure'&&params.clear===true?'':name;
    const oldIdentity=isFigure?figureIdentities.get(target):null;
-   const canonicalBounds=value=>String(value??'').split(',').map(x=>x.trim()).join(',');
-   const nextBounds=!isDiff&&params.bounds!==undefined?canonicalBounds(params.bounds):(oldIdentity?.bounds||'');
+   // Match the supported engines' numeric bounds normalization. Diff keeps its
+   // existing identity and ignores overrides; ordinary changeFigure may reload.
+   const rawBounds=isDiff?'':String(params.bounds??''),boundsValues=rawBounds.split(',').map(Number);
+   const parsedBounds=boundsValues.length===4&&boundsValues.every(x=>!Number.isNaN(x))?boundsValues.join(','):null;
+   const defaultBounds='0,0,0,0',oldBounds=oldIdentity?.bounds??defaultBounds;
+   const boundsChanged=!!rawBounds&&oldBounds!==(parsedBounds??defaultBounds);
    const previous=isFigure?oldIdentity?.name:visualSources.get(key);
    const changed=isFigure
-    ?(!oldIdentity||oldIdentity.name!==visualName||oldIdentity.position!==position||(params.bounds!==undefined&&oldIdentity.bounds!==nextBounds))
+    ?(!oldIdentity||oldIdentity.name!==visualName||oldIdentity.position!==position||boundsChanged)
     :previous!==visualName;
+   const nextBounds=isDiff?oldBounds:changed?(parsedBounds??defaultBounds):(parsedBounds??oldBounds);
    const gone=!visualName||visualName==='none',previousPresent=previous!==undefined&&previous!==null&&previous!==''&&previous!=='none';
    const image=value=>/\.(png|jpe?g|webp|gif)([?#].*)?$/i.test(String(value||''));
    const unsupportedDiff=value=>{try{const url=new URL(String(value||''),'http://localhost/'),extension=url.pathname.split('.').pop().toLowerCase();return extension==='json'||extension==='skel'||url.searchParams.get('type')==='spine';}catch{return false;}};
@@ -78,7 +83,12 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
     }
     if(liveRuntime&&!activeLiveLifetimes.has(target))activeLiveLifetimes.set(target,{startMs:Math.round(cursor),endMs:null,target,source:visualName,position,bounds:nextBounds,line:range.start+1,motionEvents:[],expressionEvents:[],blinkEvents:[],focusEvents:[]});
     const currentLifetime=activeLiveLifetimes.get(target);
-    if(currentLifetime&&params.motion!==undefined)currentLifetime.motionEvents.push({atMs:Math.round(cursor),group:String(params.motion??''),index:0,priority:3,line:range.start+1});
+    // Same-identity motion writes are guarded by the engine; a repeated group
+    // keeps its existing epoch, while a fresh model starts its own lifetime.
+    if(currentLifetime&&(changed||params.motion||params.skin||parsedBounds!==null)){
+     const group=String(params.motion??''),previousGroup=currentLifetime.motionEvents.at(-1)?.group??'';
+     if(group!==previousGroup)currentLifetime.motionEvents.push({atMs:Math.round(cursor),group,index:0,priority:3,line:range.start+1});
+    }
     if(currentLifetime&&params.expression!==undefined)currentLifetime.expressionEvents.push({atMs:Math.round(cursor),name:String(params.expression??''),line:range.start+1});
     if(currentLifetime&&params.blink!==undefined)currentLifetime.blinkEvents.push({atMs:Math.round(cursor),line:range.start+1});
     if(currentLifetime&&params.focus!==undefined)currentLifetime.focusEvents.push({atMs:Math.round(cursor),line:range.start+1});

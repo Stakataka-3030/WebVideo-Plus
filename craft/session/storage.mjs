@@ -18,20 +18,29 @@ export class SessionStorage {
         const st=await fs.stat(p);bytes+=st.size;if(bytes>32*1024**3||manifest.length>200000)throw Error('project-snapshot-budget');manifest.push([name,st.size,await fileHash(p)]);
       }else throw Error('source-special-file');}
     };for(let i=0;i<roots.length;i++)await walk(roots[i],String(i));manifest.sort((a,b)=>a[0].localeCompare(b[0]));return sha(JSON.stringify(manifest));}
-  async allocate(project,sources=[],engineVersion,runtimeId){
+  async allocate(project,sources=[],engineVersion,runtimeId,runtimeVersion){
     if(!project||typeof project.id!=='string'||typeof project.path!=='string'||!path.isAbsolute(project.path))throw Error('invalid-project');
     const projectRoot=await fs.realpath(project.path), id=crypto.randomUUID(),site=path.join(this.root,'games',id);
     await fs.mkdir(path.dirname(site),{recursive:true});
     const roots=[...new Set(await Promise.all(sources.map(p=>fs.realpath(p))))];
     if(!roots.includes(projectRoot))throw Error('source-project-missing');
     const sourceHash=await this.fingerprint(roots);
-    this.snapshots.set(id,{id,site,project:{id:project.id,path:projectRoot},engineVersion,runtimeId,roots,sourceHash,ready:false});
+    this.snapshots.set(id,{id,site,project:{id:project.id,path:projectRoot},engineVersion,runtimeVersion:runtimeVersion??(runtimeId==='open-webgal.webgal'?engineVersion:undefined),runtimeId,roots,sourceHash,ready:false});
     return {snapshotId:id,site};
   }
   async ready(id){const s=this.snapshots.get(id);if(!s||s.ready)throw Error('unknown-snapshot');
     const st=await fs.lstat(s.site);if(st.isSymbolicLink()||!st.isDirectory())throw Error('invalid-snapshot');
     const manifest=[];let bytes=0;
-    if(s.runtimeId&&s.engineVersion){const descriptor=await safeChild(s.site,'webgal-engine.json',{missing:true});await fs.writeFile(descriptor,JSON.stringify({id:s.runtimeId,version:s.engineVersion,webgalVersion:s.engineVersion}));}
+    if(s.runtimeId&&s.engineVersion){
+      const descriptor=await safeChild(s.site,'webgal-engine.json',{missing:true});
+      const identity={id:s.runtimeId,version:s.engineVersion,webgalVersion:s.runtimeVersion};
+      if(!identity.webgalVersion)throw Error('绑定引擎缺少基础 WebGAL 版本，请重新打开工程');
+      // Craft may omit this descriptor when materializing its VFS. Reconstruct
+      // only missing metadata; never overwrite contradictory exported identity.
+      const existing=await fs.readFile(descriptor,'utf8').catch(e=>{if(e.code==='ENOENT')return null;throw e;});
+      if(existing!==null){const actual=JSON.parse(existing);if(Object.keys(identity).some(key=>actual[key]!==identity[key]))throw Error('导出快照的引擎描述与当前工程绑定不一致');}
+      else await fs.writeFile(descriptor,JSON.stringify(identity),{flag:'wx'});
+    }
     // WebVideo's export music metadata is independent of Craft's own playable-game
     // materialization policy. Include exactly this owned feature file when present.
     const music=await this.metadata({project:s.project,file:'video-project.json',fallback:null});

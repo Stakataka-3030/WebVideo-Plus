@@ -14,10 +14,15 @@ try {
   [IO.File]::WriteAllText((Join-Path $temp $name),$text,[Text.UTF8Encoding]::new($false))
  }
  $verifier=Join-Path $PSScriptRoot 'installer/ManifestVerifier.cs'
+ $setupPaths=Join-Path $PSScriptRoot 'installer/SetupPaths.cs'
+ $productRouting=Join-Path $PSScriptRoot 'installer/ProductRouting.cs'
+ $setupContracts=Join-Path $PSScriptRoot 'installer/SetupContracts.cs'
  & $compiler /nologo /target:winexe /platform:x64 /optimize+ ('/out:'+$starter) /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll (Join-Path $temp 'CraftStarter.cs') $verifier
  if($LASTEXITCODE -ne 0){throw 'Craft launcher build failed'}
  & $compiler /nologo /target:exe /platform:x64 /optimize+ ('/out:'+(Join-Path $root 'package/CraftInstallerObserver.exe')) /r:System.Management.dll /r:System.Web.Extensions.dll (Join-Path $PSScriptRoot 'update/InstallerObserver.cs')
  if($LASTEXITCODE -ne 0){throw 'Craft installer observer build failed'}
+ & $compiler /nologo /target:exe /platform:x64 /optimize+ ('/out:'+(Join-Path $root 'package/CraftOfficialInstaller.exe')) /r:System.Web.Extensions.dll (Join-Path $PSScriptRoot 'update/OfficialInstallerLauncher.cs')
+ if($LASTEXITCODE -ne 0){throw 'Craft clean official installer launcher build failed'}
  & node (Join-Path $PSScriptRoot 'build-craft-kernel.mjs')
  if($LASTEXITCODE -ne 0){throw 'Craft kernel package failed'}
  & (Join-Path $PSScriptRoot 'verify-craft-package.ps1')
@@ -25,8 +30,10 @@ try {
  $zip=$folder+'.zip'
  Compress-Archive -LiteralPath $folder -DestinationPath $zip -CompressionLevel Optimal -Force
  $installer=$folder+'.exe'
- & $compiler /nologo /target:winexe /platform:x64 /optimize+ ('/out:'+$installer) ('/resource:'+$zip+',payload.zip') /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll (Join-Path $temp 'CraftSetup.cs') $verifier
+ & $compiler /nologo /target:winexe /platform:x64 /optimize+ ('/out:'+$installer) ('/resource:'+$zip+',payload.zip') /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll (Join-Path $temp 'CraftSetup.cs') $verifier $setupPaths $setupContracts $productRouting
  if($LASTEXITCODE -ne 0){throw 'Craft setup build failed'}
+ & node (Join-Path $PSScriptRoot 'update/build-release-descriptor.mjs') $installer
+ if($LASTEXITCODE -ne 0){throw 'Craft release integrity descriptor failed'}
  Get-Item -LiteralPath $zip,$installer | Select-Object FullName,Length
  Get-FileHash -LiteralPath $zip,$installer -Algorithm SHA256 | Select-Object Path,Hash
 }finally{Remove-Item -LiteralPath $temp -Recurse -Force}

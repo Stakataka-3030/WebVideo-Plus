@@ -24,6 +24,8 @@
       selected = new Set(),
       pending = null,
       busy = false,
+      hintPreviewActive = false,
+      officialUpdateEnabled = false,
       closed = false,
       characters = null,
       filterLibrary = [],
@@ -31,6 +33,8 @@
       review = null,
       backup = null,
       checksTicket = 0,
+      snapshotTicket = 0,
+      openTicket = 0,
       stopBackupAutomatic = null;
     const dialog = element("aside", null, {
         className: "wvc-dock", hidden: true,
@@ -52,11 +56,13 @@
     document.body.append(dialog);
     const panels = new Map(), cards = new Map(), controls = [];
     let dockHost = null, mountedContent = null, mountedToolbar = null, mountedHeader = null,
-      mountedCommands = null, activeTool = null, pickerReturn = null,
-      menu = null, menuTrigger = null, lastFocus = null, selectionMode = "native",
+      mountedCommands = null, activeTool = null,
+      menu = null, menuTrigger = null, lastFocus = null, lastFocusEntry = null, selectionMode = "native",
       observer = null, resizeObserver = null, remountTimer = null, cancelHint = null,
       mountNotice = null, mountReason = "";
     const nativeNodes = [];
+    const toolSelections = new Map();
+    let commandPanel = null;
     const toolDefinitions = {
       id: { title: "一键 ID 补全", panel: "批量编辑", cards: ["全场一键 ID 补全"] },
       expression: { title: "预位表情调整", panel: "批量编辑", cards: ["预位表情"], selection: true },
@@ -66,17 +72,15 @@
       filterEdit: { title: "修改已有滤镜", panel: "滤镜与预设", cards: ["替换 / 删除已有命名滤镜"], selection: true },
       presets: { title: "Video+ 预制效果", panel: "滤镜与预设", cards: ["参数化演出预设"], selection: true },
       hint: { title: "单行提示", panel: "单行提示", selection: true },
-      selection: { title: "选择剧情范围", panel: "剧情" },
       checks: { title: "制作检查与复核", panel: "检查与备份", cards: [], selection: true },
       backups: { title: "备份与恢复", panel: "检查与备份", cards: ["场景 / 全故事 / 配乐备份"] },
       music: { title: "成片配乐", panel: "配乐与时间", media: "music" },
-      timing: { title: "实际时间与速度", panel: "配乐与时间", media: "time", selection: true },
       export: { title: "导出视频", panel: "配乐与时间", media: "export" },
       anogo: { title: "导入 Anogo 故事", panel: "导入与 AI", cards: ["Anogo 结构化导入"] },
       novel: { title: "小说转剧本骨架", panel: "导入与 AI", cards: ["可选 AI 小说转剧本"] },
       characterMap: { title: "角色 ID 映射", panel: "角色映射" },
       ai: { title: "AI 提供商配置", panel: "AI 配置" },
-      updates: { title: "Craft 更新", panel: "设置与更新" },
+      updates: { title: "WebVideo+ 更新", panel: "设置与更新" },
     };
     function icon(name) {
       const paths = { batch: "M4 5h16M4 12h16M4 19h16M8 3v4M16 10v4M10 17v4", film: "M3 4h18v16H3zM7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4", check: "m4 12 4 4L20 4M20 12v8H4V4h9", settings: "M4 7h16M4 17h16M8 4v6M16 14v6", sparkle: "m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z", hint: "M4 5h16v12H8l-4 4V5M8 9h8M8 13h5", down: "m6 9 6 6 6-6" };
@@ -98,7 +102,7 @@
         menu.append(element("div", label, { className: "wvc-menu-label" }));
         for (const id of ids) {
           const item = element("button", toolDefinitions[id].title, { type: "button", role: "menuitem", "data-wvc-tool": id });
-          item.addEventListener("click", () => { closeMenu(); open(id); });
+          item.addEventListener("click", () => { closeMenu(); return open(id, trigger); });
           menu.append(item);
         }
       }
@@ -114,7 +118,7 @@
       const node = element("button", null, { type: "button", className: "wvc-native-button", title: label, "data-wvc-entry": id });
       node.append(icon(glyph), element("span", label));
       if (groups) { node.append(icon("down")); node.setAttribute("aria-haspopup", "menu"); node.setAttribute("aria-expanded", "false"); }
-      node.addEventListener("click", () => groups ? showMenu(node, groups) : open(id));
+      node.addEventListener("click", () => groups ? showMenu(node, groups) : open(id, node));
       nativeNodes.push(node);
       return node;
     }
@@ -143,7 +147,11 @@
       const commands = document.querySelector('[data-tour="command-panel"]');
       // These relationships are checked against official beta.2 EditorPanel/EditorToolbar.
       if (!toolbar || !host || !editorArea || !nativeContent || !nativeHeader) {
-        if (dockHost) { detachNative(); dialog.hidden = true; pending = null; preview.hidden = true; document.body.append(dialog); }
+        if (dockHost) {
+          ++openTicket; ++snapshotTicket; ++checksTicket;
+          mediaPanel?.show?.(null);
+          detachNative(); dialog.hidden = true; pending = null; preview.hidden = true; document.body.append(dialog);
+        }
         mountReason = editorArea ? "Craft 编辑区结构不匹配，WebVideo+ 工具未挂载" : "请先打开 Craft 场景";
         if (editorArea && nativeHeader?.lastElementChild && !mountNotice?.isConnected) {
           mountNotice = element("span", "WebVideo+ 界面未兼容", { className: "wvc-mount-notice", role: "status", title: mountReason });
@@ -152,7 +160,7 @@
         return false;
       }
       mountReason = ""; mountNotice?.remove(); mountNotice = null;
-      if (dockHost === host && mountedContent === nativeContent && mountedToolbar === toolbar && mountedHeader === nativeHeader && mountedCommands === commands && nativeNodes.every(n => n.isConnected)) return true;
+      if (dockHost === host && mountedContent === nativeContent && mountedToolbar === toolbar && mountedHeader === nativeHeader && mountedCommands === commands && nativeNodes.every(n => n.isConnected)) { commandPanel?.remount?.(); return true; }
       detachNative();
       dockHost = host; mountedContent = nativeContent; mountedToolbar = toolbar; mountedHeader = nativeHeader; mountedCommands = commands;
       nativeContent.classList.toggle("wvc-native-editor-layout", true);
@@ -164,30 +172,32 @@
       resize();
       if (root.ResizeObserver) { resizeObserver = new root.ResizeObserver(resize); resizeObserver.observe(host); }
       toolbar.append(nativeButton("批量工具", "batch", "batchMenu", [["批量操作", ["id", "expression", "filter", "filterEdit", "next", "exits"]]]));
-      toolbar.append(nativeButton("制作", "check", "productionMenu", [["剧情与复核", ["selection", "checks", "timing"]], ["语句插入", ["presets", "hint"]], ["导入", ["anogo", "novel"]], ["项目", ["backups"]]]));
-      const headerActions = nativeHeader.lastElementChild;
-      headerActions.append(nativeButton("成片", "film", "mediaMenu", [["配乐与导出", ["music", "timing", "export"]]]));
-      headerActions.append(nativeButton("Video+ 设置", "settings", "settingsMenu", [["WebVideo+", ["characterMap", "ai", "presets", "updates"]]]));
+      toolbar.append(nativeButton("制作", "check", "productionMenu", [["剧情与复核", ["checks"]], ["语句插入", ["presets", "hint"]], ["导入", ["anogo", "novel"]], ["项目", ["backups"]]]));
+      toolbar.append(nativeButton("成片", "film", "mediaMenu", [["配乐与导出", ["music", "export"]]]));
+      toolbar.append(nativeButton("Video+ 设置", "settings", "settingsMenu", [["WebVideo+", ["characterMap", "ai", "presets", "updates"]]]));
       if (commands?.firstElementChild) {
         const actions = element("div", null, { className: "wvc-command-entries" });
-        actions.append(nativeButton("Video+ 预设", "sparkle", "presets"), nativeButton("单行提示", "hint", "hint"));
+        actions.append(nativeButton("Video+ 预设", "sparkle", "presets"));
         commands.firstElementChild.append(actions); nativeNodes.push(actions);
       }
       host.classList.toggle("wvc-dock-open", !dialog.hidden);
+      commandPanel?.remount?.();
       return true;
     }
     function notify(message, error = false) {
+      if (closed) return;
       status.textContent = String(message || "");
       status.classList.toggle("wvc-error", error);
     }
     function capabilities() {
       try {
-        return bridge.capabilities() || {};
+        return { ...(bridge.capabilities() || {}), coordinatedUpdate: officialUpdateEnabled };
       } catch (e) {
-        return { reason: e.message };
+        return { reason: e.message, coordinatedUpdate: officialUpdateEnabled };
       }
     }
     function buttons() {
+      if (closed) return;
       const caps = capabilities();
       for (let i = controls.length - 1; i >= 0; i--)
         if (!controls[i].isConnected) controls.splice(i, 1);
@@ -202,13 +212,15 @@
         else if (required) b.title = "";
       }
       applyButton.disabled = busy || !pending || caps.commit !== true;
-      if (cancelHint) cancelHint.hidden = !(busy && caps.previewHint === true);
+      if (cancelHint) cancelHint.hidden = !(hintPreviewActive && caps.previewHint === true);
       for (const node of nativeNodes) if (node.tagName === "BUTTON") node.disabled = busy;
+      for (const node of dialog.querySelectorAll('[data-wvc-selection-pick]')) node.disabled = busy || node.dataset.wvcSelectionPick !== "true";
       close.disabled = busy;
     }
     async function run(action) {
       if (busy || closed) return;
       busy = true;
+      ++snapshotTicket;
       closeMenu();
       buttons();
       try {
@@ -218,7 +230,21 @@
       } finally {
         busy = false;
         buttons();
-        void syncSnapshot();
+        if (!closed) void syncSnapshot();
+      }
+    }
+    async function previewTimedHint(row) {
+      hintPreviewActive = true;
+      buttons();
+      try {
+        return await bridge.previewHint({
+          line: row.startLine,
+          duration: Number(row.args.wvpHint || 1800),
+          key: String(row.content).split(":").at(-1),
+        });
+      } finally {
+        hintPreviewActive = false;
+        buttons();
       }
     }
     function button(text, action, cap) {
@@ -286,6 +312,7 @@
       );
     }
     function setPlan(plan) {
+      if (closed || dialog.hidden) return;
       pending = plan;
       before.el.value = plan.before;
       after.el.value = plan.after;
@@ -301,18 +328,19 @@
       return (
         snapshot &&
         current &&
-        snapshot.path === current.path &&
-        snapshot.source === current.source &&
-        snapshot.revision === current.revision &&
-        snapshot.projectId === current.projectId
+        ["path", "source", "revision", "projectId", "projectPath", "engineId", "runtimeBindingSignature"]
+          .every(key => snapshot[key] === current[key])
       );
     }
     async function refresh() {
+      const ticket = ++snapshotTicket;
       const next = await bridge.snapshot();
+      if (closed || dialog.hidden || ticket !== snapshotTicket) return null;
       const changed = !freshSnapshot(next);
       current = next;
       scope.textContent = next.sceneRelativePath || next.path;
       if (changed) {
+        toolSelections.clear();
         selectionMode = "native";
         selected = new Set();
         rangeAnchor = null;
@@ -346,10 +374,8 @@
     close.addEventListener("click", closePanel);
     header.append(close);
     const scopeSummary = element("span", "", { className: "wvc-selection-summary" });
-    const selectMore = element("button", "选择范围…", { type: "button" });
-    selectMore.addEventListener("click", () => { pickerReturn = activeTool; showTool("selection"); });
-    contextBar.append(scopeSummary, refreshButton, selectMore);
-    for (const name of ["剧情", "批量编辑", "单行提示", "滤镜与预设", "配乐与时间", "导入与 AI", "检查与备份", "设置与更新", "角色映射", "AI 配置"]) {
+    contextBar.append(scopeSummary, refreshButton);
+    for (const name of ["批量编辑", "单行提示", "滤镜与预设", "配乐与时间", "导入与 AI", "检查与备份", "设置与更新", "角色映射", "AI 配置"]) {
       const panel = element("section", null, { className: "wvc-panel", hidden: true });
       panels.set(name, panel); content.append(panel);
     }
@@ -414,7 +440,7 @@
       }),
     );
     // Shared explicit source selection and semantic navigation.
-    const story = panels.get("剧情"),
+    const story = element("section", null, { className: "wvc-inline-selection", "aria-label": "本功能语句范围" }),
       query = input("搜索文本或说话人"),
       kind = select("类型", [
         ["", "全部"],
@@ -434,18 +460,21 @@
       kind,
       button("全选当前筛选", async () => {
         selectionMode = "custom";
-        for (const r of navigation()) selected.add(r.id);
+        for (const r of navigation()) if (r.eligible) selected.add(r.id);
+        invalidatePlan();
         renderRows();
       }),
       button("反选", async () => {
         selectionMode = "custom";
-        for (const r of navigation())
+        for (const r of navigation().filter(row => row.eligible))
           selected.has(r.id) ? selected.delete(r.id) : selected.add(r.id);
+        invalidatePlan();
         renderRows();
       }),
       button("清空", async () => {
         selectionMode = "custom";
         selected.clear();
+        invalidatePlan();
         renderRows();
       }),
     );
@@ -459,10 +488,10 @@
           b = Number(to.el.value);
         if (!Number.isInteger(a) || !Number.isInteger(b) || a < 1 || b < a)
           throw Error("行范围无效");
-        for (const r of S.parse(requireCurrent().source, {
-          capabilities: current.runtimeCapabilities,
-        }).rows)
-          if (r.startLine <= b && r.endLine >= a) selected.add(r.id);
+        requireCurrent();
+        for (const r of navigation())
+          if (r.eligible && r.startLine <= b && r.endLine >= a) selected.add(r.id);
+        invalidatePlan();
         renderRows();
       }),
       selectionInfo,
@@ -471,15 +500,21 @@
       rowsBox,
       element(
         "p",
-        "仅在需要多选或连续范围时使用；日常编辑、导航和撤销继续在 Craft 中操作。",
+        "仅可选择本功能适用的语句。Shift 选择连续范围；各功能分别保留选择，剧本变化后重新选择。",
         { className: "wvc-native-note" },
       ),
     );
     function navigation() {
       if (!current) return [];
-      const nav = F.navigation(current, {
+      const nav = F.selectionRows(current, activeTool, {
         query: query.el.value,
         kind: kind.el.value,
+        allowAnimations: animations.el.checked,
+        allowNonRecommended: nonRecommended.el.checked,
+        force: force.el.checked,
+        commands: [...nextChoices].filter(([, control]) => control.checked).map(([command]) => command),
+        library: filterLibrary,
+        presetId: existingFilter.el.value || undefined,
       });
       if (presetLibrary.length) {
         try {
@@ -496,18 +531,29 @@
     function renderRows() {
       rowsBox.replaceChildren();
       const rows = navigation();
+      const allowed = new Set(F.selectionRows ? (current ? F.selectionRows(current, activeTool, {
+        allowAnimations: animations.el.checked, allowNonRecommended: nonRecommended.el.checked, force: force.el.checked,
+        commands: [...nextChoices].filter(([, control]) => control.checked).map(([command]) => command),
+        library: filterLibrary, presetId: existingFilter.el.value || undefined,
+      }) : []).filter(row => row.eligible).map(row => row.id) : []);
+      selected = new Set([...selected].filter(id => allowed.has(id)));
+      if (!rows.length) rowsBox.append(element("p", "当前筛选中没有本功能适用的语句", { className: "wvc-help" }));
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i],
           line = element("div", null, {
             className: "wvc-row",
             "aria-selected": selected.has(row.id),
+            "aria-disabled": !row.eligible,
           }),
           pick = element("input", null, {
             type: "checkbox",
             checked: selected.has(row.id),
+            disabled: !row.eligible || busy,
+            "data-wvc-selection-pick": row.eligible,
             "aria-label": "选择第 " + row.startLine + " 行",
           });
         pick.addEventListener("click", (event) => {
+          if (!row.eligible || busy) return;
           selectionMode = "custom";
           if (event.shiftKey && rangeAnchor !== null) {
             for (
@@ -515,10 +561,11 @@
               j <= Math.max(rangeAnchor, i);
               j++
             )
-              selected.add(rows[j].id);
+              if (rows[j].eligible) selected.add(rows[j].id);
           } else if (pick.checked) selected.add(row.id);
           else selected.delete(row.id);
           rangeAnchor = i;
+          invalidatePlan();
           renderRows();
         });
         line.append(
@@ -529,8 +576,14 @@
               (row.endLine !== row.startLine ? "–" + row.endLine : ""),
             { className: "wvc-line" },
           ),
-          element("span", row.title, { className: "wvc-row-text" }),
+          (() => {
+            const copy = element("div", null, { className: "wvc-row-copy" });
+            copy.append(element("span", row.title, { className: "wvc-row-text", title: row.title }));
+            if (row.summary) copy.append(element("span", row.summary, { className: "wvc-row-summary", title: row.summary }));
+            return copy;
+          })(),
         );
+        if (row.reason) line.append(element("span", row.reason, { className: "wvc-selection-reason" }));
         if (row.args.next === true)
           line.append(
             element("span", "连续组 " + row.groupId, { className: "wvc-tag" }),
@@ -539,19 +592,11 @@
           line.append(element("span", "选择分支", { className: "wvc-tag" }));
         if (row.staticSceneTransition)
           line.append(element("span", "场景跳转", { className: "wvc-tag" }));
-        line.append(
-          button("定位", () => bridge.navigate(row.startLine), "navigate"),
-        );
         if (row.kind === "hint")
           line.append(
             button(
               "计时预览",
-              () =>
-                bridge.previewHint({
-                  line: row.startLine,
-                  duration: Number(row.args.wvpHint || 1800),
-                  key: String(row.content).split(":").at(-1),
-                }),
+              () => previewTimedHint(row),
               "previewHint",
             ),
           );
@@ -559,12 +604,18 @@
           line.append(
             button("预览", () => bridge.preview(row.startLine), "preview"),
           );
-        rowsBox.append(line);
+        const details = element("details", null, { className: "wvc-row-details" });
+        details.append(element("summary", "详情"));
+        if (row.details) details.append(element("p", row.details));
+        details.append(element("pre", row.source));
+        line.append(details);
+      rowsBox.append(line);
       }
       selectionInfo.textContent = "已选择 " + selected.size + " 条";
       scopeSummary.textContent = selectionMode === "native" ? "当前 Craft 行 · " + (current?.line || getSelection()[0]?.startLine || 1) : "自选范围 · " + selected.size + " 条";
       buttons();
     }
+    function invalidatePlan() { pending = null; preview.hidden = true; applyButton.disabled = true; }
     query.el.addEventListener("input", () => {
       rangeAnchor = null;
       renderRows();
@@ -812,98 +863,67 @@
     // Named filters and parameterized effects, not a duplicate raw-snippet editor.
     const effects = panels.get("滤镜与预设"),
       filter = card(effects, "批量滤镜"),
-      bg = area("背景滤镜 JSON / WebGAL 片段"),
-      figure = area("立绘滤镜 JSON / WebGAL 片段"),
+      bg = area("背景滤镜代码"),
+      figure = area("立绘滤镜代码"),
       animations = check("允许选择动画语句"),
-      filterName = input("保存的滤镜名称");
+      bgChoice = select("背景滤镜", [["none", "不添加"], ["manual", "手动输入"]]),
+      figureChoice = select("立绘滤镜", [["none", "不添加"], ["manual", "手动输入"]]),
+      bgName = input("背景滤镜名称"),
+      figureName = input("立绘滤镜名称");
     const grid = element("div", null, { className: "wvc-grid" });
-    grid.append(bg.box, figure.box);
     filter.append(grid);
-    actions(
-      filter,
-      animations,
-      button(
-        "预览添加",
-        async () => {
-          const parse = (el) =>
-            el.value.trim()
-              ? F.extractEffects(el.value, current.runtimeCapabilities)
-              : [];
-          setPlan(
-            F.batchFilter(requireCurrent(), {
-              selected: chosen(),
-              allowAnimations: animations.el.checked,
-              background: parse(bg.el),
-              figure: parse(figure.el),
-            }),
-          );
-        },
-        "commit",
-      ),
-    );
-    const filters = select("共享滤镜库", [["", "请选择"]]);
+    function filterValue(choice, editor) {
+      if (choice.el.value === "none") return [];
+      if (choice.el.value === "manual") return F.extractEffects(editor.el.value, requireCurrent().runtimeCapabilities);
+      const value = filterLibrary[Number(choice.el.value)];
+      if (!value) throw Error("请选择有效滤镜");
+      return value.effects;
+    }
+    function filterPicker(label, choice, editor, name, appliesTo) {
+      const section = element("section", null, { className: "wvc-filter-picker" });
+      const manual = element("div", null, { className: "wvc-filter-manual", hidden: true });
+      const save = button("保存手动" + label, async () => {
+        if (choice.el.value !== "manual" || !name.el.value.trim()) throw Error("请填写手动滤镜名称与代码");
+        await bridge.service("/api/filters/save", { name: name.el.value.trim(), effects: filterValue(choice, editor), appliesTo });
+        await loadFilters();
+      }, "service");
+      manual.append(name.box, editor.box, save); section.append(choice.box, manual); grid.append(section);
+      const update = () => { manual.hidden = name.box.hidden = editor.box.hidden = save.hidden = choice.el.value !== "manual"; invalidatePlan(); buttons(); };
+      choice.el.addEventListener("change", update); editor.el.addEventListener("input", invalidatePlan);
+      name.box.hidden = editor.box.hidden = save.hidden = true;
+    }
+    filterPicker("背景滤镜", bgChoice, bg, bgName, "background");
+    filterPicker("立绘滤镜", figureChoice, figure, figureName, "figure");
+    actions(filter, animations, button("预览添加", async () => {
+      setPlan(F.batchFilter(requireCurrent(), {
+        selected: chosen(), allowAnimations: animations.el.checked,
+        background: filterValue(bgChoice, bg), figure: filterValue(figureChoice, figure),
+      }));
+    }, "commit"));
     async function loadFilters() {
       const value = await bridge.service("/api/filters");
-      filterLibrary = [...(value.presets || []), ...(value.saved || [])];
-      filters.el.replaceChildren(element("option", "请选择", { value: "" }));
-      existingFilter.el.replaceChildren(
-        element("option", "最大匹配（默认）", { value: "" }),
-      );
+      if (closed) return;
+      root.WebVideoFilterLibrary?.accept(value);
+      filterLibrary = [...(value.presets || []), ...(value.saved || [])].map((entry, index) => ({ ...entry, id: String(entry.id ?? index) }));
+      for (const [picker, type] of [[bgChoice, "background"], [figureChoice, "figure"]]) {
+        const previous = picker.el.value;
+        picker.el.replaceChildren(element("option", "不添加", { value: "none" }), element("option", "手动输入", { value: "manual" }));
+        filterLibrary.forEach((p, i) => {
+          if (!p.appliesTo || p.appliesTo === "both" || p.appliesTo === type) picker.el.append(element("option", p.name, { value: String(i) }));
+        });
+        picker.el.value = [...picker.el.children].some(option => option.value === previous) ? previous : "none";
+      }
+      const previousExisting = existingFilter.el.value, previousReplacement = replacementFilter.el.value;
+      existingFilter.el.replaceChildren(element("option", "最大匹配（默认）", { value: "" }));
       replacementFilter.el.replaceChildren(element("option", "请选择替换滤镜", { value: "" }));
       filterLibrary.forEach((p, i) => {
         replacementFilter.el.append(element("option", p.name, { value: String(i) }));
-        filters.el.append(element("option", p.name, { value: String(i) }));
-        existingFilter.el.append(
-          element("option", p.name, { value: p.id || String(i) }),
-        );
+        existingFilter.el.append(element("option", p.name, { value: p.id || String(i) }));
       });
+      existingFilter.el.value = [...existingFilter.el.children].some(option => option.value === previousExisting) ? previousExisting : "";
+      replacementFilter.el.value = [...replacementFilter.el.children].some(option => option.value === previousReplacement) ? previousReplacement : "";
+      renderRows();
     }
-    actions(
-      filter,
-      filters,
-      button("读取库", loadFilters, "service"),
-      button("填入背景", async () => {
-        const p = filterLibrary[Number(filters.el.value)];
-        if (!p || filters.el.value === "") throw Error("请选择滤镜");
-        bg.el.value = JSON.stringify(p.effects, null, 2);
-      }),
-      button("填入立绘", async () => {
-        const p = filterLibrary[Number(filters.el.value)];
-        if (!p || filters.el.value === "") throw Error("请选择滤镜");
-        figure.el.value = JSON.stringify(p.effects, null, 2);
-      }),
-      filterName,
-      button(
-        "保存手动立绘滤镜",
-        async () => {
-          if (!filterName.el.value.trim()) throw Error("请填写名称");
-          await bridge.service("/api/filters/save", {
-            name: filterName.el.value.trim(),
-            effects: F.extractEffects(
-              figure.el.value,
-              requireCurrent().runtimeCapabilities,
-            ),
-          });
-          await loadFilters();
-        },
-        "service",
-      ),
-      button(
-        "保存手动背景滤镜",
-        async () => {
-          if (!filterName.el.value.trim()) throw Error("请填写名称");
-          await bridge.service("/api/filters/save", {
-            name: filterName.el.value.trim(),
-            effects: F.extractEffects(
-              bg.el.value,
-              requireCurrent().runtimeCapabilities,
-            ),
-          });
-          await loadFilters();
-        },
-        "service",
-      ),
-    );
     const existingFilter = select("已有滤镜", [["", "最大匹配（默认）"]]);
     const replacementFilter = select("替换为", [["", "请选择替换滤镜"]]);
     const edit = card(effects, "替换 / 删除已有命名滤镜"),
@@ -916,7 +936,6 @@
       edit,
       existingFilter,
       replacementFilter,
-      button("读取命名滤镜库", loadFilters, "service"),
       mode,
       whole,
       button(
@@ -941,13 +960,14 @@
       ),
     );
     const preset = card(effects, "参数化演出预设"),
-      presetSelect = select("分类 / 搜索结果", [["", "请选择"]]),
+      presetSelect = select("分类 / 搜索结果", [["", "正在读取预设…"], ["manual", "手动输入"]]),
       presetSearch = input("搜索预设"),
       code = area("预设代码"),
       presetName = input("预设名称"),
       target = input("单目标绑定角色名 / ID（多目标留空）");
     async function loadPresets() {
       const value = await bridge.service("/api/preset-effects");
+      if (closed) return;
       presetLibrary = [
         ...(value.presets || []),
         ...(value.saved || []).map((p) => ({ ...p, category: "手动添加" })),
@@ -955,35 +975,43 @@
       renderPresets();
       renderRows();
     }
+    let manualPreset = { code: "", name: "" }, chosenPreset = "";
+    function choosePreset() {
+      const value = presetSelect.el.value;
+      if (chosenPreset === "manual") manualPreset = { code: code.el.value, name: presetName.el.value };
+      chosenPreset = value;
+      const manual = value === "manual", entry = manual ? manualPreset : presetLibrary[Number(value)];
+      code.el.value = entry?.code || ""; presetName.el.value = entry?.name || "";
+      code.box.hidden = presetName.box.hidden = presetSave.hidden = !manual;
+      invalidatePlan(); buttons();
+    }
     function renderPresets() {
-      presetSelect.el.replaceChildren(
-        element("option", "请选择", { value: "" }),
-      );
+      const previous = presetSelect.el.value, choices = [];
+      presetSelect.el.replaceChildren();
       presetLibrary.forEach((p, i) => {
         if (
           (p.name + " " + p.category)
             .toLowerCase()
             .includes(presetSearch.el.value.toLowerCase())
-        )
+        ) {
+          choices.push(String(i));
           presetSelect.el.append(
             element("option", (p.category || "预设") + " / " + p.name, {
               value: String(i),
             }),
           );
+        }
       });
+      presetSelect.el.append(element("option", "手动输入", { value: "manual" }));
+      presetSelect.el.value = previous === "manual" || choices.includes(previous) ? previous : choices[0] || "manual";
+      choosePreset();
     }
     presetSearch.el.addEventListener("input", renderPresets);
+    presetSelect.el.addEventListener("change", choosePreset);
     actions(
       preset,
       presetSearch,
       presetSelect,
-      button("读取预设库", loadPresets, "service"),
-      button("载入所选", async () => {
-        const p = presetLibrary[Number(presetSelect.el.value)];
-        if (!p || presetSelect.el.value === "") throw Error("请选择预设");
-        code.el.value = p.code;
-        presetName.el.value = p.name;
-      }),
     );
     preset.append(code.box);
     actions(
@@ -1009,8 +1037,9 @@
         },
         "commit",
       ),
-      button(
-        "保存参数化预设",
+    );
+    const presetSave = button(
+        "保存手动预设",
         async () => {
           F.presets(requireCurrent(), { code: code.el.value });
           if (!presetName.el.value.trim()) throw Error("请填写预设名称");
@@ -1021,8 +1050,10 @@
           await loadPresets();
         },
         "service",
-      ),
-    );
+      );
+    actions(preset, presetSave);
+    code.box.hidden = presetName.box.hidden = presetSave.hidden = true;
+    for (const control of [code.el, presetName.el, target.el]) control.addEventListener("input", invalidatePlan);
     preset.append(
       element(
         "p",
@@ -1051,6 +1082,9 @@
             element("p", "媒体界面模块未加载", { className: "wvc-error" }),
           );
     }
+    const nativeExport = root.WebVideoCraftExportDialog?.mount({ bridge, mediaPanel });
+    const actualTime = root.WebVideoCraftActualTime?.mount({ bridge, controller: media });
+    commandPanel = root.WebVideoCraftCommandPanel?.mount({ openHint: () => open("hint") });
     // Import compilation and explicit external generation consent.
     const importsPanel = panels.get("导入与 AI");
     let imports = null;
@@ -1244,7 +1278,7 @@
           problem = e.message;
         }
       }
-      if (ticket !== checksTicket || !freshSnapshot(captured)) return;
+      if (closed || dialog.hidden || ticket !== checksTicket || !freshSnapshot(captured)) return;
       checkList.replaceChildren();
       for (const issue of F.checks(captured)) {
         if (
@@ -1258,7 +1292,6 @@
           element("span", "第 " + issue.line + " 行 " + issue.message, {
             className: "wvc-row-text",
           }),
-          button("定位", () => bridge.navigate(issue.line), "navigate"),
         );
         checkList.append(row);
       }
@@ -1384,49 +1417,80 @@
         ),
       );
     }
-    const updatesPanel = panels.get("设置与更新"),
-      updateText = element(
-        "p",
-        "使用 Craft 官方更新来源。下载不等于安装完成；协调安装须经本机能力核验。",
-        { className: "wvc-help" },
-      );
-    updatesPanel.append(updateText);
+    const updatesPanel = panels.get("设置与更新");
+    const ownUpdateCard = card(updatesPanel, "WebVideo+ Craft 更新"),
+      ownUpdateText = element("p", "手动检查 WebVideo+ Craft 稳定版；仅下载本产品安装器，并校验产品、版本与 SHA-256。", { className: "wvc-help", role: "status" }),
+      ownUpdateProgress = element("p", "", { className: "wvc-help wvc-update-status", role: "status" });
+    ownUpdateCard.append(ownUpdateText, ownUpdateProgress);
+    function ownUpdater() {
+      if (!root.WebVideoCraftOwnUpdates) throw Error("WebVideo+ Craft 更新连接尚未就绪");
+      return root.WebVideoCraftOwnUpdates;
+    }
+    actions(
+      ownUpdateCard,
+      button("检查 WebVideo+ Craft 更新", async () => {
+        ownUpdateProgress.textContent = "正在检查 Craft 稳定发行版…";
+        try {
+          const value = await ownUpdater().check();
+          ownUpdateText.textContent = value
+            ? "发现 WebVideo+ Craft " + value.version + "（当前 " + value.currentVersion + "），安装器 " + (value.size / 1048576).toFixed(1) + " MB"
+            : "当前没有更高版本的 WebVideo+ Craft 稳定版";
+          ownUpdateProgress.textContent = value ? "已验证发行元数据。点击下载后才会获取安装器。" : "检查完成";
+        } catch (e) { ownUpdateProgress.textContent = "检查失败：" + e.message; throw e; }
+      }),
+      button("下载并校验安装器", async () => {
+        ownUpdateProgress.textContent = "正在下载并校验安装器，请稍候…";
+        try {
+          const value = await ownUpdater().download();
+          ownUpdateProgress.textContent = "安装器已通过 SHA-256 校验：" + value.sha256 + "。尚未运行或安装。";
+        } catch (e) { ownUpdateProgress.textContent = "下载失败：" + e.message; throw e; }
+      }),
+      button("打开已校验安装器", async () => {
+        ownUpdateProgress.textContent = "正在复核保存状态和安装器完整性…";
+        try {
+          await ownUpdater().install();
+          ownUpdateProgress.textContent = "安装器已打开，尚未完成安装。Craft 不会自动关闭；请正常关闭 Craft 后再在安装器中继续更新，运行中的会话会阻止安装。";
+        } catch (e) { ownUpdateProgress.textContent = "安装器未打开：" + e.message; throw e; }
+      }),
+      button("在文件夹中显示安装器", async () => {
+        await ownUpdater().reveal();
+        ownUpdateProgress.textContent = "已显示校验通过的安装器。手动运行前请保存并正常关闭 Craft。";
+      }),
+    );
+    ownUpdateCard.append(element("p", "更新需你主动下载、打开并确认安装。打开前须保存所有文档并等待已知任务完成。按钮现在只打开安装器，不会自动关闭 Craft；必须正常关闭 Craft 后，安装器才能更换组件。下载或打开安装器不代表安装完成。", { className: "wvc-help" }));
+    const officialUpdateCard = card(updatesPanel, "Craft 官方宿主更新"),
+      updateText = element("p", "官方 Craft 与 WebVideo+ Craft 使用独立更新来源。官方更新后须重新验证宿主兼容性。", { className: "wvc-help" });
+    officialUpdateCard.append(updateText);
     function updater() {
       if (!root.WebVideoCraftUpdates) throw Error("当前宿主未提供官方更新连接");
       return root.WebVideoCraftUpdates;
     }
+    async function refreshOfficialStatus() {
+      officialUpdateEnabled = false;
+      try {
+        const result = await updater().status();
+        if (closed) return;
+        officialUpdateEnabled = result?.enabled === true;
+        updateText.textContent = result?.last?.message || result?.message || (officialUpdateEnabled ? "官方自动安装已开放：验证官方签名后，经干净环境助手安装并由官方程序重新启动。真正的新版本升级尚无实测目标；新宿主须重新确认增强兼容性。" : "当前官方安装连接不可用。请查看恢复状态并保存工作后重试；不会跳过签名或宿主归属检查。");
+      } finally { buttons(); }
+    }
     actions(
-      updatesPanel,
+      officialUpdateCard,
+      button("检查官方更新恢复状态", refreshOfficialStatus),
       button("检查 Craft 官方更新", async () => {
         const value = await updater().check();
-        updateText.textContent = value
-          ? "发现官方版本 " + value.version
-          : "当前没有官方更新";
+        updateText.textContent = value ? "发现官方版本 " + value.version : "当前没有官方更新";
       }),
       button("下载已发现的官方更新", async () => {
         await updater().download();
-        updateText.textContent =
-          "官方更新已下载；安装前将再次检查未保存文档和运行任务";
+        updateText.textContent = "官方更新已下载；协调安装会再次校验官方签名和注册安装位置，并在保存/任务检查通过后关闭 Craft";
       }),
-      button(
-        "协调安装已下载更新",
-        async () => {
-          await updater().install();
-          updateText.textContent = "官方安装流程已启动，等待原生协调器确认";
-        },
-        "coordinatedUpdate",
-      ),
+      button("协调安装已下载更新", async () => {
+        await updater().install();
+        updateText.textContent = "正在等待 Craft 正常关闭并交接；这不代表安装已完成。若关闭被阻止，将取消尚未开始的安装。";
+      }, "coordinatedUpdate"),
     );
-    updatesPanel.append(
-      element(
-        "p",
-        "Craft 自带的检查更新入口保持可用。当前安装接续能力未验证时，协调安装按钮保持禁用。",
-        { className: "wvc-help" },
-      ),
-    );
-    const confirmSelection = element("button", "使用所选范围", { type: "button", className: "wvc-primary" });
-    confirmSelection.addEventListener("click", () => { const target = pickerReturn || "expression"; pickerReturn = null; showTool(target); });
-    story.append(confirmSelection);
+    officialUpdateCard.append(element("p", "Craft 自带的检查和下载入口保持可用，下载完成后会直接提供安全安装确认。安装需再次取得同一官方安装器并独立验签，确认后请求正常关闭 Craft；关闭被阻止时会取消尚未开始的安装。官方升级后，新宿主需兼容的增强安装器重新挂载。", { className: "wvc-help" }));
     function useNativeSelection() {
       rangeAnchor = null;
       if (!current) return;
@@ -1436,10 +1500,19 @@
       if (row) selected.add(row.id);
       renderRows();
     }
+    for (const control of [animations.el, nonRecommended.el, force.el, existingFilter.el, ...nextChoices.values()]) control.addEventListener("change", () => {
+      invalidatePlan(); rangeAnchor = null; renderRows();
+    });
     function showTool(id) {
+      if (closed) return false;
       const definition = toolDefinitions[id];
       if (!definition) throw Error("未知工具：" + id);
-      if (activeTool && activeTool !== id) { pending = null; preview.hidden = true; }
+      if (activeTool === "music" && id !== activeTool && mediaPanel?.canLeave?.() === false) return false;
+      if (activeTool && activeTool !== id) {
+        toolSelections.set(activeTool, { selected: [...selected], mode: selectionMode, query: query.el.value, kind: kind.el.value, from: from.el.value, to: to.el.value });
+        invalidatePlan();
+      }
+      const switching = activeTool !== id;
       activeTool = id;
       title.textContent = definition.title;
       dialog.setAttribute("aria-label", definition.title);
@@ -1448,42 +1521,75 @@
       const checkPanel = panels.get("检查与备份");
       for (const node of checkPanel.children) if (!node.classList?.contains("wvc-card") && node.className !== "wvc-card") node.hidden = id === "backups";
       contextBar.hidden = !definition.selection;
-      if (definition.media) mediaPanel?.show?.(definition.media);
+      story.hidden = !definition.selection;
+      panels.get(definition.panel).append(story);
+      if (switching) {
+        const saved = toolSelections.get(id);
+        selected = new Set(saved?.selected || []);
+        selectionMode = saved?.mode || "native";
+        query.el.value = saved?.query || ""; kind.el.value = saved?.kind || "";
+        from.el.value = saved?.from || "1"; to.el.value = saved?.to || "1";
+        rangeAnchor = null;
+        if (selectionMode === "native") useNativeSelection();
+      }
+      mediaPanel?.show?.(definition.media || null);
       content.scrollTop = 0;
       renderRows();
+      return true;
     }
     function closePanel() {
-      if (busy) return;
+      if (busy || closed) return;
+      if (activeTool === "music" && mediaPanel?.canLeave?.() === false) return;
+      ++openTicket; ++snapshotTicket; ++checksTicket;
+      mediaPanel?.show?.(null);
       dialog.hidden = true;
       dockHost?.classList.toggle("wvc-dock-open", false);
       pending = null; preview.hidden = true; closeMenu();
-      lastFocus?.isConnected && lastFocus.focus?.();
+      const focus = lastFocus?.isConnected ? lastFocus : nativeNodes.find(node => lastFocusEntry && node.dataset.wvcEntry === lastFocusEntry);
+      focus?.focus?.();
     }
     function syncSnapshot() {
-      if (dialog.hidden || busy) return;
+      if (closed || dialog.hidden || busy) return;
+      const ticket = ++snapshotTicket;
       return bridge.snapshot().then((next) => {
-        if (closed || dialog.hidden) return;
+        if (closed || dialog.hidden || busy || ticket !== snapshotTicket) return;
         if (current && !freshSnapshot(next)) {
           pending = null; applyButton.disabled = true; preview.hidden = true;
-          const changedDocument = next.projectId !== current.projectId || next.path !== current.path;
+          const changedDocument = next.projectId !== current.projectId || next.projectPath !== current.projectPath || next.path !== current.path;
+          toolSelections.clear();
           current = next; scope.textContent = next.sceneRelativePath || next.path;
           selectionMode = "native"; useNativeSelection(); renderChecks();
           notify(changedDocument ? "已跟随 Craft 切换场景；旧预览已失效" : "剧本已变化；旧预览已失效，请重新生成");
         } else if (selectionMode === "native" && current?.selection?.start !== next.selection?.start) {
           current = next; useNativeSelection();
         }
-      }).catch((e) => { pending = null; applyButton.disabled = true; notify(e.message, true); });
+      }).catch((e) => {
+        if (closed || dialog.hidden || busy || ticket !== snapshotTicket) return;
+        pending = null; applyButton.disabled = true; preview.hidden = true; notify(e.message, true);
+      });
     }
     const unsubscribe = bridge.subscribe(syncSnapshot);
-    async function open(id = "id") {
+    async function open(id = "id", opener = null) {
       if (busy || closed) return false;
+      const ticket = ++openTicket;
+      const focus = opener || document.activeElement;
+      if (focus?.isConnected && !dialog.contains(focus) && !menu?.contains(focus)) {
+        lastFocus = focus; lastFocusEntry = focus.dataset?.wvcEntry || null;
+      }
       closeMenu();
       if (!mountNative()) { notify("未识别到兼容的 Craft 编辑区，请打开场景后重试", true); return false; }
-      lastFocus = document.activeElement;
       dialog.hidden = false; dockHost.classList.toggle("wvc-dock-open", true);
       const snapshot = await run(refresh);
+      if (closed || dialog.hidden || ticket !== openTicket) return false;
       if (!snapshot) { current = null; selected.clear(); pending = null; preview.hidden = true; scope.textContent = "未打开可编辑场景"; }
-      showTool(typeof id === "string" ? id : "id");
+      if (showTool(typeof id === "string" ? id : "id") === false) return false;
+      if (capabilities().service) {
+        if (["filter", "filterEdit"].includes(activeTool)) await run(loadFilters);
+        if (activeTool === "presets") await run(loadPresets);
+      }
+      if (closed || dialog.hidden || ticket !== openTicket) return false;
+      if (activeTool === "updates" && root.WebVideoCraftUpdates?.status) await run(refreshOfficialStatus);
+      if (closed || dialog.hidden || ticket !== openTicket) return false;
       buttons();
       close.focus?.();
       return true;
@@ -1518,6 +1624,8 @@
       tools: () => Object.entries(toolDefinitions).map(([id, value]) => ({ id, title: value.title })),
       async dispose() {
         closed = true;
+        ++openTicket; ++snapshotTicket; ++checksTicket;
+        dialog.hidden = true; pending = null; current = null; selected.clear();
         observer?.disconnect();
         if (remountTimer !== null) clearTimeout(remountTimer);
         document.removeEventListener?.("pointerdown", onOutside);
@@ -1525,7 +1633,10 @@
         detachNative();
         unsubscribe?.();
         stopBackupAutomatic?.();
+        actualTime?.dispose?.();
+        nativeExport?.dispose?.();
         mediaPanel?.dispose?.();
+        commandPanel?.dispose?.();
         await imports?.dispose?.();
         await media?.cancel?.();
         dialog.remove();

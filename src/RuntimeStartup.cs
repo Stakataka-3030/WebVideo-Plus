@@ -1,7 +1,8 @@
 using System;using System.IO;using System.Linq;using System.Globalization;using System.Text.RegularExpressions;
 namespace NativeVideo {
  public static class RuntimeStartup {
-  // These integer values are identical in the pinned 4.6.4 / 4.6.5 enums.
+  // These integer values are identical in official 4.6.4 / 4.6.5 and MyGO 3.2.1.
+  // MyGO source: ed73e55a87546cf0bc495a95061ccce2dafdf7cb, config/language.ts.
   static readonly string[] Codes={"zh_CN","en","ja","fr","de","zh_TW","pt_BR","ko"};
   static int Language(object startup){
    object raw=J.Get(startup,"language");double value;
@@ -9,7 +10,7 @@ namespace NativeVideo {
    return (int)value;
   }
   public static object Resolve(object request,string configPath,EngineAdapter adapter){
-   if(adapter.IsMygo)return null; // Do not broaden the unverified derivative contract.
+   if(adapter.IsMygo&&!J.B(request,"requireRuntimeParity",false))return null; // Keep the nonstrict legacy derivative behavior.
    object supplied=J.Get(request,"runtimeStartup");
    if(supplied!=null){int language=Language(supplied);if(J.S(supplied,"source")!="preview")throw new IOException("导出语言必须来自当前项目预览");return J.O("language",language,"code",Codes[language],"source","preview");}
    // Only the actual project config is evidence; never use Skeleton defaults.
@@ -35,7 +36,7 @@ namespace NativeVideo {
   }
   public static string ReadyExpression(object startup){
    int language=Language(startup);
-   return "(()=>{const s=globalThis.__wgProbe?.store?.getState?.();return s?.userData?.optionData?.language==="+language+"&&localStorage.getItem('lang')==="+J.Text(language.ToString(CultureInfo.InvariantCulture))+"&&!document.querySelector('[class*=langWrapper_1oupq_]');})()";
+   return "(()=>{const s=globalThis.__wgProbe?.store?.getState?.();return s?.userData?.optionData?.language==="+language+"&&localStorage.getItem('lang')==="+J.Text(language.ToString(CultureInfo.InvariantCulture))+"&&!document.querySelector('[class*=langWrapper_]');})()";
   }
  }
 }

@@ -10,12 +10,17 @@ import {buildBrowserPayload} from './session/browser-payload.mjs';
 import {SessionRpc,CdpConnection} from './session/rpc.mjs';
 import {SessionStorage} from './session/storage.mjs';
 import {KernelSession} from './session/kernel.mjs';
+import {SessionActivity,readOwnInstallerLaunchState,readOfficialInstallState} from './session/update-safety.mjs';
 import {previewSettings,capturePreviewConfigs,PreviewSessionManager} from './session/preview.mjs';
-import {UpdateCoordinator} from './update/coordinator.mjs';
+import {CleanUpdateCoordinator} from './update/clean-coordinator.mjs';
+import {CraftOwnUpdates} from './update/own-updates.mjs';
 import {audioDuration} from './session/audio.mjs';
 import {runHint} from './session/hint-operation.mjs';
 import {readState,verifyPackage} from './installer/transaction.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
+// Releasing the native wrapper for an official update closes redirected pipes.
+// The coordinator/host must remain alive until the signed updater takes over.
+for(const output of [process.stdout,process.stderr])output.on('error',error=>{if(error.code!=='EPIPE')throw error;});
 const launchStatus=(stage,text)=>console.log('WEBVIDEO_CRAFT_STATUS '+JSON.stringify({stage,text,at:new Date().toISOString()}));
 const args=process.argv.slice(2),split=args.indexOf('--'),options=split<0?args:args.slice(0,split),hostArgs=split<0?[]:args.slice(split+1);
 const option=k=>{const i=options.indexOf(k);return i<0?undefined:options[i+1];};
@@ -31,9 +36,10 @@ if(path.resolve(craft).toLowerCase()!==path.resolve(config.originalExe).toLowerC
 if(option('--profile')&&!options.includes('--isolated-test'))throw Error('--profile 仅用于显式隔离测试');
 const expected=config.ownership?.originalSha256||config.host?.sha256;
 if(expected){const actual=crypto.createHash('sha256').update(await fs.readFile(craft)).digest('hex');if(!manifest.supportedHosts.some(h=>h.sha256===actual.toLowerCase()))throw Error('该 Craft 主程序不在已验证兼容列表');if(actual.toLowerCase()!==expected.toLowerCase())throw Error('Craft 文件已变化，请先检查新版本兼容性');}
+const verifiedHostProfile=Object.freeze({version:config.host?.version,sha256:expected?.toLowerCase()});
 const stateDir=config.stateDir||path.join(path.dirname(configPath||here),'state');await fs.mkdir(stateDir,{recursive:true});
 const sessionId=crypto.randomUUID();
-const installLocks=[(config.adapterRoot||path.dirname(stateDir))+'.install-lock',(config.craftExe||craft)+'.webvideo.install-lock'];const checkInstall=async()=>{for(const p of installLocks){if(await fs.stat(p).then(()=>true,e=>{if(e.code==='ENOENT')return false;throw e;}))throw Error('适配安装器正在运行，请稍后重试');}};await checkInstall();
+const installLocks=[(config.adapterRoot||path.dirname(stateDir))+'.install-lock',(config.craftExe||craft)+'.webvideo.install-lock',path.join(stateDir,'update.lock')];const checkInstall=async()=>{for(const p of installLocks){if(await fs.stat(p).then(()=>true,e=>{if(e.code==='ENOENT')return false;throw e;}))throw Error('适配安装器正在运行，请稍后重试');}};await checkInstall();
 const lockPath=path.join(stateDir,'session.lock');let lock;try{lock=await fs.open(lockPath,'wx');await lock.writeFile(JSON.stringify({sessionId,pid:process.pid}));}catch(e){throw Error('另一个增强会话或未恢复的会话记录存在，请关闭 Craft 后使用安装器检查恢复');}
 try{await checkInstall();}catch(e){await lock.close();await fs.rm(lockPath,{force:true});throw e;}
 const root=path.join(stateDir,'sessions',sessionId);await fs.mkdir(root,{recursive:true});
@@ -50,9 +56,18 @@ await fs.writeFile(path.join(stateDir,'session.json'),JSON.stringify(lease));
 await log({event:'host-started',hostPid:app.pid,port});
 launchStatus('connecting','Craft 已启动，正在等待主窗口并接入增强界面…');
 const storage=new SessionStorage(root),service=new KernelSession({kernel,root,storage,runtimePath:config.runtimePath,stateRoot:path.join(stateDir,"kernel")});
-const updater=new UpdateCoordinator({stateDir,hostPid:app.pid,craftExe:config.craftExe||craft,installMode:config.installMode||'external',supportedHosts:config.supportedHosts||{},observerValidated:false /* enable only after a package-scoped native compatibility test */});
+const updater=new CleanUpdateCoordinator({stateDir,statePath:configPath,hostPid:app.pid,wrapperPid:Number(option('--wrapper-pid')),craftExe:config.craftExe||craft,installMode:config.installMode,observerValidated:manifest.updateObserverValidated===true,sameNameValidated:manifest.sameNameUpdateValidated===true,cleanInstallValidated:manifest.officialCleanUpdateValidated===true,autoInstallEnabled:manifest.officialAutoInstallEnabled===true,hostArgs,releaseWrapper:()=>launchStatus('update-handoff','正在为官方更新释放原启动入口…')});
+const activity=new SessionActivity();
+const ownUpdater=new CraftOwnUpdates({adapterRoot:config.adapterRoot,currentVersion:manifest.installerVersion,readHostState:()=>readOwnInstallerLaunchState({cdp,getSession:()=>rpc,profile:verifiedHostProfile,activity,storage,kernel:service}),isOtherUpdatePending:()=>updater.busy});
+async function readNativeUpdateState(confirmNormalClose){
+ const state=await readOfficialInstallState({cdp,getSession:()=>rpc,profile:verifiedHostProfile,activity,storage,kernel:service,confirmNormalClose});
+ if(state.hasUnsavedDocuments||state.hasBlockingTasks)throw Error('请先保存 Craft 文档并等待所有工作结束');
+ state.assertCurrent();return state;
+}
+
 let cdp,rpc,previewManager,closed=false;
-async function shutdown(){if(closed)return;closed=true;rpc?.close();await previewManager?.close();cdp?.close();await service.stop();
+async function abortUncommittedUpdate(){if(updater.busy&&!updater.pending?.commitRequested&&!updater.pending?.handedOff)await updater.abort().catch(error=>log({event:'update-abort-pending',error:error.message}));}
+async function shutdown(){if(closed)return;closed=true;rpc?.close();await abortUncommittedUpdate();if(app.exitCode!==null||app.signalCode!==null){if(updater.handoff())process.exitCode=75;}await ownUpdater.close();await previewManager?.close();cdp?.close();await service.stop();
   const current=JSON.parse(await fs.readFile(path.join(stateDir,'session.json'),'utf8').catch(()=>'{}'));if(current.sessionId===sessionId)await fs.writeFile(path.join(stateDir,'session.json'),JSON.stringify({...lease,closedAt:new Date().toISOString()}));await lock?.close();const owned=JSON.parse(await fs.readFile(lockPath,'utf8').catch(()=>'{}'));if(owned.sessionId===sessionId)await fs.rm(lockPath,{force:true});}
 process.on('SIGINT',()=>console.error('请先保存并关闭此 Craft 窗口；会话会在宿主退出后自动清理。'));
 try{
@@ -67,7 +82,7 @@ try{
  await promisify(execFile)('powershell.exe',['-NoProfile','-NonInteractive','-Command',ps],{timeout:15000,windowsHide:true});
  const wsUrl=new URL(target.webSocketDebuggerUrl);if(wsUrl.hostname!=='127.0.0.1'&&wsUrl.hostname!=='localhost'||Number(wsUrl.port)!==port)throw Error('调试目标地址不匹配');
  const socket=new WebSocket(wsUrl);await new Promise((resolve,reject)=>{socket.addEventListener('open',resolve,{once:true});socket.addEventListener('error',reject,{once:true});});cdp=new CdpConnection(socket);
- let reinject;const contexts=new Map();cdp.on(m=>{if(m.sessionId)return;if(m.method==='Runtime.executionContextsCleared'){contexts.clear();rpc?.close();}if(m.method==='Runtime.executionContextCreated'){contexts.set(m.params.context.id,m.params.context);if(reinject)void reinject(m.params.context).catch(e=>log({event:'reinjection-failed',error:e.message}));}if(m.method==='Runtime.executionContextDestroyed'){contexts.delete(m.params.executionContextId);if(rpc?.contextId===m.params.executionContextId)rpc.close();}});
+ let reinject;const contexts=new Map();cdp.on(m=>{if(m.sessionId)return;if(m.method==='Runtime.executionContextsCleared'){contexts.clear();rpc?.close();void abortUncommittedUpdate();}if(m.method==='Runtime.executionContextCreated'){contexts.set(m.params.context.id,m.params.context);if(reinject)void reinject(m.params.context).catch(e=>log({event:'reinjection-failed',error:e.message}));}if(m.method==='Runtime.executionContextDestroyed'){contexts.delete(m.params.executionContextId);if(rpc?.contextId===m.params.executionContextId){rpc.close();void abortUncommittedUpdate();}}});
  const loadedPreviewConfigs=capturePreviewConfigs({call:(m,p)=>cdp.call(m,p),on:fn=>cdp.on(m=>{if(!m.sessionId)fn(m);})});await cdp.call('Network.enable');
  await cdp.call('Runtime.enable');await cdp.call('Page.enable');const tree=await cdp.call('Page.getFrameTree');
  const ctx=[...contexts.values()].find(c=>c.auxData?.isDefault&&c.auxData.frameId===tree.frameTree.frame.id&&c.origin==='http://tauri.localhost');if(!ctx)throw Error('Craft 主执行上下文无法验证');
@@ -87,20 +102,24 @@ try{
  const handlers={
   'audio.duration':async p=>{if(typeof p.file!=='string'||!/^game\/(bgm|vocal)\//.test(p.file)||p.file.split('/').some(x=>!x||x==='.'||x==='..')||/[\\:\0]/.test(p.file))throw Error('audio-path-invalid');const response=await cdp.call('Runtime.evaluate',{contextId:rpc.contextId,expression:`window.WebVideoCraftBridge._context().file.resolveFilePath(${JSON.stringify(p.project.path+'/'+p.file)})`,awaitPromise:true,returnByValue:true});if(response.exceptionDetails||response.result?.value!==p.physicalPath)throw Error('audio-resolution-changed');return audioDuration(p.physicalPath,{ffprobe:config.ffprobe||'ffprobe'});},
   'preview.hint':async p=>{if(p.cancel){if(hintTickets.get(p.ticket)!==p.url)return {cancelled:false};return previewManager.operation(p,runHint);}const r=await cdp.call('Runtime.evaluate',{contextId:rpc.contextId,expression:`document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('previewSync')&&document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('previewSession')?.currentGameServeUrl`,returnByValue:true});if(r.result?.value!==p.url)throw Error('preview-project-mismatch');hintTickets.set(p.ticket,p.url);try{return await previewManager.operation(p,runHint);}finally{hintTickets.delete(p.ticket);}},
-  'update.prepare':p=>updater.prepare(p),'update.abort':()=>updater.abort(),
+  'update.prepare':async p=>{if(ownUpdater.busy||ownUpdater.launched)throw Error('WebVideo+ 更新进行中，请先完成或退出后重试');const current=await readNativeUpdateState(p.confirmNormalClose);if(current.hasUnsavedDocuments||current.hasBlockingTasks)throw Error('请先保存 Craft 文档并等待运行任务结束');if(ownUpdater.busy||ownUpdater.launched)throw Error('WebVideo+ 更新进行中');current.assertCurrent();return updater.prepare(p);},'update.commit':async p=>{if(ownUpdater.busy||ownUpdater.launched)throw Error('WebVideo+ 更新进行中');const state=await readNativeUpdateState(p.confirmNormalClose);if(state.hasUnsavedDocuments||state.hasBlockingTasks)throw Error('请先保存 Craft 文档并等待运行任务结束');if(ownUpdater.busy||ownUpdater.launched)throw Error('WebVideo+ 更新进行中');state.assertCurrent();return updater.commit();},'update.abort':()=>updater.abort(),'update.status':()=>updater.status(),
+  'ownUpdate.check':()=>ownUpdater.check(),'ownUpdate.download':()=>ownUpdater.download(),'ownUpdate.install':()=>ownUpdater.install(),'ownUpdate.reveal':()=>ownUpdater.reveal(),
   'preview.settings':async p=>{const r=await cdp.call('Runtime.evaluate',{contextId:rpc.contextId,expression:`document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('previewSession')?.currentGameServeUrl`,returnByValue:true});if(r.result?.value!==p.url)throw Error('preview-project-mismatch');return previewManager.settings(p);},
   'backups.captureText':p=>storage.captureStoryText(p.project,p.files,p.slot),
   'backups.list':p=>storage.listBackups(p.project),'backups.capture':p=>storage.captureStory(p.snapshotId,p.project),
   'metadata.read':p=>storage.metadata(p), 'metadata.write':p=>storage.metadata(p,true),
-  'snapshot.allocate':p=>storage.allocate(p.project,p.sources,p.engineVersion,p.runtimeId), 'snapshot.ready':p=>storage.ready(p.snapshotId), 'snapshot.discard':p=>storage.discard(p.snapshotId),
+  'snapshot.allocate':p=>storage.allocate(p.project,p.sources,p.engineVersion,p.runtimeId,p.runtimeVersion), 'snapshot.ready':p=>storage.ready(p.snapshotId), 'snapshot.discard':p=>storage.discard(p.snapshotId),
   'service.request':p=>service.request(p),
   'export.start':async p=>service.request({endpoint:'/api/jobs',data:p.options||{},snapshotId:p.snapshotId}),
   'job.cancel':p=>service.request({endpoint:'/api/jobs/'+p.jobId+'/cancel',data:{}}),
  };
- for(const name of Object.keys(handlers)){const original=handlers[name];handlers[name]=async p=>{await verifyProject(p);return original(p);};}
+ for(const name of Object.keys(handlers)){
+  const original=handlers[name],invoke=async p=>{await verifyProject(p);return original(p);};
+  handlers[name]=name.startsWith('ownUpdate.')||name.startsWith('update.')?invoke:p=>{if(updater.busy)throw Error('官方更新正在交接，请先等待安装或取消结果，暂不能开始新的增强任务');return activity.run(()=>invoke(p));};
+ }
  rpc=new SessionRpc({contextId:ctx.id,bindingName,handlers});await cdp.call('Runtime.addBinding',{name:bindingName,executionContextId:ctx.id});
  cdp.on(m=>{if(m.sessionId||m.method!=='Runtime.bindingCalled')return;const requestSession=rpc;void requestSession.dispatch(m.params).then(result=>{if(rpc!==requestSession||requestSession.closed)return;return cdp.call('Runtime.evaluate',{contextId:m.params.executionContextId,expression:`window.__WebVideoCraftReply?.(${JSON.stringify(result)})`});}).catch(e=>log({event:'rpc-rejected',error:e.message}));});
- const browserPayload=await buildBrowserPayload(here,{token:rpc.token,bindingName});
+ const browserPayload=await buildBrowserPayload(here,{token:rpc.token,bindingName,verifiedHostProfile});
  async function waitForVue(contextId){const until=Date.now()+20000;while(Date.now()<until){const r=await cdp.call('Runtime.evaluate',{contextId,expression:`!!document.querySelector('#app')?.__vue_app__?.config.globalProperties.$pinia`,returnByValue:true});if(r.result?.value)return;await new Promise(r=>setTimeout(r,100));}throw Error('Craft 页面初始化超时');}
  await waitForVue(ctx.id);
  const injected=await cdp.call('Runtime.evaluate',{contextId:ctx.id,expression:browserPayload,returnByValue:true});if(injected.exceptionDetails)throw Error(injected.exceptionDetails.text+' '+(injected.exceptionDetails.exception?.description||''));
@@ -108,7 +127,7 @@ try{
  launchStatus('ready','Craft 增强界面已接入');
  reinject=async next=>{if(!next.auxData?.isDefault||next.auxData.frameId!==tree.frameTree.frame.id||next.origin!=='http://tauri.localhost'||next.id===rpc.contextId&&!rpc.closed)return;const token=rpc.token;rpc.close();rpc=new SessionRpc({token,contextId:next.id,bindingName,handlers});await cdp.call('Runtime.addBinding',{name:bindingName,executionContextId:next.id});await waitForVue(next.id);const result=await cdp.call('Runtime.evaluate',{contextId:next.id,expression:browserPayload,returnByValue:true});if(result.exceptionDetails)throw Error(result.exceptionDetails.exception?.description||'reinjection failed');await log({event:'reinjected',contextId:next.id});};
  await waitForApp();
- if(updater.pending){const outcome=await updater.pending.completion;await log({event:'update-completion',outcome});if(outcome.state!=='verified-compatible')console.error('官方更新结束，但增强适配尚未验证。请从官方入口打开 Craft 或运行适配安装器检查。');}
+ if(updater.handoff()){await log({event:'official-update-handoff',automaticRemount:false});process.exitCode=75;}
 }catch(e){await log({event:'failed',error:e.message});launchStatus('failed','Craft 接入失败：'+e.message);console.error(e.message);process.exitCode=1;
  if(app.exitCode===null&&!spawnError){
   const message='WebVideo+ 接入失败：'+e.message+'。请保存工作并关闭此 Craft 窗口，再检查适配版本。关闭前本机会话调试端口仍存在。';

@@ -47,16 +47,24 @@ internal static class CraftManifestVerifier {
   if(report!=null)report("全部 "+names.Count+" 个启动文件校验完成");
   return manifest;
  }
+ internal static void MatchOwnership(object state,object canonical){
+  foreach(string key in new[]{"schemaVersion","stateVersion","installId","status","installMode"})if(Text(state,key)!=Text(canonical,key))throw new IOException("宿主与适配器所有权记录不一致："+key);
+  foreach(string key in new[]{"adapterRoot","craftExe","originalExe","kernelExe","stateDir"})if(!Same(Text(state,key),Text(canonical,key)))throw new IOException("宿主与适配器路径记录不一致："+key);
+  foreach(string key in new[]{"originalSha256","wrapperSha256"})if(Text(Get(state,"ownership"),key)!=Text(Get(canonical,"ownership"),key))throw new IOException("宿主与适配器文件所有权不一致："+key);
+  foreach(string key in new[]{"version","manifestSha256","entry","node","wrapper"})if(Text(Get(state,"package"),key)!=Text(Get(canonical,"package"),key))throw new IOException("宿主与适配器负载记录不一致："+key);
+  foreach(string key in new[]{"version","sha256"})if(Text(Get(state,"host"),key)!=Text(Get(canonical,"host"),key))throw new IOException("宿主与适配器版本记录不一致："+key);
+ }
  internal static Dictionary<string,object> VerifyLaunch(string statePath,string launcher,Action<string> report=null){
   var state=Read(statePath);string root=Text(state,"adapterRoot"),craft=Text(state,"craftExe"),original=Text(state,"originalExe"),mode=Text(state,"installMode");
   if(Text(state,"schemaVersion")!="1"||Text(state,"stateVersion")!="1"||Text(state,"status")!="installed"||!new[]{"external","same-name"}.Contains(mode))throw new IOException("Craft 适配器当前未挂载，请重新安装或完成更新恢复。");
   foreach(string file in new[]{root,craft,original}){if(!Path.IsPathRooted(file))throw new IOException("适配记录路径无效");NoLinks(file);}
   Guid owner;if(!Guid.TryParse(Text(state,"installId"),out owner))throw new IOException("适配器缺少安装所有权标识");
   if(Same(root,Path.GetDirectoryName(craft))||Within(root,Path.GetDirectoryName(craft))||Within(Path.GetDirectoryName(craft),root))throw new IOException("适配器与宿主目录必须隔离");
-  string configPath=Path.Combine(root,"config.json");var canonicalState=Read(configPath);if(Text(canonicalState,"installId")!=Text(state,"installId")||Text(canonicalState,"status")!="installed"||!Same(Text(canonicalState,"craftExe"),craft))throw new IOException("宿主与适配器所有权记录不一致");
+  string configPath=Path.Combine(root,"config.json");var canonicalState=Read(configPath);MatchOwnership(state,canonicalState);
   string record=Path.Combine(Path.GetDirectoryName(craft),"webvideo-craft.install.json");if(!Same(statePath,record)&&!Same(statePath,Path.Combine(root,"config.json")))throw new IOException("适配记录不属于此路径");
+  if(mode=="same-name")MatchOwnership(state,Read(record));
   string expected=mode=="same-name"?Path.Combine(Path.GetDirectoryName(craft),"webgal-craft.webvideo-original.exe"):craft;if(!Same(original,expected))throw new IOException("原程序备份路径不匹配");
-  var manifest=Verify(root,true,report);var package=Get(state,"package");var ownership=Get(state,"ownership");
+  var manifest=Verify(root,true,report);if(Text(manifest,"launchMode")=="same-name"&&mode!="same-name")throw new IOException("此版本只支持原 Craft EXE 入口，请使用安装器迁移旧入口。");var package=Get(state,"package");var ownership=Get(state,"ownership");
   if(Hash(Path.Combine(root,"MANIFEST.json"))!=Text(package,"manifestSha256")||Text(package,"entry")!=Text(manifest,"entry")||Text(package,"node")!=Text(manifest,"node")||!Same(Text(state,"kernelExe"),Under(root,Text(manifest,"kernel"))))throw new IOException("适配器版本记录与文件清单不一致");
   string wrapper=Under(root,Text(manifest,"wrapper"));if(!Same(launcher,wrapper)&&!(mode=="same-name"&&Same(launcher,craft)))throw new IOException("启动包装器不属于当前安装记录");
   if(Hash(launcher)!=Text(ownership,"wrapperSha256")||!File.Exists(original)||Hash(original)!=Text(ownership,"originalSha256"))throw new IOException("Craft 原程序或启动器已改变，未自动覆盖，请核对官方更新状态。");
