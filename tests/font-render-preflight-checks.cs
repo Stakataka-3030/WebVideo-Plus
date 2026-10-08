@@ -150,13 +150,25 @@ public static class FontPreflightChecks {
     var assets=new ProjectAssets(project,Path.Combine(home,"legacy-raw-diff-snapshot-"+id),project,"changeFigureDiff:hero.png;",null,adapter);
     var report=assets.Scan(parsed);Assert(J.A(J.Get(report,"issues")).Any(x=>J.S(x,"kind")=="unsupported"),"Legacy parser silently accepted reserved diff as dialogue: "+id);count++;Console.WriteLine("PASS legacy raw diff rejected: "+id);
    }
-   foreach(string version in new[]{"4.6.4","4.6.5"})foreach(string command in new[]{"changeFigureDiff","setTransform"}){
+   foreach(string version in new[]{"4.6.4","4.6.5","4.6.6"})foreach(string command in new[]{"changeFigureDiff","setTransform"}){
     project=Path.Combine(home,"capability-"+version+"-"+command);Directory.CreateDirectory(project);
     string source=command=="changeFigureDiff"?"changeFigureDiff:none;":"setTransform:{} -target=hero -transformFrom=default;";
     var parsed=Parse(source);if(command=="setTransform")parsed=J.O("sentenceList",new[]{J.O("command",1,"commandRaw",command,"content","{}","args",new[]{J.O("key","transformFrom","value","default")},"startLine",0,"endLine",0)});
     var ctor=typeof(EngineAdapter).GetConstructors(BindingFlags.Instance|BindingFlags.NonPublic).Single();var adapter=(EngineAdapter)ctor.Invoke(new object[]{"webgal",version,project,"unused.js","unit-test",false,false,null,null,false});
     var assets=new ProjectAssets(project,Path.Combine(home,"capability-snapshot-"+version+"-"+command),project,source,null,adapter);
     var report=assets.Scan(parsed);bool gated=J.A(J.Get(report,"issues")).Any(x=>J.S(x,"kind")=="unsupported");Assert(gated==(version=="4.6.4"),"Wrong version capability gate: "+version+" "+command);count++;Console.WriteLine("PASS capability "+version+" "+command);
+   }
+   foreach(string version in new[]{"4.6.4","4.6.5","4.6.6"})foreach(string payload in new[]{"[]","{\"version\":1,\"keyframes\":[]}","{\"version\":2,\"relative\":true,\"inherit\":false,\"keyframes\":[{\"time\":1000,\"position\":{\"x\":40}}]}","{}","{\"keyframes\":{}}","null"}){
+    project=Path.Combine(home,"animation-shape-"+count);Directory.CreateDirectory(project);
+    var ctor=typeof(EngineAdapter).GetConstructors(BindingFlags.Instance|BindingFlags.NonPublic).Single();var adapter=(EngineAdapter)ctor.Invoke(new object[]{"webgal",version,project,"unused.js","unit-test",false,false,null,null,false});
+    var parsed=J.O("sentenceList",new[]{J.O("command",1,"commandRaw","setTempAnimation","content",payload,"args",new object[0],"startLine",0,"endLine",0)});
+    var assets=new ProjectAssets(project,Path.Combine(home,"shape-snapshot-"+count),project,"setTempAnimation:"+payload+";",null,adapter);var report=assets.Scan(parsed);
+    bool valid=payload=="[]"||version=="4.6.6"&&payload.Contains("\"keyframes\":[");bool syntax=J.A(J.Get(report,"issues")).Any(x=>J.S(x,"kind")=="syntax");Assert(syntax==!valid,"Wrong temporary animation format capability: "+version+" "+payload);count++;Console.WriteLine("PASS animation JSON shape "+version+" "+(valid?"accepted":"rejected"));
+   }
+   foreach(string version in new[]{"4.6.4","4.6.5","4.6.6"}){
+    project=Path.Combine(home,"named-animation-v2-"+version);Directory.CreateDirectory(project);Put("game/animation/move.json","{\"version\":2,\"keyframes\":[{\"time\":1000,\"position\":{\"x\":40}}]}");
+    var ctor=typeof(EngineAdapter).GetConstructors(BindingFlags.Instance|BindingFlags.NonPublic).Single();var adapter=(EngineAdapter)ctor.Invoke(new object[]{"webgal",version,project,"unused.js","unit-test",false,false,null,null,false});
+    var assets=new ProjectAssets(project,Path.Combine(home,"named-animation-snapshot-"+version),project,"setAnimation:move -target=hero;",null,adapter);var report=assets.Scan(Parse("setAnimation:move -target=hero;"));bool unsupported=J.A(J.Get(report,"issues")).Any(x=>J.S(x,"kind")=="unsupported");Assert(unsupported==(version!="4.6.6"),"Wrong named animation object capability: "+version);count++;Console.WriteLine("PASS named keyframes object capability "+version);
    }
    return count;
   }finally{Files.Root=oldRoot;Directory.Delete(home,true);}

@@ -114,4 +114,3 @@ check('navigation terminal state agrees with native current/default, parallel, i
   const model=derive(source,{oracle:raw});assert.deepEqual(plain(model.statements[2].parts.flatMap(p=>p.items)),['目标：hero'],'Terminal projection differs: '+JSON.stringify([raw,flags,model.statements[2].parts]));
  }
 });
-

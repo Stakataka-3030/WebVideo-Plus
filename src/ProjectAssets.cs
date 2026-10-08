@@ -104,7 +104,9 @@ namespace NativeVideo {
    if(string.IsNullOrEmpty(name)||name=="none")return;bool modelReference=kind=="figure"&&FigureMayUseModel(name);
    if(External(name)){RequireModelLibraries(name,null,modelReference);AddWarning("external-resource",line,name,"外链素材不会写入本地快照；导出结果依赖当前网络、CORS 与远端内容是否变化。");return;}
    name=PhysicalName(Clean(kind,name));string target;try{target=Files.Under(Path.Combine(Root,"game"),kind+"/"+name);}catch{RequireModelLibraries(name,null,modelReference);Add("unsupported",line,name,"资源路径超出工程目录");return;}
-   Inspect(Resolve(kind,name),line,kind+"/"+name,action,target,null,modelReference);
+   string resolved=Resolve(kind,name);
+   if(kind=="animation"&&resolved!=null&&(Adapter.IsMygo||Adapter.Version!="4.6.6"))try{var value=J.Read(resolved);if(value is Dictionary<string,object>&&J.Get(value,"keyframes")!=null)Add("unsupported",line,kind+"/"+name,"含 keyframes 的动画对象仅 WebGAL 4.6.6 支持");}catch{} // Inspect reports malformed JSON.
+   Inspect(resolved,line,kind+"/"+name,action,target,null,modelReference);
   }
   public static Dictionary<string,object> Params(object sentence){var p=new Dictionary<string,object>();foreach(var arg in J.A(J.Get(sentence,"args")))p[J.S(arg,"key")]=J.Get(arg,"value");return p;}
   public static bool SingleLineHint(string command,object sentence,Dictionary<string,object> args){if(command!="choose"||J.N(args,"defaultChoose",-1)!=1||J.B(args,"next"))return false;var options=Regex.Split(J.S(sentence,"content"),@"(?<!\\)\|");if(options.Length!=1)return false;var nodes=Regex.Split(options[0],@"(?<!\\):");return nodes.Length==2&&Regex.IsMatch(nodes[1].Trim(),@"^__wvp_hint_[A-Za-z0-9_]+$");}
