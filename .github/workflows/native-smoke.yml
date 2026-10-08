@@ -59,7 +59,7 @@ jobs:
           Expand-CheckedBuildArchive .build/downloads/WebGAL-4.6.4-web.zip .build/webgal-4.6.4
           $archive466 = Get-PinnedBuildInput $lock.webgal466Test (Join-Path $PWD '.build/downloads')
           Expand-CheckedBuildArchive $archive466 (Join-Path $PWD '.build/webgal-4.6.6')
-          pwsh -NoLogo -NoProfile -File .\tests\engine-adapter-dual-profile.test.ps1 -Webgal464Root .build/webgal-4.6.4 -Webgal465Root .build/webgal-4.6.5 -Webgal466Root .build/webgal-4.6.6/web -Portable
+          pwsh -NoLogo -NoProfile -File .\tests\engine-adapter-dual-profile.test.ps1 -Webgal464Root .build/webgal-4.6.4 -Webgal465Root .build/webgal-4.6.5 -Webgal466Root .build/webgal-4.6.6 -Portable
           if ($LASTEXITCODE -ne 0) { throw "Versioned engine profile production checks failed" }
           pwsh -NoLogo -NoProfile -File .\tests\font-render-preflight.portable.ps1
           if ($LASTEXITCODE -ne 0) { throw "Portable scanner production checks failed" }
@@ -69,14 +69,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.5 image diff contract failed" }
           node tests/figure-export-runtime.mjs .build/webgal-4.6.5/assets/index.es-0XzJiDJZ.js
           if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.5 figure frame/update contract failed" }
-          $env:WEBGAL466_ROOT = Join-Path $PWD '.build/webgal-4.6.6/web'
+          $env:WEBGAL466_ROOT = Join-Path $PWD '.build/webgal-4.6.6'
           node --test tests/animation-v2-native.test.mjs
           if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.6 native animation v2 oracle failed" }
-          node tests/live2d-runtime-466-contract.mjs .build/webgal-4.6.6/web
+          node tests/live2d-runtime-466-contract.mjs .build/webgal-4.6.6
           if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.6 texture/reservation contract failed" }
-          node tests/figure-diff-runtime-contract.mjs .build/webgal-4.6.6/web/assets/index-Dcp3ZA1M.js
+          node tests/figure-diff-runtime-contract.mjs .build/webgal-4.6.6/assets/index-Dcp3ZA1M.js
           if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.6 image diff contract failed" }
-          node tests/figure-export-runtime.mjs .build/webgal-4.6.6/web/assets/index.es-DlwKruus.js
+          node tests/figure-export-runtime.mjs .build/webgal-4.6.6/assets/index.es-DlwKruus.js
           if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.6 figure frame/update contract failed" }
 
       - name: Verify runtime reconstruction and offline preparation
@@ -107,7 +107,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Figure output pixel checks failed" }
           node tests/figure-export-render.mjs .build/webgal-4.6.5 .build/webgal-4.6.5 .build/figure-export-465
           if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.5 figure output pixel checks failed" }
-          node tests/figure-export-render.mjs .build/webgal-4.6.6/web .build/webgal-4.6.6/web .build/figure-export-466
+          node tests/figure-export-render.mjs .build/webgal-4.6.6 .build/webgal-4.6.6 .build/figure-export-466
           if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.6 figure output pixel checks failed" }
 
       - name: Compile native exporter for early font smoke
