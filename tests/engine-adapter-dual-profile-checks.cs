@@ -25,6 +25,7 @@ public static class EngineAdapterDualProfileChecks {
  static string Shell(string version,string name){
   string root=NewDirectory(name),source=Sources[version];
   foreach(string file in new[]{"index.html","webgal-engine.json",Bundles[version],"assets/index-Dch1g2w9.css"})Files.CopyFile(Path.Combine(source,file),Path.Combine(root,file));
+  if(version=="4.6.5")Files.CopyFile(Path.Combine(source,"assets/index.es-0XzJiDJZ.js"),Path.Combine(root,"assets/index.es-0XzJiDJZ.js"));
   Files.Atomic(Path.Combine(root,"assets/custom-font.woff2"),"synthetic-copy-control-font");
   Files.Atomic(Path.Combine(root,"assets/custom-theme.css"),"@font-face{font-family:Fixture;src:url(custom-font.woff2)}:root{--fixture:preserve}");
   Files.Atomic(Path.Combine(root,"icons/custom.svg"),"<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
@@ -73,6 +74,7 @@ public static class EngineAdapterDualProfileChecks {
     Check(version+" Prepare preserves custom shell assets without mutating source",()=>{
      var before=Inventory(project);var a=EngineAdapter.Select(Request(project,version));string output=NewDirectory("prepared-"+version);a.Prepare(output);Unchanged(project,before);
      foreach(string file in new[]{"index.html","webgal-engine.json","assets/index-Dch1g2w9.css","assets/custom-theme.css","assets/custom-font.woff2","icons/custom.svg","lib/custom-support.js"})Assert(Files.Hash(Path.Combine(project,file))==Files.Hash(Path.Combine(output,file)),"Lost source bytes: "+file);
+     if(version=="4.6.5")Assert(Files.Hash(Path.Combine(output,"assets/index.es-0XzJiDJZ.js"))=="e62170797a6556ae286a42fa9efa8d0cea234a7f20f8b108992148588f6dd670","Cubism2 texture upload backport bytes changed");
      Assert(!File.Exists(Path.Combine(output,"game/scene/not-part-of-runtime.txt")),"Runtime shell copied unrelated scene");Probes(File.ReadAllText(Path.Combine(output,Bundles[version])),version);
      var identity=J.Read(Path.Combine(output,"export-engine.json"));Assert(J.S(identity,"version")==version&&J.S(identity,"sourceKind")=="project-runtime"&&J.B(identity,"runtimeParity")&&J.S(identity,"sourceHash")==Hashes[version],"Snapshot identity changed");
     });
@@ -89,6 +91,13 @@ public static class EngineAdapterDualProfileChecks {
     Check(version+" rejects descriptor deletion after strict selection",()=>{string root=Shell(version,"descriptor-deleted");var a=EngineAdapter.Select(Request(root,version));File.Delete(Path.Combine(root,"webgal-engine.json"));Reject(()=>a.Prepare(NewDirectory("descriptor-deleted-output")),"strict descriptor disappearing during Prepare");});
     Check(version+" missing bound runtime cannot fall through to template",()=>Reject(()=>EngineAdapter.Select(Request(NewDirectory("empty-project"),version,template)),"empty bound project fallback"));
    }
+   foreach(string fault in new[]{"missing","changed","compressed"})Check("4.6.5 Cubism2 texture plugin gate "+fault,()=>{
+    string root=Shell("4.6.5","texture-plugin-"+fault),file=Path.Combine(root,"assets/index.es-0XzJiDJZ.js");var a=EngineAdapter.Select(Request(root,"4.6.5"));
+    if(fault=="missing")File.Delete(file);
+    else if(fault=="changed")File.AppendAllText(file,"\n// tampered",Files.Utf8);
+    else{Files.Atomic(file+".gz","stale compression");Files.Atomic(file+".br","stale compression");string output=NewDirectory("texture-compressed-output");a.Prepare(output);Assert(!File.Exists(Path.Combine(output,"assets/index.es-0XzJiDJZ.js.gz"))&&!File.Exists(Path.Combine(output,"assets/index.es-0XzJiDJZ.js.br")),"Stale compressed plugin survived");Assert(File.Exists(file+".gz")&&File.Exists(file+".br"),"Source compression was changed");return;}
+    Reject(()=>a.Prepare(NewDirectory("texture-invalid-output")),"unverified texture plugin");
+   });
    foreach(string version in Versions){
     Check(version+" strict MyGO selection rejects before project or machine derivative discovery",()=>{string root=Shell(version,"strict-mygo"),machine=NewDirectory("machine-mygo");Descriptor(machine,"3.2.1","4.6.4","webgal-mygo.mygo");var request=Request(root,version);J.D(request)["settings"]=J.O("engine","mygo");J.D(request)["mygoRoot"]=machine;try{EngineAdapter.Select(request);throw new Exception("MyGO selection bypassed strict binding");}catch(IOException error){Assert(error.Message.Contains("禁止 MyGO"),"Wrong strict rejection; derivative discovery must not be attempted");}});
     Check(version+" strict MyGO project descriptor cannot change the bound engine",()=>{string root=Shell(version,"strict-project-mygo");Descriptor(root,"3.2.1","4.6.4","webgal-mygo.mygo");var request=Request(root,version);J.D(request)["settings"]=J.O("engine","mygo");try{EngineAdapter.Select(request);throw new Exception("Project MyGO bypassed strict binding");}catch(IOException error){Assert(error.Message.Contains("禁止 MyGO"),"Project derivative inspection occurred before strict engine validation");}});

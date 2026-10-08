@@ -59,7 +59,10 @@ namespace NativeVideo {
   }
  }
  public static class WorkCache {
-  public static void CleanupBrowserProfile(string parent){string profile=Path.Combine(parent,"profile");try{if(Directory.Exists(profile))Files.DeleteTree(parent,profile);}catch{}}
+  // WebView2 may release its profile locks shortly after its controller closes.
+  // Retry only this owned cache deletion; never terminate external processes.
+  static void DeleteReleasedTree(string root,string target){target=Files.Full(target);if(!Files.Within(root,target))throw new IOException("拒绝删除指定缓存根目录以外的路径");for(int attempt=0;;attempt++){try{Files.DeleteTree(root,target);return;}catch(IOException){if(attempt>=50)throw;}catch(UnauthorizedAccessException){if(attempt>=50)throw;}Thread.Sleep(100);}}
+  public static void CleanupBrowserProfile(string parent){string profile=Path.Combine(parent,"profile");try{if(Directory.Exists(profile))DeleteReleasedTree(parent,profile);}catch{}}
   public static void CleanupProfiles(object request){
    string work=J.S(request,"jobDir");if(string.IsNullOrWhiteSpace(work)||!Directory.Exists(work))return;
    CleanupBrowserProfile(Path.Combine(work,"planning"));string parts=Path.Combine(work,"parts");if(Directory.Exists(parts))foreach(var part in Directory.GetDirectories(parts))CleanupBrowserProfile(part);
@@ -67,10 +70,10 @@ namespace NativeVideo {
   public static void CleanupCompleted(object request){
    string work=J.S(request,"jobDir"),record=J.S(request,"recordDir",work);if(string.IsNullOrWhiteSpace(work)||!Directory.Exists(work))return;
    if(!Files.Full(work).Equals(Files.Full(record),StringComparison.OrdinalIgnoreCase)){
-    string root=J.S(request,"cacheRoot");if(!string.IsNullOrWhiteSpace(root)&&Files.Within(root,work)){Files.DeleteTree(root,work);return;}
+    string root=J.S(request,"cacheRoot");if(!string.IsNullOrWhiteSpace(root)&&Files.Within(root,work)){DeleteReleasedTree(root,work);return;}
     throw new IOException("工作缓存目录不在记录的缓存根目录内，未自动删除："+work);
    }
-   foreach(var name in new[]{"parts","planning","music-snapshot","subtitle-snapshot"}){string path=Path.Combine(work,name);if(Directory.Exists(path))Files.DeleteTree(work,path);}
+   foreach(var name in new[]{"parts","planning","music-snapshot","subtitle-snapshot"}){string path=Path.Combine(work,name);if(Directory.Exists(path))DeleteReleasedTree(work,path);}
    foreach(var name in new[]{"audio.wav","concat.txt","mix.log","subtitle.log"}){string path=Path.Combine(work,name);if(File.Exists(path))File.Delete(path);}
   }
   public static void DeleteAll(object request,string recordRoot,string recordDir){

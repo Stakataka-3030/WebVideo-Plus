@@ -114,3 +114,23 @@ check('navigation terminal state agrees with native current/default, parallel, i
   const model=derive(source,{oracle:raw});assert.deepEqual(plain(model.statements[2].parts.flatMap(p=>p.items)),['目标：hero'],'Terminal projection differs: '+JSON.stringify([raw,flags,model.statements[2].parts]));
  }
 });
+
+check('unchanged native RAF driver preserves a different first delta after a prefix skips the preceding animation',()=>{
+ // Exact release driver/scheduler/c1e code. A linear numerical generator stands
+ // in for interpolation; the native tracks/interpolation are tested above.
+ function driver(){
+  let now=0,pending=[];const context={window:{requestAnimationFrame:fn=>{pending.push(fn);return pending.length;}},performance:{now:()=>now},h$:(obj,keys)=>Object.fromEntries(Object.entries(obj).filter(([key])=>!keys.includes(key))),Zxe:()=>({from,to,duration})=>({next:elapsed=>({value:from+(to-from)*Math.min(1,elapsed/duration),done:elapsed>=duration})})};
+  vm.runInNewContext(block('const M$=','var f1e=')+';globalThis.create=c1e;',context);
+  return {create:options=>context.create(options),fire:time=>{now=time;const callbacks=pending;pending=[];callbacks.forEach(fn=>fn(time));}};
+ }
+ const continuous=driver(),restored=driver(),values={};
+ const preceding=continuous.create({from:0,to:1500,duration:1500,onUpdate(){}});
+ for(let time=16;time<1000;time+=16)continuous.fire(time);
+ preceding.stop(); // Same __settleNonHold at t=1000 as the actual fixture.
+ continuous.create({from:0,to:2000,duration:2000,onUpdate:value=>values.continuous=value});
+ restored.create({from:0,to:2000,duration:2000,onUpdate:value=>values.restored=value});
+ continuous.fire(1008);restored.fire(1008);
+ assert.equal(values.continuous,16);assert.ok(Math.abs(values.restored-1000/60)<1e-12);
+ for(let time=1024;time<=1488;time+=16){continuous.fire(time);restored.fire(time);}
+ assert.ok(Math.abs(values.restored-values.continuous-2/3)<1e-10,'Shared native driver delta accumulates the prefix phase difference until animation completion');
+});

@@ -514,11 +514,14 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
       for(const model of obj.pixiContainer?.children||[]){
         const inner=model?.internalModel;if(!inner||deterministicLive2D.has(inner))continue;
         deterministicLive2D.add(inner);
+        // Keep the model birth epoch while its outgoing object still renders.
+        // A later model on the same target must not change this model's age.
+        const modelLifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,Number(globalThis.__exportCurrentSimulationMs));
         const breath=inner.breath;
         if(breath&&typeof breath.updateParameters==='function'&&typeof breath._currentTime==='number'){
           const original=breath.updateParameters.bind(breath);
           breath.updateParameters=(core,dt)=>{
-            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs),delta=Math.max(0,Number(dt)||0);
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs),delta=Math.max(0,Number(dt)||0);
             if(lifetime&&Number.isFinite(nowMs)){
               const ageSeconds=Math.max(0,(nowMs-Number(lifetime.startMs))/1000);
               breath._currentTime=ageSeconds-delta;
@@ -531,7 +534,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
         if(breath&&eyeBlink&&typeof eyeBlink.updateParameters==='function'&&Array.isArray(eyeBlink._parameterIds)){
           const originalBlink=eyeBlink.updateParameters.bind(eyeBlink);
           eyeBlink.updateParameters=(core,dt)=>{
-            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
             if(!lifetime||!Number.isFinite(nowMs))return originalBlink(core,dt);
             const event=globalThis.__exportLive2DEventAt(lifetime.blinkEvents,nowMs),epochMs=Number(event?.atMs??lifetime.startMs),state=globalThis.__exportResolveCubism4Blink(Math.max(0,(nowMs-epochMs)/1000),{
               intervalSeconds:Number(eyeBlink._blinkingIntervalSeconds),randomSeconds:Number(eyeBlink._blinkingIntervalRandomSeconds),closingSeconds:Number(eyeBlink._closingSeconds),closedSeconds:Number(eyeBlink._closedSeconds),openingSeconds:Number(eyeBlink._openingSeconds)
@@ -546,13 +549,13 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
         if(!breath&&typeof inner.updateNaturalMovements==='function'){
           inner.__webVideoAbsoluteNaturalAge=true;
           const originalNatural=inner.updateNaturalMovements.bind(inner);
-          inner.updateNaturalMovements=(dt,time)=>{const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);return originalNatural(dt,lifetime?Math.max(0,nowMs-Number(lifetime.startMs)):time);};
+          inner.updateNaturalMovements=(dt,time)=>{const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);return originalNatural(dt,lifetime?Math.max(0,nowMs-Number(lifetime.startMs)):time);};
         }
         const manager=inner.motionManager,queue=manager?.queueManager;
         if(!breath&&manager&&queue&&typeof manager.startRandomMotion==='function'&&typeof manager.loadMotion==='function'){
           const originalRandom=manager.startRandomMotion.bind(manager);
           manager.startRandomMotion=async(group,priority)=>{
-            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
             if(group!==manager.groups?.idle||!lifetime)return originalRandom(group,priority);
             if(manager.__webVideoIdleSeekPending)return manager.__webVideoIdleSeekPending;
             const task=(async()=>{
@@ -564,13 +567,13 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
             try{return await task;}finally{manager.__webVideoIdleSeekPending=null;}
           };
           manager.__webVideoDeterministicIdle=true;
-          const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+          const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
           if(lifetime)await seekCubism2State(manager,queue,inner.coreModel,target,lifetime,nowMs);
         }
         if(breath&&manager&&queue&&typeof manager.startRandomMotion==='function'&&typeof manager.loadMotion==='function'){
           const originalStart=manager.startMotion.bind(manager);
           manager.startMotion=async(group,index,priority)=>{
-            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
             const planned=lifetime?globalThis.__exportCubism4ExplicitMotionIndex(lifetime,group,nowMs,manager.definitions?.[group],1000/fps):null;
             const selected=planned===null?index:planned,epoch=planned===null?null:globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);
             const originMs=performance.now()-Math.max(0,nowMs-Number(epoch?.atMs??nowMs));
@@ -586,7 +589,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
           };
           const originalRandom=manager.startRandomMotion.bind(manager);
           manager.startRandomMotion=async(group,priority)=>{
-            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
             const explicitIndex=lifetime?globalThis.__exportCubism4ExplicitMotionIndex(lifetime,group,nowMs,manager.definitions?.[group],1000/fps):null;
             if(explicitIndex!==null)return manager.startMotion(group,explicitIndex,priority);
             if(group!==manager.groups?.idle||!lifetime)return originalRandom(group,priority);
@@ -600,7 +603,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
             try{return await task;}finally{manager.__webVideoCubism4SeekPending=null;}
           };
           manager.__webVideoDeterministicIdleCubism4=true;
-          const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+          const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
           if(lifetime){await seekCubism4State(manager,queue,inner.coreModel,target,lifetime,nowMs);await rebaseCubism4Expression(manager,target,lifetime,nowMs);}
         }
       }
