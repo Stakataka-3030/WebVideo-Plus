@@ -11,7 +11,8 @@ globalThis.__exportAnimationDuration=raw=>{
 globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,project,sceneName,fps,allowDecorativePixiCuts=false,strictSegmentCuts=false})=>{
  const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],softCutWindows=[],live2dLifetimes=[],exitReplay=[],counts={},visualSources=new Map(),figureIdentities=new Map(),activeLiveLifetimes=new Map(),transitionStates=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
  const clean=(kind,name)=>String(name||'').replace(new RegExp('^\\.?/?game/'+kind+'/'),'');
- const physical=name=>decodeURIComponent(String(name||'').split(/[?#]/)[0]);
+ // Match URL basic-parser preprocessing before decoding; never trim decoded %20 or Unicode spaces.
+ const physical=name=>decodeURIComponent(String(name||'').replace(/[\u0000-\u0020]+$/,'').replace(/[\t\n\r]/g,'').split(/[?#]/)[0]).replaceAll('\\','/');
  const local=(kind,name)=>root.replaceAll('\\','/')+'/game/'+kind+'/'+physical(clean(kind,name));
  const info=(kind,name)=>media['/game/'+kind+'/'+physical(clean(kind,name))]||{durationMs:0,hasAudio:false};
  const speakerTarget=params=>{if(params.figureId)return String(params.figureId);const position=['left','center','right','left13','right13','left14','right14'].find(key=>params[key]===true||params[key]==='true');return position?'fig-'+position:null;};
@@ -37,7 +38,8 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   const kind={changeBg:'background',changeFigure:'figure',changeFigureDiff:'figure',miniAvatar:'figure',bgm:'bgm',playEffect:'vocal',playVideo:'video'}[cmd],name=kind?clean(kind,s.content):s.content;
   if(cmd==='bgm'||cmd==='playEffect'){scheduleAudioCommand(audio,{command:cmd,name,file:name&&name!=='none'?local(kind,name):null,atMs:cursor,durationMs:info(kind,name).durationMs,params});continue;}
   if(cmd==='say'&&params.vocal){
-   voiceMs=info('vocal',params.vocal).durationMs;
+   const voiceInfo=info('vocal',params.vocal);voiceMs=Number(voiceInfo.durationMs);
+   if(!Number.isFinite(voiceMs)||voiceMs<=0||voiceInfo.hasAudio===false)throw Error('配音资源未取得有效音频时长（第'+(range.start+1)+'行）：'+params.vocal);
    audio.push({kind:'voice',path:local('vocal',params.vocal),atMs:cursor,endMs:cursor+voiceMs,volume:Number(params.volume??100)/100,loop:false,target:speakerTarget(params)});
    snippet=snippet.replace(/\s+-vocal=[^;]*?(?=\s+-|;|$)/,'');
   }
