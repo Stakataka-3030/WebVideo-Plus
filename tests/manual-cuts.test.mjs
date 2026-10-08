@@ -19,6 +19,34 @@ function nodes(node){return !node||typeof node!=='object'?[]:[node,...(Array.isA
 const find=(tree,label)=>nodes(tree).find(node=>node.props?.['aria-label']===label);
 const texts=tree=>nodes(tree).flatMap(node=>[node.props?.children].flat()).filter(value=>typeof value==='string').join('\n');
 const button=(tree,label)=>nodes(tree).find(node=>node.type==='Button'&&node.props.children===label);
+test('compatibility screenshots default to JPEG, enable only in traditional full export, and preserve selection',()=>{
+ const f=fixture();let tree=f.render();
+ assert.equal(find(tree,'兼容截图格式').props.value,'jpeg');
+ assert.equal(find(tree,'兼容截图格式').props.disabled,true);
+ find(tree,'导出质量').props.onChange({target:{value:'traditional'}});tree=f.render();
+ assert.equal(find(tree,'兼容截图格式').props.disabled,false);
+ find(tree,'兼容截图格式').props.onChange({target:{value:'png'}});tree=f.render();
+ assert.equal(find(tree,'兼容截图格式').props.value,'png');
+ assert.match(texts(tree),/最终 H.264 视频仍使用有损编码/);
+ find(tree,'导出质量').props.onChange({target:{value:'lossless'}});tree=f.render();
+ assert.equal(find(tree,'兼容截图格式').props.disabled,true);
+ assert.equal(find(tree,'兼容截图格式').props.value,'png');
+ f.states[f.states.lastIndexOf('full')]='stage';tree=f.render();
+ assert.equal(find(tree,'兼容截图格式'),undefined);
+});
+test('queued compatibility screenshot format remains PNG across subsequent quality changes',async()=>{
+ const f=fixture();f.states[1]={baseUrl:'http://test',token:'fixture'};let tree=f.render();
+ find(tree,'导出质量').props.onChange({target:{value:'traditional'}});tree=f.render();
+ find(tree,'兼容截图格式').props.onChange({target:{value:'png'}});tree=f.render();
+ await button(tree,'加入导出队列').props.onClick();
+ const queued=f.requests.find(request=>request.body?.settings).body;
+ assert.equal(queued.settings.compatibilityCaptureFormat,'png');
+ assert.equal(queued.settings.gpuRawMode,'traditional');
+ find(tree,'导出质量').props.onChange({target:{value:'quality'}});tree=f.render();
+ const preferences=f.states.find(value=>value?.fps===30);
+ assert.equal(preferences.compatibilityCaptureFormat,'png');
+ assert.equal(queued.settings.gpuRawMode,'traditional','Queued snapshot must stay independent of later edits');
+});
 test('legacy numeric parser remains stable for compatibility',()=>{
  const {parse}=fixture();
  assert.deepEqual(parse('300,1s，30f 00:02 1.01s 300F',30),[30,31,60,300]);

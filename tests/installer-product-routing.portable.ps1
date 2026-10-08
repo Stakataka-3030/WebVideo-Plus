@@ -19,6 +19,12 @@ namespace System.Web.Script.Serialization {
 }
 '@
  $shimPath=Join-Path $temp 'Json.cs';[IO.File]::WriteAllText($shimPath,$shim)
- Add-Type -Path @((Join-Path $root 'installer/Installer.product-routing.cs'),(Join-Path $PSScriptRoot 'InstallerProductRoutingChecks.cs'),(Join-Path $PSScriptRoot 'fixtures/update-channel/terre-1.1.6-release-evaluator.cs'),$shimPath) -IgnoreWarnings -WarningAction SilentlyContinue
+ $current=Get-Content (Join-Path $root 'installer/Installer.update.cs') -Raw
+ $boundary=$current.IndexOf('public partial class SetupForm')
+ if($boundary -lt 0){throw 'Current release evaluator extraction boundary changed'}
+ $current=$current.Substring(0,$boundary).Replace('ReleaseUpdateFinding','CurrentReleaseUpdateFinding').Replace('ReleaseUpdateCheck','CurrentReleaseUpdateCheck')
+ $currentPath=Join-Path $temp 'CurrentUpdate.cs'
+ [IO.File]::WriteAllText($currentPath,"using System;using System.IO;using System.Linq;using System.Net;using System.Text;using System.Collections.Generic;using System.Web.Script.Serialization;`n"+$current)
+ Add-Type -Path @((Join-Path $root 'installer/Installer.product-routing.cs'),(Join-Path $PSScriptRoot 'InstallerProductRoutingChecks.cs'),(Join-Path $PSScriptRoot 'fixtures/update-channel/terre-1.1.6-release-evaluator.cs'),$currentPath,$shimPath) -IgnoreWarnings -WarningAction SilentlyContinue
  [InstallerProductRoutingChecks]::Run($temp)
 }finally{Remove-Item -LiteralPath $temp -Recurse -Force}

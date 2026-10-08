@@ -36,6 +36,21 @@ for(const [label,source] of [['published 1.1.6',legacy],['current',modern]]){
  test(`${label} updater ignores draft/prerelease channels`,()=>{const updates=load(source);const data=[...rows,{tag_name:'v99.0.0',body:stable,prerelease:true},{tag_name:'v98.0.0',body:stable,draft:true}];assert.match(updates.classify(data,'4.6.4','1.1.6').url,/\/v1\.1\.7$/);});
 }
 test('current 4.6.4 documentation never uses repository-wide latest',()=>{for(const file of ['README.md','docs/BUILDING.md','docs/USER_GUIDE.md'])assert.ok(!fs.readFileSync(path.join(root,file),'utf8').includes('/releases/latest'));});
+const marker=engine=>'<!-- webvideo-compat: '+JSON.stringify({product:'terre',webgal:[engine]})+' -->';
+const finalRows=[{tag_name:'v1.1.7',body:stable},{tag_name:'v1.2.1',body:marker('4.6.5')},{tag_name:'v1.3.0',body:marker('4.6.6')},{tag_name:'craft-v1.1.12.0c',body:craft}].map(row=>({...row,draft:false,prerelease:false}));
+for(const [label,source] of [['published 1.1.6',legacy],['current',modern]])test(`${label} updater preserves all three final engine channels independently of release order`,()=>{
+ const updates=load(source);
+ for(const data of [finalRows,[...finalRows].reverse(),[finalRows[2],finalRows[0],finalRows[3],finalRows[1]]])for(const [engine,target] of [['4.6.4','1.1.7'],['4.6.5','1.2.1'],['4.6.6','1.3.0']]){
+  const result=updates.classify(data,engine,'1.1.6');assert.equal(result.kind,'update');assert.ok(result.url.endsWith('/v'+target));
+ }
+ assert.equal(updates.classify(finalRows,'4.6.4','1.1.7').kind,'keep');assert.equal(updates.classify(finalRows,'4.6.5','1.2.1').kind,'keep');assert.equal(updates.classify(finalRows,'4.6.6','1.3.0').kind,'current');
+});
+test('current updater rejects corrupt or wrong-product newer compatibility declarations',()=>{
+ const updates=load(modern);
+ for(const body of ['', '<!-- webvideo-compat: {bad} -->', '<!-- webvideo-compat: {"product":"craft","webgal":["4.6.5"]} -->', '<!-- webvideo-compat: {"product":"terre","webgal":["4.6.5","bad"]} -->']){
+  const result=updates.classify([...finalRows,{tag_name:'v9.0.0',body}],'4.6.5','1.2.0');assert.equal(result.kind,'unknown');assert.ok(!result.message.includes('可更新至'));
+ }
+});
 test('generated installer wires pre-action blocking and bounded/stale routing safeguards',()=>{
  const base=fs.readFileSync(path.join(root,'installer/Installer.base.cs'),'utf8'),updates=fs.readFileSync(path.join(root,'installer/Installer.update.cs'),'utf8'),enhancements=fs.readFileSync(path.join(root,'installer/installer-enhancements.mjs'),'utf8');
  assert.ok(base.includes('selectionTicket!=hostSelectionTicket'));assert.ok(base.includes('hostSelectionTicket++;install.Enabled=remove.Enabled=false'));assert.ok(base.includes('if(!busy)RefreshInstallation(true)')); assert.ok(!base.includes('return String.IsNullOrWhiteSpace(target)?null:ResolveTerreSelection(target)'));

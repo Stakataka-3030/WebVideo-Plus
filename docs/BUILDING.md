@@ -1,10 +1,10 @@
 # 构建与发布
 
-当前分支未发布适配候选版本 **1.2.0**，产品内部开发标识 **0.9.0**，安装器 Win32 版本 **1.2.0.0**，导出内核 **0.6.53**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
+当前发行分支版本 **1.2.1**，产品内部开发标识 **0.9.1**，安装器 Win32 版本 **1.2.1.0**，导出内核 **0.6.54**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`scripts/manifest.mjs`、`build-product.ps1`、`scripts/configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
-更新检查读取 GitHub 正式 Release 列表。发布 1.2.0 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"product":"terre","webgal":["4.6.5"]} -->` 一并放进 Release 正文，并保持自动推荐通道隔离（4.6.4 / MyGO 3.2.1 留在 1.1.7；1.2.0 仅推荐给 4.6.5）；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
+更新检查读取 GitHub 正式 Release 列表。发布 1.2.1 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"product":"terre","webgal":["4.6.5"]} -->` 一并放进 Release 正文，并保持自动推荐通道隔离（4.6.4 / MyGO 3.2.1 留在 1.1.7；1.2.1 仅推荐给 4.6.5）；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
 
 ## 初次准备（不需要旧安装器）
 
@@ -39,7 +39,7 @@ Pop-Location
 
 `-Offline` 只适用于构建输入准备，不等同于 `npm ci` 离线；首次恢复 AI npm 依赖仍需要网络或已有 npm 缓存。缺失或损坏的离线输入会明确报错，不会绕过校验。
 
-输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正式安装器为 `dist/WebVideo+-Setup-1.2.0.exe`，Win32 文件版本 `1.2.0.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
+输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正式安装器为 `dist/WebVideo+-Setup-1.2.1.exe`，Win32 文件版本 `1.2.1.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
 
 ### 旧 bootstrap 的显式迁移入口
 
@@ -100,7 +100,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 .\build-product.ps1 -Fast -InternalBuild
 ```
 
-`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.2.0` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
+`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.2.1` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
 
 需要重现某个旧内部标识时，可直接覆盖：
 
@@ -108,7 +108,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 .\build-product.ps1 -Fast -InternalVersion 0.5.7
 ```
 
-指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.2.0`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
+指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.2.1`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
 
 ## 安装恢复与存储目录
 
@@ -124,7 +124,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 
 ## GPU Raw 导出与性能诊断
 
-0.5.4 起的正常导出继续使用 output-size Pixi renderer、WebView2 SharedBuffer raw RGBA 与 ffmpeg 编码，并把“画质档”和“具体编码器”分开。界面显示为 **推荐 / 高质量、超高质量、完全无损、传统 / 兼容**：推荐档会并行实测 NVENC、AMD AMF、Intel Quick Sync，按 NVENC → AMF → QSV 的优先级选择可用硬件编码器；都不可用时使用 CPU x264。超高质量使用相同编码器但提高质量；完全无损才使用 x264rgb CRF 0；传统/兼容保留旧 JPEG CapturePreview 路径。质量选择位于导出主设置区，不再藏在高级设置中。硬件编码器在任务开始前会按目标分辨率预检，运行时失败也会保持原画质档回退 CPU x264。升级自旧偏好格式时会迁移到新的推荐档（传统兼容模式继续保留）。
+0.5.4 起的正常导出继续使用 output-size Pixi renderer、WebView2 SharedBuffer raw RGBA 与 ffmpeg 编码，并把“画质档”和“具体编码器”分开。界面显示为 **推荐 / 高质量、超高质量、完全无损、传统 / 兼容**：推荐档会并行实测 NVENC、AMD AMF、Intel Quick Sync，按 NVENC → AMF → QSV 的优先级选择可用硬件编码器；都不可用时使用 CPU x264。超高质量使用相同编码器但提高质量；完全无损才使用 x264rgb CRF 0；传统/兼容保留旧 CapturePreview 路径，默认 JPEG，可选 PNG 无损截图；最终 H.264 视频仍有损。质量选择位于导出主设置区，不再藏在高级设置中。硬件编码器在任务开始前会按目标分辨率预检，运行时失败也会保持原画质档回退 CPU x264。升级自旧偏好格式时会迁移到新的推荐档（传统兼容模式继续保留）。
 
 工作缓存从状态目录中拆出：`stateDir/jobs/<id>` 只保留 request/status/log/结果等轻量记录，`config.workDir/<id>` 保存 planning、parts、audio.wav、音乐快照和渲染期 WebView2 profile。默认 `workDir` 为当前成片目录下的 `.webvideo-cache`，导出面板可修改并持久化到 `config.json`。成功任务在校验并落盘后删除重型工作目录；失败/取消保留以支持 retry。规划和每个 part 的 WebView2 profile 无论成功失败都在对应进程结束后清理。 面板上传的临时 BGM 在建任务时复制到 `workDir/<id>/imported-music`，全局 `stateDir/media` 只作为当前服务会话的上传暂存；服务启动/退出会清理未被旧未完成任务引用的副本。
 
@@ -191,7 +191,7 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 
 导出面板“高级设置”提供“视频渲染管线”下拉框。默认会实测 NVENC 是否可用：可用时选择 NVENC，否则选择 x264rgb；传统/兼容模式仅在用户手动选择时使用：
 
-- **传统/兼容模式**：保持既有 CapturePreviewAsync JPEG → H.264 路径，用于 GPU raw 渲染出现兼容问题时回退。
+- **传统/兼容模式**：保持既有 CapturePreviewAsync → H.264 路径，可选 JPEG（默认）或 PNG 无损截图，用于 GPU raw 渲染出现兼容问题时回退。
 - **GPU Raw · x264rgb**：使用 output-size Pixi + DOM 三层 GPU 合成 + SharedBuffer RGBA，再以 libx264rgb CRF0 编码；画质优先但文件体积大。
 - **GPU Raw · NVENC（NVIDIA）**：同一 raw 帧管线，后端使用 h264_nvenc CQ19；需要可用的 NVIDIA NVENC。
 

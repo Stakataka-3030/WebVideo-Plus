@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, feature/1.1.6-statements-and-figure-export]
+    branches: [main, feature/1.1.6-statements-and-figure-export, release/1.2.1-final-465, release/1.3.0-terre-466]
   workflow_dispatch:
 
 permissions:

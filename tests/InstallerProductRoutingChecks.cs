@@ -22,6 +22,8 @@ public static class InstallerProductRoutingChecks {
   string descriptor="assets/templates/WebGAL_Template/webgal-engine.json";
   Put(terre,descriptor,"{\"id\":\"open-webgal.webgal\",\"version\":\"4.6.4\",\"webgalVersion\":\"4.6.4\"}");Check(InstallerProductRouting.TerreEngine(terre)=="4.6.4","official464");
   Put(terre,descriptor,"{\"id\":\"open-webgal.webgal\",\"version\":\"4.6.5\",\"webgalVersion\":\"4.6.5\"}");Check(InstallerProductRouting.TerreEngine(terre)=="4.6.5","official465");
+  Put(terre,descriptor,"{\"id\":\"open-webgal.webgal\",\"version\":\"4.6.6\",\"webgalVersion\":\"4.6.6\"}");Check(InstallerProductRouting.TerreEngine(terre)=="4.6.6","official466 update guidance");
+  Put(terre,descriptor,"{\"id\":\"open-webgal.webgal\",\"version\":\"4.6.5\",\"webgalVersion\":\"4.6.6\"}");Check(InstallerProductRouting.TerreEngine(terre)=="","inconsistent465466 version");
   Put(terre,descriptor,"{\"id\":\"open-webgal.webgal\",\"version\":\"4.6.4\",\"webgalVersion\":\"4.6.5\"}");Check(InstallerProductRouting.TerreEngine(terre)=="","inconsistent version");
   Put(terre,descriptor,"{\"id\":\"webgal-mygo.mygo\",\"version\":\"3.2.1\",\"webgalVersion\":\"4.6.4\"}");Check(InstallerProductRouting.TerreEngine(terre)=="4.6.4","MyGO321legacy");
   Put(terre,descriptor,"{\"id\":\"webgal-mygo.mygo\",\"version\":\"3.2.2\",\"webgalVersion\":\"4.6.4\"}");Check(InstallerProductRouting.TerreEngine(terre)=="","unknownMyGO");Put(terre,descriptor,new string('x',65537));Check(InstallerProductRouting.TerreEngine(terre)=="","boundeddescriptor");
@@ -36,6 +38,19 @@ public static class InstallerProductRoutingChecks {
   Check(ReleaseUpdateCheck.Evaluate(rows,"4.6.4","1.1.6").Url.EndsWith("/v1.1.7"),"published native116 selects117");
   Check(ReleaseUpdateCheck.Evaluate(rows,"4.6.4","1.1.7").Kind=="keep","published native116 retains117");
   Check(ReleaseUpdateCheck.Evaluate(rows,"4.6.5","1.1.6").Url.EndsWith("/v1.2.0"),"published native116 selects120for465");
+  var final465=Row("v1.2.1","terre","[\"4.6.5\"]");var final466=Row("v1.3.0","terre","[\"4.6.6\"]");var finalCraft=Row("craft-v1.1.12.0c","craft");
+  foreach(object[] ordered in new[]{new object[]{legacy,final465,final466,finalCraft},new object[]{finalCraft,final466,legacy,final465}}){
+   foreach(string[] pair in new[]{new[]{"4.6.4","1.1.7"},new[]{"4.6.5","1.2.1"},new[]{"4.6.6","1.3.0"}}){
+    Check(InstallerProductRouting.Select(ordered,"terre",pair[0]).Version==pair[1],"final download "+pair[0]);
+    Check(ReleaseUpdateCheck.Evaluate(ordered,pair[0],"1.1.6").Url.EndsWith("/v"+pair[1]),"final update "+pair[0]);
+    Check(CurrentReleaseUpdateCheck.Evaluate(ordered,pair[0],"1.1.6").Url.EndsWith("/v"+pair[1]),"current final update "+pair[0]);
+   }
+   Check(InstallerProductRouting.Select(ordered,"craft").Version=="1.1.12.0","Craft final retained");
+  }
+  foreach(string badBody in new[]{"","<!-- webvideo-compat: {bad} -->","<!-- webvideo-compat: {\"product\":\"craft\",\"webgal\":[\"4.6.5\"]} -->","<!-- webvideo-compat: {\"product\":\"terre\",\"webgal\":[\"4.6.5\",\"bad\"]} -->"}){
+   var invalid=Row("v9.0.0","terre");invalid["body"]=badBody;
+   Check(CurrentReleaseUpdateCheck.Evaluate(new object[]{final465,final466,invalid},"4.6.5","1.2.0").Kind=="unknown","corrupt/wrong-product newer native update");
+  }
   Console.WriteLine("Installer product routing passed: "+checks+" assertions; no host executable was run or changed.");
  }
 }

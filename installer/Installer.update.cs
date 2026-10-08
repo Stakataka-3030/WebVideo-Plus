@@ -15,7 +15,13 @@ public static class ReleaseUpdateCheck {
  static string Url(string tag){return Version(tag)==""?"":Releases+"/tag/"+Uri.EscapeDataString(tag);}
  static string[] Supports(Dictionary<string,object> release){
   var body=Value(release,"body");var marker=System.Text.RegularExpressions.Regex.Match(body,@"<!--\s*webvideo-compat:\s*(\{[^\r\n]*\})\s*-->",System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-  if(marker.Success)try{var data=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(marker.Groups[1].Value);object values;if(data.TryGetValue("webgal",out values)&&values is System.Collections.IEnumerable)return ((System.Collections.IEnumerable)values).Cast<object>().Select(Convert.ToString).Where(value=>System.Text.RegularExpressions.Regex.IsMatch(value??"",@"^\d+\.\d+\.\d+$")).ToArray();return new string[0];}catch{return new string[0];}
+  if(marker.Success)try{
+   var data=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(marker.Groups[1].Value);object values;
+   if(Value(data,"product")!=""&&Value(data,"product")!="terre")return new string[0];
+   if(!data.TryGetValue("webgal",out values)||!(values is System.Collections.IEnumerable)||values is string)return new string[0];
+   var engines=((System.Collections.IEnumerable)values).Cast<object>().ToArray();
+   return engines.Length>0&&engines.All(value=>value is string&&System.Text.RegularExpressions.Regex.IsMatch((string)value,@"^\d+\.\d+\.\d+$"))?engines.Cast<string>().ToArray():new string[0];
+  }catch{return new string[0];}
   return Legacy.Contains(Version(Value(release,"tag_name")))?new[]{"4.6.4"}:new string[0];
  }
  public static ReleaseUpdateFinding Evaluate(object[] data,string engine,string current){
@@ -63,11 +69,7 @@ public partial class SetupForm {
   ResponsiveLayout();
  }
  string DefaultEngineVersion(){
-  string descriptor=Path.Combine(terre.Text,"assets/templates/WebGAL_Template/webgal-engine.json");if(!File.Exists(descriptor)||new FileInfo(descriptor).Length>65536)return "";
-  var data=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(descriptor));
-  object id,version;if(!data.TryGetValue("id",out id)||Convert.ToString(id)!="open-webgal.webgal")return "";
-  if(!data.TryGetValue("webgalVersion",out version))data.TryGetValue("version",out version);
-  return Convert.ToString(version);
+  return InstallerProductRouting.TerreEngine(terre.Text,ShortcutTarget);
  }
  async Task CheckUpdatesAsync(bool manual=false){
   int ticket=++updateTicket;updateUrl="";updateAction.Visible=false;updateAction.Text="查看发行页";updateRetry.Enabled=true;

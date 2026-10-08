@@ -8,6 +8,12 @@ namespace NativeVideo {
   static void Cuts(string text,int fps,params int[] expected){Check(ManualCuts.Parse(text,fps).SequenceEqual(expected),"Unexpected normalized cuts: "+text+" @ "+fps);}
   public static int Run(){
    checks=0;
+   Check(J.S(Settings.Validate(null),"compatibilityCaptureFormat")=="jpeg","Existing preferences must keep JPEG");
+   Check(J.S(Settings.Validate(J.O("compatibilityCaptureFormat","PNG")),"compatibilityCaptureFormat")=="png","PNG normalization failed");
+   Check(CompatibilityCapture.Decoder("png")=="png"&&CompatibilityCapture.Decoder("jpeg")=="mjpeg","Capture decoder mismatch");
+   Reject(()=>Settings.Validate(J.O("compatibilityCaptureFormat","webp")),"Unsupported compatibility capture was accepted");
+   var captureRoundtrip=Settings.Validate(J.Parse(J.Text(Settings.Validate(J.O("compatibilityCaptureFormat","png","gpuRawMode","traditional")))));
+   Check(J.S(captureRoundtrip,"compatibilityCaptureFormat")=="png","PNG setting did not survive serialization");
    Check(!ManualCuts.Enabled(Settings.Validate(null)),"Old settings must remain automatic");
    Check(!ManualCuts.Enabled(Settings.Validate(J.O("mode","manual"))),"Playback mode is independent from cut mode");
    Check(J.S(Settings.Validate(J.O("manualCutPoints","invalid but inactive")),"manualCutPoints")=="invalid but inactive","Auto mode must preserve inactive input");

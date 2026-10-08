@@ -12,7 +12,7 @@ const WebVideoUpdates=(()=>{
  function supports(release){
   const value=version(release.tag_name),body=String(release.body||'');
   const marker=body.match(/<!--\s*webvideo-compat:\s*(\{[^\r\n]*\})\s*-->/i);
-  if(marker){try{const data=JSON.parse(marker[1]);return Array.isArray(data.webgal)?data.webgal.filter(item=>/^\d+\.\d+\.\d+$/.test(item)):[];}catch{return [];}}
+  if(marker){try{const data=JSON.parse(marker[1]);return (!data.product||data.product==='terre')&&Array.isArray(data.webgal)&&data.webgal.length&&data.webgal.every(item=>typeof item==='string'&&/^\d+\.\d+\.\d+$/.test(item))?data.webgal:[];}catch{return [];}}
   return legacy.has(value)?['4.6.4']:[];
  }
  function classify(rows,engine,current){
