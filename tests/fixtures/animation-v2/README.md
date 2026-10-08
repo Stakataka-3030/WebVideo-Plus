@@ -1,0 +1,1 @@
+Synthetic 4.6.6 fixture. Supply public/synthetic room.png and hero.png. Compare every decoded frame of one continuous worker and manual cuts at 2s, 5s, 8s, 11s, 13s. Cuts include active relative animation and completed keep prefix restoration. No private SDK/model material.

@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "engine": "WebGAL",
+  "version": "4.6.6",
+  "source": {
+    "url": "https://github.com/OpenWebGAL/WebGAL/releases/download/4.6.6/WebGAL-4.6.6-web.zip",
+    "sha256": "d8011933005f62397b3d1ea6cd14b8a7f58ce34a390000afa48f12a2d8f0349a"
+  },
+  "description": "Official WebGAL 4.6.6 runtime, original fonts, CSS, animation v2 and Live2D split chunks unchanged. Verified probes are added only to job snapshots by EngineAdapter.",
+  "files": [
+    {
+      "path": "assets/cherryBlossoms-DzBBkOW8.webp",
+      "sourceSize": 13706,
+      "sourceSha256": "56cf09c9a41863994f7000786d8972b03dcc214f692c479b78962608109bb0e3",
+      "outputSize": 13706,
+      "outputSha256": "56cf09c9a41863994f7000786d8972b03dcc214f692c479b78962608109bb0e3"
+    },
+    {
+      "path": "assets/dialog-BDvwibdp.mp3",
+      "sourceSize": 14881,
+      "sourceSha256": "d5b912353085e44e2fd975dfbfbe6561c38d1c3705687b22bb9bd065791e6bfe",
+      "outputSize": 14881,
+      "outputSha256": "d5b912353085e44e2fd975dfbfbe6561c38d1c3705687b22bb9bd065791e6bfe"
+    },
+    {
+      "path": "assets/index-Dcp3ZA1M.js",
+      "sourceSize": 1553441,
+      "sourceSha256": "d2b34606a380b9575ce1e50ed2251cb5e38b3d6f9b00200b2b0f252a13d209c0",
+      "outputSize": 1553441,
+      "outputSha256": "d2b34606a380b9575ce1e50ed2251cb5e38b3d6f9b00200b2b0f252a13d209c0"
+    },
+    {
+      "path": "assets/index-Dch1g2w9.css",
+      "sourceSize": 47833,
+      "sourceSha256": "ea9ea5a2be73a70eb62a83976394862149755450ca84d20870d76b6192299cb7",
+      "outputSize": 47833,
+      "outputSha256": "ea9ea5a2be73a70eb62a83976394862149755450ca84d20870d76b6192299cb7"
+    },
+    {
+      "path": "assets/index.es-DlwKruus.js",
+      "sourceSize": 129640,
+      "sourceSha256": "1ad45bac171ff15a79b52e20c727d6201dc1f1bc228d10d01cdd4d6cfc3d3e08",
+      "outputSize": 129640,
+      "outputSha256": "1ad45bac171ff15a79b52e20c727d6201dc1f1bc228d10d01cdd4d6cfc3d3e08"
+    },
+    {
+      "path": "assets/initRegister-CVWeoSm4.js",
+      "sourceSize": 6183,
+      "sourceSha256": "bfc116ccdda5d1744c797a6f379d2c1b72042aa90024fc28ad93528ff91d0f80",
+      "outputSize": 6183,
+      "outputSha256": "bfc116ccdda5d1744c797a6f379d2c1b72042aa90024fc28ad93528ff91d0f80"
+    },
+    {
+      "path": "assets/live2dAssets-BYMcvYkd.js",
+      "sourceSize": 795,
+      "sourceSha256": "02892ed85989397f5b6c4939d1ddcacb785aab8f10e1c4fe8c5af1c76a2c31f1",
+      "outputSize": 795,
+      "outputSha256": "02892ed85989397f5b6c4939d1ddcacb785aab8f10e1c4fe8c5af1c76a2c31f1"
+    },
+    {
+      "path": "assets/OPPOSans-R-tAcFw8I3.ttf",
+      "sourceSize": 10152780,
+      "sourceSha256": "ea92535935f8b5da18b64bb23e5ffbfef1417b7ae4ff3fc15372a65ee95a9580",
+      "outputSize": 10152780,
+      "outputSha256": "ea92535935f8b5da18b64bb23e5ffbfef1417b7ae4ff3fc15372a65ee95a9580"
+    },
+    {
+      "path": "assets/page-flip-1-CZ8VQh4O.mp3",
+      "sourceSize": 14965,
+      "sourceSha256": "7df32409e65c6c56707f030a59327de24865e24ad38e243a9ad4a604f4a19161",
+      "outputSize": 14965,
+      "outputSha256": "7df32409e65c6c56707f030a59327de24865e24ad38e243a9ad4a604f4a19161"
+    },
+    {
+      "path": "assets/rain-Bd8ZRQ7x.png",
+      "sourceSize": 37390,
+      "sourceSha256": "e0935c5335c65986437f2c2e0e7c7cdc3c6bd1e603edf6acf6bf8d232331bb4a",
+      "outputSize": 37390,
+      "outputSha256": "e0935c5335c65986437f2c2e0e7c7cdc3c6bd1e603edf6acf6bf8d232331bb4a"
+    },
+    {
+      "path": "assets/ResourceHanRoundedCN-Regular-C1HdCLVq.ttf",
+      "sourceSize": 14663464,
+      "sourceSha256": "1c5c623f008eabef10c45135a48b01b46311f9369c28857355872cfe05f48dc0",
+      "outputSize": 14663464,
+      "outputSha256": "1c5c623f008eabef10c45135a48b01b46311f9369c28857355872cfe05f48dc0"
+    },
+    {
+      "path": "assets/snow-CJh9m2KR.png",
+      "sourceSize": 27182,
+      "sourceSha256": "5313a7b0259c483f1329b57c2d2744fe4ee506163a7876b3c8a6111ba8e01978",
+      "outputSize": 27182,
+      "outputSha256": "5313a7b0259c483f1329b57c2d2744fe4ee506163a7876b3c8a6111ba8e01978"
+    },
+    {
+      "path": "assets/SourceHanSerifCN-Regular-B_f-kQ2u.ttf",
+      "sourceSize": 13013172,
+      "sourceSha256": "1e60cc2eedfa25bf5e4ecaa794402f581ad770d4c8be46d338bf52064b307ec7",
+      "outputSize": 13013172,
+      "outputSha256": "1e60cc2eedfa25bf5e4ecaa794402f581ad770d4c8be46d338bf52064b307ec7"
+    },
+    {
+      "path": "assets/spineAssets-EsL4vGGz.js",
+      "sourceSize": 1090,
+      "sourceSha256": "8aef260b1e16c5ed9ec956b0511507c2d15a279b55984f6e00cb7f5817b13aab",
+      "outputSize": 1090,
+      "outputSha256": "8aef260b1e16c5ed9ec956b0511507c2d15a279b55984f6e00cb7f5817b13aab"
+    },
+    {
+      "path": "assets/switch-1-DI-7VpPw.mp3",
+      "sourceSize": 9325,
+      "sourceSha256": "99b576bc49cf679b735460e30f1b97f7a07e9f3dc053c266a27d6b719f5e8b5b",
+      "outputSize": 9325,
+      "outputSha256": "99b576bc49cf679b735460e30f1b97f7a07e9f3dc053c266a27d6b719f5e8b5b"
+    },
+    {
+      "path": "index.html",
+      "sourceSize": 19013,
+      "sourceSha256": "009ee4f06fe2a7f3955f6325103d95cfbed6cc0779855a15462eb3503e10f46a",
+      "outputSize": 19013,
+      "outputSha256": "009ee4f06fe2a7f3955f6325103d95cfbed6cc0779855a15462eb3503e10f46a"
+    },
+    {
+      "path": "webgal-engine.json",
+      "sourceSize": 1284,
+      "sourceSha256": "4dedd6bec079e6fb826c50a62e8fad5934ad53fdade267fd1203f164401b47c2",
+      "outputSize": 1284,
+      "outputSha256": "4dedd6bec079e6fb826c50a62e8fad5934ad53fdade267fd1203f164401b47c2"
+    }
+  ],
+  "bundle": {
+    "path": "assets/index-Dcp3ZA1M.js",
+    "patches": [],
+    "append": ""
+  }
+}

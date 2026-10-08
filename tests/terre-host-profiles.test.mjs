@@ -8,7 +8,7 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
-const versions=['4.6.4','4.6.5'];
+const versions=['4.6.4','4.6.5','4.6.6'];
 const built=spawnSync(process.execPath,['scripts/build-timeline.mjs'],{cwd:root,encoding:'utf8'});
 assert.equal(built.status,0,built.stdout+built.stderr);
 function once(source,find,replace){assert.equal(source.split(find).length,2,'Exact integration anchor must be unique: '+find.slice(0,100));return source.replace(find,()=>replace);}
@@ -44,8 +44,8 @@ for(const version of versions){
  });
  test('Terre '+version+' native parser and batch authoring use its own command enum',()=>{
   const {context,derive}=parser(version),model=derive('changeFigure:hero.png -id=hero;\nchangeFigureDiff:hero2.png -id=hero;\nHero:Hello -figureId=hero;');
-  assert.equal(model.statements[1].command,version==='4.6.5'?'changeFigureDiff':'say');
-  assert.equal(context.batchNext.types.some(([command])=>command==='changeFigureDiff'),version==='4.6.5');
+  assert.equal(model.statements[1].command,version!=='4.6.4'?'changeFigureDiff':'say');
+  assert.equal(context.batchNext.types.some(([command])=>command==='changeFigureDiff'),version!=='4.6.4');
   assert.equal(context.WebVideoNavigationMetadataProfiles[version].fields.brightness.default,1);
  });
  test('Terre '+version+' transformFrom precedence follows the native host capability',()=>{
@@ -56,16 +56,16 @@ for(const version of versions){
   assert.ok(changes.includes('X轴位移：40'));
  });
 }
-test('product declares both host profiles without changing the legacy primary identity',()=>{
+test('product declares all host profiles without changing the legacy primary identity',()=>{
  const product=JSON.parse(read('package/product.json'));
  assert.deepEqual(product.supportedTerreVersions,versions);assert.equal(product.terreVersion,'4.6.4');
  for(const version of versions){assert.equal(product.hostProfiles[version].patchRoot,'hosts/'+version);assert.match(product.hostProfiles[version].baseHash,/^[a-f0-9]{64}$/);}
  for(const file of ['product-ui/menu-patches.json','product-ui/character-map-patches.json','timeline/patches.json','product-ui/game-patches.json'])assert.equal(read('package/'+file),read('package/hosts/4.6.4/'+file));
 });
 
-test('package integrity gates require both generated host profiles',()=>{
+test('package integrity gates require all generated host profiles',()=>{
  const verifier=read('scripts/verify-package.mjs');
- assert.match(verifier,/supportedTerreVersions,\['4\.6\.4','4\.6\.5'\]/);
+ assert.match(verifier,/supportedTerreVersions,\['4\.6\.4','4\.6\.5','4\.6\.6'\]/);
  for(const file of ['product-ui/menu-patches.json','product-ui/character-map-patches.json','product-ui/game-patches.json','timeline/patches.json'])assert.ok(verifier.includes(file));
 });
 
@@ -74,11 +74,11 @@ test('the exact generated timeline payload loads helpers in production order',()
   const bundle=read('baseline/terre-'+version+'.js'),start=bundle.indexOf('var commandType$1;'),end=bundle.indexOf('function TabItem(',start),context=vm.createContext({URL});
   context.window=context;context.globalThis=context;
   vm.runInContext('const bo=(o,k,v)=>(o[k]=v);'+bundle.slice(start,end)+';globalThis.parse=parseScene;globalThis.types=commandType;',context);
-  context.WebVideoHostProfile={terreVersion:version,supportsFigureDiff:version==='4.6.5',transformFrom:version==='4.6.5'};
+  context.WebVideoHostProfile={terreVersion:version,supportsFigureDiff:version!=='4.6.4',transformFrom:version!=='4.6.4'};
   vm.runInContext(read('package/timeline/timeline-core.js'),context);
   const source='changeFigure:hero.png -id=hero;\nchangeFigureDiff:smile.png -id=hero;';
   const model=context.WebVideoTimelineCore.derive('games/demo/game/scene/start.txt',source,context.parse(source),context.types);
-  assert.equal(model.statements[1].command,version==='4.6.5'?'changeFigureDiff':'say');
-  if(version==='4.6.5')assert.equal(model.statements[1].target,'hero');
+  assert.equal(model.statements[1].command,version!=='4.6.4'?'changeFigureDiff':'say');
+  if(version!=='4.6.4')assert.equal(model.statements[1].target,'hero');
  }
 });

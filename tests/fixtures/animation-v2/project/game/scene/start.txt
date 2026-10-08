@@ -1,0 +1,16 @@
+changeBg:room.png -next;
+changeFigure:hero.png -id=hero -next;
+setTransform:{"position":{"x":100,"y":30},"scale":{"x":1,"y":1},"alpha":1} -target=hero -duration=0 -next;
+wait:1000;
+setAnimation:relative_sparse -target=hero -keep -next;
+wait:3200;
+setAnimation:relative_reset -target=hero -keep -next;
+wait:3200;
+setTempAnimation:{"version":2,"relative":true,"inherit":true,"keyframes":[{"time":1000,"position":{"x":80},"ease":"linear"},{"time":2000,"position":{"x":0},"ease":"linear"}]} -target=hero -transformFrom=current -keep -next;
+wait:3200;
+setAnimation:v1 -target=hero -next;
+wait:1600;
+setTempAnimation:[{"duration":500,"position":{"x":40},"ease":"linear"},{"duration":500,"position":{"x":0},"ease":"linear"}] -target=hero -relative -inherit -keep -next;
+wait:1600;
+setTransform:{"position":{"x":0,"y":0},"alpha":1} -target=hero -duration=300 -transformFrom=default -next;
+wait:1500;

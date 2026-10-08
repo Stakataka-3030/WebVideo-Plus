@@ -1,0 +1,42 @@
+{
+  "version": 2,
+  "relative": true,
+  "inherit": true,
+  "keyframes": [
+    {
+      "time": 0,
+      "position": {
+        "x": 0
+      },
+      "ease": "linear"
+    },
+    {
+      "time": 500,
+      "alpha": 0.6,
+      "ease": "linear"
+    },
+    {
+      "time": 1000,
+      "position": {
+        "x": 180
+      },
+      "ease": "linear"
+    },
+    {
+      "time": 1500,
+      "position": {
+        "y": 100
+      },
+      "ease": "linear"
+    },
+    {
+      "time": 2000,
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "alpha": 1,
+      "ease": "linear"
+    }
+  ]
+}

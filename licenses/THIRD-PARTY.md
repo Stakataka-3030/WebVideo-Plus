@@ -23,6 +23,8 @@ React、Fluent UI、IconPark、TanStack Virtual、Zustand、Monaco Editor、Pixi
 
 - https://github.com/OpenWebGAL/WebGAL_Terre/tree/4.6.4
 - https://github.com/OpenWebGAL/WebGAL/tree/4.6.4
+- https://github.com/OpenWebGAL/WebGAL_Terre/tree/4.6.6
+- https://github.com/OpenWebGAL/WebGAL/tree/4.6.6
 
 ## 研究、资料与历史原型来源
 

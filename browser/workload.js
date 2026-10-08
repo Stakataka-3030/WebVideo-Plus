@@ -1,3 +1,12 @@
+// Animation v1 uses cumulative durations; v2 object keyframes use absolute times.
+// Keep the raw payload intact: relative/inherited tracks are compiled by its exact engine.
+globalThis.__exportAnimationDuration=raw=>{
+ const object=value=>value&&typeof value==='object'&&!Array.isArray(value),valid=value=>typeof value==='number'&&value>=0?value:0;
+ const v1=Array.isArray(raw)||object(raw)&&raw.version===1,frames=Array.isArray(raw)?raw:raw?.keyframes;
+ if(!Array.isArray(frames))throw Error('动画文件无效');
+ const records=frames.filter(object);
+ return v1?records.reduce((sum,frame)=>sum+valid(frame.duration),0):Math.max(0,...records.map(frame=>valid(frame.time)));
+};
 // Data-only scheduling. Files, processes and browser lifecycle are owned by C#.
 globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,project,sceneName,fps,allowDecorativePixiCuts=false,strictSegmentCuts=false})=>{
  const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],softCutWindows=[],live2dLifetimes=[],exitReplay=[],counts={},visualSources=new Map(),figureIdentities=new Map(),activeLiveLifetimes=new Map(),transitionStates=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
@@ -6,7 +15,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  const local=(kind,name)=>root.replaceAll('\\','/')+'/game/'+kind+'/'+physical(clean(kind,name));
  const info=(kind,name)=>media['/game/'+kind+'/'+physical(clean(kind,name))]||{durationMs:0,hasAudio:false};
  const speakerTarget=params=>{if(params.figureId)return String(params.figureId);const position=['left','center','right','left13','right13','left14','right14'].find(key=>params[key]===true||params[key]==='true');return position?'fig-'+position:null;};
- const ensureAnimation=name=>{if(!name)return 0;const frames=animations[name];if(!Array.isArray(frames))throw Error('动画文件无效：'+name);extraAnimations.set(name,frames);return frames.reduce((sum,f)=>sum+Number(f.duration||0),0);};
+ const ensureAnimation=name=>{if(!name)return 0;const raw=animations[name];let duration;try{duration=__exportAnimationDuration(raw);}catch{throw Error('动画文件无效：'+name);}extraAnimations.set(name,raw);return duration;};
  const statementRange=(s,index)=>{
   const start=Number.isInteger(s.startLine)?s.startLine:index,end=Number.isInteger(s.endLine)?s.endLine:start;
   return {start:Math.max(0,start),end:Math.max(Math.max(0,start),Math.min(sourceLines.length-1,end))};
@@ -142,7 +151,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   else if(cmd==='intro')cursor+=s.content.split('|').length*Number(params.delayTime??1500)+1000;
   else if(['setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','changeFigureDiff'].includes(cmd)){
    let ms=cmd==='changeFigureDiff'?Number(plannedPerform?.durationMs??(diffFallback?params.duration??350:200)):Number(params.duration??(cmd.startsWith('change')?350:500));
-   if(cmd==='setTempAnimation')try{ms=JSON.parse(s.content).reduce((a,f)=>a+Number(f.duration||0),0);}catch{}
+   if(cmd==='setTempAnimation')try{ms=__exportAnimationDuration(JSON.parse(s.content));}catch{}
    if(cmd==='setAnimation')ms=namedDuration;
    if(!params.keep)cursor+=Math.max(0,ms);
   }

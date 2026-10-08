@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace NativeVideo {
  // Engine code is always copied into a job-local snapshot before patching.
- // Exact WebGAL 4.6.4 / 4.6.5 project/template runtimes are preferred so engine-level
+ // Exact WebGAL 4.6.4 / 4.6.5 / 4.6.6 project/template runtimes are preferred so engine-level
  // defaults, split chunks and CSS stay identical to the game being exported.
  public sealed class EngineAdapter {
   public const string MygoHash = "0407b5a6326ebaa1608d16541b79b4ccc54a0432947ae7d3a6a855606a68866e";
@@ -20,7 +20,7 @@ namespace NativeVideo {
   EngineAdapter(string id, string version, string source, string bundle, string sourceKind, bool external=false, bool strictMygo=false, string fallbackReason=null, string expectedSourceHash=null, bool requireDescriptor=false) {
    Id=id; Version=version; Source=source; Bundle=bundle; SourceKind=sourceKind; externalWebgal=external; strictMygoHash=strictMygo; FallbackReason=fallbackReason; sourceHash=expectedSourceHash; strictDescriptor=requireDescriptor;
   }
-  public object Describe() { string hash=Files.Hash(Path.Combine(Source,Bundle)); if(sourceHash!=null&&hash!=sourceHash)throw new IOException("引擎源文件在选择后发生变化，请重新导出"); return J.O("id",Id,"version",Version,"bundle",Bundle,"sourceHash",hash,"canonicalMygo",IsMygo&&hash==MygoHash,"sourceKind",SourceKind,"runtimeParity",RuntimeParity,"fallbackReason",FallbackReason,"adapterVersion",5); }
+  public object Describe() { string hash=Files.Hash(Path.Combine(Source,Bundle)); if(sourceHash!=null&&hash!=sourceHash)throw new IOException("引擎源文件在选择后发生变化，请重新导出"); return J.O("id",Id,"version",Version,"bundle",Bundle,"sourceHash",hash,"canonicalMygo",IsMygo&&hash==MygoHash,"sourceKind",SourceKind,"runtimeParity",RuntimeParity,"fallbackReason",FallbackReason,"adapterVersion",6); }
 
   static string MainBundle(string root) {
    string html=Path.Combine(root,"index.html");
@@ -83,7 +83,7 @@ namespace NativeVideo {
      if(id=="open-webgal.webgal") {
       official=true;
       declaredVersion=J.S(metadata,"version");
-      if(WebgalEngineProfile.ForVersion(declaredVersion)==null||J.S(metadata,"webgalVersion")!=declaredVersion){error="WebGAL 描述版本必须一致且为受支持的 4.6.4 或 4.6.5";return null;}
+      if(WebgalEngineProfile.ForVersion(declaredVersion)==null||J.S(metadata,"webgalVersion")!=declaredVersion){error="WebGAL 描述版本必须一致且为受支持的 4.6.4、4.6.5 或 4.6.6";return null;}
      } else if(!string.IsNullOrWhiteSpace(id))return null;
     } catch(Exception e) {
      error="读取 WebGAL 引擎描述失败："+e.Message;
@@ -177,7 +177,7 @@ namespace NativeVideo {
    string baseVersion=J.S(request,"expectedWebgalVersion",expectedId=="open-webgal.webgal"?expected:"");
    bool official=expectedId=="open-webgal.webgal"&&selected=="webgal"&&WebgalEngineProfile.ForVersion(expected)!=null&&baseVersion==expected;
    bool mygo=expectedId=="webgal-mygo.mygo"&&selected=="mygo"&&expected=="3.2.1"&&baseVersion=="4.6.4";
-   if(!official&&!mygo)throw new IOException("严格绑定导出只允许匹配的 WebGAL 4.6.4 / 4.6.5 或 MyGO 3.2.1（基础 WebGAL 4.6.4）；禁止 MyGO 或其它引擎替代不匹配的绑定。当前："+expectedId+" "+expected+" / WebGAL "+baseVersion);
+   if(!official&&!mygo)throw new IOException("严格绑定导出只允许匹配的 WebGAL 4.6.4 / 4.6.5 / 4.6.6 或 MyGO 3.2.1（基础 WebGAL 4.6.4）；禁止 MyGO 或其它引擎替代不匹配的绑定。当前："+expectedId+" "+expected+" / WebGAL "+baseVersion);
   }
   public static void ValidateRuntimeContract(object request,object metadata) {
    if(!J.B(request,"requireRuntimeParity",false))return;
@@ -319,6 +319,7 @@ namespace NativeVideo {
     text=Deferral(text,"addVideoFigure(","addWmdlFigure(");
     text+="\n;globalThis.__wgProbe={core:R,store:Ie,stageManager:Z,parseScene:Ao,nativeAuto:yP,nativeStopAuto:$_,nativeNext:vp,compileText:Ds,textDelay:CP,textAnimation:PP};\n";
    } else text+="\nObject.assign(globalThis.__wgProbe,{"+profile.Exports+"});\n";
+   text+="\nglobalThis.__wgProbe.addAnimation=(name,raw)=>"+(Version=="4.6.6"?core+".animationManager.addAnimation(name,raw)":core+".animationManager.addAnimation({name,effects:raw})")+";\n";
    text+="\nglobalThis.__wgProbe.adapter="+J.Text(J.O("id",Id,"version",Version))+ ";globalThis.__nativeAdapterInstalled=true;\n";
    return text;
   }

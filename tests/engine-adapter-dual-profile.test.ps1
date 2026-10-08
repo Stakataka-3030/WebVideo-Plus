@@ -2,6 +2,7 @@ param(
   [Parameter(Mandatory=$true)][string]$Webgal464Root,
   [Parameter(Mandatory=$true)][string]$Webgal465Root,
   [string]$Webgal464Manifest=(Join-Path $PSScriptRoot '../build/runtime-patches.json'),
+  [string]$Webgal466Root,
   [string]$PackageRoot=(Join-Path $PSScriptRoot '../package'),
   [switch]$Portable
 )
@@ -12,6 +13,7 @@ param(
 $ErrorActionPreference='Stop'
 $Webgal464Root=[IO.Path]::GetFullPath($Webgal464Root)
 $Webgal465Root=[IO.Path]::GetFullPath($Webgal465Root)
+if($Webgal466Root){$Webgal466Root=[IO.Path]::GetFullPath($Webgal466Root)}
 $Webgal464Manifest=[IO.Path]::GetFullPath($Webgal464Manifest)
 $PackageRoot=[IO.Path]::GetFullPath($PackageRoot)
 $temp=Join-Path ([IO.Path]::GetTempPath()) ('webvideo-dual-profile-'+[Guid]::NewGuid().ToString('N'))
@@ -27,7 +29,7 @@ try {
   $corePath=Join-Path $temp 'Core.cs'
   [IO.File]::WriteAllText($corePath,$core,[Text.UTF8Encoding]::new($false))
   Add-Type -Path @($corePath,(Join-Path $PSScriptRoot '../src/WebgalEngineProfile.cs'),(Join-Path $PSScriptRoot '../src/RuntimeStartup.cs'),(Join-Path $PSScriptRoot '../src/EngineAdapter.cs'),(Join-Path $PSScriptRoot 'engine-adapter-dual-profile.portable-json.cs'),(Join-Path $PSScriptRoot 'engine-adapter-dual-profile-checks.cs'))
-  [EngineAdapterDualProfileChecks]::Run($Webgal464Root,$Webgal465Root,$Webgal464Manifest,$output)
+  [EngineAdapterDualProfileChecks]::Run($Webgal464Root,$Webgal465Root,$Webgal464Manifest,$output,$Webgal466Root)
  }else{
   if($env:OS -ne 'Windows_NT'){throw 'Use -Portable for source-level checks; product-assembly checks require Windows.'}
   $native=Join-Path $PackageRoot 'WebGAL.Video.exe'
@@ -39,12 +41,14 @@ try {
   Copy-Item -LiteralPath $native -Destination $temp
   Get-ChildItem -LiteralPath $PackageRoot -Filter '*.dll' -File | ForEach-Object {Copy-Item -LiteralPath $_.FullName -Destination $temp}
   if(Test-Path -LiteralPath ($native+'.config')){Copy-Item -LiteralPath ($native+'.config') -Destination ($checks+'.config')}
-  & $checks $Webgal464Root $Webgal465Root $Webgal464Manifest $output
+  if($Webgal466Root){& $checks $Webgal464Root $Webgal465Root $Webgal464Manifest $output $Webgal466Root}else{& $checks $Webgal464Root $Webgal465Root $Webgal464Manifest $output}
   if($LASTEXITCODE -ne 0){throw 'Dual-profile product-assembly checks failed'}
  }
- foreach($name in @('patched-4.6.4.mjs','patched-4.6.4-canonical.mjs','patched-4.6.5.mjs')){
+ $outputs=@('patched-4.6.4.mjs','patched-4.6.4-canonical.mjs','patched-4.6.5.mjs')
+ if($Webgal466Root){$outputs+='patched-4.6.6.mjs'}
+ foreach($name in $outputs){
   & node --check (Join-Path $output $name)
   if($LASTEXITCODE -ne 0){throw "Patched engine JavaScript syntax check failed: $name"}
  }
- Write-Output 'All three exact profile representations produce valid JavaScript. Native WebView2/rendering validation remains separate.'
+ Write-Output 'All selected exact profile representations produce valid JavaScript. Native WebView2/rendering validation remains separate.'
 }finally{Remove-Item -LiteralPath $temp -Recurse -Force}

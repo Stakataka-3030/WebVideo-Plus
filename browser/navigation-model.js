@@ -21,13 +21,13 @@
   if(typeof root.fetch!=='function')return;const names=[...new Set(model.statements.filter(s=>s.command==='setAnimation').map(s=>s.content))];
   for(const name of names){if(!name||name.split(/[\\/]/).some(p=>p==='..'||p==='.')||/[:%]/.test(name))continue;const key=resourceKey(model.path,name),old=animationCache.get(key);if(old?.pending)continue;
    const entry={...old,pending:true,checkedAt:Date.now()};animationCache.set(key,entry);
-   (async()=>{const controller=new root.AbortController(),timer=setTimeout(()=>controller.abort(),3000);let data=null;try{const response=await root.fetch('/'+key.split('/').map(encodeURIComponent).join('/'),{cache:'no-store',signal:controller.signal});if(response.ok&&Number(response.headers.get('content-length')||0)<=1048576){const text=await response.text();if(text.length<=1048576){const parsed=JSON.parse(text);data=Array.isArray(parsed)?parsed:Array.isArray(parsed.effects)?parsed.effects:null;}}}catch{}finally{clearTimeout(timer);}const changed=!old||!equal(old.data,data);animationCache.set(key,{data,pending:false,checkedAt:Date.now()});if(changed)onUpdate();})();
+   (async()=>{const controller=new root.AbortController(),timer=setTimeout(()=>controller.abort(),3000);let data=null;try{const response=await root.fetch('/'+key.split('/').map(encodeURIComponent).join('/'),{cache:'no-store',signal:controller.signal});if(response.ok&&Number(response.headers.get('content-length')||0)<=1048576){const text=await response.text();if(text.length<=1048576){const parsed=JSON.parse(text);data=Array.isArray(parsed)||Array.isArray(parsed?.keyframes)?parsed:Array.isArray(parsed?.effects)?parsed.effects:null;}}}catch{}finally{clearTimeout(timer);}const changed=!old||!equal(old.data,data);animationCache.set(key,{data,pending:false,checkedAt:Date.now()});if(changed)onUpdate();})();
   }
  }
  function derive(path,source,parsed,types,animationData){
   const {figureImage,figureModel,figureDiffRejected}=root.WebVideoTimelineCore;
   const native465=root.WebVideoHostProfile?.transformFrom??Object.values(types||{}).includes('changeFigureDiff');
-  const M=root.WebVideoNavigationMetadataProfiles?.[native465?'4.6.5':'4.6.4']||root.WebVideoNavigationMetadata,defaults=Object.fromEntries(Object.entries(M.fields).map(([k,v])=>[k,v.default]));
+  const M=root.WebVideoNavigationMetadataProfiles?.[root.WebVideoHostProfile?.terreVersion||(native465?'4.6.5':'4.6.4')]||root.WebVideoNavigationMetadata,defaults=Object.fromEntries(Object.entries(M.fields).map(([k,v])=>[k,v.default]));
   const lines=source.split('\n'),offsets=[0];for(let i=0;i<lines.length;i++)offsets.push(offsets[i]+lines[i].length+(i<lines.length-1?1:0));
   const statements=[],rows=[],figures=new Map(),effects=new Map(),transitions=new Map(),sounds=new Map(),groups=new Map();
   let speaker='',section=null,previous=null,group=0,firstManualLine=null,firstBgmLine=null,pending=[];
@@ -61,6 +61,31 @@
    const parts=[];for(const category of M.groups){const changed=category.keys.filter(key=>!equal(current[key],last[key]));if(changed.length)parts.push(part((frameIndex!==null?'第'+ordinal(frameIndex+1)+'帧 · ':'')+category.title,changed.map(key=>M.fields[key].label+'：'+fmt(current[key])),footer));}
    if(!parts.length&&duration!==0)parts.push(part(frameIndex!==null?'第'+ordinal(frameIndex+1)+'帧':labels[row.command],[],footer));
    return {parts:parts.map(p=>({...p,frameIndex:frameIndex??0})),state:current};
+  };
+  const native466=root.WebVideoHostProfile?.animationV2===true||root.WebVideoHostProfile?.terreVersion==='4.6.6';
+  const animationSpec=(raw,args={})=>{
+   const object=raw&&typeof raw==='object'&&!Array.isArray(raw),frames=Array.isArray(raw)?raw:object&&Array.isArray(raw.keyframes)?raw.keyframes:null;
+   if(!frames)return null;
+   const v2=native466&&(Array.isArray(raw)?typeof args.relative==='boolean'||typeof args.inherit==='boolean':raw.version!==1);
+   const relative=v2?(typeof args.relative==='boolean'?args.relative:typeof raw.relative==='boolean'?raw.relative:true):false,inherit=v2?(typeof args.inherit==='boolean'?args.inherit:typeof raw.inherit==='boolean'?raw.inherit:true):false;
+   let time=0;const normalized=frames.filter(frame=>frame&&typeof frame==='object'&&!Array.isArray(frame)).map(frame=>({...frame,time:Array.isArray(raw)||raw.version===1?(time+=typeof frame.duration==='number'&&frame.duration>=0?frame.duration:0):typeof frame.time==='number'&&frame.time>=0?frame.time:0}));
+   if(v2&&!Array.isArray(raw))normalized.sort((a,b)=>a.time-b.time);
+   return {v2,relative,inherit,frames:normalized,relativeCalc:object?raw.relativeCalc||{}:{}};
+  };
+  const animationEnd=(spec,args,prior)=>{
+   if(!spec?.frames.length)return prior;
+   if(!native466)return {...(resetEffects(args)?defaults:prior),...flatten(spec.frames.at(-1))};
+   const base={...(fromDefault(args)?defaults:prior)},explicitFrom=own(args,'transformFrom')&&args.transformFrom!=null&&args.transformFrom!=='';
+   const writeFull=!spec.v2&&args.parallel!==true&&(explicitFrom?args.transformFrom==='default':(own(args,'writeDefault')||own(args,'ignoreDefault'))&&args.ignoreDefault!==true);
+   const result={...prior},calculations={position:'add',rotation:'add',blur:'add',bevel:'add',bevelThickness:'add',bevelRotation:'add',bevelSoftness:'add',bloom:'add',bloomBlur:'add',scale:'multiplyWithZeroFallback'};
+   for(const [key,field] of Object.entries(M.fields)){
+    const relevant=spec.frames.filter(frame=>typeof get(frame,field.path)==='number');if(!writeFull&&!relevant.length)continue;
+    const last=spec.inherit?relevant.at(-1):spec.frames.at(-1),raw=get(last,field.path),baseline=base[key]??defaults[key];
+    if(typeof raw!=='number'){result[key]=baseline;continue;}
+    const property=field.path.split('.')[0],override=spec.relativeCalc[property],calc=spec.relative?(['add','multiply','multiplyWithZeroFallback','absolute'].includes(override)?override:calculations[property]||'absolute'):'absolute';
+    result[key]=calc==='add'?baseline+raw:calc==='multiply'?baseline*raw:calc==='multiplyWithZeroFallback'?(baseline===0?1:baseline)*raw:raw;
+   }
+   return result;
   };
   const moreParts=(args,old)=>{
    const next={general:{zIndex:-1,...(old?.general||{})},blink:{...(old?.blink||Object.fromEntries(Object.entries(M.blink).map(([k,v])=>[k,v.default])))},focus:{...(old?.focus||Object.fromEntries(Object.entries(M.focus).map(([k,v])=>[k,v.default])))}};
@@ -107,11 +132,11 @@
     if(id){row.parts=[part('效果声音',on?[file,'音量：'+fmt(number(args.volume,100)),'ID：'+idLabel(id),'启用']:[file,'ID：'+idLabel(id),'关闭'])];sounds.set(id,{active:on,file});}else row.parts=[part('效果声音',[fileName(content),'音量：'+fmt(number(args.volume,100))])];
    }else if(animations.has(command)){
     row.kind='event';row.target=String(args.target??'').trim()||null;row.attachRule='animation';row.title=labels[command];
-    if(command==='setAnimation'){const flags={keep:'跨语句动画',parallel:'并行动画'};row.parts=[part(row.title,['动画文件：'+(content||'未填写'),'变换起点：'+(fromDefault(args)?'默认状态':'当前状态'),...Object.entries(flags).filter(([key])=>args[key]===true).map(([,label])=>label+'：是')])];if(row.target){const frames=own(animationData,content)?animationData[content]:animationCache.get(resourceKey(path,content))?.data;if(frames===undefined)effects.set(row.target,{});else if(frames?.length){const before=effects.get(row.target)||defaults,reset=resetEffects(args);effects.set(row.target,{...(reset?defaults:before),...flatten(frames.at(-1))});}}}
+    if(command==='setAnimation'){const flags={keep:'跨语句动画',parallel:'并行动画'};row.parts=[part(row.title,['动画文件：'+(content||'未填写'),'变换起点：'+(fromDefault(args)?'默认状态':'当前状态'),...Object.entries(flags).filter(([key])=>args[key]===true).map(([,label])=>label+'：是')])];if(row.target){const frames=own(animationData,content)?animationData[content]:animationCache.get(resourceKey(path,content))?.data;if(frames===undefined)effects.set(row.target,{});else{const spec=animationSpec(frames,{});if(spec?.frames.length){const before=effects.get(row.target)||defaults;effects.set(row.target,animationEnd(spec,args,before));if(spec.v2)row.parts[0].items.push('Animation v2：'+(spec.relative?'相对变换':'绝对变换')+' · '+(spec.inherit?'继承关键帧':'各帧缺省值回到基准'));}}}}
     else if(command==='setComplexAnimation'){row.parts=[part(row.title,['动画名：'+content,'持续时间：'+fmt(number(args.duration,0))])];const endings={universalSoftIn:{alpha:1},universalSoftOff:{alpha:0},testblur:{alpha:1}};if(row.target&&endings[content])effects.set(row.target,{...(effects.get(row.target)||defaults),...endings[content]});}
     else if(command==='setTransition'){const old=transitions.get(row.target)||{},items=[];for(const [key,label] of [['enter','进场动画'],['exit','出场动画']])if(own(args,key)){if(!equal(args[key],old[key]??''))items.push(label+'：'+(args[key]||'无'));old[key]=args[key];}if(args.ignoreDefault===true)items.push('默认变换和效果：是');transitions.set(row.target,{...old});row.parts=[part(row.title,items)];}
-    else {const prior=row.target&&effects.has(row.target)?effects.get(row.target):{...defaults};const raw=parse(content),frames=command==='setTempAnimation'?(Array.isArray(raw)?raw:[]):[raw];let last=prior;
-     for(let frame=0;frame<frames.length;frame++){const result=effectParts(row,frames[frame],command==='setTempAnimation'?frame:null,prior,last);row.parts.push(...result.parts);last=result.state;}
+    else {const prior=row.target&&effects.has(row.target)?effects.get(row.target):{...defaults};const raw=parse(content),spec=command==='setTempAnimation'?animationSpec(raw,args):null,frames=command==='setTempAnimation'?(spec?.frames||[]):[raw];let last=prior;
+     for(let frame=0;frame<frames.length;frame++){if(spec?.v2){const input=flatten(frames[frame]),items=Object.entries(input).map(([key,value])=>M.fields[key].label+'：'+fmt(value));row.parts.push(part('第'+ordinal(frame+1)+'帧 · '+(spec.relative?'相对变换':'绝对变换'),items,'时间：'+fmt(frames[frame].time)+' ms'));}else{const result=effectParts(row,frames[frame],command==='setTempAnimation'?frame:null,prior,last);row.parts.push(...result.parts);last=result.state;}}if(spec&&(spec.v2||native466))last=animationEnd(spec,args,prior);
      if(!row.parts.length)row.parts=[part(row.title)];if(row.target)effects.set(row.target,last);
     }
    }else if(['pixi','pixiPerform','pixiInit'].includes(command)){

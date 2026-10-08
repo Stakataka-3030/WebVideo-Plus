@@ -11,9 +11,10 @@ public static class EngineAdapterDualProfileChecks {
  const string Raw464="e49e15f0db25c95556b6b1eccad89d6e77a32e284cd4e4852fad7dc9a3019902";
  const string Prepared464="d9efa39b4eabdb3a54c3d209ca5db6cb04d1cc60fdef3acdcd2532712a8a6d10";
  const string Raw465="356f7184c80af8da4dd782e25c5b3fb89f55f1e8b9e9e18be6f50035763dc6b6";
- static readonly string[] Versions={"4.6.4","4.6.5"};
- static readonly Dictionary<string,string> Bundles=new Dictionary<string,string>{{"4.6.4","assets/index-R1tKotR6.js"},{"4.6.5","assets/index-CC7KTie-.js"}};
- static readonly Dictionary<string,string> Hashes=new Dictionary<string,string>{{"4.6.4",Raw464},{"4.6.5",Raw465}};
+ static string[] Versions={"4.6.4","4.6.5"};
+ const string Raw466="d2b34606a380b9575ce1e50ed2251cb5e38b3d6f9b00200b2b0f252a13d209c0";
+ static readonly Dictionary<string,string> Bundles=new Dictionary<string,string>{{"4.6.4","assets/index-R1tKotR6.js"},{"4.6.5","assets/index-CC7KTie-.js"},{"4.6.6","assets/index-Dcp3ZA1M.js"}};
+ static readonly Dictionary<string,string> Hashes=new Dictionary<string,string>{{"4.6.4",Raw464},{"4.6.5",Raw465},{"4.6.6",Raw466}};
  static readonly Dictionary<string,string> Sources=new Dictionary<string,string>();
  static string home,prepared464;static int checks,sequence;
  static void Assert(bool condition,string message){if(!condition)throw new Exception(message);}
@@ -48,13 +49,15 @@ public static class EngineAdapterDualProfileChecks {
  }
  static void Probes(string patched,string version){
   foreach(string marker in new[]{"globalThis.__probeCommands","globalThis.__wgProbe","globalThis.__nativeObserve?.(e)","globalThis.__nativeBeforeNext?.()===false","globalThis.__nativeScheduleAuto??setTimeout","globalThis.__nativeAdapterInstalled=true"})Assert(patched.Contains(marker),"Missing common probe: "+marker);
-  string[] versionMarkers=version=="4.6.4"?new[]{"core:I,store:Pe","parseScene:xo","stageManager:Y","nativeAuto:G$","nativeStopAuto:D_","nativeNext:dp","compileText:Os","textDelay:_P","textAnimation:xP"}:new[]{"core:R,store:Pe","parseScene:wo","stageManager:X","nativeAuto:k5","nativeStopAuto:p0","nativeNext:Lp","compileText:Na","textDelay:KC","textAnimation:JC"};
+  string[] versionMarkers=version=="4.6.4"?new[]{"core:I,store:Pe","parseScene:xo","stageManager:Y","nativeAuto:G$","nativeStopAuto:D_","nativeNext:dp","compileText:Os","textDelay:_P","textAnimation:xP"}:version=="4.6.6"?new[]{"core:R,store:Pe","parseScene:Eo","stageManager:q","nativeAuto:r8","nativeStopAuto:g0","nativeNext:Np","compileText:Na","textDelay:oO","textAnimation:aO","live2dCore:uc"}:new[]{"core:R,store:Pe","parseScene:wo","stageManager:X","nativeAuto:k5","nativeStopAuto:p0","nativeNext:Lp","compileText:Na","textDelay:KC","textAnimation:JC"};
   foreach(string marker in versionMarkers)Assert(patched.Contains(marker),"Missing "+version+" profile probe: "+marker);
   Assert(!patched.Contains("audioLevelInterval:setInterval(()=>{},0)"),"Zero-interval placeholder survived");
  }
- public static int Main(string[] args){try{Assert(args.Length==4,"Pass 4.6.4 raw root, 4.6.5 raw root, 4.6.4 manifest and owned output directory");Run(args[0],args[1],args[2],args[3]);return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
- public static void Run(string root464,string root465,string manifest464,string outputRoot){
-  checks=0;sequence=0;Sources.Clear();Sources["4.6.4"]=Path.GetFullPath(root464);Sources["4.6.5"]=Path.GetFullPath(root465);home=Path.GetFullPath(outputRoot);Directory.CreateDirectory(home);
+ public static int Main(string[] args){try{Assert(args.Length==4||args.Length==5,"Pass 4.6.4 raw root, 4.6.5 raw root, 4.6.4 manifest and owned output directory");Run(args[0],args[1],args[2],args[3],args.Length==5?args[4]:null);return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
+ public static void Run(string root464,string root465,string manifest464,string outputRoot){Run(root464,root465,manifest464,outputRoot,null);}
+ public static void Run(string root464,string root465,string manifest464,string outputRoot,string root466){
+  Versions=string.IsNullOrEmpty(root466)?new[]{"4.6.4","4.6.5"}:new[]{"4.6.4","4.6.5","4.6.6"};if(!string.IsNullOrEmpty(root466))Sources["4.6.6"]=Path.GetFullPath(root466);
+  checks=0;sequence=0;Sources.Clear();if(!string.IsNullOrEmpty(root466))Sources["4.6.6"]=Path.GetFullPath(root466);Sources["4.6.4"]=Path.GetFullPath(root464);Sources["4.6.5"]=Path.GetFullPath(root465);home=Path.GetFullPath(outputRoot);Directory.CreateDirectory(home);
   string oldRoot=Files.Root;Files.Root=NewDirectory("isolated-package-no-profile-json");
   try{
    foreach(string version in Versions)Assert(Files.Hash(Path.Combine(Sources[version],Bundles[version]))==Hashes[version],"Actual pinned raw "+version+" fixture required");
@@ -141,7 +144,7 @@ public static class EngineAdapterDualProfileChecks {
    }
    Check("cached startup matches immutable queued preview",()=>{var request=J.O("runtimeStartup",J.O("language",2,"source","preview"));RuntimeStartup.ValidateContract(request,J.O("language",2,"code","ja","source","preview"));Reject(()=>RuntimeStartup.ValidateContract(request,J.O("language",1,"code","en","source","preview")),"stale queued locale");Reject(()=>RuntimeStartup.ValidateContract(request,J.O("language",2,"code","ja","source","project-default")),"lost preview precedence");});
    Check("cached startup cannot invent absent preview evidence",()=>{RuntimeStartup.ValidateContract(J.O(),J.O("language",1,"code","en","source","project-default"));Reject(()=>RuntimeStartup.ValidateContract(J.O(),J.O("language",1,"code","en","source","preview")),"orphan cached preview locale");});
-   Check("strict unrecognized expected version is rejected",()=>{string root=Shell("4.6.5","unsupported-expected");Reject(()=>EngineAdapter.Select(Request(root,"4.6.6")),"unsupported requested profile");});
+   Check("strict unrecognized expected version is rejected",()=>{string root=Shell("4.6.5","unsupported-expected");Reject(()=>EngineAdapter.Select(Request(root,"4.6.7")),"unsupported requested profile");});
    Check("canonical prepared 4.6.4 remains an exact accepted identity",()=>{string root=Shell("4.6.4","canonical-prepared");Files.Atomic(Path.Combine(root,Bundles["4.6.4"]),prepared464);var a=EngineAdapter.Select(Request(root,"4.6.4"));Assert(a.Version=="4.6.4"&&J.S(a.Describe(),"sourceHash")==Prepared464,"Prepared source identity was lost");string patched=a.Patch(prepared464);Probes(patched,"4.6.4");Files.Atomic(Path.Combine(home,"patched-4.6.4-canonical.mjs"),patched);string output=NewDirectory("prepared-canonical");a.Prepare(output);Assert(Files.Hash(Path.Combine(root,Bundles["4.6.4"]))==Prepared464,"Prepared source mutated");Assert(J.S(J.Read(Path.Combine(output,"export-engine.json")),"sourceHash")==Prepared464,"Prepared identity changed during snapshot");Probes(File.ReadAllText(Path.Combine(output,Bundles["4.6.4"])),"4.6.4");});
    Check("4.6.5 Patch rejects canonical prepared 4.6.4",()=>{string root=Shell("4.6.5","cross-prepared");var a=EngineAdapter.Select(Request(root,"4.6.5"));Reject(()=>a.Patch(prepared464),"prepared cross-profile patch");});
    Check("selection pins raw 4.6.4 rather than accepting a later prepared variant",()=>{string root=Shell("4.6.4","raw-to-prepared");var a=EngineAdapter.Select(Request(root,"4.6.4"));Files.Atomic(Path.Combine(root,Bundles["4.6.4"]),prepared464);Reject(()=>a.Prepare(NewDirectory("raw-to-prepared-output")),"supported source variant swapped after selection");});
@@ -161,8 +164,8 @@ public static class EngineAdapterDualProfileChecks {
    Check("nonstrict expected 4.6.5 never falls back to bundled 4.6.4",()=>Reject(()=>EngineAdapter.Select(Request(NewDirectory("legacy-expected-465"),"4.6.5",null,false)),"expected 4.6.5 fell back to 4.6.4"));
    Check("nonstrict failed 4.6.5 template never falls back to bundled 4.6.4",()=>{string root=Shell("4.6.5","legacy-template-465");File.Delete(Path.Combine(root,Bundles["4.6.5"]));Reject(()=>EngineAdapter.Select(Request(NewDirectory("legacy-template-game"),null,root,false)),"declared 4.6.5 template fell back to 4.6.4");});
    Check("nonstrict 4.6.4 failure retains visible same-version bundled fallback",()=>{string root=Shell("4.6.4","legacy-fallback-464");File.Delete(Path.Combine(root,Bundles["4.6.4"]));var a=EngineAdapter.Select(Request(root,null,null,false));Assert(a.Version=="4.6.4"&&a.SourceKind=="bundled-runtime"&&!string.IsNullOrWhiteSpace(a.FallbackReason),"Known 4.6.4 fallback lost its reason");});
-   Check("unknown declared official version cannot use known template",()=>{string root=NewDirectory("legacy-unsupported");Descriptor(root,"4.6.6","4.6.6");Reject(()=>EngineAdapter.Select(Request(root,null,Sources["4.6.4"],false)),"unsupported declared project silently downgraded");});
-   Console.WriteLine("Exact dual-profile adapter checks passed: "+checks+". Native browser/rendering validation remains separate.");
+   Check("unknown declared official version cannot use known template",()=>{string root=NewDirectory("legacy-unsupported");Descriptor(root,"4.6.7","4.6.7");Reject(()=>EngineAdapter.Select(Request(root,null,Sources["4.6.4"],false)),"unsupported declared project silently downgraded");});
+   Console.WriteLine("Exact versioned-profile adapter checks passed: "+checks+". Native browser/rendering validation remains separate.");
   }finally{Files.Root=oldRoot;}
  }
 }

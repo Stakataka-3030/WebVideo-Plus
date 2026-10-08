@@ -35,7 +35,7 @@ try {
  if(-not $OutputRoot){$OutputRoot=Join-Path $temp 'patched'}
  [TerreHostPatchChecks]::Run($repo,$package,[IO.Path]::GetFullPath($OutputRoot))
  $results=@(Get-ChildItem -LiteralPath $OutputRoot -Filter 'terre-*.mjs' -File)
- if($results.Count -ne 16){throw "Expected 16 complete patched host outputs, found $($results.Count)"}
+ if($results.Count -ne 24){throw "Expected 24 complete patched host outputs, found $($results.Count)"}
  foreach($file in $results){& node --check $file.FullName;if($LASTEXITCODE -ne 0){throw "Patched host syntax failed: $($file.Name)"}}
- Write-Output 'All 16 exact/structural host and module variants produced valid JavaScript. Windows installer and host UI validation remain separate.'
+ Write-Output 'All 24 exact/structural host and module variants produced valid JavaScript. Windows installer and host UI validation remain separate.'
 }finally{Remove-Item -LiteralPath $temp -Recurse -Force}

@@ -17,7 +17,8 @@ const [runtimeArg='package/runtime/web',upstreamArg='.build/webgal-source',outAr
 const hash=source=>crypto.createHash('sha256').update(source).digest('hex');
 const profiles=[
  {version:'4.6.4',bundle:'index-R1tKotR6.js',bundleHash:'d9efa39b4eabdb3a54c3d209ca5db6cb04d1cc60fdef3acdcd2532712a8a6d10',plugin:'index.es-erQsk_Nn.js',pluginHash:'46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505'},
- {version:'4.6.5',bundle:'index-CC7KTie-.js',bundleHash:'356f7184c80af8da4dd782e25c5b3fb89f55f1e8b9e9e18be6f50035763dc6b6',plugin:'index.es-0XzJiDJZ.js',pluginHash:'8b6c11ea8b4724dd8254d61a009c4d0e7cc7389f31f76570dac354c56b11a724'}
+ {version:'4.6.5',bundle:'index-CC7KTie-.js',bundleHash:'356f7184c80af8da4dd782e25c5b3fb89f55f1e8b9e9e18be6f50035763dc6b6',plugin:'index.es-0XzJiDJZ.js',pluginHash:'8b6c11ea8b4724dd8254d61a009c4d0e7cc7389f31f76570dac354c56b11a724'},
+ {version:'4.6.6',bundle:'index-Dcp3ZA1M.js',bundleHash:'d2b34606a380b9575ce1e50ed2251cb5e38b3d6f9b00200b2b0f252a13d209c0',plugin:'index.es-DlwKruus.js',pluginHash:'1ad45bac171ff15a79b52e20c727d6201dc1f1bc228d10d01cdd4d6cfc3d3e08'}
 ];
 const profileInfo=profiles.find(p=>fs.existsSync(path.join(runtime,'assets',p.bundle)));assert.ok(profileInfo,'Unsupported runtime fixture');
 const bundle=fs.readFileSync(path.join(runtime,'assets',profileInfo.bundle),'utf8'),plugin=fs.readFileSync(path.join(runtime,'assets',profileInfo.plugin),'utf8');
@@ -31,7 +32,7 @@ const profile=fs.mkdtempSync(path.join(os.tmpdir(),'webvideo-figure-browser-'));
 const fixtureExpression=`(async()=>{
   ${filter}
   globalThis.__wgProbe?.core?.gameplay?.pixiStage?.currentApp?.stop();
-  const G={shared:{deltaMS:1000/60}},Ze=new PIXI.Matrix();
+  const G={shared:{deltaMS:1000/60}},Ze=new PIXI.Matrix(),ai=Ze;
   class Model extends PIXI.Container {${live2dMethods}}
   const run=(background,includeFigures,kind)=>{
    const app=new PIXI.Application({width:128,height:64,backgroundAlpha:0,antialias:false,autoStart:false,preserveDrawingBuffer:true});app.stop();

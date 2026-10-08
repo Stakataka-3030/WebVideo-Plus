@@ -9,15 +9,15 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const plugin=fs.readFileSync(process.argv[2]||path.join(root,'package/runtime/web/assets/index.es-erQsk_Nn.js'),'utf8');
-const pluginHash=crypto.createHash('sha256').update(plugin).digest('hex'),versions={'46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505':'4.6.4','8b6c11ea8b4724dd8254d61a009c4d0e7cc7389f31f76570dac354c56b11a724':'4.6.5'};
-assert.ok(versions[pluginHash],'Only the exact official 4.6.4/4.6.5 plugins are supported');
+const pluginHash=crypto.createHash('sha256').update(plugin).digest('hex'),versions={'46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505':'4.6.4','8b6c11ea8b4724dd8254d61a009c4d0e7cc7389f31f76570dac354c56b11a724':'4.6.5','1ad45bac171ff15a79b52e20c727d6201dc1f1bc228d10d01cdd4d6cfc3d3e08':'4.6.6'};
+assert.ok(versions[pluginHash],'Only the exact official 4.6.4/4.6.5/4.6.6 plugins are supported');
 const from=plugin.indexOf('onTickerUpdate(){this.update(G.shared.deltaMS)}'),to=plugin.indexOf('destroy(t){',from);assert.ok(from>=0&&to>from);
 const render=fs.readFileSync(path.join(root,'browser/render.js'),'utf8');
 async function run(includeFigures,fps,composite){
  const context=vm.createContext({});
  vm.runInContext(`
   const G={shared:{deltaMS:0}},Ze={copyFrom(){return this},append(){return this}};
-  class Model {${plugin.slice(from,to)}};
+  const ai=Ze;class Model {${plugin.slice(from,to)}};
   const trace={commands:[],ticks:[],updates:[],draws:[],media:[],frames:[],waits:0,visibleDraws:0};
   let color=[true,true,true,true];const gl={FRAMEBUFFER_BINDING:1,COLOR_WRITEMASK:2,COLOR_BUFFER_BIT:16384,getParameter:key=>key===2?color.slice():null,colorMask:(...c)=>color=c,drawElements(){if(color.some(Boolean))trace.visibleDraws++;},getExtension(){return null;}};
   const reset={reset(){}};

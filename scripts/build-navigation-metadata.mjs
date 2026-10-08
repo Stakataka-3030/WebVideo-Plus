@@ -19,7 +19,7 @@ const effectPresets=JSON.parse(fs.readFileSync(path.join(root,"preset-effects.fa
 const result={effectPresets,filterPresets,speakerPositions,characterNames,nativeEffects,fields,groups:config.fieldGroups,eases,blink:{blinkInterval:{label:'眨眼间隔',default:86400000},blinkIntervalRandom:{label:'眨眼间隔随机变化',default:1000},openingDuration:{label:'睁眼',default:150},closingDuration:{label:'闭眼',default:100},closedDuration:{label:'保持闭眼',default:50}},focus:{x:{label:'注视点 X',default:0},y:{label:'注视点 Y',default:0},instant:{label:'立即注视',default:false}},positions:{center:'中间',left:'左侧',right:'右侧',left13:'左侧 1/3',right13:'右侧 1/3',left14:'左侧 1/4',right14:'右侧 1/4'}};
 return result;
 }
-const profiles=Object.fromEntries(['4.6.4','4.6.5'].map(version=>[version,metadata(version)]));
+const profiles=Object.fromEntries(['4.6.4','4.6.5','4.6.6'].map(version=>[version,metadata(version)]));
 const common=JSON.stringify(profiles['4.6.4']);
 const profileEntries=Object.entries(profiles).map(([version,data])=>JSON.stringify(version)+':'+(JSON.stringify(data)===common?'globalThis.WebVideoNavigationMetadata':JSON.stringify(data,null,2)));
 fs.writeFileSync(path.join(root,'browser/navigation-metadata.js'),'globalThis.WebVideoNavigationMetadata='+JSON.stringify(profiles['4.6.4'],null,2)+';\nglobalThis.WebVideoNavigationMetadataProfiles={'+profileEntries.join(',')+'};\nglobalThis.WebVideoNavigationMetadata=globalThis.WebVideoNavigationMetadataProfiles[globalThis.WebVideoHostProfile?.terreVersion]||globalThis.WebVideoNavigationMetadata;\n');

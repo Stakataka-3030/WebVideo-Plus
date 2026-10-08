@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "relative": true,
+  "inherit": false,
+  "relativeCalc": {
+    "position": "add",
+    "scale": "multiplyWithZeroFallback",
+    "alpha": "multiply"
+  },
+  "keyframes": [
+    {
+      "time": 1000,
+      "position": {
+        "x": 120
+      },
+      "scale": {
+        "x": 1.25,
+        "y": 1.25
+      },
+      "alpha": 0.7,
+      "ease": "linear"
+    },
+    {
+      "time": 2000,
+      "position": {
+        "y": 100
+      },
+      "ease": "linear"
+    }
+  ]
+}

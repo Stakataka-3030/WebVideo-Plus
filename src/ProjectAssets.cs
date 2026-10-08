@@ -110,6 +110,7 @@ namespace NativeVideo {
   public static bool SingleLineHint(string command,object sentence,Dictionary<string,object> args){if(command!="choose"||J.N(args,"defaultChoose",-1)!=1||J.B(args,"next"))return false;var options=Regex.Split(J.S(sentence,"content"),@"(?<!\\)\|");if(options.Length!=1)return false;var nodes=Regex.Split(options[0],@"(?<!\\):");return nodes.Length==2&&Regex.IsMatch(nodes[1].Trim(),@"^__wvp_hint_[A-Za-z0-9_]+$");}
   public static bool ConvertibleSingleChoose(string command,object sentence,Dictionary<string,object> args){if(command!="choose"||args.ContainsKey("wvpHint")||J.B(args,"next")||args.Keys.Any(key=>key!="defaultChoose"))return false;var options=Regex.Split(J.S(sentence,"content"),@"(?<!\\)\|");if(options.Length!=1||options[0].Contains("->"))return false;var nodes=Regex.Split(options[0],@"(?<!\\):");return nodes.Length==2&&!string.IsNullOrWhiteSpace(nodes[0])&&!string.IsNullOrWhiteSpace(nodes[1]);}
   void CheckJson(object text,bool array,int line,string label){try{object value=text is string?J.Parse((string)text):text;if(array?!(value is object[]):!(value is Dictionary<string,object>))throw new Exception(array?"应为动画帧数组":"应为对象");}catch(Exception e){Add("syntax",line,label,"参数无法解析："+e.Message);}}
+  void CheckAnimation(object text,int line,string label){try{object value=text is string?J.Parse((string)text):text;bool v2=Adapter.Version=="4.6.6"&&!Adapter.IsMygo;if(!(value is object[])&&!(v2&&value is Dictionary<string,object>&&J.Get(value,"keyframes") is object[]))throw new Exception(v2?"应为动画帧数组或含 keyframes 的动画对象":"应为动画帧数组");}catch(Exception e){Add("syntax",line,label,"参数无法解析："+e.Message);}}
   public object Scan(object parsed,bool ignoreStageBackground=false){
    Parsed=parsed;
    var lines=Regex.Split(Script,"\r?\n");
@@ -128,14 +129,15 @@ namespace NativeVideo {
     string cmd=J.N(s,"command",-1)==0?"say":J.S(s,"commandRaw");
     var p=Params(s);
     // Older parsers retain the reserved raw token but decode the new command as dialogue.
-    if(cmd!="changeFigureDiff"&&J.S(s,"commandRaw")=="changeFigureDiff")Add("unsupported",line,"changeFigureDiff","当前引擎将 changeFigureDiff 解析为对话；请使用已验证的 WebGAL 4.6.5 引擎");
+    if(cmd!="changeFigureDiff"&&J.S(s,"commandRaw")=="changeFigureDiff")Add("unsupported",line,"changeFigureDiff","当前引擎将 changeFigureDiff 解析为对话；请使用已验证的 WebGAL 4.6.5 / 4.6.6 引擎");
     if(!known.Contains(cmd)){RequireModelLibraries(J.S(s,"content"),null,true);AddWarning("custom-command",line,cmd,"检测到非标准或深度定制引擎指令；WebVideo+ 会按当前运行时执行，但不保证其隐藏状态能够跨 Worker 恢复。");}
     if(RuntimeVariable(J.S(s,"content"))||p.Values.OfType<string>().Any(RuntimeVariable))AddWarning("runtime-variable",line,cmd,"检测到运行时变量插值。导出使用独立临时运行环境，不保证继承玩家存档中的变量值。");
     bool singleLineHint=SingleLineHint(cmd,s,p),convertibleSingleChoose=ConvertibleSingleChoose(cmd,s,p);
     var skip=J.O("line",line,"startLine",line,"endLine",endLine,"kind","skip-line");
     if(sideEffects.Contains(cmd))AddWarning("nonvisual-side-effect",line,cmd,"此指令只影响游戏存档、鉴赏解锁或外部平台状态；导出副本会忽略该副作用。",skip);
     if((forbidden.Contains(cmd)&&!singleLineHint)||J.B(p,"userForward")||p.ContainsKey("when"))Add("unsupported",line,cmd,convertibleSingleChoose?"普通单选分支会等待玩家操作；可转为单行提示后导出":"含跨场景、分支、变量或需要玩家操作的命令");
-    if(cmd=="setTransform"||cmd=="setTempAnimation")CheckJson(J.Get(s,"content"),cmd=="setTempAnimation",line,cmd);
+    if(cmd=="setTransform")CheckJson(J.Get(s,"content"),false,line,cmd);
+    if(cmd=="setTempAnimation")CheckAnimation(J.Get(s,"content"),line,cmd);
     if(p.ContainsKey("transform"))CheckJson(p["transform"],false,line,"transform");
     double wait;if(cmd=="wait"&&(!double.TryParse(J.S(s,"content"),out wait)||wait<0))Add("syntax",line,"wait","等待时长需要是非负毫秒数");
     if((cmd=="changeFigure"||cmd=="miniAvatar")&&J.S(s,"content")!="none"&&p.Keys.Any(key=>new[]{"motion","skin","expression","blink","focus","animationFlag"}.Contains(key)||Regex.IsMatch(key,"model|live2d|cubism",RegexOptions.IgnoreCase)||key=="type"&&!new[]{"image","img","video"}.Contains(J.S(p,key),StringComparer.OrdinalIgnoreCase)))RequireModelLibraries(J.S(s,"content"),null,true);
@@ -146,7 +148,7 @@ namespace NativeVideo {
      else if(!Adapter.IsMygo&&(Regex.IsMatch(value,@"\.(webm|mp4|mov|jsonl|wmdl)([?#].*)?$",RegexOptions.IgnoreCase)||value.Contains("type=video")))Add("unsupported",line,value,"此立绘需要选择已安装的 MyGO 3.2.1 引擎");
     }
     if(cmd=="changeFigureDiff"||p.ContainsKey("transformFrom")){
-     if(Adapter.IsMygo||Adapter.Version!="4.6.5")Add("unsupported",line,cmd,"changeFigureDiff / transformFrom 需要已验证的 WebGAL 4.6.5 引擎");
+     if(Adapter.IsMygo||(Adapter.Version!="4.6.5"&&Adapter.Version!="4.6.6"))Add("unsupported",line,cmd,"changeFigureDiff / transformFrom 需要已验证的 WebGAL 4.6.5 / 4.6.6 引擎");
      if(cmd=="changeFigureDiff"){
       var value=J.S(s,"content");
       if(!string.IsNullOrEmpty(value)&&value!="none"&&(DiffUsesSpine(value)||!Regex.IsMatch(value,@"\.(png|jpe?g|webp|gif|bmp|avif|svg)([?#].*)?$",RegexOptions.IgnoreCase)))Add("unsupported",line,value,"立绘差分只支持图片，不适用于 Live2D、Spine 或视频");

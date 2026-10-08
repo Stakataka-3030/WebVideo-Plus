@@ -9,7 +9,7 @@ const id='[A-Za-z_$][A-Za-z0-9_$]*';
 const graphicalScope={scopeStart:'function GraphicalEditor(',scopeEnd:'jsxRuntimeExports.jsx(EditorSideBar,{})'};
 const rowScope={scopeStart:'SentenceRowContent=',scopeEnd:',SentenceRow=reactExports.memo'};
 const textScope={scopeStart:'脚本编辑器挂载',scopeEnd:'function JsonResourceDisplay('};
-const patches=[
+const commonPatches=[
   {...graphicalScope,regex:`function GraphicalEditor\\((?<props>${id})\\)\\{const\\[(?<data>${id}),(?<setData>${id})\\]=`,replace:'function GraphicalEditor(${props}){const wvpLoaded=reactExports.useRef(false);const[${data},${setData}]='},
   {...graphicalScope,regex:`(?<update>${id})\\((?<sentences>${id})\\),eventBus\\.emit\\("editor:update-scene",\\{scene:(?<text>${id})\\}\\)(?=\\};${id}\\.get\\()`,replace:'${update}(${sentences}),wvpLoaded.current=true,eventBus.emit("editor:update-scene",{scene:${text}})'},
   {find:'jsxRuntimeExports.jsx(EditorSideBar,{}),jsxRuntimeExports.jsx(MainArea,{})]',replace:'jsxRuntimeExports.jsx(EditorSideBar,{}),jsxRuntimeExports.jsx(MainArea,{}),jsxRuntimeExports.jsx(WebVideoTimelineHost,{})]'},
@@ -20,9 +20,15 @@ const patches=[
   {...graphicalScope,regex:`(?=function GraphicalEditor\\()(?=[\\s\\S]*?,(?<update>${id})=reactExports\\.useCallback\\((?<newItems>${id})=>\\{${id}\\.current=\\k<newItems>,${id}\\(\\k<newItems>\\)\\},\\[\\]\\))(?=[\\s\\S]*?,(?<factory>${id})=reactExports\\.useCallback\\((?<content>${id})=>\\(\\{id:createId\\(\\),content:\\k<content>,show:!0\\}\\),\\[\\]\\))(?=[\\s\\S]*?const (?<text>${id})=reactExports\\.useMemo\\(\\(\\)=>mergeToString\\()(?=[\\s\\S]*?,(?<rows>${id})=reactExports\\.useMemo\\(\\(\\)=>${id}\\.sentenceList\\.filter\\()(?<prefix>function GraphicalEditor\\([\\s\\S]*?)(?<items>${id})=(?<virtualizer>${id})\\.getVirtualItems\\(\\);reactExports\\.useEffect\\(\\(\\)=>\\{const (?<line>${id})=editorLineHolder\\.getSceneLine\\((?<props>${id})\\.targetPath\\)`,replace:'${prefix}${items}=${virtualizer}.getVirtualItems();reactExports.useEffect(()=>WebVideoPlus.attachGraphical(${props}.targetPath,${text},${rows},${virtualizer},wvpLoaded.current,text=>${update}(splitToArray(text).map(${factory}))),[${props}.targetPath,${text},${rows},${virtualizer},wvpLoaded.current]);reactExports.useEffect(()=>{const ${line}=editorLineHolder.getSceneLine(${props}.targetPath)'},
   {...graphicalScope,regex:`(?<rows>${id})=reactExports\\.useMemo\\(\\(\\)=>(?<parsed>${id})\\.sentenceList\\.filter\\((?<sentence>${id})=>!\\k<sentence>\\.isLineBreakHolder\\),\\[\\k<parsed>\\]\\)`,replace:'${rows}=reactExports.useMemo(()=>WebVideoSingleLineHint.graphicalSentences(${parsed}.sentenceList.filter(${sentence}=>!${sentence}.isLineBreakHolder)),[${parsed}])'},
 ];
-const profiles=['4.6.4','4.6.5'];
+const profiles=['4.6.4','4.6.5','4.6.6'];
 for(const version of profiles){
 const base=read('baseline/terre-'+version+'.js'),profileRoot=path.join(root,'package/hosts',version);
+const patches=commonPatches.map(p=>({...p}));
+if(version==='4.6.6'){
+ for(const p of patches)if(p.scopeStart===textScope.scopeStart)p.scopeEnd='function EditorToolbar(';
+ patches[4].regex=`(?<ready>${id})\\.value=!0,eventBus\\.emit\\("editor:update-scene",\\{scene:(?<loaded>${id})\\}\\);const (?<position>${id})=editorLineHolder\\.getScenePosition\\((?<props>${id})\\.targetPath\\);`;
+ patches[4].replace='${ready}.value=!0,eventBus.emit("editor:update-scene",{scene:${loaded}});WebVideoPlus.monacoReady(${props}.targetPath);const ${position}=editorLineHolder.getScenePosition(${props}.targetPath);';
+}
 fs.mkdirSync(path.join(profileRoot,'product-ui'),{recursive:true});
 fs.mkdirSync(path.join(profileRoot,'timeline'),{recursive:true});
 for(const p of patches){
@@ -80,6 +86,6 @@ for(const [variable,module] of [['nav','navigator'],['modal','selector']]){
 const launcherStart=host.indexOf('function WebVideoSelectionButton(){');if(launcherStart<0)throw Error('Selector launcher boundary missing');
 fs.writeFileSync(path.join(root,'package/timeline/selector-launcher.js'),host.slice(launcherStart));
 fs.writeFileSync(path.join(root,'package/timeline/timeline-host.js'),read('browser/selection-controls.js')+'\n'+read('browser/navigation-view.js')+'\n'+host.slice(0,launcherStart));
-fs.writeFileSync(path.join(root,'package/timeline/patches.json'),JSON.stringify(patches,null,2));
+fs.copyFileSync(path.join(root,'package/hosts/4.6.4/timeline/patches.json'),path.join(root,'package/timeline/patches.json'));
 fs.writeFileSync(path.join(root,'package/product.json'),JSON.stringify({name:'WebVideo+',version:versions.productVersion,kernelVersion:versions.kernelVersion,terreVersion:'4.6.4',supportedTerreVersions:profiles,hostProfiles:Object.fromEntries(profiles.map(version=>[version,{baseHash:JSON.parse(read(version==='4.6.4'?'baseline/local-baseline.json':'baseline/terre-'+version+'.json')).baseHash,patchRoot:'hosts/'+version}])),modules:{timelineNavigator:{dependencies:['timelineCore'],files:['timeline/navigator.js']},timelineSelector:{dependencies:['timelineCore'],files:['timeline/selector.js','timeline/selector-launcher.js']},exporter:{dependencies:['exportKernel','WebView2','FFmpeg']}},supportedOriginalBundleSha256:JSON.parse(read('baseline/local-baseline.json')).baseHash},null,2));
-console.log('Timeline assets and Terre 4.6.4 / 4.6.5 integration anchors verified.');
+console.log('Timeline assets and Terre 4.6.4 / 4.6.5 / 4.6.6 integration anchors verified.');
