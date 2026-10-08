@@ -184,7 +184,9 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    if(hasStop)end=Math.min(end,stop);
   }else end=hasStop?stop:start+duration;
   end=Math.min(fullDurationMs,end);
-  if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command)),rootReplay:false,noCut:w.command==='pixiPerform'||w.command==='say'});
+  // Native transform timelines integrate shared RAF deltas. Rebuild that driver
+  // history at a cut inside an animation instead of starting with a new phase.
+  if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command)),rootReplay:dormantHoldCommands.has(w.command),noCut:w.command==='pixiPerform'||w.command==='say'});
  }
  const resolvedExitReplay=[],usedStageExits=new Set();
  for(const window of exitReplay){
@@ -207,6 +209,15 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  for(const window of resolvedExitReplay){
   const start=Math.max(0,Number(window.startMs)||0),end=Math.min(fullDurationMs,Number(window.endMs)||0);
   if(end>start+.01)replayWindows.push({...window,startMs:start,endMs:end});
+ }
+ // Motion changes can retain parameters from earlier motions and automatic idle.
+ // Prefix fast-preview skips earlier model updates and cached motion state.
+ // Replay the scene history to preserve native sampling and saved pose/physics.
+ // This adds warmup only; manual cut positions and concurrency stay unchanged.
+ for(const lifetime of live2dLifetimes){
+  if(!lifetime.motionEvents.some(event=>Number(event.atMs)>Number(lifetime.startMs)+.01))continue;
+  const exitEnd=resolvedExitReplay.filter(window=>Math.abs(Number(window.triggerMs??window.startMs)-Number(lifetime.endMs))<=2&&String(window.target||'').startsWith(String(lifetime.target||''))).reduce((end,window)=>Math.max(end,Number(window.endMs)||0),Number(lifetime.endMs));
+  replayWindows.push({startMs:Number(lifetime.startMs),endMs:Math.min(fullDurationMs,exitEnd),target:lifetime.target,command:'live2d-motion-history',line:lifetime.line,hold:false,dormantRestorable:false,rootReplay:true,noCut:false});
  }
  return {project,sceneName,sourceLines:sourceLines.length,parsedStatements:parsed.sentenceList.length,counts,fullDuration,duration:fullDuration,fps,events,audio,videoCues,muteWindows,singleLineHints,softCutWindows,live2dLifetimes,replayWindows,relaxedDecorativePixi,strictSegmentCuts:!!strictSegmentCuts,extraAnimations:[...extraAnimations]};
 };

@@ -84,6 +84,30 @@ namespace NativeVideo {
    Check(VideoWorkflow.Segments(statementPlan,bounds,30,32,SettingsFor("")).Length==1,"Endpoint-only markers must not cause an automatic fallback");
    autoPlan["statementCuts"]=J.O("candidates",new object[]{J.O("atMs",double.NaN)});
    Check(VideoWorkflow.Segments(autoPlan,J.O("startFrame",0,"endFrame",900),30,2,Settings.Validate(null)).Length==2,"Auto mode must ignore statement/marker cuts completely");
+   var historyPlan=J.O("events",new object[0],"live2dLifetimes",new object[]{J.O("startMs",3500,"endMs",10000)},"replayWindows",new object[]{J.O("startMs",3500,"endMs",10450,"command","live2d-motion-history","rootReplay",true,"noCut",false)});
+   foreach(int workers in new[]{1,2,32}){
+    var history=VideoWorkflow.Segments(historyPlan,J.O("startFrame",0,"endFrame",405),30,workers,SettingsFor("1.5s,4.5s,7.5s,9s,11.5s"));
+    Check(history.Select(r=>(int)J.N(r,"startFrame")).SequenceEqual(new[]{0,45,135,225,270,345}),"Motion-history replay moved an exact manual cut");
+    Check(history.Where(r=>J.N(r,"startFrame")==225||J.N(r,"startFrame")==270).All(r=>J.N(r,"replayFrame")==0&&J.N(r,"warmupFrames")==J.N(r,"startFrame")),"Motion-history state was not replayed from scene root");
+    Check(J.N(J.Get(historyPlan,"segmentDiagnostics"),"effectiveWorkers")==Math.Min(workers,6),"Motion-history replay changed requested concurrency");
+    Check(history.Sum(r=>J.N(r,"endFrame")-J.N(r,"startFrame"))==405,"Motion-history replay emitted duplicated or missing frames");
+   }
+   var costlyHistory=J.O("events",Enumerable.Range(1,39).Select(i=>(object)J.O("line",i,"command","say","script","A:a;","atMs",i*25000)).ToArray(),"replayWindows",new object[]{J.O("startMs",3500,"endMs",1000000,"command","live2d-motion-history","rootReplay",true,"noCut",false)});
+   var budgetedHistory=SegmentPlan.Create(costlyHistory,30000,30,32);
+   var budgetedAttempt=J.Get(costlyHistory,"segmentPlanAttempt");
+   Check(budgetedHistory.Length>1&&budgetedHistory.Length<32,"History replay must keep usable auto concurrency while respecting replay budget");
+   Check(J.A(J.Get(budgetedAttempt,"attempts")).Any(x=>J.S(x,"outcome")=="replay-overhead"),"Root history cost did not enter the automatic replay budget");
+   Check(budgetedHistory.Sum(x=>J.N(x,"warmupFrames"))*SegmentPlan.ReplayPenaltyWeight<=30000*SegmentPlan.MaxWeightedReplayOverheadRatio,"Automatic root history exceeded the production replay budget");
+   Check(budgetedHistory.All(x=>J.N(x,"replayFrame")==0),"Accepted automatic parts skipped required scene history");
+   var phasePlan=J.O("events",new object[]{J.O("line",1,"command","say","script","A:a;","atMs",5000),J.O("line",2,"command","say","script","B:b;","atMs",10000)},"replayWindows",new object[]{J.O("startMs",1000,"endMs",3000,"command","setAnimation","rootReplay",true,"noCut",false)});
+   foreach(int workers in new[]{1,2,32}){
+    var phase=VideoWorkflow.Segments(phasePlan,J.O("startFrame",0,"endFrame",460),30,workers,SettingsFor("2s,5s"));
+    Check(phase.Select(r=>(int)J.N(r,"startFrame")).SequenceEqual(new[]{0,60,150}),"Native animation phase replay moved manual cuts");
+    Check(J.N(phase[1],"replayFrame")==0&&J.N(phase[1],"warmupFrames")==60,"An active animation did not rebuild shared RAF driver history");
+    Check(J.N(phase[2],"replayFrame")==120,"Completed animation unnecessarily forced root replay");
+    Check(J.N(J.Get(phasePlan,"segmentDiagnostics"),"effectiveWorkers")==Math.Min(workers,3),"Phase replay changed manual worker concurrency");
+   }
+   Check(VideoWorkflow.Segments(phasePlan,J.O("startFrame",0,"endFrame",460),30,2,Settings.Validate(null)).Length==2,"Root replay flag changed safe automatic worker planning");
    return checks;
   }
  }

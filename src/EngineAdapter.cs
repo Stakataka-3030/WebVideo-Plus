@@ -260,11 +260,30 @@ namespace NativeVideo {
     }
    }
    string text=File.ReadAllText(file);
+   if(!IsMygo&&Version=="4.6.5")PrepareCubism2TexturePreload(root);
    Files.Atomic(file,Patch(text));
    // SnapshotServer serves raw files only; removing stale compressed copies also
    // prevents later tooling from mistaking them for the patched main bundle.
    foreach(string extension in new[]{".gz",".br"})if(File.Exists(file+extension))File.Delete(file+extension);
    J.Write(Path.Combine(root,"export-engine.json"),Describe());
+  }
+  // WebGAL 4.6.5 pre-uploads ordinary Pixi textures before the Cubism2
+  // plugin can set UNPACK_FLIP_Y_WEBGL. Its factory must recreate legacy image textures
+  // with the same guarded uploader used by upstream 4.6.6; shared originals,
+  // modern Moc3 resources, and the selected engine identity remain unchanged.
+  internal const string Cubism2TexturePlugin465="assets/index.es-0XzJiDJZ.js";
+  internal const string Cubism2TexturePlugin465Raw="8b6c11ea8b4724dd8254d61a009c4d0e7cc7389f31f76570dac354c56b11a724";
+  internal const string Cubism2TexturePlugin465Patched="e62170797a6556ae286a42fa9efa8d0cea234a7f20f8b108992148588f6dd670";
+  internal const string Cubism2TextureBridge465=@"const __webvideoCubism2Textures=new WeakMap;class __WebvideoCubism2Image extends globalThis.PIXI.resources.ImageResource{upload(renderer,base,texture){const gl=renderer.gl,previous=gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,!0);try{return super.upload(renderer,base,texture)}finally{gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,previous)}}}function __webvideoCubism2Texture(texture){const base=texture.baseTexture,resource=base.resource;if(!(resource?.source instanceof HTMLImageElement))return texture;let converted=__webvideoCubism2Textures.get(base);if(!converted||converted.baseTexture.destroyed){converted=new globalThis.PIXI.Texture(new globalThis.PIXI.BaseTexture(new __WebvideoCubism2Image(resource.source,{autoLoad:!1}),{alphaMode:base.alphaMode,scaleMode:base.scaleMode,wrapMode:base.wrapMode,mipmap:base.mipmap,anisotropicLevel:base.anisotropicLevel,resolution:base.resolution,format:base.format,type:base.type,target:base.target}));__webvideoCubism2Textures.set(base,converted);__webvideoCubism2Textures.set(converted.baseTexture,converted)}return converted}";
+  static void PrepareCubism2TexturePreload(string root){
+   string file=Path.Combine(root,Cubism2TexturePlugin465);
+   if(!File.Exists(file)||Files.Hash(file)!=Cubism2TexturePlugin465Raw)throw new IOException("WebGAL 4.6.5 Cubism2 纹理预加载文件缺失或字节不匹配");
+   string text=File.ReadAllText(file);
+   text=ReplaceOnce(text,"function qe(",Cubism2TextureBridge465+"function qe(");
+   text=ReplaceOnce(text,@"e.textures=yield Promise.all(i),e.emit(""textureLoaded"",e.textures)",@"e.textures=(yield Promise.all(i)).map(texture=>s.internalModel.textureFlipY?__webvideoCubism2Texture(texture):texture),e.emit(""textureLoaded"",e.textures)");
+   if(Files.HashText(text)!=Cubism2TexturePlugin465Patched)throw new IOException("WebGAL 4.6.5 Cubism2 纹理预加载补丁摘要不匹配");
+   Files.Atomic(file,text);
+   foreach(string extension in new[]{".gz",".br"})if(File.Exists(file+extension))File.Delete(file+extension);
   }
   static string ReplaceOnce(string text,string from,string to) {
    int at=text.IndexOf(from,StringComparison.Ordinal);

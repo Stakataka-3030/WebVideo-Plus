@@ -79,3 +79,11 @@ queue tests; no proprietary Cubism3/4 SDK/model execution is claimed. Before the
 of approximately 74.38, 23.98 and 33.76 model units. These synthetic scenarios
 establish a reproducible bug and regression; they do not establish the cause of
 every discontinuity in a separate recording.
+
+## 1.2.1 / 1.3.0 release validation
+
+The earlier geometry-only evidence above is historical. The current release additionally tests the exact 4.6.5 texture bridge and real plugin factory with `node tests/cubism2-texture-upload-backport.mjs <official-4.6.5-root>`. This checks cold/hot conversion reuse, destroyed textures, absence of double conversion, unmodified shared/modern resources, and GL unpack restoration after success and failure. The engine adapter requires original plugin bytes and validates the complete prepared output digest.
+
+Native model evidence uses separately supplied SDK 2.1.00_1 (SHA-256 `e4ea1f18bdd44b65394ffd5a1bab16982e88757d45134d1bd0737c8a6b3ddd08`) with the official legacy Haru sample. Under the same Intel ANGLE D3D11 backend, the unmodified 4.6.5 engine produces fragmented textures; the narrowly patched 4.6.5 plugin and official 4.6.6 engine produce the complete model. This is an upstream-version comparison, not evidence of a 4.6.6 export texture regression. SDK/model files remain local.
+
+The final release attachment TEST-REPORT.md records the exact exporter commit, CI, engine/SDK/backend pairing, meaningful nonempty pixel checks, requested cut seconds and actual frame indexes. A successful encode or identical empty frame is insufficient for a model-rendering pass. Failed or incorrectly specified earlier cases are superseded only by corrected completed runs.

@@ -32,6 +32,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Recent install record isolation checks failed" }
           node tests/update-check-and-atlas.mjs
           if ($LASTEXITCODE -ne 0) { throw "Update and atlas checks failed" }
+          pwsh -NoLogo -NoProfile -File .\tests\work-cache-release.test.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Windows cache lock release checks failed" }
           pwsh -NoLogo -NoProfile -File .\tests\build-inputs.test.ps1
           if ($LASTEXITCODE -ne 0) { throw "Build input production checks failed" }
           pwsh -NoLogo -NoProfile -File .\tests\manual-cuts.test.ps1
@@ -59,6 +61,8 @@ jobs:
           Expand-CheckedBuildArchive .build/downloads/WebGAL-4.6.4-web.zip .build/webgal-4.6.4
           pwsh -NoLogo -NoProfile -File .\tests\engine-adapter-dual-profile.test.ps1 -Webgal464Root .build/webgal-4.6.4 -Webgal465Root .build/webgal-4.6.5 -Portable
           if ($LASTEXITCODE -ne 0) { throw "Dual engine profile production checks failed" }
+          node tests/cubism2-texture-upload-backport.mjs .build/webgal-4.6.5
+          if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.5 Cubism2 texture backport failed" }
           pwsh -NoLogo -NoProfile -File .\tests\font-render-preflight.portable.ps1
           if ($LASTEXITCODE -ne 0) { throw "Portable scanner production checks failed" }
           node tests/cubism2-runtime-465-contract.mjs .build/webgal-4.6.5/assets/index-CC7KTie-.js
