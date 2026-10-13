@@ -17,7 +17,7 @@ class Element {
 }
 function setup(overrides={}){
  const calls=[], document={createElement:t=>new Element(t),createTextNode:t=>Object.assign(new Element('#text'),{textContent:t})};
- const context={document,crypto:webcrypto,TextEncoder,WebVideoCraftFeatures:{navigation:s=>s.source.split('\n').map((line,index)=>({id:String(index),startLine:index+1,endLine:index+1,title:line}))},setInterval:()=>1,clearInterval:()=>{},confirm:()=>true};if(overrides.musicUI)context.WebVideoCraftMusicUI=overrides.musicUI;vm.createContext(context);vm.runInContext(source,context);
+ const context={document,crypto:overrides.cryptoImpl||webcrypto,TextEncoder,WebVideoCraftFeatures:{navigation:s=>s.source.split('\n').map((line,index)=>({id:String(index),startLine:index+1,endLine:index+1,title:line}))},setInterval:()=>1,clearInterval:()=>{},confirm:()=>true};if(overrides.musicUI)context.WebVideoCraftMusicUI=overrides.musicUI;vm.createContext(context);vm.runInContext(source,context);
  const snap={projectId:'p',projectPath:'C:/Project',path:'start',sceneRelativePath:'start.txt',source:'A;\nB;',revision:1,engineId:'official',runtimeBindingSignature:'official-4.6.4'};
  const music={players:2,tracks:[{id:'a',name:'A',file:'a.ogg',volume:100,lane:0,startSeconds:0,durationSeconds:8}]};
  let state={loaded:true,music},caps={music:true,projectFiles:true,audioImport:true,previewSettings:true,timing:true,service:true,exportVideo:true,snapshot:true};
@@ -35,11 +35,12 @@ function setup(overrides={}){
  return{field,change,bridge,container,calls,errors,messages,mounted,button,click,nodes,snap,setCaps:v=>caps=v};
 }
 async function chooseDisjoint(f){f.snap.source='A;\nB;\nC;';await f.change('故事范围','selection');await f.click('读取当前场景');await f.change('导出第 1 行',true);await f.change('导出第 3 行',true);await f.click('锁定导出片段');}
+async function until(predicate,label){const end=Date.now()+3000;while(Date.now()<end){const value=predicate();if(value)return value;await new Promise(resolve=>setTimeout(resolve,5));}throw Error('Timed out waiting for '+label);}
 
 test('advanced native request carries manual cuts, selected statement hash, memory and PNG',async()=>{
- const f=setup();await f.change('分段切点','manual');f.field('手动切点（帧、秒或时间码）').value='2s, 90';
+ const f=setup({cryptoImpl:{subtle:{digest:async(...args)=>{await new Promise(resolve=>setTimeout(resolve,50));return webcrypto.subtle.digest(...args);}}}});await f.change('分段切点','manual');f.field('手动切点（帧、秒或时间码）').value='2s, 90';
  await f.change('Live2D Core 内存模式','manual');f.field('每进程 Live2D Core 初始内存（MiB）').value='128';await f.change('兼容截图格式','png');
- await f.click('读取当前场景切点');await f.change('手动切点 start.txt 第 2 行',true);await f.click('加入导出队列');
+ await f.click('读取当前场景切点');await until(()=>f.field('手动切点 start.txt 第 2 行'),'asynchronous statement source hash');await f.change('手动切点 start.txt 第 2 行',true);await f.click('加入导出队列');await until(()=>f.calls.find(row=>row[0]==='export'),'advanced export request');
  const request=f.calls.find(row=>row[0]==='export')[1];assert.equal(request.settings.segmentCutMode,'manual');assert.equal(request.settings.manualCutPoints,'2s, 90');assert.equal(request.settings.cubismCoreInitialMemoryMiB,128);assert.equal(request.settings.compatibilityCaptureFormat,'png');assert.equal(request.manualCutStatements[0].line,2);assert.equal(request.manualCutStatements[0].sourceHash.length,64);f.mounted.dispose();
 });
 test('manual and project-owned BGM timing preserve full-export semantics; audio does not inherit cuts',async()=>{
