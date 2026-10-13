@@ -25,7 +25,7 @@ export async function buildCraftReleaseDescriptor(installer, {versionsFile = new
   const temporary = descriptorPath + '.tmp-' + crypto.randomUUID();
   try { await fs.writeFile(temporary, bytes, {flag:'wx'}); await fs.rename(temporary, descriptorPath); }
   finally { await fs.rm(temporary, {force:true}); }
-  return {descriptorPath,descriptorSha256:crypto.createHash('sha256').update(bytes).digest('hex'),installerSha256,installerSize:after.size,releaseTag:descriptor.tag,bodyMarker:'<!-- webvideo-compat: {"product":"craft","webgal":["4.6.4","4.6.5"]} -->'};
+  return {descriptorPath,descriptorSha256:crypto.createHash('sha256').update(bytes).digest('hex'),installerSha256,installerSize:after.size,releaseTag:descriptor.tag,bodyMarker:'<!-- webvideo-compat: {"product":"craft","webgal":["4.6.4","4.6.5","4.6.6"]} -->'};
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.length !== 3) throw Error('Usage: node craft/update/build-release-descriptor.mjs <final WebVideoCraft-Setup-N.N.N.Nc.exe>');

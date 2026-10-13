@@ -11,6 +11,9 @@ const WebVideoRuntime=(()=>{
   return null;
  }
  function peekGameSettings(game=context.game){try{const frame=frameFor(game),options=frame&&storeFor(frame)?.getState()?.userData?.optionData;if(!options)return null;const textSpeed=Number(options.textSpeed),autoSpeed=Number(options.autoSpeed);if(![textSpeed,autoSpeed].every(n=>Number.isFinite(n)&&n>=-500&&n<=100))return null;return {textSpeed,autoSpeed};}catch{return null;}}
+ // Capture only a settled, same-origin preview belonging to this game. The
+ // option's default integer alone is not proof that the language screen closed.
+ function peekRuntimeStartup(game=context.game){try{const frame=frameFor(game),options=frame&&storeFor(frame)?.getState()?.userData?.optionData,raw=options?.language;if(typeof raw!=='number'||!Number.isInteger(raw)||raw<0||raw>7||frame.contentWindow.localStorage.getItem('lang')!==String(raw)||frame.contentDocument.querySelector('[class*=langWrapper_]'))return null;return {language:raw,source:'preview'};}catch{return null;}}
  function singleLineHintDuration(row){const shared=window.WebVideoTimelineCore?.singleChooseInfo?.(row);if(shared)return shared.isHint?shared.duration:0;if(row?.command!=='choose'||Number(row.args?.defaultChoose)!==1||row.args?.next===true)return 0;const options=String(row.content||'').split(/(?<!\\)\|/);if(options.length!==1)return 0;const nodes=options[0].split(/(?<!\\):/);if(nodes.length!==2||!/^__wvp_hint_[A-Za-z0-9_]+$/.test(nodes[1].trim()))return 0;const fromArgs=Number(row.args?.wvpHint),match=String(row.source||'').match(/(?:^|\\s)-wvpHint=([0-9]+(?:\\.[0-9]+)?)(?=\\s|;|$)/),fromSource=match?Number(match[1]):NaN,ms=Number.isFinite(fromArgs)?fromArgs:fromSource;return Number.isFinite(ms)&&ms>=100&&ms<=60000?ms:1800;}
  function singleChooseItem(frame){const main=frame?.contentDocument?.getElementById('chooseContainer')?.firstElementChild;if(!main||main.children.length!==1)return null;const outer=main.firstElementChild;if(!outer||outer.children.length!==1)return null;return outer.firstElementChild;}
  async function waitPreviewSettled(ticket,before,path,minSentenceId){const scene=String(path||'').replace(/\\/g,'/').split('/game/scene/').pop();for(let i=0;i<100;i++){if(ticket!==navigation)return false;const current=EditorPreviewClient.getLastStageSnapshot?.();if(current&&current!==before&&String(current.sceneName||'').replace(/\\/g,'/').endsWith(scene)&&Number(current.sentenceId)>=minSentenceId)return true;await sleep(50);}return false;}
@@ -34,7 +37,7 @@ const WebVideoRuntime=(()=>{
    }await sleep(100);
   }throw Error('预览尚未完成同步，请等待保存与预览加载完成后再次点击。');
  }
- return {setContext(value){context=value;},peekGameSettings,readGameSettings,writeGameSettings,syncPreview,cancelNavigation(){navigation++;},storeFor};
+ return {setContext(value){context=value;},peekGameSettings,peekRuntimeStartup,readGameSettings,writeGameSettings,syncPreview,cancelNavigation(){navigation++;},storeFor};
 })();
 window.WebVideoRuntime=WebVideoRuntime;
 const WebVideoSingleLineHint=(()=>{

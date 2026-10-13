@@ -10,7 +10,9 @@
       const recorded=games.find(x=>x.id===game.id);if(!recorded||recorded.path!==game.path)throw Error('工程注册记录已变化');
       const config=await invoke('read_project_config_cmd',{projectPath:game.path});
       const byRef=ref=>{const matches=engines.filter(x=>ref?.version!==undefined&&x.engineId===ref.id&&x.version===ref.version);if(matches.length>1)throw Error('引擎引用不唯一，请在 Craft 中修复绑定');return matches[0];};
-      const engine=engines.find(x=>x.id===recorded.engineId)||byRef(config?.engine);
+      // Project config is authoritative when present. A cached legacy database
+      // engineId must not override a newly written project binding.
+      const engine=config?.engine?byRef(config.engine):engines.find(x=>x.id===recorded.engineId);
       if(!usable(engine))throw Error('当前引擎未就绪，请在 Craft 中修复绑定');
       const version=engine.metadata?.webgalVersion?.trim(),parts=/^(\d+)\.(\d+)\.(\d+)$/.exec(version||'');
       if(!parts||Number(parts[1])<4||Number(parts[1])===4&&(Number(parts[2])<6||Number(parts[2])===6&&Number(parts[3])<2))throw Error('该引擎版本尚未通过 Craft 适配验证（需要稳定版 4.6.2 或更高）');

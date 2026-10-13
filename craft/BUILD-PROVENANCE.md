@@ -1,5 +1,20 @@
 # Development source provenance
 
+- Current local candidate: Craft 1.1.14c / installer 1.1.14.0c, branch
+  `adapt/craft-1.1.14c-terre-1.3.1`, starting from released Craft commit
+  `a6927487459e2c914c6f49904093ffdc83ecd266`. Applicable shared src/browser
+  changes are pinned to Terre v1.3.1 `d9b0df5bd0d33249ccf8ded4af612ec429268f02`
+  (upstream kernel 0.6.56). Craft kernel 0.6.57 includes cancellation ownership,
+  cleanup and restart recovery. Terre queue/root discovery and global reminder
+  storage were retained as Craft-specific contracts. Reminder preferences use
+  the Craft adapter state directory and are shared with its native installer.
+  Fixed runtime/parser source fixtures retain each version's identity; no
+  future runtime or host-wide v2 capability is inferred. The official rc.1
+  hash and signed update authority remain unchanged. Current work is local,
+  uncommitted and unpublished; see [1.1.14c acceptance](ACCEPTANCE-1.1.14c.md).
+
+The records below describe earlier rounds and retain their historical versions.
+
 - Craft 1.1.13c continues remote `release/craft-1.1.12c` at
   `f1b336faaef5add0af6b1ffe5a25e173984f8451`. It adds exact official rc.1 host
   `379dd03faca460549624fe75ca0452d2328d3477` compatibility, Pinia 4 update guard

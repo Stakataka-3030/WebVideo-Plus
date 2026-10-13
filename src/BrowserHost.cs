@@ -1,6 +1,6 @@
 using System;using System.IO;using System.Linq;using System.Text;using System.Drawing;using System.Collections.Generic;using System.Threading.Tasks;using System.Diagnostics;using System.Windows.Forms;using Microsoft.Web.WebView2.Core;using Microsoft.Web.WebView2.WinForms;
 namespace NativeVideo {
- public sealed class BrowserHost:Form {
+ public sealed partial class BrowserHost:Form {
   public readonly WebView2 View=new WebView2();public readonly List<string> Errors=new List<string>();readonly List<string> resourceFailures=new List<string>();public Action<object> Progress;string initId;HttpServer files;readonly int renderWidth,renderHeight;CoreWebView2Environment environment;public string Runtime;
   protected override bool ShowWithoutActivation{get{return true;}}
   public BrowserHost(int width,int height){renderWidth=width;renderHeight=height;FormBorderStyle=FormBorderStyle.None;ClientSize=new Size(width,height);StartPosition=FormStartPosition.Manual;Location=new Point(-16000,-16000);ShowInTaskbar=false;View.Dock=DockStyle.Fill;Controls.Add(View);}

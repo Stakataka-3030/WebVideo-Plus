@@ -14,6 +14,7 @@ import {SessionActivity,readOwnInstallerLaunchState,readOfficialInstallState} fr
 import {previewSettings,capturePreviewConfigs,PreviewSessionManager} from './session/preview.mjs';
 import {CleanUpdateCoordinator} from './update/clean-coordinator.mjs';
 import {CraftOwnUpdates} from './update/own-updates.mjs';
+import {CraftUpdatePreferences,suppressed} from './update/preferences.mjs';
 import {audioDuration} from './session/audio.mjs';
 import {runHint} from './session/hint-operation.mjs';
 import {readState,verifyPackage} from './installer/transaction.mjs';
@@ -62,6 +63,7 @@ const storage=new SessionStorage(root),service=new KernelSession({kernel,root,st
 const updater=new CleanUpdateCoordinator({stateDir,statePath:configPath,hostPid:app.pid,wrapperPid:Number(option('--wrapper-pid')),craftExe:config.craftExe||craft,installMode:config.installMode,observerValidated:manifest.updateObserverValidated===true,sameNameValidated:manifest.sameNameUpdateValidated===true,cleanInstallValidated:manifest.officialCleanUpdateValidated===true,autoInstallEnabled:manifest.officialAutoInstallEnabled===true,hostArgs,releaseWrapper:()=>launchStatus('update-handoff','正在为官方更新释放原启动入口…')});
 const activity=new SessionActivity();
 const ownUpdater=new CraftOwnUpdates({adapterRoot:config.adapterRoot,currentVersion:manifest.installerVersion,readHostState:()=>readOwnInstallerLaunchState({cdp,getSession:()=>rpc,profile:verifiedHostProfile,activity,storage,kernel:service}),isOtherUpdatePending:()=>updater.busy});
+const ownPreferences=new CraftUpdatePreferences(config.adapterRoot);
 async function readNativeUpdateState(confirmNormalClose){
  const state=await readOfficialInstallState({cdp,getSession:()=>rpc,profile:verifiedHostProfile,activity,storage,kernel:service,confirmNormalClose});
  if(state.hasUnsavedDocuments||state.hasBlockingTasks)throw Error('请先保存 Craft 文档并等待所有工作结束');
@@ -107,6 +109,9 @@ try{
   'preview.hint':async p=>{if(p.cancel){if(hintTickets.get(p.ticket)!==p.url)return {cancelled:false};return previewManager.operation(p,runHint);}const r=await cdp.call('Runtime.evaluate',{contextId:rpc.contextId,expression:`document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('previewSync')&&document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('previewSession')?.currentGameServeUrl`,returnByValue:true});if(r.result?.value!==p.url)throw Error('preview-project-mismatch');hintTickets.set(p.ticket,p.url);try{return await previewManager.operation(p,runHint);}finally{hintTickets.delete(p.ticket);}},
   'update.prepare':async p=>{if(ownUpdater.busy||ownUpdater.launched)throw Error('WebVideo+ 更新进行中，请先完成或退出后重试');const current=await readNativeUpdateState(p.confirmNormalClose);if(current.hasUnsavedDocuments||current.hasBlockingTasks)throw Error('请先保存 Craft 文档并等待运行任务结束');if(ownUpdater.busy||ownUpdater.launched)throw Error('WebVideo+ 更新进行中');current.assertCurrent();return updater.prepare(p);},'update.commit':async p=>{if(ownUpdater.busy||ownUpdater.launched)throw Error('WebVideo+ 更新进行中');const state=await readNativeUpdateState(p.confirmNormalClose);if(state.hasUnsavedDocuments||state.hasBlockingTasks)throw Error('请先保存 Craft 文档并等待运行任务结束');if(ownUpdater.busy||ownUpdater.launched)throw Error('WebVideo+ 更新进行中');state.assertCurrent();return updater.commit();},'update.abort':()=>updater.abort(),'update.status':()=>updater.status(),
   'ownUpdate.check':()=>ownUpdater.check(),'ownUpdate.download':()=>ownUpdater.download(),'ownUpdate.install':()=>ownUpdater.install(),'ownUpdate.reveal':()=>ownUpdater.reveal(),
+  'ownUpdate.preferences':async()=>({...await ownPreferences.read(),currentVersion:manifest.installerVersion}),
+  'ownUpdate.savePreferences':p=>ownPreferences.save({mode:p.mode,baselineVersion:ownUpdater.details()?.version||manifest.installerVersion}),
+  'ownUpdate.reminder':async()=>{const preference=await ownPreferences.read();if(preference.mode==='never')return {suppressed:true};const update=await ownUpdater.check();return {suppressed:!update||suppressed(preference,update.version),update};},
   'preview.hint.preflight':async p=>{const r=await cdp.call('Runtime.evaluate',{contextId:rpc.contextId,expression:`document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('previewSession')?.currentGameServeUrl`,returnByValue:true});if(r.result?.value!==p.url)throw Error('preview-project-mismatch');await previewManager.settings({url:p.url});return {ready:true};},
   'preview.settings':async p=>{const r=await cdp.call('Runtime.evaluate',{contextId:rpc.contextId,expression:`document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('previewSession')?.currentGameServeUrl`,returnByValue:true});if(r.result?.value!==p.url)throw Error('preview-project-mismatch');return previewManager.settings(p);},
   'backups.captureText':p=>storage.captureStoryText(p.project,p.files,p.slot),

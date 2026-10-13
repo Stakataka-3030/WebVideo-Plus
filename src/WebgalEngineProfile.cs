@@ -7,16 +7,23 @@ namespace NativeVideo {
   public const string Raw464="e49e15f0db25c95556b6b1eccad89d6e77a32e284cd4e4852fad7dc9a3019902";
   public const string Prepared464="d9efa39b4eabdb3a54c3d209ca5db6cb04d1cc60fdef3acdcd2532712a8a6d10";
   public const string Raw465="356f7184c80af8da4dd782e25c5b3fb89f55f1e8b9e9e18be6f50035763dc6b6";
+  public const string Raw466="d2b34606a380b9575ce1e50ed2251cb5e38b3d6f9b00200b2b0f252a13d209c0";
   public readonly string Version,Core,Observe,Next,AutoCallback,Exports;
   WebgalEngineProfile(string version,string core,string observe,string next,string auto,string exports){Version=version;Core=core;Observe=observe;Next=next;AutoCallback=auto;Exports=exports;}
   static readonly WebgalEngineProfile V464=new WebgalEngineProfile("4.6.4","I","bP","dp","JAe","nativeAuto:G$,nativeStopAuto:D_,nativeNext:dp,compileText:Os,textDelay:_P,textAnimation:xP");
   static readonly WebgalEngineProfile V465=new WebgalEngineProfile("4.6.5","R","tO","Lp","kPe","nativeAuto:k5,nativeStopAuto:p0,nativeNext:Lp,compileText:Na,textDelay:KC,textAnimation:JC");
-  public static WebgalEngineProfile FromHash(string hash){return hash==Raw464||hash==Prepared464?V464:hash==Raw465?V465:null;}
-  public static WebgalEngineProfile ForVersion(string version){return version=="4.6.4"?V464:version=="4.6.5"?V465:null;}
+  static readonly WebgalEngineProfile V466=new WebgalEngineProfile("4.6.6","R","cO","Np","eTe","nativeAuto:r8,nativeStopAuto:g0,nativeNext:Np,compileText:Na,textDelay:oO,textAnimation:aO");
+  public static WebgalEngineProfile FromHash(string hash){return hash==Raw464||hash==Prepared464?V464:hash==Raw465?V465:hash==Raw466?V466:null;}
+  public static WebgalEngineProfile ForVersion(string version){return version=="4.6.4"?V464:version=="4.6.5"?V465:version=="4.6.6"?V466:null;}
   static string ReplaceOnce(string text,string from,string to){int at=text.IndexOf(from,StringComparison.Ordinal);if(at<0||text.IndexOf(from,at+from.Length,StringComparison.Ordinal)>=0)throw new IOException("WebGAL profile patch anchor mismatch");return text.Substring(0,at)+to+text.Substring(at+from.Length);}
   public string Instrument(string text){
    string hash=Files.HashText(text);var identity=FromHash(hash);
    if(identity==null||identity.Version!=Version)throw new IOException("WebGAL bundle bytes do not match selected exact engine profile");
+   if(Version=="4.6.6"){
+    text=ReplaceOnce(text,"Ze={\"preview.command.sync-scene\"","Ze=globalThis.__probeCommands={\"preview.command.sync-scene\"");
+    text=ReplaceOnce(text,"audioLevelInterval:setInterval(()=>{},0)","audioLevelInterval:null");
+    return text+"\n;globalThis.__wgProbe={core:R,store:Pe,parseScene:Eo,stageManager:q,live2dCore:uc};\n";
+   }
    if(Version=="4.6.5"){
     text=ReplaceOnce(text,"Ge={\"preview.command.sync-scene\"","Ge=globalThis.__probeCommands={\"preview.command.sync-scene\"");
     text=ReplaceOnce(text,"audioLevelInterval:setInterval(()=>{},0)","audioLevelInterval:null");

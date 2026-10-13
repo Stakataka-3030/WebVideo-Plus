@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   function mount(container, { bridge, controller, run, notify, getSnapshot, getSelection }) {
-    let disposed = false, working = false, selection = null, subtitlePath = '', caps = {}, exportJobs = [];
+    let disposed = false, working = false, selection = null, subtitlePath = '', caps = {}, exportJobs = [], queueOperation = null;
     const buttons = [], disposers = [];
     const el = (tag, text, attrs = {}) => { const node = document.createElement(tag); if (text != null) node.textContent = text; for (const [key, value] of Object.entries(attrs)) { if (key in node) node[key] = value; else node.setAttribute(key, String(value)); } return node; };
     const on = (node, event, fn) => { node.addEventListener(event, fn); disposers.push(() => node.removeEventListener(event, fn)); };
@@ -10,8 +10,8 @@
     const status = el('p', '读取配乐配置、打开游戏预览后，可使用实测时间和速度工具', { className: 'wvc-help', role: 'status' });
     const message = value => { if (disposed) return; status.textContent = String(value); notify(String(value)); };
     function refreshCapabilities() { for (const input of exportCard?.querySelectorAll?.('input,select') || []) input.disabled = working; if (!working) replaceBgm.disabled = !useMusic.checked; caps = bridge.capabilities() || {}; for (const b of buttons) { const missing = b.required.find(key => caps[key] !== true); b.node.disabled = (working && !b.cancel) || !!missing; b.node.title = missing ? caps[missing + 'Reason'] || caps.reason || `${missing} 尚未绑定，请先打开支持的 Craft 工程/游戏预览` : ''; } }
-    async function action(fn) { return run(async () => { if (disposed || working) return; working = true; refreshCapabilities(); try { await fn(); } catch (error) { if (disposed) return; exportStatus.textContent = error.message || String(error); message(exportStatus.textContent); throw error; } finally { working = false; if (!disposed) refreshCapabilities(); } }); }
-    function button(parent, text, fn, required = [], cancel = false) { const node = el('button', text, { type: 'button' }); buttons.push({ node, required, cancel }); on(node, 'click', () => { if (cancel) Promise.resolve(fn()).catch(e => message(e.message)); else action(fn); }); parent.append(node); return node; }
+    async function action(fn, cancellable = false) { return run(async () => { if (disposed || working) return; working = true; refreshCapabilities(); const operation = cancellable ? { cancelled: false } : null; if (operation) queueOperation = operation; try { const pending = Promise.resolve().then(() => fn(operation)); if (operation) { const cancelled = new Promise(resolve => { operation.wake = resolve; }); await Promise.race([pending, cancelled]); } else await pending; } catch (error) { if (disposed || operation?.cancelled) return; exportStatus.textContent = error.message || String(error); message(exportStatus.textContent); throw error; } finally { if (queueOperation === operation) queueOperation = null; working = false; if (!disposed) refreshCapabilities(); } }); }
+    function button(parent, text, fn, required = [], cancel = false, cancellable = false) { const node = el('button', text, { type: 'button' }); buttons.push({ node, required, cancel }); on(node, 'click', () => { if (cancel) Promise.resolve(fn()).catch(e => message(e.message)); else action(fn, cancellable); }); parent.append(node); return node; }
     function field(parent, label, value = '', type = 'text') { const box = el('label', null, { className: 'wvc-field' }), input = el('input', null, { type, value, 'aria-label': label }); box.append(el('span', label), input); parent.append(box); return input; }
     function select(parent, label, choices) { const box = el('label', null, { className: 'wvc-field' }), input = el('select', null, { 'aria-label': label }); for (const [value, text] of choices) input.append(el('option', text, { value })); box.append(el('span', label), input); parent.append(box); return input; }
     function check(parent, label, checked = false) { const box = el('label'), input = el('input', null, { type: 'checkbox', checked, 'aria-label': label }); box.append(input, document.createTextNode(label)); parent.append(box); return input; }
@@ -29,7 +29,11 @@
     const exportHeading = exportCard.children[0];
     const exportKinds = [ ['full', '完整视频'], ['stage', '舞台'], ['dialog', '对话框与 DOM'], ['audio', '仅音轨'] ];
     const kind = select(exportCard, '导出内容', exportKinds);
-    const kindNote = el('p', '', { className: 'wvc-help' }); exportCard.append(kindNote, el('p', '按 WebGAL 自动放映导出；开始时读取当前游戏预览的文字与自动播放速度，请先打开预览。', { className: 'wvc-help' }));
+    const timingOptions = row(exportCard), timingMode = select(timingOptions, '放映计时', [['auto', '自动放映'], ['manual', '手动时长'], ['bgm', 'BGM 适配']]), bgmBaseMode = select(timingOptions, 'BGM 基础计时', [['auto', '自动放映'], ['manual', '手动时长']]);
+    const holdSeconds = field(timingOptions, '手动等待秒数', '1', 'number'), manualTextSpeed = field(timingOptions, '手动文字速度', '50', 'number');
+    const bgmFile = field(timingOptions, 'BGM 适配音乐（项目内路径）');
+    timingOptions.append(el('p', 'BGM 适配使用项目中的音频；可填写多行路径。配乐时间轴仍独立决定混音。', { className: 'wvc-help' }));
+    const kindNote = el('p', '', { className: 'wvc-help' }), timingHelp = el('p', '', { className: 'wvc-help' }); exportCard.append(kindNote, timingHelp);
     const stageRow = row(exportCard), includeBackground = check(stageRow, '包含背景', true), includeFigures = check(stageRow, '包含立绘', true);
     const transparentRow = row(exportCard), transparentFormat = select(transparentRow, '透明视频格式', [['mov', 'MOV · ProRes 4444'], ['webm', 'WebM · VP9 Alpha']]);
     const transparentNote = el('p', '', { className: 'wvc-help' }); transparentRow.append(transparentNote);
@@ -37,6 +41,39 @@
     const rangeInfo = el('p', '', { className: 'wvc-help' });
     rangeRow.append(rangeInfo);
     const rangePicker = el('div', null, { className: 'wvc-export-ranges', 'aria-label': '选择导出语句' }); rangeRow.append(rangePicker);
+    const advanced = el('details'), advancedBody = el('div'); advanced.append(el('summary', '高级导出设置'), advancedBody); exportCard.append(advanced);
+    const cutMode = select(advancedBody, '分段切点', [['auto', '自动安全切点'], ['manual', '手动强制切点']]);
+    const numericCuts = field(advancedBody, '手动切点（帧、秒或时间码）');
+    const memoryMode = select(advancedBody, 'Live2D Core 内存模式', [['default', '默认（不修改）'], ['manual', '每进程手动分配']]);
+    const memoryMiB = field(advancedBody, '每进程 Live2D Core 初始内存（MiB）', '64', 'number');
+    const captureFormat = select(advancedBody, '兼容截图格式', [['jpeg', 'JPEG'], ['png', 'PNG（截图无损）']]);
+    const gpuChoice = select(advancedBody, '渲染 GPU', [['auto', '自动选择'], ['high', '高性能 GPU'], ['low', '节能 GPU']]);
+    const alphaCapture = select(advancedBody, '透明层捕获', [['fast', '快速透明捕获'], ['screenshot', '兼容截图捕获']]);
+    const gpuDom = check(advancedBody, '完整视频包含对话框与 DOM', true), strictCuts = check(advancedBody, '严格自动安全切段', false), decorativeCuts = check(advancedBody, '允许装饰性 Pixi 切点', false), notendTail = check(advancedBody, '保留 -notend 的演出尾段', true);
+    button(advancedBody, '读取已保存的导出设置', async () => {
+      const config = await bridge.service('/api/config'), s = config.settings || {};
+      for (const [input, key] of [[cutMode,'segmentCutMode'],[numericCuts,'manualCutPoints'],[captureFormat,'compatibilityCaptureFormat'],[gpuChoice,'gpu'],[alphaCapture,'alphaCaptureMode'],[timingMode,'mode'],[bgmBaseMode,'bgmBaseMode'],[holdSeconds,'holdSeconds'],[manualTextSpeed,'textSpeed']]) if (s[key] !== undefined) input.value = String(s[key]);
+      memoryMode.value = s.cubismCoreInitialMemoryMiB ? 'manual' : 'default'; if (s.cubismCoreInitialMemoryMiB) memoryMiB.value = String(s.cubismCoreInitialMemoryMiB);
+      for (const [input,key] of [[gpuDom,'gpuRawDom'],[strictCuts,'strictSegmentCuts'],[decorativeCuts,'allowDecorativePixiCuts'],[notendTail,'notendVisualTail']]) if (s[key] !== undefined) input.checked = s[key] === true;
+      updateExport();
+    }, ['service']);
+    advancedBody.append(el('p', '手动切点不自动移动或补点；;CutHere 注释也会合并到实际语句边界。Live2D 内存 16–1024 MiB，按每个并行进程分配。PNG 截图无损不代表最终 H.264 无损。', { className: 'wvc-help' }));
+    const cutPicker = el('div', null, { className: 'wvc-export-ranges' }), cutActions = row(advancedBody); advancedBody.append(cutPicker);
+    const statementCuts = new Map();
+    button(cutActions, '读取当前场景切点', async () => {
+      const snap = await bridge.snapshot(), hash = await sourceHash(snap.source);
+      const rows = root.WebVideoCraftFeatures.navigation(snap);
+      cutPicker.replaceChildren();
+      const label = el('p', snap.sceneRelativePath); cutPicker.append(label);
+      for (const item of rows) {
+        if (item.command === 'comment' || item.command === 'blank') continue;
+        const key = snap.sceneRelativePath + ':' + item.startLine;
+        const box = el('label'), input = el('input', null, { type: 'checkbox', checked: statementCuts.has(key), 'aria-label': `手动切点 ${snap.sceneRelativePath} 第 ${item.startLine} 行` });
+        on(input, 'change', () => { if (input.checked) statementCuts.set(key, { scene: snap.sceneRelativePath, line: item.startLine, endLine: item.endLine, sourceHash: hash, label: item.title }); else statementCuts.delete(key); });
+        box.append(input, el('span', `${item.startLine} · ${item.title}`)); cutPicker.append(box);
+      }
+    }, ['snapshot']);
+    button(cutActions, '清空临时语句切点', async () => { statementCuts.clear(); cutPicker.replaceChildren(); });
     let pickerSnapshot = null, pickerRows = [], pickedRows = new Set(); const pickerDisposers = [];
     async function sourceHash(source) { const bytes = await root.crypto.subtle.digest('SHA-256', new TextEncoder().encode(source.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n'))); return [...new Uint8Array(bytes)].map(n => n.toString(16).padStart(2, '0')).join(''); }
     function drawExportRows() {
@@ -111,6 +148,14 @@
       exportHeading.textContent = ({ full: '导出视频', stage: '导出舞台', dialog: '导出对话框与 DOM', audio: '仅导出音轨' })[kind.value];
       kindNote.textContent = ({ full: '完整舞台、对话框与声音，输出 MP4。', stage: '只导出舞台，不含对话框等 DOM；可独立保留背景和立绘。取消背景后输出带透明通道的视频。', dialog: '只导出实际渲染的对话框、角色名、富文本及其他 DOM UI，舞台透明。', audio: '导出 WebGAL 剧本中的 BGM、语音、音效和视频原声，输出 48 kHz WAV。' })[kind.value];
       stageRow.hidden = kind.value !== 'stage'; transparentRow.hidden = !transparent;
+      timingOptions.hidden = !full;
+      bgmBaseMode.parentElement.hidden = timingMode.value !== 'bgm'; bgmFile.parentElement.hidden = timingMode.value !== 'bgm';
+      const manualTiming = timingMode.value === 'manual' || timingMode.value === 'bgm' && bgmBaseMode.value === 'manual';
+      holdSeconds.parentElement.hidden = !manualTiming; manualTextSpeed.parentElement.hidden = !manualTiming;
+      timingHelp.textContent = full && timingMode.value === 'manual' ? '按指定文字速度和等待秒数安排对白；请先打开游戏预览。' : full && timingMode.value === 'bgm' ? '按所选项目内音乐的总长度调整成片节奏；超出可适配范围时会报告原因。' : '按 WebGAL 自动放映导出；开始时读取当前游戏预览的文字与自动播放速度，请先打开预览。';
+      advanced.hidden = audio; numericCuts.parentElement.hidden = cutMode.value !== 'manual';
+      memoryMiB.parentElement.hidden = memoryMode.value !== 'manual'; alphaCapture.parentElement.hidden = !transparent;
+      captureFormat.parentElement.hidden = !full || quality.value !== 'traditional';
       videoRow.hidden = audio; qualityRow.hidden = audio || transparent;
       for (const option of quality.children) if (option.value === 'traditional') option.disabled = !full;
       musicExportRow.hidden = !full; post.hidden = !full; replaceBgm.disabled = !useMusic.checked;
@@ -134,17 +179,18 @@
     }
     const integer = (input, label, min, max) => { const value = finite(input, label, min, max); if (!Number.isInteger(value)) throw Error(`${label}必须为整数`); return value; };
     const snapshotKeys = ['projectId', 'projectPath', 'path', 'source', 'revision', 'engineId', 'runtimeBindingSignature'];
-    async function queueSnapshotCurrent(captured) {
-      if (disposed || cancelRequested) return false;
+    async function queueSnapshotCurrent(captured, interrupted) {
+      if (interrupted()) return false;
       const current = await bridge.snapshot();
-      if (disposed || cancelRequested) return false;
+      if (interrupted()) return false;
       if (snapshotKeys.some(key => current[key] !== captured[key])) throw Error('工程、剧本或运行时已变化，请重新打开导出设置');
       return true;
     }
-    button(exportActions, '加入导出队列', async () => {
-      ++queueSerial; cancelRequested = false;
+    button(exportActions, '加入导出队列', async operation => {
+      const ticket = ++queueSerial; cancelRequested = false;
+      const interrupted = () => disposed || operation.cancelled || ticket !== queueSerial;
       const snap = await bridge.snapshot();
-      if (disposed || cancelRequested) return;
+      if (interrupted()) return;
       const current = attached ? null : getSnapshot();
       if (current && (current.projectId !== snap.projectId || current.path !== snap.path)) throw Error('工程/场景已切换，请刷新剧情列表');
       const selected = scope.value === 'selection';
@@ -157,32 +203,36 @@
       const size = audio ? [1920, 1080] : resolution.value.split('x').map(Number);
       const parallel = audio ? 1 : integer(workers, '并行数', 1, 32);
       const config = await bridge.service('/api/config');
-      if (disposed || cancelRequested) return;
-      const speeds = await controller.readSpeeds();
-      if (disposed || cancelRequested) return;
+      if (interrupted()) return;
+      const fullMode = kind.value === 'full' ? timingMode.value : 'auto';
+      const speeds = fullMode === 'manual' || fullMode === 'bgm' && bgmBaseMode.value === 'manual' ? { textSpeed: finite(manualTextSpeed, '手动文字速度', -500, 100), autoSpeed: config.settings.autoSpeed ?? 50 } : await controller.readSpeeds();
+      if (interrupted()) return;
       const subtitle = await buildSubtitle(snap);
-      if (disposed || cancelRequested) return;
-      const settings = { ...config.settings, ...speeds, width: size[0], height: size[1], fps: Number(fps.value), workers: parallel, gpuRawMode: !full && quality.value === 'traditional' ? 'recommended' : quality.value, mode: 'auto', bgmBaseMode: 'auto' };
+      if (interrupted()) return;
+      const memory = memoryMode.value === 'default' ? 0 : integer(memoryMiB, 'Live2D Core 初始内存', 16, 1024);
+      const settings = { ...config.settings, ...speeds, width: size[0], height: size[1], fps: Number(fps.value), workers: parallel, gpuRawMode: !full && quality.value === 'traditional' ? 'recommended' : quality.value, mode: fullMode, bgmBaseMode: bgmBaseMode.value, holdSeconds: finite(holdSeconds, '手动等待秒数', 0, 60), segmentCutMode: kind.value === 'audio' ? 'auto' : cutMode.value, manualCutPoints: kind.value === 'audio' ? '' : numericCuts.value.trim(), cubismCoreInitialMemoryMiB: memory, compatibilityCaptureFormat: captureFormat.value };
+      Object.assign(settings, {gpu:gpuChoice.value,alphaCaptureMode:alphaCapture.value,gpuRawDom:gpuDom.checked,strictSegmentCuts:strictCuts.checked,allowDecorativePixiCuts:decorativeCuts.checked,notendVisualTail:notendTail.checked});
       const ranges = selected ? selection.ranges : [null]; let submitted = 0;
       if (queueProject !== snap.projectId) { exportJobs = []; queueProject = snap.projectId; }
       for (let index = 0; index < ranges.length; index++) {
-        if (!await queueSnapshotCurrent(snap)) break;
+        if (!await queueSnapshotCurrent(snap, interrupted)) break;
         const range = ranges[index];
         const options = { scene: snap.sceneRelativePath, sourceText: snap.source, settings, storyScope: selected ? 'sceneOnly' : scope.value, exportKind: kind.value, includeBackground: kind.value !== 'stage' || includeBackground.checked, includeFigures: kind.value !== 'stage' || includeFigures.checked, transparentFormat: kind.value === 'dialog' || kind.value === 'stage' && !includeBackground.checked ? transparentFormat.value : 'mov', fileName: ranges.length > 1 ? name.slice(0, -ext.length) + `-${index + 1}` + ext : name, useMusicTimeline: full && useMusic.checked, replaceGameBgm: full && useMusic.checked && replaceBgm.checked };
         if (output.value.trim()) options.outputDir = output.value.trim(); if (subtitle) options.subtitle = subtitle;
+        if (kind.value !== 'audio' && cutMode.value === 'manual') options.manualCutStatements = [...statementCuts.values()];
+        if (fullMode === 'bgm') { options.bgmProjectFiles = bgmFile.value.split(/[\r\n]+/).map(value => value.trim()).filter(Boolean); if (!options.bgmProjectFiles.length) throw Error('请填写 BGM 适配音乐的项目内路径'); }
         if (range) options.range = { startLine: range.startLine, endLine: range.endLine, sourceHash: selection.sourceHash };
         const job = await bridge.exportVideo({ ...options, snapshot: snap }); if (!job?.id) throw Error('导出服务未返回任务 ID');
-        exportJobs.push(job.id); submitted++;
+        if (queueProject === snap.projectId) exportJobs.push(job.id); submitted++;
         // An already queued job remains independent of this UI. Only a job whose
         // submission was interrupted here is canceled when its ID finally arrives.
-        if (disposed || cancelRequested) await bridge.cancelJob(job.id);
-        if (disposed) return;
+        if (interrupted()) { await bridge.cancelJob(job.id); return; }
         jobInfo.textContent = `已加入 ${submitted} 个任务，等待渲染`;
       }
-      if (disposed) return;
+      if (interrupted()) return;
       const text = cancelRequested ? '已请求取消导出；未提交的片段已停止' : `已加入 ${submitted} 个导出任务，可以关闭窗口继续编辑`;
       exportStatus.textContent = text; message(text);
-    }, ['exportVideo', 'service', 'previewSettings']).className = 'wvc-primary';
+    }, ['exportVideo', 'service', 'previewSettings'], false, true).className = 'wvc-primary';
     async function refreshJobs() {
       if (jobsRefreshing || !exportJobs.length) return;
       jobsRefreshing = true;
@@ -192,7 +242,8 @@
         const rows = (Array.isArray(jobs) ? jobs : jobs.jobs || []).filter(job => exportJobs.includes(job.id));
         jobInfo.replaceChildren(...rows.map(job => {
           const entry = el('div', null, { className: 'wvc-export-job' });
-          entry.append(el('strong', (job.output || job.title || '导出任务').split(/[\\/]/).pop()), el('p', `${states[job.state] || job.state}${Number.isFinite(job.progress) ? ' · ' + Math.round(job.progress * 100) + '%' : ''}${job.message ? ' · ' + job.message : ''}`, { className: 'wvc-help' }));
+          const stateText = job.phase === 'canceling' ? '取消中 · 正在停止所属进程' : job.phase === 'cleanup' ? '正在清理' : states[job.state] || job.state;
+          entry.append(el('strong', (job.output || job.title || '导出任务').split(/[\\/]/).pop()), el('p', `${stateText}${Number.isFinite(job.progress) ? ' · ' + Math.round(job.progress * 100) + '%' : ''}${job.message ? ' · ' + job.message : ''}`, { className: 'wvc-help' }));
           return entry;
         }));
       } finally { jobsRefreshing = false; }
@@ -201,6 +252,7 @@
     button(exportActions, '取消本面板导出任务', async () => {
       if (disposed) return;
       cancelRequested = true;
+      if (queueOperation) { queueOperation.cancelled = true; queueOperation.wake?.(); }
       const serial = queueSerial, targets = [...exportJobs];
       try { for (const id of targets) await bridge.cancelJob(id); }
       catch (error) { if (!disposed && serial === queueSerial) throw error; return; }
@@ -209,7 +261,7 @@
     }, ['exportVideo'], true);
     exportCard.append(exportStatus, jobInfo);
     for (const input of [kind, includeBackground, transparentFormat]) on(input, 'change', () => updateExport({ rename: true }));
-    for (const input of [resolution, quality, useMusic, scope]) on(input, 'change', () => updateExport());
+    for (const input of [resolution, quality, useMusic, scope, timingMode, bgmBaseMode, memoryMode, cutMode]) on(input, 'change', () => updateExport());
     for (const input of [subtitleOn, anchorType]) on(input, 'change', updateSubtitle);
     updateExport(); updateMusicChoices();
     drawMusic(); refreshCapabilities();
@@ -230,7 +282,7 @@
         return detachExport;
       },
       busy: () => working,
-      dispose() { disposed = true; clearInterval(interval); for (const remove of [...disposers, ...pickerDisposers]) remove(); musicUI?.dispose?.(); exportCard.remove(); panel.remove(); }
+      dispose() { disposed = true; if (queueOperation) { queueOperation.cancelled = true; queueOperation.wake?.(); } clearInterval(interval); for (const remove of [...disposers, ...pickerDisposers]) remove(); musicUI?.dispose?.(); exportCard.remove(); panel.remove(); }
     };
 
   }

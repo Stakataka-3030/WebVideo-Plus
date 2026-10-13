@@ -68,6 +68,21 @@ test("unsupported capabilities fail before changing source", () => {
   d.runtimeCapabilities = { changeFigureDiff: false };
   assert.throws(() => F.autoExit(d), /changeFigureDiff/);
 });
+
+test("animation v2 is gated by the selected runtime including inline keyframes and overrides", () => {
+  const sources = [
+    'setTempAnimation:{"version":2,"keyframes":[{"time":1000,"alpha":0.5}]} -target=hero;',
+    'setTempAnimation:{"keyframes":[{"time":1000,"alpha":0.5}]} -target=hero;',
+    'setTempAnimation:[{"duration":1000,"alpha":0.5}] -relative -target=hero;',
+  ];
+  for (const source of sources) {
+    const legacy = S.parse(source, {capabilities:{...caps, animationV2:false}});
+    assert.throws(() => S.assertSupported(legacy), /animationV2/);
+    const latest = S.parse(source, {capabilities:{...caps, animationV2:true}});
+    assert.doesNotThrow(() => S.assertSupported(latest));
+  }
+  assert.doesNotThrow(() => S.assertSupported(S.parse('setTempAnimation:[{"duration":1000,"alpha":0.5}] -target=hero;', {capabilities:{...caps, animationV2:false}})));
+});
 test("ID completion handles paths, dialogue and forward same-next effects", () => {
   const source =
     'setTransform:{"alpha":1} -target=fig-left -next;\nchangeFigure:alice.png -left -next;\nAlice:hi;\n';

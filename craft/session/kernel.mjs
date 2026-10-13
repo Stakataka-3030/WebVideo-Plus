@@ -19,7 +19,8 @@ function taskState(task,kind){
   // completed is published before cleanup, then published with phase completed.
   // A final cacheCleanupWarning is historical and does not mean work is active.
   if(task.state==='completed')return task.phase==='completed'?'terminal':task.phase==='cleanup'?'active':'unknown';
-  if(['failed','canceled'].includes(task.state))return 'terminal';
+  if(task.state==='canceled')return task.phase==='canceling'||task.phase==='cleanup'?'active':'terminal';
+  if(task.state==='failed')return 'terminal';
  }else{
   if(task.state==='running')return 'active';
   if(['complete','failed','cancelled'].includes(task.state))return 'terminal';
@@ -85,7 +86,7 @@ export class KernelSession {
     if(!(method==='GET'?GET:POST).has(endpoint)&&!(method==='GET'&&/^\/api\/timing\/[a-f0-9-]{36}$/.test(endpoint))&&!(method==='POST'&&/^\/api\/jobs\/[a-f0-9-]{36}\/cancel$/.test(endpoint)))throw Error('service-operation-denied');
     const body=data===undefined?undefined:{...data};
     if(body&&['/api/jobs','/api/timing','/api/music/duration','/api/ai/novel/start'].includes(endpoint)){const s=this.storage.get(snapshotId);
-      if(['/api/jobs','/api/timing'].includes(endpoint)){const base=s.runtimeVersion??(s.runtimeId==='open-webgal.webgal'?s.engineVersion:undefined);const official=s.runtimeId==='open-webgal.webgal'&&['4.6.4','4.6.5'].includes(s.engineVersion)&&base===s.engineVersion;const mygo=s.runtimeId==='webgal-mygo.mygo'&&s.engineVersion==='3.2.1'&&base==='4.6.4';if(!official&&!mygo)throw Error(`当前工程引擎 ${s.runtimeId||'未知'} ${s.engineVersion||'未知'}（基础 WebGAL ${base||'未知'}）不在已验证精确档位内；支持 WebGAL 4.6.4 / 4.6.5、MyGO 3.2.1（基础 WebGAL 4.6.4），未回退到其他引擎。请检查 Craft 工程的引擎绑定`);body.expectedRuntimeVersion=s.engineVersion;body.expectedRuntimeId=s.runtimeId;body.expectedWebgalVersion=base;body.settings={...(body.settings||{}),engine:mygo?'mygo':'webgal'};delete body.runtimeStartup;const startup=await this.readRuntimeStartup?.(s);if(startup)body.runtimeStartup=startup;}body.project=s.id;}
+      if(['/api/jobs','/api/timing'].includes(endpoint)){const base=s.runtimeVersion??(s.runtimeId==='open-webgal.webgal'?s.engineVersion:undefined);const official=s.runtimeId==='open-webgal.webgal'&&['4.6.4','4.6.5','4.6.6'].includes(s.engineVersion)&&base===s.engineVersion;const mygo=s.runtimeId==='webgal-mygo.mygo'&&s.engineVersion==='3.2.1'&&base==='4.6.4';if(!official&&!mygo)throw Error(`当前工程引擎 ${s.runtimeId||'未知'} ${s.engineVersion||'未知'}（基础 WebGAL ${base||'未知'}）不在已验证精确档位内；支持 WebGAL 4.6.4 / 4.6.5 / 4.6.6、MyGO 3.2.1（基础 WebGAL 4.6.4），未回退到其他引擎。请检查 Craft 工程的引擎绑定`);body.expectedRuntimeVersion=s.engineVersion;body.expectedRuntimeId=s.runtimeId;body.expectedWebgalVersion=base;body.settings={...(body.settings||{}),engine:mygo?'mygo':'webgal'};delete body.runtimeStartup;const startup=await this.readRuntimeStartup?.(s);if(startup)body.runtimeStartup=startup;}body.project=s.id;}
     await this.start();attempt.serviceKey=serviceKey(this.discovery);
     // Overlapping singleton starts can return out of order. Receipt arrival must
     // not retire a newer active novel using a delayed older start response.

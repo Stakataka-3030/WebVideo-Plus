@@ -53,6 +53,11 @@ function fixture({realDialog=false,dialogUnavailable=false,dialogThrows=false,di
  });
  context.window=context;context.self=context;
  context.testBinding=encoded=>{
+  const reminderRequest=JSON.parse(encoded);
+  if(reminderRequest.method==='ownUpdate.preferences'){
+   calls.push({kind:'preferences-read',command:reminderRequest.method,args:reminderRequest.params});
+   context.__WebVideoCraftReply({id:reminderRequest.id,ok:true,value:{schemaVersion:1,product:'craft',mode:'never',baselineVersion:'',currentVersion:'1.1.14.0c'}});return;
+  }
   const request=JSON.parse(encoded);calls.push({kind:'rpc',command:request.method,args:request.params});
   const value=request.method==='update.prepare'?{ready:true}:request.method==='update.commit'?{committed:true,exitHost:true}:request.method==='update.abort'?{notStarted:true,cancelled:true}:undefined;
   if(!value)throw Error('Unexpected RPC in inert fixture: '+request.method);

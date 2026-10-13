@@ -1,5 +1,31 @@
 # Craft export UI parity
 
+## Current candidate: 1.1.14c / Terre 1.3.1
+
+The applicable shared implementation is pinned to Terre v1.3.1
+`d9b0df5bd0d33249ccf8ded4af612ec429268f02`. The Craft UI now exposes
+automatic/manual/BGM-fit timing, numeric and statement cuts, `;CutHere`,
+Live2D Core memory reservation, PNG/JPEG compatibility capture, GPU selection,
+transparent capture mode, strict/decorative cut controls and visual-tail policy.
+Fields follow the selected export/timing mode. Saved native settings can be read
+back without changing a project. Audio export does not inherit video cuts or BGM fitting.
+
+Capabilities follow the actual project binding: exact 4.6.4, 4.6.5 and MyGO
+3.2.1/base4.6.4 remain supported; v2 animations are enabled only for exact 4.6.6.
+Inline v2 data and v2 temporary-animation overrides are gated. Runtime changes
+invalidate captured snapshots; the Craft host version never supplies an engine capability.
+
+Cancellation releases the panel's pending queue operation immediately, including
+when the queue ID reply arrives late. The late ID is canceled individually.
+Native `canceling`/`cleanup` remains active until the owned process exits and
+cleanup reaches `phase=canceled, cleanupComplete=true`. Retry is blocked during
+that interval. Exact temporary-output leases preserve completed outputs and
+neighbor files; interrupted cancellation resumes cleanup on service restart.
+See [current native evidence and limits](ACCEPTANCE-1.1.14c.md).
+
+The following sections describe the original UI integration; their historical
+1.1.6/beta.2 baseline is not the current parity or host limit.
+
 This change addresses the P4/P5 feedback against the verified Craft `v1.0.0-beta.2` host. It ports the ordinary Terre 1.1.6 export choices while retaining Craft's existing automatic-timing and verified-runtime contracts.
 
 ## Native entry and shared form

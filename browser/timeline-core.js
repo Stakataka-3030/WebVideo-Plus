@@ -1,6 +1,12 @@
 /* WebVideo+ timeline core. Native Terre parser owns syntax; this module owns derived views. */
 (function(root){
   'use strict';
+  // Match the export planner's narrow image-diff contract, including decoded,
+  // first-value Spine query flags and unknown formats backed by a live model.
+  const figureImage=value=>/\.(png|jpe?g|webp|gif|bmp|avif|svg)([?#].*)?$/i.test(String(value||''));
+  const figureModel=(file,args={})=>/\.(json|jsonl|wmdl)([?#].*)?$/i.test(file)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(file)||['motion','skin','expression','blink','focus','animationFlag','eyesOpen','eyesClose'].some(key=>!!args[key]);
+  const unsupportedFigureDiff=value=>{try{const url=new URL(String(value||''),'http://localhost/'),extension=url.pathname.split('.').pop().toLowerCase();return extension==='json'||extension==='skel'||url.searchParams.get('type')==='spine';}catch{return false;}};
+  const figureDiffRejected=(previous,content)=>{const gone=!content||content==='none';return unsupportedFigureDiff(previous?.file)||unsupportedFigureDiff(content)||!!(previous&&(gone?previous.liveRuntime&&!figureImage(previous.file):!figureImage(previous.file)||!figureImage(content)));};
   const fingerprint = text => {let h=2166136261;for(let i=0;i<text.length;i++)h=Math.imul(h^text.charCodeAt(i),16777619);return (h>>>0).toString(16)+':'+text.length;};
   const ignoredCommands=new Set(['changeScene','callScene','return','choose','chooseLabel','jumpLabel','getUserInput','if','setVar','showVars']);
   const hiddenCommands=new Set([...ignoredCommands,'label','unlockCg','unlockBgm','wait','applyStyle','callSteam','end']);
@@ -68,5 +74,5 @@
     snapshot(){if(!this.model)return null;const m=this.model;const selected=this.mode==='range'&&this.range?m.statements.filter(s=>s.startLine>=this.range[0]&&s.endLine<=this.range[1]):m.statements.filter(s=>this.ids.has(s.id));let ranges=selected.map(s=>({startLine:s.startLine,endLine:s.endLine,startOffset:s.startOffset,endOffset:s.endOffset}));if(this.mode==='range'&&this.range){const lines=m.source.split('\n');const start=lines.slice(0,this.range[0]-1).reduce((n,l)=>n+l.length+1,0);let end=lines.slice(0,this.range[1]).reduce((n,l)=>n+l.length+1,0);ranges=[{startLine:this.range[0],endLine:this.range[1],startOffset:start,endOffset:Math.min(end,m.source.length)}];}return JSON.parse(JSON.stringify({schemaVersion:1,path:m.path,revision:m.revision,mode:this.mode,ids:[...this.ids],ranges,statements:selected,source:m.source}));}
   }
   function filter(rows,{text='',speaker='',kind=''}={}){text=text.trim().toLocaleLowerCase();return rows.filter(r=>(!speaker||(r.displaySpeaker||r.speaker)===speaker)&&(!kind||r.kind===kind)&&(!text||[r.title,r.displaySpeaker||r.speaker,r.speakerSource||'',...r.annotations,...(r.parts||[]).flatMap(p=>[p.title,...p.items,p.footer])].join(' ').toLocaleLowerCase().includes(text)));}
-  root.WebVideoTimelineCore={derive,Selection,filter,fingerprint,ignoredInTiming,singleLineHintDuration,singleChooseInfo,sceneChangeTarget,isLinearSceneChange};
+  root.WebVideoTimelineCore={figureImage,figureModel,figureDiffRejected,derive,Selection,filter,fingerprint,ignoredInTiming,singleLineHintDuration,singleChooseInfo,sceneChangeTarget,isLinearSceneChange};
 })(typeof window==='undefined'?globalThis:window);

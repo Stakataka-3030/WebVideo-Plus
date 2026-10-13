@@ -6,6 +6,7 @@ import {readFile} from 'node:fs/promises';
 const source=await readFile(new URL('../ui/media-panel.js',import.meta.url),'utf8');
 class Element {
  constructor(tag){this.tag=tag;this.children=[];this.events={};this.textContent='';this.value='';this.disabled=false;this.checked=false;this.hidden=false;}
+ get parentElement(){return this.parent;}
  append(...items){for(const item of items){item.remove?.();this.children.push(item);item.parent=this;if(this.tag==='select'&&this.children.length===1)this.value=item.value;}}
  setAttribute(k,v){this[k]=v;}
  removeAttribute(k){delete this[k];}
@@ -34,6 +35,42 @@ function setup(overrides={}){
  return{field,change,bridge,container,calls,errors,messages,mounted,button,click,nodes,snap,setCaps:v=>caps=v};
 }
 async function chooseDisjoint(f){f.snap.source='A;\nB;\nC;';await f.change('故事范围','selection');await f.click('读取当前场景');await f.change('导出第 1 行',true);await f.change('导出第 3 行',true);await f.click('锁定导出片段');}
+
+test('advanced native request carries manual cuts, selected statement hash, memory and PNG',async()=>{
+ const f=setup();await f.change('分段切点','manual');f.field('手动切点（帧、秒或时间码）').value='2s, 90';
+ await f.change('Live2D Core 内存模式','manual');f.field('每进程 Live2D Core 初始内存（MiB）').value='128';await f.change('兼容截图格式','png');
+ await f.click('读取当前场景切点');await f.change('手动切点 start.txt 第 2 行',true);await f.click('加入导出队列');
+ const request=f.calls.find(row=>row[0]==='export')[1];assert.equal(request.settings.segmentCutMode,'manual');assert.equal(request.settings.manualCutPoints,'2s, 90');assert.equal(request.settings.cubismCoreInitialMemoryMiB,128);assert.equal(request.settings.compatibilityCaptureFormat,'png');assert.equal(request.manualCutStatements[0].line,2);assert.equal(request.manualCutStatements[0].sourceHash.length,64);f.mounted.dispose();
+});
+test('manual and project-owned BGM timing preserve full-export semantics; audio does not inherit cuts',async()=>{
+ const f=setup();await f.change('放映计时','manual');f.field('手动等待秒数').value='2';f.field('手动文字速度').value='65';await f.click('加入导出队列');
+ let request=f.calls.filter(row=>row[0]==='export').at(-1)[1];assert.equal(request.settings.mode,'manual');assert.equal(request.settings.holdSeconds,2);assert.equal(request.settings.textSpeed,65);
+ await f.change('放映计时','bgm');f.field('BGM 适配音乐（项目内路径）').value='game/bgm/first.wav\ngame/bgm/second.ogg';await f.click('加入导出队列');request=f.calls.filter(row=>row[0]==='export').at(-1)[1];assert.equal(request.bgmProjectFiles.length,2);assert.equal(request.settings.mode,'bgm');
+ await f.change('分段切点','manual');await f.change('导出内容','audio');await f.click('加入导出队列');request=f.calls.filter(row=>row[0]==='export').at(-1)[1];assert.equal(request.settings.segmentCutMode,'auto');assert.equal(request.manualCutStatements,undefined);assert.equal(request.bgmProjectFiles,undefined);f.mounted.dispose();
+});
+
+test('cancel releases form busy while a queue receipt is pending, then cancels its late owned job',async()=>{
+ const f=setup();let resolveQueue;
+ f.bridge.exportVideo=()=>new Promise(resolve=>{resolveQueue=resolve;});
+ await f.click('加入导出队列');assert.equal(f.mounted.busy(),true);
+ try {
+  await f.click('取消本面板导出任务');
+  assert.equal(f.mounted.busy(),false,'cancel acknowledgement must release the form without waiting for the queue receipt');
+  assert.equal(f.button('加入导出队列').disabled,false);
+ } finally {
+  resolveQueue({id:'late-owned-job'});for(let i=0;i<30;i++)await Promise.resolve();
+  await new Promise(resolve=>setTimeout(resolve,10));f.mounted.dispose();
+ }
+ assert.ok(f.calls.some(row=>row[0]==='cancelJob'&&row[1]==='late-owned-job'));
+});
+
+test('a new submission after cancel is independent of the old unresolved receipt',async()=>{
+ const f=setup(), wait=deferred();let count=0;
+ f.bridge.exportVideo=async()=>++count===1?wait.promise:{id:'new-owned-job'};
+ await f.click('加入导出队列');await f.click('取消本面板导出任务');await f.click('加入导出队列');
+ const messages=[...f.messages];wait.resolve({id:'old-late-job'});await flush();
+ assert.ok(f.calls.some(row=>row[0]==='cancelJob'&&row[1]==='old-late-job'));assert.equal(f.calls.some(row=>row[0]==='cancelJob'&&row[1]==='new-owned-job'),false);assert.deepEqual(f.messages,messages);assert.equal(f.mounted.busy(),false);f.mounted.dispose();
+});
 test('selected disjoint ranges submit separately with source hash and actual API fields',async()=>{
  const f=setup();await chooseDisjoint(f);await f.click('加入导出队列');
  const exports=f.calls.filter(c=>c[0]==='export');assert.equal(exports.length,2);assert.equal(exports[0][1].range.sourceHash.length,64);assert.equal(exports[1][1].range.startLine,3);assert.equal(exports[0][1].fileName,'video-1.mp4');assert.equal(exports[0][1].settings.width,1920);assert.equal(f.errors.length,0);f.mounted.dispose();

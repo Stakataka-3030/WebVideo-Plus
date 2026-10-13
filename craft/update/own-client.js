@@ -31,6 +31,9 @@
     }
     return {
       state: () => ({status, busy, update: update ? {...update} : null}),
+      preferences: () => rpc('ownUpdate.preferences', {}),
+      savePreferences: mode => rpc('ownUpdate.savePreferences', {mode}),
+      reminder: () => run('checking', async () => { const result = await rpc('ownUpdate.reminder', {}); update = result.update || null; verified = false; publish(result.suppressed ? 'up-to-date' : 'available'); return result; }),
       check: () => run('checking', async () => {
         update = null; verified = false; update = await rpc('ownUpdate.check', {});
         publish(update ? 'available' : 'up-to-date'); return update;

@@ -36,7 +36,7 @@
       const parts=resolved?.resolved.runtimeVersion?.split('.').map(Number),newSyntax=!!parts&&(parts[0]>4||parts[0]===4&&(parts[1]>6||parts[1]===6&&parts[2]>=5));
       return { projectId:c.game.id, projectPath:c.projectPath, path, source:state.textContent, revision,engineId:c.game.engineId,runtimeBindingSignature:resolved?.signature,
         sceneRelativePath:normalized.slice(prefix.length), selection:{start,end:start + lines[line - 1].length},
-        selectionKind:'native-current-line', line, runtimeCapabilities:{...state.runtimeCapabilities,...(resolved?{changeFigureDiff:newSyntax,transformFrom:newSyntax}:{})} };
+        selectionKind:'native-current-line', line, runtimeCapabilities:{...state.runtimeCapabilities,...(resolved?{changeFigureDiff:newSyntax,transformFrom:newSyntax,animationV2:resolved.resolved.runtimeVersion==='4.6.6'}:{})} };
     }
     function validateSnapshot(expected) {
       const now = snapshotSync();

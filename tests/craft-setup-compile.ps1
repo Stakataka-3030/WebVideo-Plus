@@ -8,7 +8,7 @@ $temp=Join-Path ([IO.Path]::GetTempPath()) ('craft-setup-compile-'+[Guid]::NewGu
 New-Item -ItemType Directory -Path $temp | Out-Null
 try {
  $parse=[Microsoft.CodeAnalysis.CSharp.CSharpParseOptions]::Default.WithLanguageVersion([Microsoft.CodeAnalysis.CSharp.LanguageVersion]::CSharp5)
- $sources=@('craft/CraftSetup.cs','craft/installer/SetupContracts.cs','craft/installer/SetupPaths.cs','craft/installer/ProductRouting.cs','craft/installer/ManifestVerifier.cs')|ForEach-Object {Join-Path $root $_}
+ $sources=@('craft/CraftSetup.cs','craft/installer/SetupContracts.cs','craft/installer/UpdatePreferences.cs','craft/installer/SetupPaths.cs','craft/installer/ProductRouting.cs','craft/installer/ManifestVerifier.cs')|ForEach-Object {Join-Path $root $_}
  $references=[Microsoft.CodeAnalysis.MetadataReference[]]@(Get-ChildItem -LiteralPath $ReferenceRoot -Filter '*.dll' -File | Where-Object {$_.Name -notmatch 'System.EnterpriseServices.(Wrapper|Thunk).dll'} | ForEach-Object {[Microsoft.CodeAnalysis.MetadataReference]::CreateFromFile($_.FullName)})
  foreach($entry in @(@{Main='CraftSetup';Extra=@()},@{Main='SetupGuiChecks';Extra=@((Join-Path $root 'craft/tests/SetupGuiChecks.cs'))},@{Main='CraftStarter';Extra=@()},@{Main='OfficialInstallerLauncher';Extra=@()},@{Main='LauncherGuiChecks';Extra=@((Join-Path $root 'craft/tests/LauncherGuiChecks.cs'))})) {
   $actualSources=if($entry.Main -in @('CraftStarter','LauncherGuiChecks')){@((Join-Path $root 'craft/CraftStarter.cs'),(Join-Path $root 'craft/installer/ManifestVerifier.cs'))}elseif($entry.Main -eq 'OfficialInstallerLauncher'){@((Join-Path $root 'craft/update/OfficialInstallerLauncher.cs'))}else{$sources}

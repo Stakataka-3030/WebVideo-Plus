@@ -24,6 +24,7 @@ public static class EngineAdapterDualProfileChecks {
  static string Shell(string version,string name){
   string root=NewDirectory(name),source=Sources[version];
   foreach(string file in new[]{"index.html","webgal-engine.json",Bundles[version],"assets/index-Dch1g2w9.css"})Files.CopyFile(Path.Combine(source,file),Path.Combine(root,file));
+  if(version=="4.6.5")Files.CopyFile(Path.Combine(source,"assets/index.es-0XzJiDJZ.js"),Path.Combine(root,"assets/index.es-0XzJiDJZ.js"));
   Files.Atomic(Path.Combine(root,"assets/custom-font.woff2"),"synthetic-copy-control-font");
   Files.Atomic(Path.Combine(root,"assets/custom-theme.css"),"@font-face{font-family:Fixture;src:url(custom-font.woff2)}:root{--fixture:preserve}");
   Files.Atomic(Path.Combine(root,"icons/custom.svg"),"<svg xmlns=\"http://www.w3.org/2000/svg\"/>");

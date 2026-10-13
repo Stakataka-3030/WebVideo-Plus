@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using System;
 using System.IO;
 using System.IO.Compression;
@@ -10,9 +11,9 @@ using System.ComponentModel;
 using System.Collections.Generic;
 using System.Web.Script.Serialization;
 using System.Text;
-[assembly: AssemblyVersion("1.1.13.0")]
-[assembly: AssemblyFileVersion("1.1.13.0")]
-[assembly: AssemblyInformationalVersion("1.1.13.0c")]
+[assembly: AssemblyVersion("1.1.14.0")]
+[assembly: AssemblyFileVersion("1.1.14.0")]
+[assembly: AssemblyInformationalVersion("1.1.14.0c")]
 
 
 static class CraftSetup {
@@ -28,7 +29,7 @@ static class CraftSetup {
   }catch(Exception error){WriteError(error);return 1;}
   Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
   using(var form=CreateForm(Run,(owner,text,title,icon)=>MessageBox.Show(owner,text,title,MessageBoxButtons.OK,icon),
-   (owner,text,title)=>MessageBox.Show(owner,text,title,MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)==DialogResult.Yes))Application.Run(form);
+   (owner,text,title)=>MessageBox.Show(owner,text,title,MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)==DialogResult.Yes,automaticReminders:true))Application.Run(form);
   return 0;
  }
  static Label TextLabel(string name,string text){return new Label{Name=name,Text=text,AutoSize=true,Dock=DockStyle.Top,Margin=new Padding(0,3,0,7),UseMnemonic=false};}
@@ -44,7 +45,7 @@ static class CraftSetup {
  // Production operations, discovery and launch all keep their own safety checks.
  internal static Form CreateForm(Func<CraftSetupRequest,Action<string>,CraftSetupResult> operation,
   Action<IWin32Window,string,string,MessageBoxIcon> showMessage,Func<IWin32Window,string,string,bool> confirm,
-  Func<string,string,string[]> discover=null,Action<string> launch=null,Action<string> openPath=null,Func<string,CraftInstallationInfo> readInstalled=null){
+  Func<string,string,string[]> discover=null,Action<string> launch=null,Action<string> openPath=null,Func<string,CraftInstallationInfo> readInstalled=null,bool automaticReminders=false){
   discover=discover??CraftSetupPaths.FindCandidates;launch=launch??Launch;openPath=openPath??OpenPath;readInstalled=readInstalled??CraftSetupPaths.ReadInstalled;
   var form=new Form{Text="WebVideo+ Craft · 安装与管理",ClientSize=new Size(760,600),MinimumSize=new Size(560,430),StartPosition=FormStartPosition.CenterScreen,AutoScaleMode=AutoScaleMode.Font,AutoScroll=true,Font=new Font("Microsoft YaHei UI",9F)};
   var content=new TableLayoutPanel{Name="content",ColumnCount=1,RowCount=0,AutoSize=true,Dock=DockStyle.Top,Padding=new Padding(22),Margin=new Padding(0)};content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));form.Controls.Add(content);
@@ -69,7 +70,14 @@ static class CraftSetup {
   var progress=new ProgressBar{Name="progress",Dock=DockStyle.Top,Height=12,Visible=false,MarqueeAnimationSpeed=30,Margin=new Padding(0,2,0,8)};AddRow(content,progress);
   var install=Button("install","安装增强组件");var repair=Button("repair","修复组件");var remove=Button("remove","卸载挂载…");var cancel=Button("cancel","退出");AddRow(content,Actions(install,repair,remove,cancel));
   var launchButton=Button("launch","启动 Craft");var folderButton=Button("openFolder","打开安装目录");var logs=Button("logs","打开本次日志");var copy=Button("copyError","复制详情");AddRow(content,Actions(launchButton,folderButton,logs,copy));
-  var inputs=new Control[]{craft,target,cache,browseCraft,browseFolder,browseTarget,browseCache,recover,install,repair,remove,find,correctInstaller,advancedToggle,shortcut,launchButton,folderButton};
+  var reminderMode=new ComboBox{Name="craftReminderMode",DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Top};reminderMode.Items.AddRange(new object[]{"正常提醒","暂停到下一正式版","暂停到下一主版本","关闭自动提醒"});reminderMode.SelectedIndex=0;AddRow(advanced,TextLabel("reminderLabel","Craft 增强更新提醒（与应用共用；手动检查始终可用）"));AddRow(advanced,reminderMode);
+  var readReminder=Button("readReminder","读取提醒设置");var saveReminder=Button("saveReminder","保存提醒设置");var checkReminder=Button("checkReminder","检查 Craft 增强更新");AddRow(advanced,Actions(readReminder,saveReminder,checkReminder));var reminderStatus=TextLabel("reminderStatus","");AddRow(advanced,reminderStatus);
+  string[] reminderModes={"on","next-release","next-major","never"};string reminderBaseline=Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute),false).Cast<AssemblyInformationalVersionAttribute>().First().InformationalVersion;
+  readReminder.Click+=(s,e)=>{try{var preference=CraftReminderPreferences.Read(target.Text);reminderMode.SelectedIndex=Array.IndexOf(reminderModes,Convert.ToString(preference["mode"]));reminderStatus.Text="已读取当前增强目录的提醒设置";}catch(Exception error){reminderStatus.Text=error.Message;}};
+  saveReminder.Click+=(s,e)=>{try{CraftReminderPreferences.Save(target.Text,reminderModes[reminderMode.SelectedIndex],reminderBaseline);reminderStatus.Text="已保存 Craft 提醒设置，未修改官方 Craft 提醒";}catch(Exception error){reminderStatus.Text=error.Message;}};
+  Action<bool> checkCraftReminder=manual=>{string selectedTarget=target.Text;checkReminder.Enabled=false;reminderStatus.Text="正在检查独立 Craft 稳定通道…";Task.Run(()=>{var preference=CraftReminderPreferences.Read(selectedTarget);if(!manual&&Convert.ToString(preference["mode"])=="never")return "";var selected=InstallerProductRouting.Fetch("craft");if(String.IsNullOrEmpty(selected.Url))return selected.Message;string version=selected.Version+"c";if(new Version(selected.Version)<=new Version(reminderBaseline.TrimEnd('c')))return "当前没有更高版本的 Craft 增强组件";if(!manual&&CraftReminderPreferences.Suppressed(preference,version))return "";return "发现 Craft 增强组件 "+version+"；请在应用内检查并下载，或访问 GitHub Craft 发行页。";}).ContinueWith(task=>{if(form.IsDisposed||!form.IsHandleCreated)return;try{form.BeginInvoke(new Action(()=>{if(form.IsDisposed||target.Text!=selectedTarget)return;checkReminder.Enabled=true;reminderStatus.Text=task.IsFaulted?"检查失败，可手动重试："+task.Exception.GetBaseException().Message:task.Result;}));}catch(ObjectDisposedException){}catch(InvalidOperationException){}});};
+  checkReminder.Click+=(s,e)=>checkCraftReminder(true);if(automaticReminders)form.Shown+=(s,e)=>checkCraftReminder(false);
+  var inputs=new Control[]{reminderMode,readReminder,saveReminder,checkReminder,craft,target,cache,browseCraft,browseFolder,browseTarget,browseCache,recover,install,repair,remove,find,correctInstaller,advancedToggle,shortcut,launchButton,folderButton};
   bool busy=false,locating=false,changing=false,launching=false,routing=false;int selectionGeneration=0;string phase="",lastDetails="",lastLog=null;CraftSetupRequest active=null;CraftInstallationInfo info=null;
   var worker=new BackgroundWorker{WorkerReportsProgress=true};var finder=new BackgroundWorker();var ownerFinder=new BackgroundWorker();var starter=new BackgroundWorker();var router=new BackgroundWorker();var timer=new Timer{Interval=250};var detectTimer=new Timer{Interval=350};var elapsed=new Stopwatch();
   Action refreshInfo=null;Action updateButtons=()=>{

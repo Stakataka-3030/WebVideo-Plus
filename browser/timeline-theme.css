@@ -5,7 +5,7 @@
  --wvp-current:#fff0c7;--wvp-current-ink:#634308;--wvp-current-line:#a36c11;--wvp-selected:#d9eaff;--wvp-selected-ink:#173c68;--wvp-selected-line:#2e6cb8;
  --wvp-motion-bg:#e9efff;--wvp-motion-ink:#334d83;--wvp-expression-bg:#e1f4ef;--wvp-expression-ink:#166453;--wvp-marker-bg:#fff0ca;--wvp-marker-ink:#79520c;
  --wvp-focus:#245bb2;--wvp-primary:#245bb2;--wvp-primary-hover:#1b478e;
- font:13px/1.5 "Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;color:var(--wvp-ink)
+ font-family:inherit;font-size:13px;line-height:1.5;color:var(--wvp-ink)
 }
 .wvp-nav[data-theme=dark],.wvp-overlay[data-theme=dark]{
  --wvp-bg:#20252d;--wvp-raised:#282f3a;--wvp-ink:#edf2fa;--wvp-muted:#b2bfce;--wvp-border:#414c5c;--wvp-hover:#303b4a;

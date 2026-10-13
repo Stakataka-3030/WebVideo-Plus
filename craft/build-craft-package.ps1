@@ -16,6 +16,7 @@ try {
  $verifier=Join-Path $PSScriptRoot 'installer/ManifestVerifier.cs'
  $setupPaths=Join-Path $PSScriptRoot 'installer/SetupPaths.cs'
  $productRouting=Join-Path $PSScriptRoot 'installer/ProductRouting.cs'
+ $reminderPreferences=Join-Path $PSScriptRoot 'installer/UpdatePreferences.cs'
  $setupContracts=Join-Path $PSScriptRoot 'installer/SetupContracts.cs'
  $nativeManifest=Join-Path $PSScriptRoot 'installer/Craft.manifest'
  & $compiler /nologo /target:winexe /platform:x64 /optimize+ ('/win32manifest:'+$nativeManifest) ('/out:'+$starter) /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll (Join-Path $temp 'CraftStarter.cs') $verifier
@@ -31,7 +32,7 @@ try {
  $zip=$folder+'.zip'
  Compress-Archive -LiteralPath $folder -DestinationPath $zip -CompressionLevel Optimal -Force
  $installer=$folder+'.exe'
- & $compiler /nologo /target:winexe /platform:x64 /optimize+ ('/win32manifest:'+$nativeManifest) ('/out:'+$installer) ('/resource:'+$zip+',payload.zip') /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll (Join-Path $temp 'CraftSetup.cs') $verifier $setupPaths $setupContracts $productRouting
+ & $compiler /nologo /target:winexe /platform:x64 /optimize+ ('/win32manifest:'+$nativeManifest) ('/out:'+$installer) ('/resource:'+$zip+',payload.zip') /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll (Join-Path $temp 'CraftSetup.cs') $verifier $setupPaths $setupContracts $productRouting $reminderPreferences
  if($LASTEXITCODE -ne 0){throw 'Craft setup build failed'}
  & node (Join-Path $PSScriptRoot 'update/build-release-descriptor.mjs') $installer
  if($LASTEXITCODE -ne 0){throw 'Craft release integrity descriptor failed'}

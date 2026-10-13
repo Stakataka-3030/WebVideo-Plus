@@ -43,7 +43,7 @@ public static class InstallerProductRouting {
   try{var host=Detect(selected,shortcutTarget);if(host.Product!="terre")return "";string file=Path.Combine(host.Root,"assets/templates/WebGAL_Template/webgal-engine.json");if(!File.Exists(file)||new FileInfo(file).Length>65536)return "";
    var data=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(file));string id=Value(data,"id"),version=Value(data,"version"),webgal=Value(data,"webgalVersion");
    if(id=="webgal-mygo.mygo")return version=="3.2.1"&&webgal=="4.6.4"?"4.6.4":"";
-   if(id!="open-webgal.webgal"||version!=""&&webgal!=""&&version!=webgal)return "";string engine=webgal!=""?webgal:version;return engine=="4.6.4"||engine=="4.6.5"?engine:"";
+   if(id!="open-webgal.webgal"||version!=""&&webgal!=""&&version!=webgal)return "";string engine=webgal!=""?webgal:version;return engine=="4.6.4"||engine=="4.6.5"||engine=="4.6.6"?engine:"";
   }catch{return "";}
  }
  public static void RequireTerre(string selected){var host=Detect(selected);if(host.WrongForTerre)throw new InvalidOperationException(host.TerreGuidance);}

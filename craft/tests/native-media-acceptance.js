@@ -52,7 +52,7 @@
       while (Date.now() < deadline) {
         const job = await status(id), marker = JSON.stringify([job.state, job.phase, job.progress]);
         if (marker !== previous) { record('job-progress', { id, state: job.state, phase: job.phase, progress: job.progress, message: job.message }); previous = marker; }
-        if (terminal.has(job.state)) return job;
+        if (terminal.has(job.state) && (job.state !== 'completed' || job.phase === 'completed') && (!['canceled','cancelled'].includes(job.state) || job.cleanupComplete === true && ['canceled','cancelled'].includes(job.phase))) return job;
         await wait(1000);
       }
       throw Error('Native job timed out; inspect/cancel explicitly: ' + id);

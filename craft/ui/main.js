@@ -1422,6 +1422,12 @@
       ownUpdateText = element("p", "手动检查 WebVideo+ Craft 稳定版；仅下载本产品安装器，并校验产品、版本与 SHA-256。", { className: "wvc-help", role: "status" }),
       ownUpdateProgress = element("p", "", { className: "wvc-help wvc-update-status", role: "status" });
     ownUpdateCard.append(ownUpdateText, ownUpdateProgress);
+    const reminderChoices = element('select', null, { 'aria-label': 'Craft 增强更新提醒' });
+    for (const [value, text] of [['on','正常提醒'],['next-release','暂停到下一正式版'],['next-major','暂停到下一主版本'],['never','关闭自动提醒']]) reminderChoices.append(element('option', text, {value}));
+    ownUpdateCard.append(reminderChoices, button('读取更新提醒设置', async () => { const preference = await ownUpdater().preferences(); reminderChoices.value = preference.mode; }), button('保存更新提醒设置', async () => { const preference = await ownUpdater().savePreferences(reminderChoices.value); reminderChoices.value = preference.mode; ownUpdateProgress.textContent = '更新提醒设置已保存，安装器与此应用共用；手动检查始终可用。'; }));
+    if (typeof root.WebVideoCraftOwnUpdates?.reminder === 'function') {
+      root.WebVideoCraftOwnUpdates.preferences().then(preference => { reminderChoices.value = preference.mode; return preference.mode === 'never' ? {suppressed:true} : root.WebVideoCraftOwnUpdates.reminder(); }).then(result => { if (!closed && !result.suppressed && result.update) { ownUpdateText.textContent = '发现 WebVideo+ Craft ' + result.update.version + '，可在设置与更新中检查和下载。'; status.textContent = ownUpdateText.textContent; const entry = document.querySelector('[data-webvideo-craft="tools"]'); if (entry && !entry.querySelector('.wvc-update-dot')) entry.append(element('span', ' •', {className:'wvc-update-dot', 'aria-label':'有新的 Craft 增强版本'})); } }).catch(error => { if (!closed) ownUpdateProgress.textContent = '自动更新提醒检查失败，可手动重试：' + error.message; });
+    }
     function ownUpdater() {
       if (!root.WebVideoCraftOwnUpdates) throw Error("WebVideo+ Craft 更新连接尚未就绪");
       return root.WebVideoCraftOwnUpdates;

@@ -1,0 +1,32 @@
+// Exact official 4.6.6 resource helper + Live2D plugin adaptors. Synthetic
+// image/texture/SDK collaborators check routing and caching, not SDK pixels.
+import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import vm from 'node:vm';import assert from 'node:assert/strict';
+const root=path.resolve(process.argv[2]||'.build/upstream466/web');
+const read=(name,expected)=>{const source=fs.readFileSync(path.join(root,'assets',name),'utf8');assert.equal(crypto.createHash('sha256').update(source).digest('hex'),expected,'Unchanged official '+name+' required');return source;};
+const helper=read('live2dAssets-BYMcvYkd.js','02892ed85989397f5b6c4939d1ddcacb785aab8f10e1c4fe8c5af1c76a2c31f1');
+const plugin=read('index.es-DlwKruus.js','1ad45bac171ff15a79b52e20c727d6201dc1f1bc228d10d01cdd4d6cfc3d3e08');
+const main=read('index-Dcp3ZA1M.js','d2b34606a380b9575ce1e50ed2251cb5e38b3d6f9b00200b2b0f252a13d209c0');
+function between(source,a,b){const start=source.indexOf(a),end=source.indexOf(b,start);assert.ok(start>=0&&end>start,a);assert.equal(source.indexOf(a,start+a.length),-1,'Unique native extraction required');return source.slice(start,end);}
+const Image=class{},RawImageResource=class{constructor(source){this.source=source;}},LegacyImageResource=class{constructor(source,options){this.source=source;this.options=options;}},BaseTexture=class{constructor(resource,options){this.resource=resource;Object.assign(this,options);}},Texture=class{constructor(baseTexture){this.baseTexture=baseTexture;}};
+const context={URL,Promise,HTMLImageElement:Image,Ge:RawImageResource,ui:LegacyImageResource,ze:BaseTexture,yt:Texture,ne:new WeakMap(),console:{warn(){},error(){}}};context.globalThis=context;vm.createContext(context);
+vm.runInContext(between(plugin,'function di(','class ci')+'globalThis.adapt=di;'+between(plugin,'function Es(','export{')+'globalThis.reserve=Es;',context);
+const raw=()=>new Texture(new BaseTexture(new RawImageResource(new Image()),{alphaMode:1,scaleMode:2,wrapMode:3,mipmap:4,anisotropicLevel:5,resolution:2,format:6,type:7,target:8}));
+const input=raw(),converted=context.adapt(input);assert.notEqual(converted,input);assert.equal(converted.baseTexture.resource.source,input.baseTexture.resource.source);assert.ok(converted.baseTexture.resource instanceof LegacyImageResource);assert.equal(converted.baseTexture.resource.options.autoLoad,false);
+for(const field of ['alphaMode','scaleMode','wrapMode','mipmap','anisotropicLevel','resolution','format','type','target'])assert.equal(converted.baseTexture[field],input.baseTexture[field]);
+assert.equal(context.adapt(input),converted,'Original raw texture reuses its cached Cubism2 conversion');assert.equal(context.adapt(converted),converted,'Already converted texture is never converted twice');
+converted.baseTexture.destroyed=true;assert.notEqual(context.adapt(input),converted,'Destroyed cache entry must be rebuilt');
+const nonImage=new Texture(new BaseTexture(new RawImageResource({}),{}));assert.equal(context.adapt(nonImage),nonImage,'Non-image resources remain untouched');
+context.Live2D={ready:Promise.resolve(),isAvailable:true,createCubism2Texture:context.adapt};
+vm.runInContext('const i=globalThis.Live2D;'+between(helper,'async function x(','export{')+'globalThis.loadResources=x;',context);
+const url='http://fixture/model/model.json',legacy={model:'model.moc',textures:['texture.png'],physics:'physics.json',motions:{idle:[{file:'idle.mtn'}]}},modern={FileReferences:{Moc:'model.moc3',Textures:['texture.png'],Physics:'physics3.json',Motions:{Idle:[{File:'idle.motion3.json'}]}}};
+async function load(settings,{available=true,adaptor=true}={}){const loads=[],texture=raw();context.Live2D.isAvailable=available;context.Live2D.createCubism2Texture=adaptor?context.adapt:undefined;const result=await context.loadResources(url,async(name,type)=>{loads.push([name,type]);if(name===url)return settings;if(type==='texture')return texture;if(name.includes('physics')||name.includes('idle'))throw Error('optional damaged control');return new ArrayBuffer(4);});await Promise.resolve();return {result,loads,texture};}
+const c2=await load(legacy);assert.ok(c2.result.textures[0].baseTexture.resource instanceof LegacyImageResource);assert.equal(c2.result.value,legacy);assert.ok(c2.loads.some(([name,type])=>name.endsWith('model.moc')&&type==='binary'));assert.ok(c2.loads.some(([name,type])=>name.endsWith('idle.mtn')&&type==='binary'));
+const c4=await load(modern);assert.equal(c4.result.textures[0],c4.texture,'Moc3 modern texture must retain raw Pixi resource');assert.ok(c4.loads.some(([name,type])=>name.endsWith('idle.motion3.json')&&type==='json'));
+const disabled=await load(legacy,{available:false});assert.equal(disabled.loads.length,0);assert.equal(disabled.result.value,undefined);
+const absent=await load(legacy,{adaptor:false});assert.equal(absent.result.textures[0],absent.texture);
+// Explicit exporter memory choice must win over the actual plugin reservation function.
+const calls=[];context.Live2DCubismCore={Memory:{initializeAmountOfMemory(bytes){calls.push(bytes);}}};vm.runInContext(fs.readFileSync(new URL('../browser/cubism-memory.js',import.meta.url),'utf8').replace('__CUBISM_CORE_MEMORY_MIB__','64'),context);context.live2dPromise=Promise.resolve([true,true]);await context.live2dPromise;
+context.reserve(32*1024*1024);context.reserve(256*1024*1024);assert.deepEqual(calls,[64*1024*1024]);assert.equal(context.__webvideoCubismMemory.effectiveMiB,64);assert.equal(context.__webvideoCubismMemory.applied,true);assert.deepEqual(Array.from(context.__webvideoCubismMemory.engineReservations),[32,256]);
+// Execute the native engine setter to confirm later game-config reservations also use the guard.
+const accessor=between(main,'get CubismMemoryReservedSize(){','initLive2D(){');vm.runInContext('class EngineReservation{constructor(){this.isAvailable=true;this.reserveCoreMemory=Es;this._cubismMemoryReservedSize=32;}'+accessor+'};globalThis.engine=new EngineReservation();',context);context.engine.CubismMemoryReservedSize=128;assert.equal(calls.length,1);assert.equal(context.engine.CubismMemoryReservedSize,128);assert.deepEqual(Array.from(context.__webvideoCubismMemory.engineReservations),[32,256,128]);
+console.log('PASS exact WebGAL4.6.6 Cubism2 texture conversion/cache/no-double-conversion, modern raw textures, optional-failure/unavailable routing, and explicit memory override through native plugin/engine setter.');

@@ -1,12 +1,22 @@
+// Animation v1 uses cumulative durations; v2 object keyframes use absolute times.
+// Keep the raw payload intact: relative/inherited tracks are compiled by its exact engine.
+globalThis.__exportAnimationDuration=raw=>{
+ const object=value=>value&&typeof value==='object'&&!Array.isArray(value),valid=value=>typeof value==='number'&&value>=0?value:0;
+ const v1=Array.isArray(raw)||object(raw)&&raw.version===1,frames=Array.isArray(raw)?raw:raw?.keyframes;
+ if(!Array.isArray(frames))throw Error('动画文件无效');
+ const records=frames.filter(object);
+ return v1?records.reduce((sum,frame)=>sum+valid(frame.duration),0):Math.max(0,...records.map(frame=>valid(frame.time)));
+};
 // Data-only scheduling. Files, processes and browser lifecycle are owned by C#.
 globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,project,sceneName,fps,allowDecorativePixiCuts=false,strictSegmentCuts=false})=>{
  const events=[],audio=[],videoCues=[],muteWindows=[],singleLineHints=[],softCutWindows=[],live2dLifetimes=[],exitReplay=[],counts={},visualSources=new Map(),figureIdentities=new Map(),activeLiveLifetimes=new Map(),transitionStates=new Map(),extraAnimations=new Map(),sourceLines=script.split(/\r?\n/);let cursor=0;
  const clean=(kind,name)=>String(name||'').replace(new RegExp('^\\.?/?game/'+kind+'/'),'');
- const physical=name=>decodeURIComponent(String(name||'').split(/[?#]/)[0]);
+ // Match URL basic-parser preprocessing before decoding; never trim decoded %20 or Unicode spaces.
+ const physical=name=>decodeURIComponent(String(name||'').replace(/[\u0000-\u0020]+$/,'').replace(/[\t\n\r]/g,'').split(/[?#]/)[0]).replaceAll('\\','/');
  const local=(kind,name)=>root.replaceAll('\\','/')+'/game/'+kind+'/'+physical(clean(kind,name));
  const info=(kind,name)=>media['/game/'+kind+'/'+physical(clean(kind,name))]||{durationMs:0,hasAudio:false};
  const speakerTarget=params=>{if(params.figureId)return String(params.figureId);const position=['left','center','right','left13','right13','left14','right14'].find(key=>params[key]===true||params[key]==='true');return position?'fig-'+position:null;};
- const ensureAnimation=name=>{if(!name)return 0;const frames=animations[name];if(!Array.isArray(frames))throw Error('动画文件无效：'+name);extraAnimations.set(name,frames);return frames.reduce((sum,f)=>sum+Number(f.duration||0),0);};
+ const ensureAnimation=name=>{if(!name)return 0;const raw=animations[name];let duration;try{duration=__exportAnimationDuration(raw);}catch{throw Error('动画文件无效：'+name);}extraAnimations.set(name,raw);return duration;};
  const statementRange=(s,index)=>{
   const start=Number.isInteger(s.startLine)?s.startLine:index,end=Number.isInteger(s.endLine)?s.endLine:start;
   return {start:Math.max(0,start),end:Math.max(Math.max(0,start),Math.min(sourceLines.length-1,end))};
@@ -28,7 +38,8 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   const kind={changeBg:'background',changeFigure:'figure',changeFigureDiff:'figure',miniAvatar:'figure',bgm:'bgm',playEffect:'vocal',playVideo:'video'}[cmd],name=kind?clean(kind,s.content):s.content;
   if(cmd==='bgm'||cmd==='playEffect'){scheduleAudioCommand(audio,{command:cmd,name,file:name&&name!=='none'?local(kind,name):null,atMs:cursor,durationMs:info(kind,name).durationMs,params});continue;}
   if(cmd==='say'&&params.vocal){
-   voiceMs=info('vocal',params.vocal).durationMs;
+   const voiceInfo=info('vocal',params.vocal);voiceMs=Number(voiceInfo.durationMs);
+   if(!Number.isFinite(voiceMs)||voiceMs<=0||voiceInfo.hasAudio===false)throw Error('配音资源未取得有效音频时长（第'+(range.start+1)+'行）：'+params.vocal);
    audio.push({kind:'voice',path:local('vocal',params.vocal),atMs:cursor,endMs:cursor+voiceMs,volume:Number(params.volume??100)/100,loop:false,target:speakerTarget(params)});
    snippet=snippet.replace(/\s+-vocal=[^;]*?(?=\s+-|;|$)/,'');
   }
@@ -40,30 +51,34 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    transitionStates.set(target,state);
   }
   if(cmd==='wait'){if(!params.next)cursor+=Math.max(0,Number(s.content)||0);continue;}
-  let videoDuration=0;
+  let videoDuration=0,diffFallback=false;
   if(cmd==='changeBg'||cmd==='changeFigure'||cmd==='changeFigureDiff'){
    const isFigure=cmd!=='changeBg',isDiff=cmd==='changeFigureDiff',position=['left','right','left13','right13','left14','right14'].find(k=>params[k])||'center',target=isFigure?params.id||'fig-'+position:'bg-main',key=cmd+':'+target;
-   const visualName=cmd==='changeFigure'&&params.clear===true?'':name;
    const oldIdentity=isFigure?figureIdentities.get(target):null;
+   const previous=isFigure?oldIdentity?.name:visualSources.get(key),previousPresent=previous!==undefined&&previous!==null&&previous!==''&&previous!=='none';
+   // The first/empty image diff delegates to ordinary changeFigure, including
+   // clear, bounds and entry/exit options. Existing-image replacement ignores them.
+   diffFallback=isDiff&&(!previousPresent||!name||name==='none');
+   const visualName=(cmd==='changeFigure'||diffFallback)&&params.clear===true?'':name;
    // Match the supported engines' numeric bounds normalization. Diff keeps its
    // existing identity and ignores overrides; ordinary changeFigure may reload.
-   const rawBounds=isDiff?'':String(params.bounds??''),boundsValues=rawBounds.split(',').map(Number);
+   const rawBounds=isDiff&&!diffFallback?'':String(params.bounds??''),boundsValues=rawBounds.split(',').map(Number);
    const parsedBounds=boundsValues.length===4&&boundsValues.every(x=>!Number.isNaN(x))?boundsValues.join(','):null;
    const defaultBounds='0,0,0,0',oldBounds=oldIdentity?.bounds??defaultBounds;
    const boundsChanged=!!rawBounds&&oldBounds!==(parsedBounds??defaultBounds);
-   const previous=isFigure?oldIdentity?.name:visualSources.get(key);
    const changed=isFigure
     ?(!oldIdentity||oldIdentity.name!==visualName||oldIdentity.position!==position||boundsChanged)
     :previous!==visualName;
-   const nextBounds=isDiff?oldBounds:changed?(parsedBounds??defaultBounds):(parsedBounds??oldBounds);
-   const gone=!visualName||visualName==='none',previousPresent=previous!==undefined&&previous!==null&&previous!==''&&previous!=='none';
-   const image=value=>/\.(png|jpe?g|webp|gif)([?#].*)?$/i.test(String(value||''));
+   const nextBounds=isDiff&&!diffFallback?oldBounds:changed?(parsedBounds??defaultBounds):(parsedBounds??oldBounds);
+   const gone=!visualName||visualName==='none';
+   const image=value=>/\.(png|jpe?g|webp|gif|bmp|avif|svg)([?#].*)?$/i.test(String(value||''));
    const unsupportedDiff=value=>{try{const url=new URL(String(value||''),'http://localhost/'),extension=url.pathname.split('.').pop().toLowerCase();return extension==='json'||extension==='skel'||url.searchParams.get('type')==='spine';}catch{return false;}};
-   const diffReplacing=isDiff&&previousPresent&&!gone&&!unsupportedDiff(previous)&&!unsupportedDiff(visualName)&&image(previous)&&image(visualName);
+   const diffReplacing=isDiff&&previousPresent&&!gone&&!unsupportedDiff(previous)&&!unsupportedDiff(name)&&image(previous)&&image(visualName);
    // 4.6.5 rejects a model diff before its empty/none fallback. Keep model
    // lifetimes (including unknown model-backed formats) until a real removal.
    const modelDiffRemoval=isDiff&&gone&&previousPresent&&oldIdentity?.liveRuntime&&!image(previous);
-   const diffNoop=isDiff&&(unsupportedDiff(previous)||unsupportedDiff(visualName)||modelDiffRemoval||previousPresent&&!gone&&!diffReplacing);
+   const diffNoop=isDiff&&(unsupportedDiff(previous)||unsupportedDiff(name)||modelDiffRemoval||previousPresent&&!gone&&!diffReplacing);
+   if(diffFallback&&!diffNoop){ensureAnimation(params.enter);ensureAnimation(params.exit);}
    if(changed&&previousPresent&&!diffReplacing&&!diffNoop){
     const state=transitionStates.get(target)||{},fallback=cmd==='changeBg'?1500:450;
     const exitMs=state.exitName?ensureAnimation(state.exitName):Math.max(0,Number.isFinite(Number(state.exitDuration))?Number(state.exitDuration):fallback);
@@ -137,8 +152,8 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   }else if(cmd==='playVideo')cursor+=videoDuration;
   else if(cmd==='intro')cursor+=s.content.split('|').length*Number(params.delayTime??1500)+1000;
   else if(['setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','changeFigureDiff'].includes(cmd)){
-   let ms=cmd==='changeFigureDiff'?Number(plannedPerform?.durationMs??200):Number(params.duration??(cmd.startsWith('change')?350:500));
-   if(cmd==='setTempAnimation')try{ms=JSON.parse(s.content).reduce((a,f)=>a+Number(f.duration||0),0);}catch{}
+   let ms=cmd==='changeFigureDiff'?Number(plannedPerform?.durationMs??(diffFallback?params.duration??350:200)):Number(params.duration??(cmd.startsWith('change')?350:500));
+   if(cmd==='setTempAnimation')try{ms=__exportAnimationDuration(JSON.parse(s.content));}catch{}
    if(cmd==='setAnimation')ms=namedDuration;
    if(!params.keep)cursor+=Math.max(0,ms);
   }
@@ -180,7 +195,9 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    if(hasStop)end=Math.min(end,stop);
   }else end=hasStop?stop:start+duration;
   end=Math.min(fullDurationMs,end);
-  if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command)),rootReplay:false,noCut:w.command==='pixiPerform'||w.command==='say'});
+  // Native transform timelines integrate shared RAF deltas. Rebuild that driver
+  // history at a cut inside an animation instead of starting with a new phase.
+  if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command)),rootReplay:dormantHoldCommands.has(w.command),noCut:w.command==='pixiPerform'||w.command==='say'});
  }
  const resolvedExitReplay=[],usedStageExits=new Set();
  for(const window of exitReplay){
@@ -203,6 +220,15 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  for(const window of resolvedExitReplay){
   const start=Math.max(0,Number(window.startMs)||0),end=Math.min(fullDurationMs,Number(window.endMs)||0);
   if(end>start+.01)replayWindows.push({...window,startMs:start,endMs:end});
+ }
+ // Motion changes can retain parameters from earlier motions and automatic idle.
+ // Prefix fast-preview skips earlier model updates and cached motion state.
+ // Replay the scene history to preserve native sampling and saved pose/physics.
+ // This adds warmup only; manual cut positions and concurrency stay unchanged.
+ for(const lifetime of live2dLifetimes){
+  if(!lifetime.motionEvents.some(event=>Number(event.atMs)>Number(lifetime.startMs)+.01))continue;
+  const exitEnd=resolvedExitReplay.filter(window=>Math.abs(Number(window.triggerMs??window.startMs)-Number(lifetime.endMs))<=2&&String(window.target||'').startsWith(String(lifetime.target||''))).reduce((end,window)=>Math.max(end,Number(window.endMs)||0),Number(lifetime.endMs));
+  replayWindows.push({startMs:Number(lifetime.startMs),endMs:Math.min(fullDurationMs,exitEnd),target:lifetime.target,command:'live2d-motion-history',line:lifetime.line,hold:false,dormantRestorable:false,rootReplay:true,noCut:false});
  }
  return {project,sceneName,sourceLines:sourceLines.length,parsedStatements:parsed.sentenceList.length,counts,fullDuration,duration:fullDuration,fps,events,audio,videoCues,muteWindows,singleLineHints,softCutWindows,live2dLifetimes,replayWindows,relaxedDecorativePixi,strictSegmentCuts:!!strictSegmentCuts,extraAnimations:[...extraAnimations]};
 };

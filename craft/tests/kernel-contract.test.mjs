@@ -14,14 +14,14 @@ test('Craft queue derives engine identity only from the verified snapshot',async
  kernel.readRuntimeStartup=async()=>({language:2,source:'preview'});await kernel.request({endpoint:'/api/jobs',snapshotId:'owned',data:{runtimeStartup:{language:7,source:'forged'}}});assert.deepEqual(received[2].runtimeStartup,{language:2,source:'preview'});snapshot.runtimeId='webgal-mygo.mygo';await assert.rejects(kernel.request({endpoint:'/api/jobs',snapshotId:'owned',data:{}}),/精确档位/);assert.equal(received.length,3);
 });
 
-test('normal entry accepts only the two native-validated runtime versions',async t=>{
+test('normal entry accepts the retained profiles and 4.6.6 without accepting future/custom bindings',async t=>{
  let snapshot={id:'owned',runtimeId:'open-webgal.webgal',engineVersion:'4.6.5'},count=0;
- const server=http.createServer(async(req,res)=>{let body='';for await(const chunk of req)body+=chunk;assert.equal(JSON.parse(body).expectedRuntimeVersion,'4.6.5');count++;res.writeHead(200,{'Content-Type':'application/json'});res.end('{}');});
+ const server=http.createServer(async(req,res)=>{let body='';for await(const chunk of req)body+=chunk;assert.equal(JSON.parse(body).expectedRuntimeVersion,snapshot.engineVersion);count++;res.writeHead(200,{'Content-Type':'application/json'});res.end('{}');});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));
  const kernel=new KernelSession({root:'/unused',kernel:'/unused',storage:{get:()=>snapshot}});kernel.discovery={baseUrl:'http://127.0.0.1:'+server.address().port,token:'test'};
- await kernel.request({endpoint:'/api/jobs',snapshotId:'owned',data:{}});
- for(const version of ['4.6.6','4.7.0','4.6.5-custom','3.2.1']){snapshot.engineVersion=version;await assert.rejects(kernel.request({endpoint:'/api/jobs',snapshotId:'owned',data:{}}),/精确档位/);}
- assert.equal(count,1);
+ for(const version of ['4.6.5','4.6.6','4.6.4']){snapshot.engineVersion=version;await kernel.request({endpoint:'/api/jobs',snapshotId:'owned',data:{}});}
+ for(const version of ['4.6.7','4.7.0','4.6.5-custom','3.2.1']){snapshot.engineVersion=version;await assert.rejects(kernel.request({endpoint:'/api/jobs',snapshotId:'owned',data:{}}),/精确档位/);}
+ assert.equal(count,3);
 });
 
 test('MyGO binding keeps its own and base versions and never inherits a stale selector',async t=>{

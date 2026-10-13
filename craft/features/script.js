@@ -146,6 +146,17 @@
         unsupported.push("multilineStatements");
       if (own(args, "transformFrom") && capabilities.transformFrom !== true)
         unsupported.push("transformFrom");
+      if (["setAnimation", "setTempAnimation"].includes(explicitCommand)) {
+        let inlineAnimation;
+        try { inlineAnimation = JSON.parse(s.content); } catch {}
+        const requiresV2 = Number(args.version) === 2 ||
+          inlineAnimation && !Array.isArray(inlineAnimation) &&
+            (Number(inlineAnimation.version) === 2 || Array.isArray(inlineAnimation.keyframes)) ||
+          explicitCommand === "setTempAnimation" &&
+            (typeof args.relative === "boolean" || typeof args.inherit === "boolean");
+        if (requiresV2 && capabilities.animationV2 !== true)
+          unsupported.push("animationV2");
+      }
       if (command === "say") {
         if (own(args, "speaker")) speaker = String(args.speaker ?? "");
         if (s.commandRaw === "" || args.clear === true) speaker = "";
