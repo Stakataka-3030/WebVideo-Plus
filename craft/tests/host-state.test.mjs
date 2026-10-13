@@ -23,6 +23,14 @@ test('pinned lazy ledgers may be absent without inventing or creating a store',(
 test('exact verified executable profile is required even when all ledgers look idle',()=>{
   for(const invalid of [undefined,{}, {...profile,version:'1.0.0-beta.1'},{...profile,sha256:'0'.repeat(64)}])assert.throws(()=>read(fixture(),invalid),/版本未验证/);
 });
+test('rc.1 exact profile supports serialized state reader and rejects crossed executable identities',()=>{
+  const rc={version:'1.0.0-rc.1',sha256:'c1f3cd843a5b3d09a8c7232a7e8158492a1c4feec3d96c99f8b809d30e3a5b1f'};
+  const serialized=vm.runInNewContext('('+read.toString()+')');
+  for(const reader of [read,serialized]){
+    assert.equal(reader(fixture(),rc).hasBlockingTasks,false);
+    for(const invalid of [{...rc,sha256:profile.sha256},{...profile,sha256:rc.sha256},{...rc,version:'1.0.0-rc.2'}])assert.throws(()=>reader(fixture(),invalid),/版本未验证/);
+  }
+});
 test('missing Pinia, mandatory store, field, or unloaded resource collection remains unknown',()=>{
   for(const value of [undefined,{}, {_s:{}},{_s:[]}])assert.throws(()=>read(value,profile),/Pinia/);
   for(const id of ['editor','modal','resource']){const p=fixture();p._s.delete(id);assert.throws(()=>read(p,profile),/未就绪/);}

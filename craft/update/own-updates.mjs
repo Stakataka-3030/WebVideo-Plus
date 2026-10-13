@@ -55,9 +55,14 @@ export function validateCraftRelease(release) {
   const version = release.tag_name.slice(7); parseCraftVersion(version); marker(release);
   if (!Array.isArray(release.assets)) throw Error('Craft 发行附件列表无效');
   const tag = release.tag_name, name = `WebVideoCraft-Setup-${version}.exe`;
+  const descriptors = release.assets.filter(asset => asset?.name === CRAFT_DESCRIPTOR_NAME);
+  if (descriptors.length > 1) throw Error('Craft 发行附件重名：' + CRAFT_DESCRIPTOR_NAME);
+  // Current distribution is EXE-only. Retain strict verification when an older
+  // release includes its descriptor; absence never weakens the GitHub EXE digest.
   return {version, tag, releaseUrl: `https://github.com/${CRAFT_RELEASE_REPOSITORY}/releases/tag/${tag}`,
+    platform: 'windows', architecture: 'x64',
     installer: validateAsset(findAsset(release, name), tag, name, MAX_INSTALLER),
-    descriptor: validateAsset(findAsset(release, CRAFT_DESCRIPTOR_NAME), tag, CRAFT_DESCRIPTOR_NAME, MAX_DESCRIPTOR)};
+    descriptor: descriptors.length ? validateAsset(descriptors[0], tag, CRAFT_DESCRIPTOR_NAME, MAX_DESCRIPTOR) : null};
 }
 function assertCraftTarget(target) {
   if (target?.platform !== 'windows' || target?.architecture !== 'x64') throw Error('Craft 更新目标必须为 Windows x64');
@@ -186,10 +191,12 @@ export class CraftOwnUpdates {
       if (candidates.length > 1 && candidates[0].tag_name === candidates[1].tag_name) throw Error('Craft 最新版本标记重复');
       // A malformed newest Craft release is an error, not permission to silently use an older one.
       const selected = validateCraftRelease(candidates[0]);
-      const descriptorResponse = await fetchResponse(this.fetchImpl, selected.descriptor.url, 'asset', signal);
-      const bytes = await boundedBytes(descriptorResponse, MAX_DESCRIPTOR);
-      if (bytes.length !== selected.descriptor.size || crypto.createHash('sha256').update(bytes).digest('hex') !== selected.descriptor.sha256) throw Error('Craft 更新描述完整性校验失败');
-      this.candidate = validateCraftDescriptor(parseJson(bytes), selected);
+      if (selected.descriptor) {
+        const descriptorResponse = await fetchResponse(this.fetchImpl, selected.descriptor.url, 'asset', signal);
+        const bytes = await boundedBytes(descriptorResponse, MAX_DESCRIPTOR);
+        if (bytes.length !== selected.descriptor.size || crypto.createHash('sha256').update(bytes).digest('hex') !== selected.descriptor.sha256) throw Error('Craft 更新描述完整性校验失败');
+        this.candidate = validateCraftDescriptor(parseJson(bytes), selected);
+      } else this.candidate = selected;
       return this.details();
     });
   }

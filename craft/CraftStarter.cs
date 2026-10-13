@@ -11,13 +11,14 @@ using System.Web.Script.Serialization;
 using System.Threading;
 using System.Security.Cryptography;
 using System.Text;
-[assembly: AssemblyVersion("1.1.12.0")]
-[assembly: AssemblyFileVersion("1.1.12.0")]
-[assembly: AssemblyInformationalVersion("1.1.12.0c")]
+[assembly: AssemblyVersion("1.1.13.0")]
+[assembly: AssemblyFileVersion("1.1.13.0")]
+[assembly: AssemblyInformationalVersion("1.1.13.0c")]
 
 static class CraftStarter {
  static string Q(string s){return "\""+System.Text.RegularExpressions.Regex.Replace(System.Text.RegularExpressions.Regex.Replace(s,@"(\\*)""","$1$1\\\""),@"(\\+)$","$1$1")+"\"";}
  [STAThread] static int Main(string[] args){
+  CraftManifestVerifier.ConfigurePaths();
   if(args.Contains("--auto-click"))try{return Run(args,(message,ready)=>{});}catch{return 1;}
   Application.EnableVisualStyles();
   using(var form=CreateForm(report=>Run(args,report),(owner,text)=>MessageBox.Show(owner,text,"WebVideo+ Craft",MessageBoxButtons.OK,MessageBoxIcon.Error))){Application.Run(form);return (int)form.Tag;}
@@ -123,7 +124,9 @@ static class CraftStarter {
    if(File.Exists(Path.Combine(stateDir,"update.lock")))throw new IOException("Craft 官方更新仍在进行或结果待核对，请等安装器结束；如已退出，请用安装器检查过期更新记录。");
    if(!CraftManifestVerifier.Same(stateDir,Path.Combine(root,"state")))throw new IOException("会话目录不属于此适配器");CraftManifestVerifier.NoLinks(stateDir);Directory.CreateDirectory(Path.Combine(stateDir,"logs"));log.UsePrimary(Path.Combine(stateDir,"logs","launcher.log"));record("launcher-verified; startup log: "+startupLog);
    var package=CraftManifestVerifier.Get(state,"package");string node=CraftManifestVerifier.Under(root,CraftManifestVerifier.Text(package,"node")),script=CraftManifestVerifier.Under(root,CraftManifestVerifier.Text(package,"entry"));
-   var command=new[]{script,"--state",Path.Combine(root,"config.json"),"--craft",CraftManifestVerifier.Text(state,"originalExe"),"--kernel",CraftManifestVerifier.Text(state,"kernelExe"),"--wrapper-pid",Process.GetCurrentProcess().Id.ToString()}.Concat(parsed.Coordinator).Concat(new[]{"--"}).Concat(parsed.Host);
+   // Node 22.20.0 uses Windows' trusted CA store in addition to its bundled CAs.
+   // This retains TLS verification without installing certificates or changing the host.
+   var command=new[]{"--use-system-ca",script,"--state",Path.Combine(root,"config.json"),"--craft",CraftManifestVerifier.Text(state,"originalExe"),"--kernel",CraftManifestVerifier.Text(state,"kernelExe"),"--wrapper-pid",Process.GetCurrentProcess().Id.ToString()}.Concat(parsed.Coordinator).Concat(new[]{"--"}).Concat(parsed.Host);
    // Only the child session configures WebView2. This wrapper never sets a
    // persistent environment variable, registry value or background service.
    report("启动文件校验完成，正在启动会话协调器…",false);

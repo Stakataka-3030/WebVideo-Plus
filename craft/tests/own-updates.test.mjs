@@ -68,6 +68,30 @@ test('descriptor byte corruption is rejected before enabling downloads',async t=
   const item=release();item.metadata=Buffer.from(JSON.stringify({...item.descriptor,channel:'preview'}));
   const f=await fixture(t,{item});await assert.rejects(f.client.check(),/完整性/);await assert.rejects(f.client.download(),/先检查/);
 });
+
+test('EXE-only Craft release checks metadata then verifies bytes before explicit opening',async t=>{
+  const item=release();item.record.assets=item.record.assets.filter(asset=>asset.name.endsWith('.exe'));
+  const f=await fixture(t,{item});const candidate=await f.client.check();
+  assert.equal(candidate.version,'1.1.9.0c');assert.equal(candidate.platform,'windows');assert.equal(candidate.architecture,'x64');
+  assert.equal(f.calls.length,1);assert.equal(f.launches.length,0);assert.equal(f.client.candidate.descriptor,null);
+  const result=await f.client.download();assert.equal(result.verified,true);assert.equal(result.sha256,hash(item.body));
+  assert.equal(f.calls.length,2);assert.equal(f.launches.length,0);
+  assert.equal((await f.client.install()).installed,false);assert.equal(f.launches.length,1);
+  assert(!f.calls.some(call=>call.url.endsWith('/webvideo-release.json')));
+});
+
+test('EXE-only releases retain product, digest, size and canonical URL refusals',async t=>{
+  for(const change of [r=>r.body='',r=>r.body=r.body.replace('craft','terre'),r=>r.assets[0].digest=null,r=>r.assets[0].size=0,r=>r.assets[0].browser_download_url+='?other=1',r=>r.assets.push({...r.assets[0]})]){
+    const item=release();item.record.assets=item.record.assets.slice(0,1);change(item.record);
+    const f=await fixture(t,{item});await assert.rejects(f.client.check());assert.equal(f.client.candidate,null);assert.equal(f.launches.length,0);
+  }
+});
+
+test('EXE-only corruption is discarded and never opens an installer',async t=>{
+  const item=release();item.record.assets=item.record.assets.slice(0,1);
+  const f=await fixture(t,{item,downloadBody:Buffer.alloc(item.body.length)});await f.client.check();
+  await assert.rejects(f.client.download(),/校验失败/);assert.equal(f.client.downloaded,null);assert.equal(f.launches.length,0);
+});
 test('downloaded bytes are verified and installer opens only on explicit user action, with no installed claim',async t=>{
   const f=await fixture(t);await f.client.check();const result=await f.client.download();
   assert.equal(result.verified,true);assert.equal(f.launches.length,0);assert.equal(result.sha256,hash(f.item.body));

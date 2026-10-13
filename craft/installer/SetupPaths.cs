@@ -35,6 +35,11 @@ internal static class CraftSetupPaths {
     bool share=value.StartsWith(@"\\",StringComparison.Ordinal)&&value.Substring(2).Split('\\','/').Length>=2;
     if(!drive&&!share)throw new ArgumentException("请选择包含盘符的完整路径或完整网络共享路径。");
    }
+   // .NET Framework canonicalizes trailing dots before GetFullPath returns.
+   // Validate raw names first so a rejected spelling cannot select another path.
+   string rawRoot=Path.GetPathRoot(value);
+   foreach(string part in value.Substring(rawRoot.Length).Split(new[]{'\\','/'},StringSplitOptions.RemoveEmptyEntries))
+    if((part.EndsWith(".",StringComparison.Ordinal)&&part!="."&&part!="..")||part.EndsWith(" ",StringComparison.Ordinal)||part.Any(Char.IsControl)||part.IndexOfAny(new[]{'"','<','>','|','?','*',':','\0'})>=0||Regex.IsMatch(part,@"^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$",RegexOptions.IgnoreCase))throw new ArgumentException("路径包含 Windows 不支持的名称、符号或结尾空格。");
    string full=Path.GetFullPath(value),root=Path.GetPathRoot(full);
    foreach(string part in full.Substring(root.Length).Split(new[]{'\\','/'},StringSplitOptions.RemoveEmptyEntries))
     if(part.EndsWith(".",StringComparison.Ordinal)||part.EndsWith(" ",StringComparison.Ordinal)||part.Any(Char.IsControl)||part.IndexOfAny(new[]{'"','<','>','|','?','*',':','\0'})>=0||Regex.IsMatch(part,@"^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$",RegexOptions.IgnoreCase))throw new ArgumentException("路径包含 Windows 不支持的名称、符号或结尾空格。");

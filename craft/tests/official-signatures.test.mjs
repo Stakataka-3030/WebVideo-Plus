@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import crypto from 'node:crypto';import fs from 'node:fs/promises';import os from 'node:os';import path from 'node:path';
 import {verifyMinisign} from '../update/minisign.mjs';
-import {OFFICIAL_PUBLIC_KEY,OFFICIAL_ENDPOINT,OFFICIAL_HOST_SHA256,assertSignedInstallerIdentity,compareOfficialVersions,officialPlatform,assertOfficialUrl,fetchOfficialBytes,stageOfficialUpdate,cleanOfficialEnvironment} from '../update/official-stage.mjs';
+import {OFFICIAL_PUBLIC_KEY,OFFICIAL_ENDPOINT,OFFICIAL_HOST_SHA256,OFFICIAL_HOST_PROFILES,assertSignedInstallerIdentity,compareOfficialVersions,officialPlatform,assertOfficialUrl,fetchOfficialBytes,stageOfficialUpdate,cleanOfficialEnvironment} from '../update/official-stage.mjs';
 import {CleanUpdateCoordinator} from '../update/clean-coordinator.mjs';
 const encoded=s=>Buffer.from(s).toString('base64');
 const vectorKey=encoded('untrusted comment: upstream minisign public key\nRWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3\n');
@@ -41,6 +41,15 @@ test('staging refuses native/fetched version divergence and downgrade before fil
  const {statePath,state}=await stateFixture(t);let calls=0;const fetchImpl=async()=>{calls++;return new Response(JSON.stringify(metadata('1.0.1',2)));};
  await assert.rejects(stageOfficialUpdate({statePath,currentVersion:'1.0.0-beta.2',version:'1.0.0-beta.1',metadata:metadata('1.0.0-beta.1'),fetchImpl}),/downgrade/);assert.equal(calls,0);
  await assert.rejects(stageOfficialUpdate({statePath,currentVersion:'1.0.0-beta.2',version:'1.0.1',metadata:metadata(),fetchImpl}),/metadata changed/);assert.equal(calls,1);await assert.rejects(fs.access(state.stateDir));
+});
+test('rc.1 staging retains official feed, downgrade refusal and exact source identity',async t=>{
+ const {statePath,state}=await stateFixture(t),currentVersion='1.0.0-rc.1';
+ state.host={version:currentVersion,sha256:OFFICIAL_HOST_PROFILES[currentVersion]};state.ownership.originalSha256=state.host.sha256;await fs.writeFile(statePath,JSON.stringify(state));
+ let calls=0;const fetchImpl=async url=>{assert.equal(url,OFFICIAL_ENDPOINT);calls++;return new Response(null,{status:404});};
+ await assert.rejects(stageOfficialUpdate({statePath,currentVersion,version:'1.0.0-beta.2',metadata:metadata('1.0.0-beta.2'),fetchImpl}),/downgrade/);assert.equal(calls,0);
+ await assert.rejects(stageOfficialUpdate({statePath,currentVersion,version:'1.0.1',metadata:metadata(),fetchImpl}),/HTTP 404/);assert.equal(calls,1);
+ state.host.sha256=OFFICIAL_HOST_SHA256;await fs.writeFile(statePath,JSON.stringify(state));
+ await assert.rejects(stageOfficialUpdate({statePath,currentVersion,version:'1.0.1',metadata:metadata(),fetchImpl}),/exact running host/);assert.equal(calls,1);
 });
 test('staging never trusts a signature from another key and creates no partial publish',async t=>{
  const {statePath,state}=await stateFixture(t);let calls=0;const fetchImpl=async()=>++calls===1?new Response(JSON.stringify(metadata())):new Response(Buffer.concat([Buffer.from('MZ'),Buffer.alloc(64)]));

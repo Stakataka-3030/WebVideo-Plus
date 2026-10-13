@@ -1,4 +1,4 @@
-/* Craft beta.2 adapter. Uses host stores, never Terre's file-first editing path. */
+/* Craft beta.2 / rc.1 adapter. Uses host stores, never Terre's file-first editing path. */
 (function (root) {
   'use strict';
   function createBridge({ getStores, invoke, rpc, registry, now = Date.now, sleep = ms => new Promise(r => setTimeout(r, ms)) }) {
@@ -188,8 +188,12 @@
         const url=c.previewSession?.currentGameServeUrl;if(!url||typeof c.previewSync?.sendPreviewCommand!=='function')fail('请先打开当前项目的 Craft 预览');
         const ticket=crypto.randomUUID(),record={ticket,url,projectId:s.projectId,path:s.path,revision:s.revision,cancelled:false};activeHint=record;
         const current=()=>{if(activeHint!==record||record.cancelled)fail('提示预览已取消');validateSnapshot(s);if(context().previewSession?.currentGameServeUrl!==url)fail('预览工程已变化');};
-        try{current();await c.previewSync.sendPreviewCommand('preview.command.sync-scene',{sceneName:s.sceneRelativePath,sentenceId:Math.max(0,hint.choose.startLine-1),settleMode:'immediate'},{timeoutMs:10000});
-          current();await c.previewSync.sendPreviewCommand('preview.command.run-snippet',{snippet:hint.choose.source},{timeoutMs:10000});current();
+        // rc.1 broadcasts native commands to external previews even with the panel
+        // closed. Prove the owned, unique embedded frame before any such command.
+        try{current();await rpc('preview.hint.preflight',{url});current();
+          await c.previewSync.sendPreviewCommand('preview.command.sync-scene',{sceneName:s.sceneRelativePath,sentenceId:Math.max(0,hint.choose.startLine-1),settleMode:'immediate'},{timeoutMs:10000});
+          current();await rpc('preview.hint.preflight',{url});current();
+          await c.previewSync.sendPreviewCommand('preview.command.run-snippet',{snippet:hint.choose.source},{timeoutMs:10000});current();
           return await rpc('preview.hint',{url,text:hint.text,key:hint.key,duration:hint.duration,ticket});
         }finally{if(activeHint===record)activeHint=null;}
       },

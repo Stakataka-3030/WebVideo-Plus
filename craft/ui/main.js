@@ -1471,7 +1471,7 @@
         const result = await updater().status();
         if (closed) return;
         officialUpdateEnabled = result?.enabled === true;
-        updateText.textContent = result?.last?.message || result?.message || (officialUpdateEnabled ? "官方自动安装已开放：验证官方签名后，经干净环境助手安装并由官方程序重新启动。真正的新版本升级尚无实测目标；新宿主须重新确认增强兼容性。" : "当前官方安装连接不可用。请查看恢复状态并保存工作后重试；不会跳过签名或宿主归属检查。");
+        updateText.textContent = result?.last?.message || result?.message || (officialUpdateEnabled ? "官方自动安装已开放：验证官方签名后，经干净环境助手安装并由官方程序重新启动。完整跨版本安装尚未验收；新宿主须重新确认增强兼容性。" : "当前官方安装连接不可用。请查看恢复状态并保存工作后重试；不会跳过签名或宿主归属检查。");
       } finally { buttons(); }
     }
     actions(

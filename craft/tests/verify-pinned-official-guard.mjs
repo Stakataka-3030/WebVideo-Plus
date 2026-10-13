@@ -2,12 +2,15 @@
 // controller and setup-store with actual pinned Pinia/Vue in an inert VM.
 // Only reactive macros/types are mechanically unwrapped; services are inert.
 // No native process, registry, installer, network, or repository write occurs.
-// Node 22.13+ (stripTypeScriptTypes) and isolated pinia3.0.4/vue3.5.35 required.
+// Node 22.13+ (stripTypeScriptTypes) and the matching isolated Pinia/Vue required.
 import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';import path from 'node:path';import crypto from 'node:crypto';import {stripTypeScriptTypes,createRequire} from 'node:module';
 const [sourceRoot,dependencyRoot,clientFile]=process.argv.slice(2);
-if(!sourceRoot||!dependencyRoot||!clientFile)throw Error('Usage: node verify-pinned-official-guard.mjs <official-beta2-source-root> <inert-npm-dependency-root> <client.js>');
+if(!sourceRoot||!dependencyRoot||!clientFile)throw Error('Usage: node verify-pinned-official-guard.mjs <audited-official-source-root> <inert-npm-dependency-root> <client.js>');
 const require=createRequire(path.join(path.resolve(dependencyRoot),'package.json'));
-assert.equal(require('pinia/package.json').version,'3.0.4');assert.equal(require('vue/package.json').version,'3.5.35');
+const version=JSON.parse(fs.readFileSync(path.join(sourceRoot,'package.json'),'utf8')).version;
+const profiles={'1.0.0-beta.2':['3.0.4','3.5.35'],'1.0.0-rc.1':['4.0.3','3.5.43']};
+assert.ok(Object.hasOwn(profiles,version),'Audited official source version required');
+assert.equal(require('pinia/package.json').version,profiles[version][0]);assert.equal(require('vue/package.json').version,profiles[version][1]);
 const {createPinia,setActivePinia,defineStore}=require('pinia'),{ref,computed}=require('vue');
 function official(relative,expected){const bytes=fs.readFileSync(path.join(sourceRoot,relative));const hash=crypto.createHash('sha1').update(Buffer.from('blob '+bytes.length+'\0')).update(bytes).digest('hex');assert.equal(hash,expected,'Pinned official source changed: '+relative);return bytes.toString('utf8');}
 official('src/services/app-update/update-service.ts','67968904a0155dffc0797b156e1d2d42fe50b9d4');
@@ -20,7 +23,7 @@ const exports=['status','availableUpdate','skippedVersion','lastCheckedAt','last
 const context=vm.createContext({ref,computed,defineStore,console,logger:{error(){}},getDownloadProgressToastKey:()=>''});vm.runInContext('globalThis.useStore=defineStore("app-update",()=>{'+setup+'\nreturn {'+exports.join(',')+'};});',context);
 let c=official('src/features/app-update/useAppUpdateController.ts','1167d5e283fb90f5eb37bb2aa6ce9abd6a534592');c=c.slice(c.indexOf('type AppUpdateCheckReason'));c=stripTypeScriptTypes(c,{mode:'strip'}).replaceAll('export function','function');vm.runInContext(c+'\nglobalThis.createController=createAppUpdateController;',context);
 const pinia=createPinia();setActivePinia(pinia);const s=context.useStore(pinia);const calls=[];const controller=context.createController({appUpdateStore:s,hasInstallBlockers:()=>false,modalStore:{open(){}},service:{checkForUpdate:async()=>({version:'1.0.1'}),downloadUpdate:async()=>calls.push('download'),installUpdate:async()=>calls.push('install'),restartApp:async()=>calls.push('restart')},toastApi:new Proxy({},{get:()=>()=>{}})});
-s.setAvailableUpdate({version:'1.0.1'});const captured=s.setDownloaded;let guards=0;s.$onAction(({name})=>{if(name==='setDownloaded'){guards++;throw Error('Use coordinated panel');}},true);await controller.runUpdateAction();assert.deepEqual(calls,['download']);assert.equal(s.status,'error');assert.throws(()=>captured(),/coordinated/);await controller.runUpdateAction();assert.deepEqual(calls,['download','download']);assert.equal(s.isDownloaded,false);assert.equal(guards,3);console.log('PASS exact controller + transformed exact setup-store + actual Pinia3.0.4: native download preserved, setDownloaded blocked, captured action blocked, repeat cannot install');
+s.setAvailableUpdate({version:'1.0.1'});const captured=s.setDownloaded;let guards=0;s.$onAction(({name})=>{if(name==='setDownloaded'){guards++;throw Error('Use coordinated panel');}},true);await controller.runUpdateAction();assert.deepEqual(calls,['download']);assert.equal(s.status,'error');assert.throws(()=>captured(),/coordinated/);await controller.runUpdateAction();assert.deepEqual(calls,['download','download']);assert.equal(s.isDownloaded,false);assert.equal(guards,3);console.log('PASS exact '+version+' controller + transformed exact setup-store + actual Pinia'+profiles[version][0]+': native download preserved, setDownloaded blocked, captured action blocked, repeat cannot install');
 // Scope limit: setting downloaded before attach can have a service.installUpdate already in flight.
 s.status='downloaded';let finish;const unsafe=context.createController({appUpdateStore:s,hasInstallBlockers:()=>false,modalStore:{open(){}},service:{installUpdate:()=>{calls.push('install-already-started');return new Promise(r=>finish=r);},restartApp:async()=>{}},toastApi:new Proxy({},{get:()=>()=>{}})});const inFlight=unsafe.runUpdateAction();s.setError('update-failed','late attach','available');assert.equal(calls.at(-1),'install-already-started');finish();await inFlight;console.log('CONFIRMED late-attach downloaded-state normalization cannot undo already-started service install');
 vm.runInContext(fs.readFileSync(clientFile,'utf8'),context);context.alert=()=>{};

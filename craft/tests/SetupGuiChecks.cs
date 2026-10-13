@@ -70,7 +70,7 @@ static class SetupGuiChecks {
      ticks++;Check(elapsed.Elapsed.TotalSeconds<15,"Synthetic GUI timed out");
      if(!started&&ticks>=10){started=true;Check(button.Enabled,"Expected action was not available before click");button.PerformClick();}
      if(errors==1&&!retried){Check(failFirst,"Unexpected error");Check(!progress.Visible,"Failure left progress active");Check(Find(form,"install").Enabled&&Find(form,"targetPath").Enabled,"Failure did not unlock inputs");retried=true;released=false;checkedBusy=false;gate.Reset();prepare();elapsed.Restart();ticks=0;ForceClick(button);}
-     if(!released&&calls>0){
+     if(!released&&calls>=(retried?2:1)){
       foreach(string name in new[]{"install","remove","repair","recover","craftPath","targetPath","cachePath","browseCraft","browseFolder","browseTarget","browseCache","findCraft","desktopShortcut","advancedToggle"})Check(!Find(form,name).Enabled,"Busy control enabled: "+name);
       if(!checkedBusy){checkedBusy=true;int before=calls;ForceClick(button);ForceClick(Find(form,"remove"));Check(calls==before,"Repeated activation started work");form.Close();Check(!form.IsDisposed&&form.Visible,"Close interrupted work");if(!cancelPreparation)Check(!Find(form,"cancel").Enabled,"Mutation still cancellable");}
       Find(form,"targetPath").Text="changed-after-dispatch";

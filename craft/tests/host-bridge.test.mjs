@@ -24,7 +24,24 @@ test('cancel during native hint synchronization prevents later snippet and timer
  globalThis.WebVideoCraftScript={parse:()=>({}),hintPairs:()=>[{valid:true,key:'__wvp_hint_test',text:'提示',duration:1800,choose:{startLine:1,source:source.split('\n')[0]}}]};
  const stores={workspace:{currentGame:{id:'p',path:'C:/project'}},tabs:{activeTab:{path:'C:/project/game/scene/start.txt'}},file:{},editor:{getTextProjectionState:()=>({kind:'scene',textContent:source,isDirty:false}),peekSceneRevision:()=> 'r1'},previewSession:{currentGameServeUrl:'http://127.0.0.1:8899/game/test/'},previewSync:{async sendPreviewCommand(type){calls.push(type);started=true;await new Promise(r=>release=r);}}};
  const b=createBridge({getStores:()=>stores,rpc:async(method,payload)=>{calls.push([method,payload]);return{cancelled:true};}});
- try{const result=b.previewHint({line:1,key:'__wvp_hint_test',duration:1800});while(!started)await new Promise(setImmediate);await b.cancelHintPreview();release();await assert.rejects(result,/取消/);assert.equal(calls.filter(x=>typeof x==='string').length,1);assert(!calls.some(x=>Array.isArray(x)&&!x[1].cancel));}
+ try{const result=b.previewHint({line:1,key:'__wvp_hint_test',duration:1800});while(!started)await new Promise(setImmediate);await b.cancelHintPreview();release();await assert.rejects(result,/取消/);assert.equal(calls.filter(x=>typeof x==='string').length,1);assert(!calls.some(x=>Array.isArray(x)&&x[0]==='preview.hint'&&!x[1].cancel));}
+ finally{delete globalThis.WebVideoCraftScript;}
+});
+test('closed or ambiguous embedded preview fails before rc.1 native broadcast',async()=>{
+ const source='choose:提示:__wvp_hint_test -defaultChoose=1 -wvpHint=1800;\nlabel:__wvp_hint_test;',calls=[];
+ globalThis.WebVideoCraftScript={parse:()=>({}),hintPairs:()=>[{valid:true,key:'__wvp_hint_test',text:'提示',duration:1800,choose:{startLine:1,source:source.split('\n')[0]}}]};
+ const stores={workspace:{currentGame:{id:'p',path:'C:/project'}},tabs:{activeTab:{path:'C:/project/game/scene/start.txt'}},file:{},editor:{getTextProjectionState:()=>({kind:'scene',textContent:source,isDirty:false}),peekSceneRevision:()=> 'r1'},previewSession:{currentGameServeUrl:'http://127.0.0.1:8899/game/test/'},previewSync:{async sendPreviewCommand(type){calls.push(type);}}};
+ const b=createBridge({getStores:()=>stores,rpc:async method=>{assert.equal(method,'preview.hint.preflight');throw Error('没有唯一且匹配当前工程的独立预览 frame');}});
+ try{await assert.rejects(b.previewHint({line:1,key:'__wvp_hint_test',duration:1800}),/唯一/);assert.deepEqual(calls,[]);}
+ finally{delete globalThis.WebVideoCraftScript;}
+});
+
+test('embedded preview disappearing during scene sync prevents snippet broadcast',async()=>{
+ const source='choose:提示:__wvp_hint_test -defaultChoose=1 -wvpHint=1800;\nlabel:__wvp_hint_test;',calls=[];let checks=0;
+ globalThis.WebVideoCraftScript={parse:()=>({}),hintPairs:()=>[{valid:true,key:'__wvp_hint_test',text:'提示',duration:1800,choose:{startLine:1,source:source.split('\n')[0]}}]};
+ const stores={workspace:{currentGame:{id:'p',path:'C:/project'}},tabs:{activeTab:{path:'C:/project/game/scene/start.txt'}},file:{},editor:{getTextProjectionState:()=>({kind:'scene',textContent:source,isDirty:false}),peekSceneRevision:()=> 'r1'},previewSession:{currentGameServeUrl:'http://127.0.0.1:8899/game/test/'},previewSync:{async sendPreviewCommand(type){calls.push(type);}}};
+ const b=createBridge({getStores:()=>stores,rpc:async method=>{assert.equal(method,'preview.hint.preflight');if(++checks===2)throw Error('嵌入预览已关闭');return {ready:true};}});
+ try{await assert.rejects(b.previewHint({line:1,key:'__wvp_hint_test',duration:1800}),/关闭/);assert.equal(checks,2);assert.deepEqual(calls,['preview.command.sync-scene']);}
  finally{delete globalThis.WebVideoCraftScript;}
 });
 test('timing dependencies invalidate when actual preview language changes',async()=>{

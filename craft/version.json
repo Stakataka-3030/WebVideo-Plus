@@ -1,7 +1,7 @@
 {
-  "productVersion": "1.1.12c",
-  "installerVersion": "1.1.12.0c",
-  "fileVersion": "1.1.12.0",
+  "productVersion": "1.1.13c",
+  "installerVersion": "1.1.13.0c",
+  "fileVersion": "1.1.13.0",
   "kernelVersion": "0.6.52",
   "baseProductVersion": "1.1.2",
   "baseKernelVersion": "0.6.52",
@@ -11,6 +11,10 @@
     {
       "version": "1.0.0-beta.2",
       "sha256": "3515c1329b3b033d1882329026a4c5d3cf9eb21cb50b5b0040d7882daf933d0d"
+    },
+    {
+      "version": "1.0.0-rc.1",
+      "sha256": "c1f3cd843a5b3d09a8c7232a7e8158492a1c4feec3d96c99f8b809d30e3a5b1f"
     }
   ],
   "updateObserverValidated": false,

@@ -58,7 +58,8 @@
           await importer.apply();const applied=await bridge.snapshot();changedSource=applied.source;ownedUndo.push({from:expected.source,to:applied.source});
           check(applied.source.startsWith(expected.source)&&applied.source.includes('WebVideo disposable native Anogo acceptance')&&applied.revision!==before.revision,'staged Anogo applies through native transaction');
           await undoExact(changedSource,expected.source);ownedUndo.pop();changedSource=null;
-          const edit=expected.source+'\n; WebVideo disposable backup restore probe\n';
+          const eol=expected.source.includes('\r\n')?'\r\n':'\n';
+          const edit=expected.source+eol+'; WebVideo disposable backup restore probe'+eol;
           await bridge.commit({snapshot:await snapshot(),after:edit,label:'Disposable backup acceptance'});changedSource=edit;ownedUndo.push({from:expected.source,to:edit});
           const restore=await backup.restoreScene(descriptor,{scenePath:relative,confirmed:true});
           if(restore.changed===true)ownedUndo.push({from:edit,to:expected.source});

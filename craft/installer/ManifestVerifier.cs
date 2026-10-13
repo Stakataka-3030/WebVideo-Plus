@@ -7,6 +7,10 @@ using System.Security.Cryptography;
 using System.Web.Script.Serialization;
 
 internal static class CraftManifestVerifier {
+ internal static void ConfigurePaths(){
+  AppContext.SetSwitch("Switch.System.IO.UseLegacyPathHandling",false);
+  AppContext.SetSwitch("Switch.System.IO.BlockLongPaths",false);
+ }
  internal static string Text(object value,string key){object item;return value is Dictionary<string,object>&&((Dictionary<string,object>)value).TryGetValue(key,out item)&&item!=null?Convert.ToString(item):"";}
  internal static object Get(object value,string key){object item;return value is Dictionary<string,object>&&((Dictionary<string,object>)value).TryGetValue(key,out item)?item:null;}
  internal static Dictionary<string,object> Read(string file){NoLinks(file);return new JavaScriptSerializer{MaxJsonLength=32*1024*1024}.Deserialize<Dictionary<string,object>>(File.ReadAllText(file));}

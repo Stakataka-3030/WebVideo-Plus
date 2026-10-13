@@ -9,6 +9,16 @@ export const OFFICIAL_ENDPOINT='https://github.com/A-kirami/webgal-craft/release
 export const OFFICIAL_PUBLIC_KEY='dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI1MkFCMjQ3NkI0ODZGNTYKUldSV2IwaHJSN0lxSmRkQUdpSnF3RXZRM1ZRYVdJdjhsTm5tU3FKZWg5VVlrQWNQMXV1aytENFEK';
 export const OFFICIAL_HOST_VERSION='1.0.0-beta.2';
 export const OFFICIAL_HOST_SHA256='3515c1329b3b033d1882329026a4c5d3cf9eb21cb50b5b0040d7882daf933d0d';
+// Exact signed-release executable identities; version alone never establishes compatibility.
+export const OFFICIAL_HOST_PROFILES=Object.freeze({
+ [OFFICIAL_HOST_VERSION]:OFFICIAL_HOST_SHA256,
+ '1.0.0-rc.1':'c1f3cd843a5b3d09a8c7232a7e8158492a1c4feec3d96c99f8b809d30e3a5b1f',
+});
+function verifiedSourceHost(state,currentVersion){
+ return Object.hasOwn(OFFICIAL_HOST_PROFILES,currentVersion||'')&&state.host.version===currentVersion
+  &&state.host.sha256===OFFICIAL_HOST_PROFILES[currentVersion]
+  &&state.ownership.originalSha256===OFFICIAL_HOST_PROFILES[currentVersion];
+}
 export function assertSignedInstallerIdentity(signature,version){
  const files=signature.trustedComment.split('\t').filter(part=>part.startsWith('file:'));
  if(files.length!==1||files[0]!==`file:WebGAL Craft_${version}_x64-setup.exe`)throw Error('Official signed installer product/version/architecture mismatch');
@@ -49,7 +59,7 @@ export async function fetchOfficialBytes(url,{kind='asset',fetchImpl=fetch,signa
 }
 export async function stageOfficialUpdate({statePath,version,currentVersion,metadata,signal,fetchImpl=fetch}){
  const state=readState(statePath);
- if(state.ownership.originalSha256!==OFFICIAL_HOST_SHA256||state.host.sha256!==OFFICIAL_HOST_SHA256||state.host.version!==OFFICIAL_HOST_VERSION||currentVersion!==state.host.version)throw Error('Official updater source contract does not match the exact running host');
+ if(!verifiedSourceHost(state,currentVersion))throw Error('Official updater source contract does not match the exact running host');
  const expected=officialPlatform(metadata);if(expected.version!==version||compareOfficialVersions(version,currentVersion)<=0)throw Error('Official update downgrade or version mismatch');
  const deadline=AbortSignal.timeout(90000),bounded=signal?AbortSignal.any([signal,deadline]):deadline;
  const latest=officialPlatform(JSON.parse((await fetchOfficialBytes(OFFICIAL_ENDPOINT,{kind:'metadata',fetchImpl,signal:bounded,maxBytes:1024*1024})).toString('utf8')));
@@ -64,7 +74,7 @@ export async function stageOfficialUpdate({statePath,version,currentVersion,meta
 export async function verifyOfficialStage(state,directory){
  const parent=path.join(state.stateDir,'official-update');if(path.dirname(path.resolve(directory))!==path.resolve(parent)||!/^staged-[a-zA-Z0-9]+$/.test(path.basename(directory)))throw Error('Official staging directory is outside its owner');assertNoLinks(directory);
  const receipt=path.join(directory,'receipt.json'),installer=path.join(directory,'installer.exe');assertNoLinks(receipt);assertNoLinks(installer);
- const record=JSON.parse(await fs.readFile(receipt,'utf8'));if(record.schemaVersion!==1||record.type!=='official-craft-installer'||record.installId!==state.installId||record.packageManifestSha256!==state.package.manifestSha256||record.source!==OFFICIAL_ENDPOINT||record.hostSha256!==state.ownership.originalSha256||record.hostSha256!==OFFICIAL_HOST_SHA256||record.currentVersion!==OFFICIAL_HOST_VERSION||state.host.version!==OFFICIAL_HOST_VERSION||state.host.sha256!==OFFICIAL_HOST_SHA256||record.target!=='windows-x86_64-nsis'||compareOfficialVersions(record.version,record.currentVersion)<=0)throw Error('Official staging ownership changed');
+ const record=JSON.parse(await fs.readFile(receipt,'utf8'));if(record.schemaVersion!==1||record.type!=='official-craft-installer'||record.installId!==state.installId||record.packageManifestSha256!==state.package.manifestSha256||record.source!==OFFICIAL_ENDPOINT||record.hostSha256!==state.ownership.originalSha256||!verifiedSourceHost(state,record.currentVersion)||record.target!=='windows-x86_64-nsis'||compareOfficialVersions(record.version,record.currentVersion)<=0)throw Error('Official staging ownership changed');
  assertOfficialUrl(record.url,'asset');const info=await fs.lstat(installer);if(!info.isFile()||!Number.isSafeInteger(record.bytes)||record.bytes<64||record.bytes>128*1024*1024||info.size!==record.bytes||! /^[a-f0-9]{64}$/.test(record.sha256||''))throw Error('Invalid staged official installer size/hash');const bytes=await fs.readFile(installer);if(bytes.length!==record.bytes||sha256(bytes)!==record.sha256)throw Error('Staged official installer changed');assertSignedInstallerIdentity(verifyMinisign(bytes,record.signature,OFFICIAL_PUBLIC_KEY),record.version);return {record,installer};
 }
 export function cleanOfficialEnvironment(environment){const result={...environment};for(const key of Object.keys(result))if(['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS','WEBVIEW2_USER_DATA_FOLDER','WEBVIEW2_PIPE_FOR_SCRIPT_DEBUGGER'].includes(key.toUpperCase()))delete result[key];return result;}

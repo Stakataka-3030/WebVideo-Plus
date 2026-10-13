@@ -7,7 +7,7 @@ New-Item -ItemType Directory -Path $temp | Out-Null
 try {
  $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
  $checks=Join-Path $temp 'SetupPathChecks.exe'
- & $compiler /nologo /target:exe /main:SetupPathChecks /platform:x64 /codepage:65001 ('/out:'+$checks) /r:System.Web.Extensions.dll (Join-Path $PSScriptRoot '../installer/ManifestVerifier.cs') (Join-Path $PSScriptRoot '../installer/SetupPaths.cs') (Join-Path $PSScriptRoot 'SetupPathChecks.cs')
+ & $compiler /nologo /target:exe /main:SetupPathChecks /platform:x64 /codepage:65001 ('/win32manifest:'+(Join-Path $PSScriptRoot '../installer/Craft.manifest')) ('/out:'+$checks) /r:System.Web.Extensions.dll (Join-Path $PSScriptRoot '../installer/ManifestVerifier.cs') (Join-Path $PSScriptRoot '../installer/SetupPaths.cs') (Join-Path $PSScriptRoot '../installer/ProductRouting.cs') (Join-Path $PSScriptRoot 'SetupPathChecks.cs')
  if($LASTEXITCODE -ne 0){throw 'Setup path regression compilation failed.'}
  $fixture=Join-Path $temp 'fixture'
  & node (Join-Path $root 'tests/craft-setup-paths-fixture.mjs') $fixture

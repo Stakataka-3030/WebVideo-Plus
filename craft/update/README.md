@@ -1,4 +1,13 @@
-# Official Craft update bridge (1.1.12c)
+# Official Craft update bridge (1.1.13c)
+
+Current host contracts cover the exact beta.2 and rc.1 executables in
+`craft/version.json`. The rc.1 upstream controller and store are unchanged;
+its pinned Pinia 4.0.3 / Vue 3.5.43 reactive behavior has been exercised.
+Official endpoints and the Minisign key remain unchanged. On 2026-10-10 the
+configured `releases/latest/download/latest.json` endpoint returns HTTP 404
+because the upstream releases are prereleases. The signed rc.1 artifact is
+available, but cached-artifact staging does not prove automatic discovery or
+actual NSIS installation. The three historical acceptance flags remain false.
 
 ## Runtime policy and historical acceptance
 
@@ -246,10 +255,10 @@ CDP listener/profile inheritance; normal shortcut restart; unknown host preserve
 and explicit compatible reattachment; failure/cancel/timeout recovery; all helper
 processes bounded with no system persistence. Concurrent external launches and
 registry changes must also be covered. The three historical acceptance fields stay false while the runtime policy is
-open. There is currently no newer signed official target available to demonstrate
-an actual beta.2 forward update. Current native retesting uses the existing local
-inputs and inert helpers; do not rerun official NSIS, enable Sandbox or change
-security settings just to manufacture a forward-update claim.
+open. The signed rc.1 target now permits authentic beta.2-to-rc.1 staging and
+explicit adoption tests. Actual registered NSIS forward installation remains
+unrun: copied EXEs do not isolate its registry target, and this round excludes
+production NSIS, system changes and additional sandbox installation.
 
 ## WebVideo+ installer update release validation
 
@@ -261,9 +270,13 @@ from checked-in `craft/version.json`, which is never rewritten by this helper.
 The helper hashes the final bytes, rejects a changing file, then atomically writes
 `webvideo-release.json` beside the EXE. It returns both artifact SHA-256 values,
 installer size, exact release tag and required body marker. The descriptor uses
-lowercase 64-hex `sha256`; the GitHub API uses `sha256:<same hex>`. Upload both
-final artifacts to the same draft release, then independently compare GitHub
-asset digests and sizes to the generated values before any publication gate.
+lowercase 64-hex `sha256`; the GitHub API uses `sha256:<same hex>`. This JSON is
+a local build record. Current distribution uploads only the final EXE; retain
+the exact Craft tag and product compatibility marker in the release body, then
+compare GitHub's EXE digest and size before any publication gate. 1.1.13c accepts
+EXE-only releases and still verifies optional legacy descriptors when present.
+Earlier clients require the descriptor and cannot discover a future EXE-only
+release; upgrade them manually using the EXE. No release is published this round.
 
 ### Required isolated Windows / release validation matrix
 
@@ -275,17 +288,17 @@ close, edit or recover the production user's session to run these checks.
    and verify the two separately labeled update sections. Confirm opening the
    panel causes no update fetch, download or installer process. Reopen the panel
    and reload the WebView; each entry remains mounted exactly once.
-2. Before publication, validate generated descriptor fields, EXE byte size and
-   both SHA-256 hashes against native build output. A local/inert fixture may
+2. Before publication, validate the final EXE byte size and SHA-256 against
+   native build output. A local/inert fixture may
    test protocol behavior but must not be described as a live GitHub acceptance.
 3. Once an authorized published test/candidate release is available, run a
    prior compatible installer-version fixture against the live public release
-   list. Confirm exact Craft tag, body marker, descriptor, GitHub digests and
+   list. Confirm exact Craft tag, body marker, GitHub EXE digest and
    canonical EXE asset. Other Terre releases must never become a candidate.
    A current-version fixture must report no higher Craft release. Keep the
    release unpublished until all required gates permit actual publication;
    this live check is explicitly pending while the candidate is unpublished.
-4. Check offline/HTTP error, rate limit, descriptor missing/damaged, wrong
+4. Check offline/HTTP error, rate limit, optional legacy descriptor damaged, wrong
    product/channel, missing digest, non-GitHub redirect, truncated download and
    SHA mismatch through inert transport fixtures. Each is a visible failure;
    none launches an EXE or reports up-to-date/installed. Ensure partial files

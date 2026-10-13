@@ -8,7 +8,7 @@ using System.Web.Script.Serialization;
 // No host, launcher, registry mutation or desktop shortcut is executed here.
 public static class SetupPathChecks {
  static int checks;
- public static int Main(string[] args) { Run(Path.GetFullPath(args[0]));return 0; }
+ public static int Main(string[] args) { CraftManifestVerifier.ConfigurePaths();try{Run(Path.GetFullPath(args[0]));return 0;}catch(Exception error){Console.Error.WriteLine(error.GetType().FullName+": "+error.Message);return 1;} }
  static void Check(bool condition,string name) { if(!condition)throw new Exception(name);checks++; }
  static void Reject(Action action,string name) { bool rejected=false;try{action();}catch{rejected=true;}Check(rejected,"Accepted "+name); }
  static Dictionary<string,object> Read(string path) { return new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(path)); }
@@ -21,7 +21,7 @@ public static class SetupPathChecks {
   Check(CraftSetupPaths.NormalizeFolder("  \""+adapter+"\"  ")==adapter,"Quoted path normalization");
   Environment.SetEnvironmentVariable("CRAFT_SETUP_TEST_ROOT",fixture);
   try{Check(CraftSetupPaths.NormalizeFolder(Path.Combine("%CRAFT_SETUP_TEST_ROOT%","adapter"))==adapter,"Environment expansion");}finally{Environment.SetEnvironmentVariable("CRAFT_SETUP_TEST_ROOT",null);}
-  foreach(string bad in new[]{"","relative/path",Path.Combine(fixture,"bad."),Path.Combine(fixture,"bad:name"),Path.Combine(fixture,"con"),Path.Combine(fixture,"bad\"name")})Reject(()=>CraftSetupPaths.NormalizeFolder(bad),"unsafe path: "+bad);
+  foreach(string bad in new[]{"","relative/path",Path.Combine(fixture,"bad."),Path.Combine(fixture,"bad:name"),Path.Combine(fixture,"con"),fixture+Path.DirectorySeparatorChar+"bad\"name"})Reject(()=>CraftSetupPaths.NormalizeFolder(bad),"unsafe path: "+bad);
   Check(CraftSetupPaths.ResolveCraftSelection(host)==craft,"Resolve exact host folder");
   Check(CraftSetupPaths.ResolveCraftSelection(craft)==craft,"Resolve exact executable");
   Check(CraftSetupPaths.ResolveCraftSelection(Path.Combine(host,"missing.exe"))==null,"Missing executable");
@@ -110,6 +110,12 @@ public static class SetupPathChecks {
   Reject(()=>CraftSetupPaths.ValidateCache(fixture,adapter,craft),"cache containing host/adapter");
   Reject(()=>CraftSetupPaths.ValidateCache(Path.Combine(adapter,"cache"),adapter,craft),"cache inside adapter");
   Check(File.ReadAllText(Path.Combine(unrelated,"keep.txt"))=="keep","Preflight never mutates existing files");
+  string deep=Path.Combine(cache,new string('a',100),new string('b',100),"owned.txt");
+  Check(deep.Length>260,"Long path fixture really exceeds MAX_PATH");
+  Directory.CreateDirectory(Path.GetDirectoryName(deep));File.WriteAllText(deep,"owned long-path fixture");
+  Check(File.ReadAllText(CraftManifestVerifier.Under(cache,new string('a',100)+"/"+new string('b',100)+"/owned.txt"))=="owned long-path fixture","Native long path IO and manifest boundary");
+  Reject(()=>CraftManifestVerifier.Under(cache,"../foreign"),"long path escape remains rejected");
+  Check(CraftSetupPaths.NormalizeFolder(Path.GetDirectoryName(deep))==Path.GetDirectoryName(deep),"Long path preflight canonical identity");
   Console.WriteLine("PASS "+checks+" production setup path/metadata assertions; Windows COM and registry execution remain separate.");
  }
 }

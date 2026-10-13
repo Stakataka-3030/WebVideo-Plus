@@ -35,6 +35,13 @@ test('official combined update uses native signature-checking download before pr
 test('signature/download failure never prepares or invokes installer',async()=>{
  const f=fixture();f.client.installOfficialHook();await f.client.invoke('plugin:updater|check',{});f.fail('plugin:updater|download','signature mismatch');await assert.rejects(f.client.invoke('plugin:updater|download_and_install',{rid:1}),/signature/);assert(!f.calls.some(x=>x[0]==='update.prepare'||x[0]==='plugin:updater|install'));
 });
+
+test('native Tauri string errors remain visible and never become up-to-date',async()=>{
+ const states=[],context={};vm.runInNewContext(source,context);
+ const client=context.WebVideoCraftCreateUpdates({getStores:()=>({}),internals:{invoke:async()=>{throw 'HTTP 404: official prerelease feed unavailable';}},rpc:async()=>{throw Error('unexpected preparation');},onState:state=>states.push(state)});
+ await assert.rejects(client.check(),/HTTP 404/);assert.equal(client.state().status,'failed');assert.equal(client.state().busy,false);
+ assert.equal(states.at(-1).error,'HTTP 404: official prerelease feed unavailable');assert(!states.some(state=>state.status==='up-to-date'));
+});
 test('uncaptured check or mismatched bytes requires a new official check/download',async()=>{
  const f=fixture();f.client.installOfficialHook();await assert.rejects(f.client.invoke('plugin:updater|install',{updateRid:1,bytesRid:2}),/重新/);
  await f.client.invoke('plugin:updater|check',{});await f.client.invoke('plugin:updater|download',{rid:44});await assert.rejects(f.client.invoke('plugin:updater|install',{updateRid:1,bytesRid:2}),/重新/);assert(!f.calls.some(x=>x[0]==='update.prepare'));

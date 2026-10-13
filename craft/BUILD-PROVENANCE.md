@@ -1,5 +1,19 @@
 # Development source provenance
 
+- Craft 1.1.13c continues remote `release/craft-1.1.12c` at
+  `f1b336faaef5add0af6b1ffe5a25e173984f8451`. It adds exact official rc.1 host
+  `379dd03faca460549624fe75ca0452d2328d3477` compatibility, Pinia 4 update guard
+  evidence, preview broadcast preflight, EXE-only own-update discovery, child
+  system-CA trust, raw Windows path validation and embedded application-level
+  long-path compatibility. The official signed installer
+  and static extracted EXE are independently verified; no NSIS or production
+  installation is invoked. Immutable build dependencies come from the existing
+  verified local payload; the kernel and AI worker are rebuilt from current
+  source. Product/installer/PE versions advance to 1.1.13c/1.1.13.0c/1.1.13.0;
+  base product/kernel and historical records retain their versions. See
+  [the current acceptance record](ACCEPTANCE-1.1.13c.md). Local delivery only;
+  no tag, remote push, release or main merge this round.
+
 - Starting point: private local Craft prototype source snapshot from commit bee58883376006e61136bd365d6503ba863cbb99, supplied in the verified user handoff. The archive did not include Git history; this development checkout records an independent import commit. The original commit ancestry is unavailable; this branch does not claim to descend from the main branch.
 - Official host studied and tested: WebGAL Craft 1.0.0-beta.2, executable SHA-256 3515c1329b3b033d1882329026a4c5d3cf9eb21cb50b5b0040d7882daf933d0d. Modified local VideoExportDialog host sources are not treated as official capabilities.
 - Base product lineage remains 1.1.2. Craft 1.1.4c advances its hybrid kernel to 0.6.51 for the focused backports below; it is not an unchanged copy of the stable 0.6.50 kernel. Full main or experimental product changes have not been silently rebased into this branch.

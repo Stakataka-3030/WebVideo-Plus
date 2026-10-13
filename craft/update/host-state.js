@@ -1,5 +1,6 @@
-/* Read-only state contract for the exact official Craft beta.2 executable.
- * Source: A-kirami/webgal-craft@edccdf0d10572a31a3ee8619ad3b43d2ce5c91aa.
+/* Read-only state contract for the exact official Craft beta.2 and rc.1 executables.
+ * Sources: A-kirami/webgal-craft@edccdf0d10572a31a3ee8619ad3b43d2ce5c91aa
+ * and @379dd03faca460549624fe75ca0452d2328d3477 (observable stores unchanged).
  * The caller must verify the executable before supplying its profile. This
  * function validates observable blockers; it does not prove universal native
  * quiescence. In particular desktop archive extraction has no public task
@@ -11,8 +12,12 @@
   // in the owned main WebView, while the browser calls the same implementation.
   function readPinnedCraftUpdateState(pinia, profile) {
     const fail = detail => { throw Error('无法确认 Craft 保存和任务状态：' + detail); };
-    if (profile?.version !== '1.0.0-beta.2'
-      || profile?.sha256 !== '3515c1329b3b033d1882329026a4c5d3cf9eb21cb50b5b0040d7882daf933d0d') {
+    const verifiedHosts = {
+      '1.0.0-beta.2': '3515c1329b3b033d1882329026a4c5d3cf9eb21cb50b5b0040d7882daf933d0d',
+      '1.0.0-rc.1': 'c1f3cd843a5b3d09a8c7232a7e8158492a1c4feec3d96c99f8b809d30e3a5b1f',
+    };
+    if (!Object.hasOwn(verifiedHosts, profile?.version ?? '')
+      || verifiedHosts[profile.version] !== profile?.sha256) {
       fail('宿主精确版本未验证');
     }
     const isMap = value => value != null && Object.prototype.toString.call(value) === '[object Map]'
@@ -54,7 +59,7 @@
       if (creating) blockers.push('native-' + kind + '-creating');
     }
     // These stores are created synchronously before their tracked operations.
-    // No production beta.2 call site disposes them. Absence means only that this
+    // No audited beta.2 / rc.1 call site disposes them. Absence means only that this
     // particular ledger has never been created, not that other work is idle.
     for (const [id, key, reason] of [
       ['runtime-task', 'hasBlockingTasks', 'native-runtime-task'],

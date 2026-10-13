@@ -1,5 +1,5 @@
 (function(root){'use strict';
- // Craft beta.2's controller calls its module-private service directly. Pinia's
+ // The audited beta.2 / rc.1 controllers call their module-private service directly. Pinia's
  // supported subscriptions can hold install-ready state and route completed
  // native downloads. Never assign to frozen/non-writable Tauri internals.
  // Detached Pinia subscriptions outlive a failed optional UI mount. Retain our
@@ -69,7 +69,7 @@
    installRoute=route;routeBusy=isBusy;
   },status(){
    const active=current(),safe=subscribed&&active&&!ambiguous;
-   return {guarded:subscribed&&active,safe,state:!active?'store-unavailable':ambiguous?'guarded-ambiguous-start':'guarded',mode:'pinned-beta2-state-transition',routed:!!installRoute,routePending:queued,nativeInvokeMutated:false,message:ambiguous?'接入时官方更新已经处于待安装或重启状态，无法排除先前已开始的安装；请保存并关闭 Craft 后重新打开，再检查恢复状态。'+guidance:guidance};
+   return {guarded:subscribed&&active,safe,state:!active?'store-unavailable':ambiguous?'guarded-ambiguous-start':'guarded',mode:'pinned-craft-state-transition',routed:!!installRoute,routePending:queued,nativeInvokeMutated:false,message:ambiguous?'接入时官方更新已经处于待安装或重启状态，无法排除先前已开始的安装；请保存并关闭 Craft 后重新打开，再检查恢复状态。'+guidance:guidance};
   }});
   guards.set(store,handle);return handle;
  };
@@ -86,7 +86,9 @@
   };
   const idle=()=>{if(busy)throw Error('更新操作进行中');};
   async function observed(command,args={},options){
-   const result=await nativeInvoke(command,args,options);
+   let result;
+   try{result=await nativeInvoke(command,args,options);}
+   catch(error){throw error instanceof Error?error:Error(error?.message||String(error));}
    if(command==='plugin:updater|check'&&result)updates.set(result.rid,{version:result.version,currentVersion:result.currentVersion,metadata:result.rawJson});
    if(command==='plugin:updater|download')downloads.set(result,args.rid);
    if(command==='plugin:resources|close'){updates.delete(args.rid);downloads.delete(args.rid);}
@@ -165,8 +167,8 @@
     assertContext();
     if(blockers())throw Error('关闭前出现未保存文档或运行任务');
     publish('closing-host',{version:known.version});
-    // Craft beta.2's pinned updater 2.10.1 ignores restartAfterInstall. Do not
-    // pretend auto-relaunch can be suppressed; the helper preserves that path.
+    // Preserve the official installer/relaunch path on both audited updater
+    // versions; installation starts only after this owned window closes normally.
     await nativeInvoke('plugin:window|close',{label:'main'});
     closingHost=true;
     // If normal teardown succeeds this document disappears. A surviving page

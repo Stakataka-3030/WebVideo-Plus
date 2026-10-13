@@ -10,9 +10,9 @@ using System.ComponentModel;
 using System.Collections.Generic;
 using System.Web.Script.Serialization;
 using System.Text;
-[assembly: AssemblyVersion("1.1.12.0")]
-[assembly: AssemblyFileVersion("1.1.12.0")]
-[assembly: AssemblyInformationalVersion("1.1.12.0c")]
+[assembly: AssemblyVersion("1.1.13.0")]
+[assembly: AssemblyFileVersion("1.1.13.0")]
+[assembly: AssemblyInformationalVersion("1.1.13.0c")]
 
 
 static class CraftSetup {
@@ -21,6 +21,7 @@ static class CraftSetup {
  internal static string Q(string s){return "\""+System.Text.RegularExpressions.Regex.Replace(System.Text.RegularExpressions.Regex.Replace(s,@"(\\*)""","$1$1\\\""),@"(\\+)$","$1$1")+"\"";}
  static string Arg(string[] args,string key,string fallback){int i=Array.IndexOf(args,key);return i>=0&&i+1<args.Length?args[i+1]:fallback;}
  [STAThread] static int Main(string[] args){
+  CraftManifestVerifier.ConfigurePaths();
   if(args.Contains("--dest"))try{
    var result=Run(new CraftSetupRequest{Action=Arg(args,"--action","install"),Destination=Arg(args,"--dest",DefaultTarget),Craft=Arg(args,"--craft",DefaultCraft),Mode=Arg(args,"--mode","same-name"),Cache=Arg(args,"--cache",Path.GetTempPath())},message=>{});
    return result.Status=="warning"?2:0;
