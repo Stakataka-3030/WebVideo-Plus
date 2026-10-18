@@ -30,8 +30,24 @@ namespace NativeVideo {
   public static bool Within(string root,string target,bool allowRoot=false){root=Full(root).TrimEnd('\\','/');target=Full(target);return allowRoot&&target.Equals(root,StringComparison.OrdinalIgnoreCase)||target.StartsWith(root+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase);}
   public static string Under(string root,string relative){var p=Full(Path.Combine(root,relative.Replace('/',Path.DirectorySeparatorChar)));if(!Within(root,p))throw new IOException("路径超出指定目录");return p;}
   public static void EnsureParent(string file){Directory.CreateDirectory(Path.GetDirectoryName(Full(file)));}
-  public static void Atomic(string file,string text){EnsureParent(file);var temp=file+".tmp-"+Guid.NewGuid().ToString("N");File.WriteAllText(temp,text,Utf8);try{for(int i=0;;i++)try{if(File.Exists(file))File.Replace(temp,file,null);else File.Move(temp,file);break;}catch(IOException){if(i>=20)throw;Thread.Sleep(25);}}finally{if(File.Exists(temp))File.Delete(temp);}}
-  public static void AtomicBytes(string file,byte[] bytes){EnsureParent(file);string temporary=file+".tmp-"+Guid.NewGuid().ToString("N");File.WriteAllBytes(temporary,bytes);try{if(File.Exists(file))File.Replace(temporary,file,null);else File.Move(temporary,file);}finally{if(File.Exists(temporary))File.Delete(temporary);}}
+  public static bool LongPathsEnabled{get{bool legacy,blocked;return AppContext.TryGetSwitch("Switch.System.IO.UseLegacyPathHandling",out legacy)&&!legacy&&AppContext.TryGetSwitch("Switch.System.IO.BlockLongPaths",out blocked)&&!blocked;}}
+  public static void CheckAtomicPath(string file){string full=Full(file);if(!LongPathsEnabled&&full.Length>=260||Path.GetFileName(full).Length>255)throw new PathTooLongException("文件路径过长："+full);}
+  public static void Atomic(string file,string text){AtomicBytes(file,Utf8.GetBytes(text));}
+  public static void AtomicBytes(string file,byte[] bytes){
+   file=Full(file);CheckAtomicPath(file);string parent=Path.GetDirectoryName(file);int available=LongPathsEnabled?255:259-parent.Length-1;
+   if(available<1)throw new PathTooLongException("临时文件路径过长："+file);
+   EnsureParent(file);string temporary=null;
+   for(int attempt=0;attempt<32;attempt++){
+    string candidate=Path.Combine(parent,Guid.NewGuid().ToString("N").Substring(0,Math.Min(12,available)));FileStream stream;
+    try{stream=new FileStream(candidate,FileMode.CreateNew,FileAccess.Write,FileShare.None);}catch(IOException){if(!File.Exists(candidate))throw;continue;}
+    temporary=candidate;
+    try{using(stream)stream.Write(bytes,0,bytes.Length);}catch{try{File.Delete(temporary);}catch{}throw;}
+    break;
+   }
+   if(temporary==null)throw new IOException("无法创建临时文件："+file);
+   try{for(int attempt=0;;attempt++)try{if(File.Exists(file))File.Replace(temporary,file,null);else File.Move(temporary,file);break;}catch(IOException){if(attempt>=20)throw;Thread.Sleep(25);}}
+   finally{if(File.Exists(temporary))File.Delete(temporary);}
+  }
   public static void Append(string file,object value){EnsureParent(file);lock(App.LogLock)File.AppendAllText(file,J.Text(value)+"\n",Utf8);}
   public static string Hash(string file){using(var s=File.OpenRead(file))using(var h=SHA256.Create())return BitConverter.ToString(h.ComputeHash(s)).Replace("-","").ToLowerInvariant();}
   public static string HashText(string text){using(var h=SHA256.Create())return BitConverter.ToString(h.ComputeHash(Utf8.GetBytes(text))).Replace("-","").ToLowerInvariant();}
@@ -164,14 +180,23 @@ namespace NativeVideo {
   readonly string folder,journal;
   readonly Dictionary<string,byte[]> before=new Dictionary<string,byte[]>(StringComparer.OrdinalIgnoreCase);
   readonly Dictionary<string,string> after=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+#if LIFECYCLE_TESTS
   internal static Action<string> Fault=null;
+#endif
+  [Conditional("LIFECYCLE_TESTS")]
+  static void Inject(string file){
+#if LIFECYCLE_TESTS
+   if(Fault!=null)Fault(file);
+#endif
+  }
   public FileSetTransaction(string root,IEnumerable<string> targets){
-   folder=Path.Combine(root,Guid.NewGuid().ToString("N"));
+   folder=Path.Combine(root,"r"+Guid.NewGuid().ToString("N").Substring(0,12));
    journal=Path.Combine(folder,"files.json");
+   var selected=targets.Distinct(StringComparer.OrdinalIgnoreCase).Select(Files.Full).ToArray();Files.CheckAtomicPath(journal);for(int number=0;number<selected.Length;number++){Files.CheckAtomicPath(selected[number]);Files.CheckAtomicPath(Path.Combine(folder,number.ToString(CultureInfo.InvariantCulture)+".bin"));}
    Directory.CreateDirectory(folder);
    int index=0;
    var entries=new List<object>();
-   foreach(string target in targets.Distinct(StringComparer.OrdinalIgnoreCase)){
+   foreach(string target in selected){
     string path=Files.Full(target);
     byte[] bytes=File.Exists(path)?File.ReadAllBytes(path):null;
     before[path]=bytes;
@@ -196,7 +221,7 @@ namespace NativeVideo {
    var doc=J.D(J.Read(journal));
    foreach(var entry in J.A(J.Get(doc,"entries")))if(J.S(entry,"target")==file)J.D(entry)["expectedAfter"]=Files.HashText(text);
    J.Write(journal,doc);
-   if(Fault!=null)Fault(file);
+   Inject(file);
    Files.Atomic(file,text);
    after[file]=Files.Hash(file);
   }
@@ -228,7 +253,7 @@ namespace NativeVideo {
      }
      else{
       Files.EnsureParent(pair.Key);
-      if(Fault!=null)Fault("rollback:"+pair.Key);
+      Inject("rollback:"+pair.Key);
       Files.AtomicBytes(pair.Key,pair.Value);
      }
     }
