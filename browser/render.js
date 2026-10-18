@@ -130,7 +130,6 @@ globalThis.__exportBeginDialogueTransition=()=>{
     serial:globalThis.__exportDialogueMutationSerial,
     previousFilm:!!__wgProbe.stageManager.getViewStageState?.()?.enableFilm,
     previousKey:String(__wgProbe.stageManager.getViewStageState?.()?.currentDialogKey??''),
-    previousText:String(__wgProbe.stageManager.getViewStageState?.()?.showText??''),
     previousNodes:new Set(document.getElementById('textBoxMain')?.querySelectorAll('span[id]')||[]),
     targetKey:null,
     targetText:'',
