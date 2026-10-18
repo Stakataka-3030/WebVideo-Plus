@@ -44,9 +44,9 @@ namespace NativeVideo {
 
   static void Stop(Process process){try{if(!process.HasExited)process.Kill();}catch{}}
   static async Task WritePipe(Process process,Task<string> error,byte[] bytes){
-   if(process.HasExited)throw new IOException("透明视频编码器提前退出："+await error);var write=process.StandardInput.BaseStream.WriteAsync(bytes,0,bytes.Length);if(await Task.WhenAny(write,Task.Delay(60000))!=write){Stop(process);throw new TimeoutException("透明视频编码器连续 60 秒未接收完一帧");}await write;
+   await Commands.WriteInput(process,error,bytes);
   }
-  static async Task<string> ErrorText(Task<string> error){return await Task.WhenAny(error,Task.Delay(5000))==error?await error:"编码器错误输出未及时关闭。";}
+  static async Task<string> ErrorText(Task<string> error){return await Commands.ErrorText(error);}
 
   static readonly byte[] UnpremultiplyTable=BuildUnpremultiplyTable();
   static byte[] BuildUnpremultiplyTable(){var table=new byte[65536];for(int alpha=1;alpha<256;alpha++)for(int channel=0;channel<256;channel++)table[alpha*256+channel]=(byte)Math.Min(255,(channel*255+alpha/2)/alpha);return table;}
@@ -67,7 +67,7 @@ namespace NativeVideo {
      if(browser.Errors.Count>0)throw new IOException(string.Join("; ",browser.Errors));
     }
     J.Write(Path.Combine(part,"progress.json"),J.O("phase","encoder-finalizing","startFrame",start,"endFrame",end,"outputFrames",end-start,"elapsedSeconds",rendering.Elapsed.TotalSeconds,"pipeline",pipeline,"codec",TransparentCodec(request)));
-    long finalizeMark=Stopwatch.GetTimestamp();process.StandardInput.Close();while(!process.HasExited){if((Stopwatch.GetTimestamp()-finalizeMark)/(double)Stopwatch.Frequency>120){Stop(process);throw new TimeoutException("透明视频帧已提交，但编码器在 120 秒内未完成收尾："+await ErrorText(error));}await Task.Delay(20);}await stdout;string message=await ErrorText(error);finalizeSeconds=(Stopwatch.GetTimestamp()-finalizeMark)/(double)Stopwatch.Frequency;if(process.ExitCode!=0)throw new IOException("透明视频编码失败："+message);
+    long finalizeMark=Stopwatch.GetTimestamp();string message=await Commands.FinishInput(process,stdout,error);finalizeSeconds=(Stopwatch.GetTimestamp()-finalizeMark)/(double)Stopwatch.Frequency;if(process.ExitCode!=0)throw new IOException("透明视频编码失败："+message);
    }finally{Stop(process);}}
    var media=await Commands.Probe(output,true);var video=J.A(J.Get(media,"streams")).FirstOrDefault(x=>J.S(x,"codec_type")=="video");double frames=Math.Max(J.N(video,"nb_frames"),J.N(video,"nb_read_frames"));if(frames!=end-start||J.N(video,"width")!=width||J.N(video,"height")!=height||!HasAlpha(video,request))throw new IOException("透明视频片段帧数、尺寸或 Alpha 不符");
    double renderSeconds=rendering.Elapsed.TotalSeconds;J.Write(Path.Combine(part,"result.json"),J.O("pipeline",pipeline,"alphaCaptureMode","screenshot","alphaFallbackReason",fallbackReason,"codec",TransparentCodec(request),"totalFrames",end-start,"startFrame",start,"endFrame",end,"renderSeconds",renderSeconds,"totalSeconds",began.Elapsed.TotalSeconds,"browserStartupSeconds",browserStartupSeconds,"navigationSeconds",navigationSeconds,"setupSeconds",setupSeconds,"restoreSeconds",restoreSeconds,"stepSeconds",stepSeconds,"captureSeconds",captureSeconds,"pipeSeconds",pipeSeconds,"encoderFinalizeSeconds",finalizeSeconds,"pngBytes",pngBytes,"rendererScale",rendererScale,"transparency",transparency,"gpu",gpu,"runtime",browser.Runtime,"errors",browser.Errors,"media",media));
@@ -105,7 +105,7 @@ namespace NativeVideo {
      if(browser.Errors.Count>0)throw new IOException(string.Join("; ",browser.Errors));
     }
     J.Write(Path.Combine(part,"progress.json"),J.O("phase","encoder-finalizing","startFrame",start,"endFrame",end,"outputFrames",end-start,"elapsedSeconds",rendering.Elapsed.TotalSeconds,"pipeline",pipeline,"codec",TransparentCodec(request)));
-    long finalizeMark=Stopwatch.GetTimestamp();process.StandardInput.Close();while(!process.HasExited){if((Stopwatch.GetTimestamp()-finalizeMark)/(double)Stopwatch.Frequency>120){Stop(process);throw new TimeoutException("透明 GPU RGBA 帧已提交，但编码器在 120 秒内未完成收尾："+await ErrorText(error));}await Task.Delay(20);}await stdout;string message=await ErrorText(error);finalizeSeconds=(Stopwatch.GetTimestamp()-finalizeMark)/(double)Stopwatch.Frequency;if(process.ExitCode!=0)throw new IOException("透明 GPU RGBA 编码失败："+message);
+    long finalizeMark=Stopwatch.GetTimestamp();string message=await Commands.FinishInput(process,stdout,error);finalizeSeconds=(Stopwatch.GetTimestamp()-finalizeMark)/(double)Stopwatch.Frequency;if(process.ExitCode!=0)throw new IOException("透明 GPU RGBA 编码失败："+message);
    }finally{Stop(process);}}}catch(Exception e){failure=e;}
    try{await browser.ReleaseGpuReadbackBuffer();}catch(Exception e){if(failure==null)failure=e;}if(failure!=null)throw failure;
    var media=await Commands.Probe(output,true);var video=J.A(J.Get(media,"streams")).FirstOrDefault(x=>J.S(x,"codec_type")=="video");double frames=Math.Max(J.N(video,"nb_frames"),J.N(video,"nb_read_frames"));if(frames!=end-start||J.N(video,"width")!=width||J.N(video,"height")!=height||!HasAlpha(video,request))throw new IOException("透明 GPU RGBA 片段帧数、尺寸或 Alpha 不符");
