@@ -13,10 +13,10 @@
   const raw=String(row.source||'').replace(/[\r\n]+$/,''),end=raw.search(/(?<!\\);/),limit=end<0?raw.length:end,tokens=[];
   for(let at=raw.indexOf(' -');at>=0&&at<limit;at=raw.indexOf(' -',at+2))tokens.push({start:at});
   for(let i=0;i<tokens.length;i++){const token=tokens[i];token.end=tokens[i+1]?.start??limit;const body=raw.slice(token.start+2,token.end),equals=body.indexOf('=');token.key=(equals<0?body:body.slice(0,equals)).trim();while(token.end>token.start&&/\s/.test(raw[token.end-1]))token.end--;}
-  const patches=[],updates=changes.args||{};let addition='';
+  const patches=[],updates=changes.args||{},removesArgument=value=>value===false||value===undefined||value===null||value==='';let addition='';
   for(const [key,value]of Object.entries(updates)){
    if(!/^[A-Za-z_]\w*$/.test(key))throw Error('参数名无效');
-   const found=tokens.filter(token=>token.key===key),remove=value===false||value===undefined||value===null||value==='';
+   const found=tokens.filter(token=>token.key===key),remove=removesArgument(value);
    const encoded=remove?'':value===true?'':'='+String(value);
    if(/[\r\n;]/.test(encoded)||encoded.includes(' -'))throw Error('参数值含有语句或参数分隔符');
    const text=remove?'':' -'+key+encoded;
@@ -38,7 +38,7 @@
   const expectedContent=Object.prototype.hasOwnProperty.call(changes,'content')?String(changes.content??'').replace(/\r?\n/g,'|').trim():original.content;
   if(updated.content!==(expectedContent==='none'?'':expectedContent))throw Error('正文含有会被解释为参数的内容，已停止写入');
   for(const [key,value]of Object.entries(updates)){
-   const found=updated.args.filter(arg=>arg.key===key),remove=value===false||value===undefined||value===null||value==='';
+   const found=updated.args.filter(arg=>arg.key===key),remove=removesArgument(value);
    if(remove?found.length!==0:found.length!==1)throw Error('参数修改校验失败：'+key);
    if(!remove){const text=String(value),expected=value===true?true:text==='true'?true:text==='false'?false:!isNaN(Number(text))?Number(text):text;if(found[0].value!==expected)throw Error('参数值修改校验失败：'+key);}
   }
