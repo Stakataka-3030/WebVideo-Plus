@@ -169,6 +169,116 @@ jobs:
           $version = (Get-Content version.json -Raw | ConvertFrom-Json).productVersion
           if(-not(Test-Path -LiteralPath "dist/WebVideo+-Setup-$version.exe")){throw "Installer output is missing"}
 
+      - name: Run production settings, persistence and process regressions against the complete build
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = Join-Path $PWD 'package'
+          $evidence = Join-Path $PWD '.build/ci-native-tests'
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          $kernel = Join-Path $package 'WebGAL.Video.exe'
+          if (-not (Test-Path -LiteralPath $kernel)) { throw 'Build the complete current-source package first' }
+          $kernelHash = (Get-FileHash -LiteralPath $kernel -Algorithm SHA256).Hash.ToLowerInvariant()
+          $checks = @()
+          function Invoke-CiRegression([string]$Name, [string]$Script, [hashtable]$Parameters) {
+            $record = [pscustomobject]@{ name=$Name; script=$Script; parameters=$Parameters; status='RUNNING'; kernel=$kernel; kernelSha256=$kernelHash }
+            $script:checks += $record
+            try {
+              & $Script @Parameters 2>&1 | Tee-Object -FilePath (Join-Path $evidence ($Name + '.log'))
+              if ($LASTEXITCODE -ne 0) { throw "$Name returned exit code $LASTEXITCODE" }
+              $record.status = 'PASS'
+            } catch { $record.status = 'FAIL'; throw }
+            finally {
+              ConvertTo-Json -InputObject $script:checks -Depth 8 | Set-Content -LiteralPath (Join-Path $evidence 'native-results.json') -Encoding utf8
+              "- $Name`: $($record.status)" | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+            }
+          }
+          Invoke-CiRegression 'cubism-memory-defaults' './tests/cubism-memory-defaults.test.ps1' @{ OutputRoot=(Join-Path $evidence 'memory-defaults') }
+          Invoke-CiRegression 'lifecycle-settings' './tests/lifecycle-settings.test.ps1' @{ EvidenceDirectory=(Join-Path $evidence 'settings') }
+          Invoke-CiRegression 'lifecycle-reliability' './tests/lifecycle-reliability.test.ps1' @{ EvidenceDirectory=(Join-Path $evidence 'lifecycle') }
+          Invoke-CiRegression 'render-process-output' './tests/render-process-output.test.ps1' @{ RepositoryRoot=$PWD.Path; OutputRoot=(Join-Path $evidence 'process-output') }
+          # Runtime fixture uses a local SDK substitute and a fixture key; it never calls a paid provider.
+          Invoke-CiRegression 'runtime-persistence' './tests/runtime-persistence.test.ps1' @{ PackageRoot=$package; EvidenceRoot=(Join-Path $evidence 'persistence') }
+
+      - name: Run native readiness and browser-death capture regressions in an isolated package
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = Join-Path $PWD 'package'
+          $evidence = Join-Path $PWD '.build/ci-native-tests/graphics'
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          $state = [pscustomobject]@{ status='RUNNING'; reason=''; runtimeVersion=''; package=$package; engines=@(); captureFault='NOT_RUN'; readiness=@() }
+          function Save-GraphicsState {
+            $state | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $evidence 'graphics-results.json') -Encoding utf8
+          }
+          Add-Type -AssemblyName System.Windows.Forms
+          $unavailable = @()
+          if (-not [Environment]::UserInteractive) { $unavailable += 'runner has no interactive desktop' }
+          if ([System.Windows.Forms.Screen]::AllScreens.Count -lt 1) { $unavailable += 'runner exposes no display' }
+          # Make the already pinned native loader discoverable to the capability query.
+          $env:PATH = $package + ';' + $env:PATH
+          Add-Type -Path (Join-Path $package 'Microsoft.Web.WebView2.Core.dll')
+          try { $state.runtimeVersion = [Microsoft.Web.WebView2.Core.CoreWebView2Environment]::GetAvailableBrowserVersionString($null) }
+          catch {
+            $failure = $_.Exception
+            while ($failure.InnerException) { $failure = $failure.InnerException }
+            if ($failure.GetType().FullName -eq 'Microsoft.Web.WebView2.Core.WebView2RuntimeNotFoundException') { $unavailable += 'WebView2 Runtime is unavailable' }
+            else { throw }
+          }
+          if ($unavailable.Count) {
+            $state.status = 'NA'; $state.reason = $unavailable -join '; '; Save-GraphicsState
+            "Native readiness/capture fault: **NA** - $($state.reason). No graphical assertion was counted as passed." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+            throw "NA: graphical release gates require an available desktop and WebView2 Runtime: $($state.reason)"
+          }
+          $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
+          $media = Join-Path $PWD ('.build/ffmpeg-test/ffmpeg-' + $lock.ffmpegTest.version + '-essentials_build/bin')
+          foreach ($tool in @('ffmpeg.exe','ffprobe.exe')) { if (-not (Test-Path -LiteralPath (Join-Path $media $tool))) { throw "Missing pinned media tool: $tool" } }
+          $engines = @(@{name='webgal-464';root=(Join-Path $package 'runtime/web')}, @{name='webgal-465';root=(Join-Path $PWD '.build/webgal-4.6.5')}, @{name='webgal-466';root=(Join-Path $PWD '.build/webgal-4.6.6')})
+          $state.engines = @($engines | ForEach-Object { $_.name })
+          # Capture-fault compiles a harness into package/. Keep that write out of the verified distribution.
+          $fixture = Join-Path $PWD ('.build/ci-native-fixtures/graphics-' + [Guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $fixture -Force | Out-Null
+          Copy-Item -LiteralPath $package -Destination (Join-Path $fixture 'package') -Recurse
+          Save-GraphicsState
+          try {
+            & './tests/render-capture-fault-native.ps1' -RepositoryRoot $fixture -OutputRoot (Join-Path $evidence 'capture-fault') 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'capture-fault.log')
+            if ($LASTEXITCODE -ne 0) { throw 'Native capture fault regression failed' }
+            $state.captureFault = 'PASS'; Save-GraphicsState
+            foreach ($engine in $engines) {
+              foreach ($format in @('jpeg','png')) {
+                $check = [pscustomobject]@{ engine=$engine.name; format=$format; status='RUNNING' }
+                $state.readiness += $check; Save-GraphicsState
+                & './tests/render-readiness-native.ps1' -EngineRoot $engine.root -PackageRoot (Join-Path $fixture 'package') -OutputRoot (Join-Path $evidence ($engine.name + '-' + $format)) -MediaToolDirectory $media -Engine webgal -CaptureFormat $format 2>&1 | Tee-Object -FilePath (Join-Path $evidence ($engine.name + '-' + $format + '.log'))
+                if ($LASTEXITCODE -ne 0) { throw "Native readiness regression failed: $($engine.name) $format" }
+                $check.status = 'PASS'; Save-GraphicsState
+              }
+            }
+            & node scripts/verify-package.mjs
+            if ($LASTEXITCODE -ne 0) { throw 'Original package integrity changed during isolated graphical regressions' }
+            $state.status = 'PASS'
+          } catch {
+            $state.status = 'FAIL'; $state.reason = $_.Exception.Message
+            if ($check -and $check.status -eq 'RUNNING') { $check.status = 'FAIL' }
+            throw
+          }
+          finally {
+            Save-GraphicsState
+            "Native readiness/capture fault: **$($state.status)**; WebView2 $($state.runtimeVersion); readiness cases: $($state.readiness.Count)." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          }
+
+      - name: Preserve production regression evidence including failures and NA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-native-regression-diagnostics
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            .build/ci-native-tests/**/*.json
+            .build/ci-native-tests/**/*.log
+            .build/ci-native-tests/**/*.png
+            .build/ci-native-tests/**/*.jpg
+
       - name: Record the validated installer source and checksums
         shell: pwsh
         run: |
