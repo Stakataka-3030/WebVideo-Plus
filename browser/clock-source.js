@@ -215,7 +215,9 @@ var ClockController = class {
     if (!Number.isFinite(delay))
       delay = 0;
     delay = delay > maxTimeout ? 1 : delay;
-    delay = Math.max(0, delay);
+    // Repeating zero-delay timers must advance virtual time. One-shot zero
+    // timeouts retain their current-tick behavior.
+    delay = Math.max(options.type === "Interval" /* Interval */ ? 1 : 0, delay);
     const timer = {
       type: options.type,
       func: options.func,

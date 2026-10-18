@@ -128,3 +128,24 @@ test('Cubism3/4 stopped poses seek the last pre-stop frame and stop their queues
   assert.equal(manager.__webVideoCubism4SeekLast.kind,'stopped');
  }
 });
+
+test('motion switches request scene history including exit, while single epochs keep bounded warmup',()=>{
+ const single=planFigures([{atMs:0,motion:'pose'},{atMs:8000,motion:'pose'},{atMs:10000,source:'none'}]);
+ assert.equal(single.replayWindows.filter(w=>w.command==='live2d-motion-history').length,0);
+ const plan=planFigures([{atMs:3500,motion:'null'},{atMs:7000,motion:'',bounds:'0,0,0,0'},{atMs:8000,motion:'idle',bounds:'0,0,0,0'},{atMs:10000,source:'none'}]);
+ const window=plan.replayWindows.find(w=>w.command==='live2d-motion-history');
+ assert.ok(window);assert.equal(window.startMs,3500);assert.equal(window.endMs,10450);assert.equal(window.noCut,false);assert.equal(window.rootReplay,true);
+ assert.equal(plan.live2dLifetimes[0].endMs,10000,'Logical lifetime remains exclusive at removal');
+});
+test('bound model keeps its birth age through exit and a replacement on the same target',async()=>{
+ const begin=source.indexOf('  const bindLive2DDeterminism=async'),end=source.indexOf('  globalThis.__exportBindLive2DDeterminism=',begin);
+ const ages=[],objects=[];
+ const first={updateNaturalMovements(dt,time){ages.push(['first',time]);}},second={updateNaturalMovements(dt,time){ages.push(['second',time]);}};
+ const life1={target:'actor',startMs:0,endMs:3000},life2={target:'actor',startMs:3500,endMs:10000};
+ const context={deterministicLive2D:new WeakSet(),__exportCurrentSimulationMs:1000,__exportLive2DLifetimes:[life1,life2],__wgProbe:{core:{gameplay:{pixiStage:{getAllStageObj:()=>objects}}}}};
+ vm.runInNewContext(source.slice(source.indexOf('globalThis.__exportLive2DLifetimeAt='),source.indexOf('globalThis.__exportHash32='))+source.slice(begin,end)+';globalThis.bind=bindLive2DDeterminism;',context);
+ objects.push({key:'actor',sourceType:'live2d',pixiContainer:{children:[{internalModel:first}]}});await context.bind();
+ for(const time of [2999,3000,3100,3600]){context.__exportCurrentSimulationMs=time;first.updateNaturalMovements(33,999999);}
+ objects.push({key:'actor',sourceType:'live2d',pixiContainer:{children:[{internalModel:second}]}});await context.bind();second.updateNaturalMovements(33,999999);first.updateNaturalMovements(33,999999);
+ assert.deepEqual(ages,[['first',2999],['first',3000],['first',3100],['first',3600],['second',100],['first',3600]]);
+});

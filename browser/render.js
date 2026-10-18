@@ -98,14 +98,40 @@ globalThis.__exportEnsureDialogueObserver=()=>{
   observer.observe(document.body,{subtree:true,childList:true,characterData:true});
   globalThis.__exportDialogueObserver=observer;
 };
-globalThis.__exportDialogueCharCount=text=>{
-  try{return __wgProbe.compileText(String(text??''),3).reduce((sum,item)=>sum+(item?.length??0),0);}
-  catch{return String(text??'').length;}
+// Match the pinned native renderers: film uses UTF-16 characters; normal
+// text uses compiler nodes, native line limits and (4.6.5+) concat segments.
+globalThis.__exportDialogueNodeText=value=>{
+  if(Array.isArray(value))return value.map(__exportDialogueNodeText).join('');
+  if(value===null||value===undefined||typeof value==='boolean')return '';
+  return typeof value==='object'?__exportDialogueNodeText(value.props?.children):String(value);
+};
+globalThis.__exportDialogueNodes=(text,stage={})=>{
+  text=String(text??'');if(stage.enableFilm)return text.split('');
+  const user=__wgProbe.store.getState().userData||{},size=Number(stage.showTextSize??-1)===-1?Number(user.optionData?.textSize??0):Number(stage.showTextSize),configured=Number(user.globalGameVar?.Max_line),lines=Number.isNaN(configured)?(size===0?3:2):configured;
+  try{
+    const compile=value=>__wgProbe.compileText(value,lines,true),version=__wgProbe.adapter?.version;
+    if(version!=='4.6.5'&&version!=='4.6.6')return __wgProbe.compileText(text,lines).flat().map(item=>__exportDialogueNodeText(item.reactNode??item));
+    const previous=String(stage.currentConcatDialogPrev??''),segments=stage.currentDialogSegments?.join('')===text?stage.currentDialogSegments:previous&&text.startsWith(previous)?[previous,text.slice(previous.length)]:[text];
+    let rows=[];for(const segment of segments){const next=compile(segment);if(!rows.length){rows=next;continue;}const [first,...rest]=next;rows=[...rows.slice(0,-1),[...rows.at(-1),...first.slice(1)],...rest];}
+    return rows.slice(0,lines).flat().map(item=>__exportDialogueNodeText(item.reactNode??item));
+  }catch(error){throw new Error('无法确认原生对白节点：'+String(error));}
+};
+globalThis.__exportDialogueCharCount=(text,stage={})=>__exportDialogueNodes(text,stage).length;
+// A changed dialogue key remounts the native character spans. Remember their
+// identities before commit, so unrelated mutations cannot certify an old line.
+globalThis.__exportDialogueDomRequired=true;
+globalThis.__exportDialogueVisible=stage=>{
+  const gui=__wgProbe.store.getState().GUI;
+  return !!gui.showTextBox&&(!!stage?.enableFilm||!stage?.isDisableTextbox);
 };
 globalThis.__exportBeginDialogueTransition=()=>{
   globalThis.__exportEnsureDialogueObserver();
   globalThis.__exportDialoguePending={
     serial:globalThis.__exportDialogueMutationSerial,
+    previousFilm:!!__wgProbe.stageManager.getViewStageState?.()?.enableFilm,
+    previousKey:String(__wgProbe.stageManager.getViewStageState?.()?.currentDialogKey??''),
+    previousText:String(__wgProbe.stageManager.getViewStageState?.()?.showText??''),
+    previousNodes:new Set(document.getElementById('textBoxMain')?.querySelectorAll('span[id]')||[]),
     targetKey:null,
     targetText:'',
     targetCount:0
@@ -116,18 +142,30 @@ globalThis.__exportSetDialogueTarget=()=>{
   const stage=__wgProbe.stageManager.getCalculationStageState?.();
   pending.targetKey=String(stage?.currentDialogKey??'');
   pending.targetText=String(stage?.showText??'');
-  pending.targetCount=globalThis.__exportDialogueCharCount(pending.targetText);
+  pending.targetNodes=globalThis.__exportDialogueNodes(pending.targetText,stage);
+  pending.targetCount=pending.targetNodes.length;
 };
 globalThis.__exportDialogueDomReady=(allowStable=false)=>{
-  const pending=globalThis.__exportDialoguePending;
-  if(!pending)return true;
-  if(!pending.targetText)return true;
-  const stage=__wgProbe.stageManager.getCalculationStageState?.();
-  if(String(stage?.currentDialogKey??'')!==pending.targetKey||String(stage?.showText??'')!==pending.targetText)return false;
-  const box=document.getElementById('textBoxMain');if(!box)return false;
-  const count=box.querySelectorAll('span[id]').length;
-  if(count<pending.targetCount)return false;
-  return !!allowStable||globalThis.__exportDialogueMutationSerial>pending.serial;
+  const pending=globalThis.__exportDialoguePending;if(!pending)return true;
+  const stage=__wgProbe.stageManager.getCalculationStageState?.(),view=__wgProbe.stageManager.getViewStageState?.();
+  const matches=value=>String(value?.currentDialogKey??'')===pending.targetKey&&String(value?.showText??'')===pending.targetText;
+  if(!matches(stage)||!matches(view))return false;
+  if(!globalThis.__exportDialogueDomRequired)return true;
+  const box=document.getElementById('textBoxMain');
+  // A hide/empty transition must finish removing the previous line too.
+  if(!__exportDialogueVisible(view))return !box;
+  if(!pending.targetText)return !box||box.querySelectorAll('span[id]').length===0;
+  if(!box)return false;
+  const spans=[...box.querySelectorAll('span[id]')];
+  if(spans.length!==pending.targetCount)return false;
+  // Native spans contain decorative duplicate glyphs. Read only their first
+  // compiler node, including ruby text, rather than the whole textbox textContent.
+  const content=spans.map(node=>String(view.enableFilm?node.textContent??'':node.firstElementChild?.firstChild?.textContent??''));
+  if(content.some((text,index)=>text!==pending.targetNodes[index]))return false;
+  // Concat can legitimately retain the visible prefix (including a full line
+  // budget). It retains its native key; a new key must render a new generation.
+  if(pending.previousKey===pending.targetKey&&pending.previousFilm===!!view.enableFilm)return true;
+  return spans.every(node=>!pending.previousNodes.has(node));
 };
 globalThis.__exportDialogueDomSnapshot=()=>{
   const pending=globalThis.__exportDialoguePending,stage=__wgProbe.stageManager.getCalculationStageState?.(),box=document.getElementById('textBoxMain');
@@ -141,6 +179,9 @@ globalThis.__exportDialogueDomSnapshot=()=>{
     targetTextLength:targetText.length,
     stageTextLength:stageText.length,
     boxPresent:!!box,
+    domRequired:globalThis.__exportDialogueDomRequired,
+    visible:__exportDialogueVisible(__wgProbe.stageManager.getViewStageState?.()),
+    viewKey:String(__wgProbe.stageManager.getViewStageState?.()?.currentDialogKey??''),
     spanCount,
     textElementCount,
     boxTextLength:boxText.length,
@@ -175,10 +216,9 @@ globalThis.__exportWaitDialogueDom=async(options={})=>{
     observer.observe(document.body,{subtree:true,childList:true,characterData:true});
     const onTimeout=()=>{
       if(globalThis.__exportDialogueDomReady(allowStable)){finish(true);return;}
-      const snapshot=globalThis.__exportDialogueDomSnapshot(),mutationObserved=snapshot.mutationSerial>snapshot.pendingSerial,stageMatches=snapshot.targetKeyMatches&&snapshot.targetTextMatches,fallback=!allowStable&&mutationObserved&&stageMatches;
-      const diagnostic={frame:Number(globalThis.__exportCurrentFrame??-1),timeoutMs,mutationObserved,stageMatches,outcome:fallback?'fallback':'error',...snapshot};
+      const snapshot=globalThis.__exportDialogueDomSnapshot(),mutationObserved=snapshot.mutationSerial>snapshot.pendingSerial,stageMatches=snapshot.targetKeyMatches&&snapshot.targetTextMatches;
+      const diagnostic={frame:Number(globalThis.__exportCurrentFrame??-1),timeoutMs,mutationObserved,stageMatches,outcome:'error',...snapshot};
       globalThis.__exportDialogueWaitDiagnostics.push(diagnostic);
-      if(fallback){finish(false);return;}
       finish(false,new Error('对白 DOM 同步超时：'+JSON.stringify(diagnostic)));
     };
     const realSetTimeout=globalThis.__pwClock?.controller?._embedder?.setTimeout;
@@ -314,7 +354,8 @@ globalThis.__exportResolveCubism4Blink=(elapsedSeconds,options={},key='')=>{
   }
   return {state:1,value:1,cycle:100000,phase:'interval',phaseSeconds:0,userTimeSeconds:0,nextBlinkingTime:interval,intervalSeconds:interval};
 };
-globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50,live2dLifetimes=[],includeFigures=true})=>{
+globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50,live2dLifetimes=[],includeFigures=true,dialogueDomRequired=true})=>{
+  globalThis.__exportDialogueDomRequired=dialogueDomRequired!==false;
   __exportInstallFigureOutputFilter(__wgProbe.core.gameplay.pixiStage,includeFigures);
   const pc=__wgProbe.core.gameplay.performController,arrange=pc.arrangeNewPerform;
   const dormantHoldCommands=new Set(['setAnimation','setTempAnimation','setTransform']);
@@ -514,11 +555,14 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
       for(const model of obj.pixiContainer?.children||[]){
         const inner=model?.internalModel;if(!inner||deterministicLive2D.has(inner))continue;
         deterministicLive2D.add(inner);
+        // Keep the model birth epoch while its outgoing object still renders.
+        // A later model on the same target must not change this model's age.
+        const modelLifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,Number(globalThis.__exportCurrentSimulationMs));
         const breath=inner.breath;
         if(breath&&typeof breath.updateParameters==='function'&&typeof breath._currentTime==='number'){
           const original=breath.updateParameters.bind(breath);
           breath.updateParameters=(core,dt)=>{
-            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs),delta=Math.max(0,Number(dt)||0);
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs),delta=Math.max(0,Number(dt)||0);
             if(lifetime&&Number.isFinite(nowMs)){
               const ageSeconds=Math.max(0,(nowMs-Number(lifetime.startMs))/1000);
               breath._currentTime=ageSeconds-delta;
@@ -531,7 +575,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
         if(breath&&eyeBlink&&typeof eyeBlink.updateParameters==='function'&&Array.isArray(eyeBlink._parameterIds)){
           const originalBlink=eyeBlink.updateParameters.bind(eyeBlink);
           eyeBlink.updateParameters=(core,dt)=>{
-            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
             if(!lifetime||!Number.isFinite(nowMs))return originalBlink(core,dt);
             const event=globalThis.__exportLive2DEventAt(lifetime.blinkEvents,nowMs),epochMs=Number(event?.atMs??lifetime.startMs),state=globalThis.__exportResolveCubism4Blink(Math.max(0,(nowMs-epochMs)/1000),{
               intervalSeconds:Number(eyeBlink._blinkingIntervalSeconds),randomSeconds:Number(eyeBlink._blinkingIntervalRandomSeconds),closingSeconds:Number(eyeBlink._closingSeconds),closedSeconds:Number(eyeBlink._closedSeconds),openingSeconds:Number(eyeBlink._openingSeconds)
@@ -546,13 +590,13 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
         if(!breath&&typeof inner.updateNaturalMovements==='function'){
           inner.__webVideoAbsoluteNaturalAge=true;
           const originalNatural=inner.updateNaturalMovements.bind(inner);
-          inner.updateNaturalMovements=(dt,time)=>{const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);return originalNatural(dt,lifetime?Math.max(0,nowMs-Number(lifetime.startMs)):time);};
+          inner.updateNaturalMovements=(dt,time)=>{const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);return originalNatural(dt,lifetime?Math.max(0,nowMs-Number(lifetime.startMs)):time);};
         }
         const manager=inner.motionManager,queue=manager?.queueManager;
         if(!breath&&manager&&queue&&typeof manager.startRandomMotion==='function'&&typeof manager.loadMotion==='function'){
           const originalRandom=manager.startRandomMotion.bind(manager);
           manager.startRandomMotion=async(group,priority)=>{
-            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
             if(group!==manager.groups?.idle||!lifetime)return originalRandom(group,priority);
             if(manager.__webVideoIdleSeekPending)return manager.__webVideoIdleSeekPending;
             const task=(async()=>{
@@ -564,13 +608,13 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
             try{return await task;}finally{manager.__webVideoIdleSeekPending=null;}
           };
           manager.__webVideoDeterministicIdle=true;
-          const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+          const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
           if(lifetime)await seekCubism2State(manager,queue,inner.coreModel,target,lifetime,nowMs);
         }
         if(breath&&manager&&queue&&typeof manager.startRandomMotion==='function'&&typeof manager.loadMotion==='function'){
           const originalStart=manager.startMotion.bind(manager);
           manager.startMotion=async(group,index,priority)=>{
-            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
             const planned=lifetime?globalThis.__exportCubism4ExplicitMotionIndex(lifetime,group,nowMs,manager.definitions?.[group],1000/fps):null;
             const selected=planned===null?index:planned,epoch=planned===null?null:globalThis.__exportCubism2MotionEpoch(lifetime,nowMs);
             const originMs=performance.now()-Math.max(0,nowMs-Number(epoch?.atMs??nowMs));
@@ -586,7 +630,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
           };
           const originalRandom=manager.startRandomMotion.bind(manager);
           manager.startRandomMotion=async(group,priority)=>{
-            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+            const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
             const explicitIndex=lifetime?globalThis.__exportCubism4ExplicitMotionIndex(lifetime,group,nowMs,manager.definitions?.[group],1000/fps):null;
             if(explicitIndex!==null)return manager.startMotion(group,explicitIndex,priority);
             if(group!==manager.groups?.idle||!lifetime)return originalRandom(group,priority);
@@ -600,7 +644,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
             try{return await task;}finally{manager.__webVideoCubism4SeekPending=null;}
           };
           manager.__webVideoDeterministicIdleCubism4=true;
-          const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
+          const nowMs=Number(globalThis.__exportCurrentSimulationMs),lifetime=modelLifetime||globalThis.__exportLive2DLifetimeAt(globalThis.__exportLive2DLifetimes,target,nowMs);
           if(lifetime){await seekCubism4State(manager,queue,inner.coreModel,target,lifetime,nowMs);await rebaseCubism4Expression(manager,target,lifetime,nowMs);}
         }
       }
@@ -656,8 +700,8 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
   __wgProbe.core.events.textSettle.on(markTextSettled);
 
   const runScriptEvent=e=>{
+    if(['say','setTextbox','filmMode'].includes(e.command))globalThis.__exportBeginDialogueTransition();
     if(e.command==='say'){
-      globalThis.__exportBeginDialogueTransition();
       if(globalThis.__gpuDomState){globalThis.__gpuDomState.textSettled=false;globalThis.__gpuDomState.settledMaskPrepared=false;}
       globalThis.__exportSetSpeechMode(e.mouthTarget,e.voiceControlled);
     }
@@ -665,7 +709,7 @@ globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=
     globalThis.__exportControlledSpeech=e.voiceControlled;
     try{__probeCommands['preview.command.run-snippet']({snippet:e.script});}
     finally{globalThis.__exportControlledSpeech=false;globalThis.__exportCurrentEvent=null;}
-    if(e.command==='say')globalThis.__exportSetDialogueTarget();
+    if(['say','setTextbox','filmMode'].includes(e.command))globalThis.__exportSetDialogueTarget();
     if(!globalThis.__exportBatchCollecting)__wgProbe.stageManager.commit({applyPixiEffects:false});
   };
 
@@ -735,7 +779,7 @@ globalThis.__gpuDomState=null;
 globalThis.__gpuDomInstall=()=>{if(globalThis.__gpuDomState)return {installed:true};const state={dirty:true,dirtyReason:'initial',suppress:false,captures:0,animationTimes:new WeakMap(),videoTimes:new WeakMap(),container:null,baseSprite:null,textboxContainer:null,textboxSprite:null,textSprite:null,baseTexture:null,textboxTexture:null,textTexture:null,maskSprite:null,maskTexture:null,maskGraphics:null,textEntries:[],textboxRoot:null,textSettled:false,settledMaskPrepared:false,atlasPlan:null,atlasActive:false,atlasPageTextures:[],textAtlasContainer:null,introTextContainer:null,textAtlasSprites:[],textClipGraphics:null,atlasStyleRestores:[],atlasObserverPaused:false,stats:{mutation:0,animation:0,video:0,ignoredInfiniteAnimations:0,handledTextAnimationSamples:0,handledTextboxAnimationSamples:0,handledIntroOpacitySamples:0,introActiveFrames:0,introAtlasEntries:0,baseOnlyAnimationSamples:0,fullAnimationSamples:0,baseOnlyVideoSamples:0,fullVideoSamples:0,baseOnlyRefreshes:0,fullRefreshes:0,capturePlanSamples:0,lastAnimation:null,lastVideo:null,maskFrames:0,atlasRefreshes:0,atlasPages:0,atlasEntries:0,settleEvents:[],textTransitions:[]}};const excluded=element=>element?.id==='pixiCanvas'||!!element?.closest?.('#ebg,#ebgOverlay,.html-body__effect-background,.html-body__effect-background-overlay');state.excluded=excluded;state.getTextboxRoot=()=>document.getElementById('textBoxMain')?.parentElement||null;state.markTextElements=()=>{for(const element of document.querySelectorAll('.Textelement_start'))element.setAttribute('data-gpu-text-char','1');const intro=document.getElementById('introContainer'),introStyle=intro?getComputedStyle(intro):null,introActive=!!(intro&&introStyle&&introStyle.display!=='none'&&introStyle.visibility!=='hidden'&&Number(introStyle.opacity)!==0),desired=new Set(),viewportWidth=Math.max(1,window.innerWidth||document.documentElement.clientWidth||1),viewportHeight=Math.max(1,window.innerHeight||document.documentElement.clientHeight||1);if(introActive){const wrapper=intro.firstElementChild?.firstElementChild;for(const element of [...(wrapper?.children||[])]){if(!(element instanceof Element))continue;const rect=element.getBoundingClientRect(),animations=element.getAnimations?.()||[];if(rect.width<=.1||rect.height<=.1||rect.width>=viewportWidth-8||rect.height>=viewportHeight-8||animations.length===0)continue;let opacityOnly=true;for(const animation of animations){const props=__gpuDomAnimationProperties(animation);if(props.length===0||!props.every(p=>p==='opacity')){opacityOnly=false;break;}}if(opacityOnly)desired.add(element);}}let changed=false;for(const element of document.querySelectorAll('[data-gpu-intro-text="1"]')){if(desired.has(element))continue;element.removeAttribute('data-gpu-intro-text');if(!element.classList?.contains('Textelement_start'))element.removeAttribute('data-gpu-text-char');changed=true;}for(const element of desired){if(!element.hasAttribute('data-gpu-intro-text')){element.setAttribute('data-gpu-intro-text','1');element.setAttribute('data-gpu-text-char','1');changed=true;}}state.introActive=introActive;state.stats.introAtlasEntries=desired.size;if(changed&&!state.suppress){state.dirty=true;state.dirtyReason='intro-atlas';}};const observer=new MutationObserver(records=>{if(state.suppress)return;for(const record of records){const target=record.target instanceof Element?record.target:record.target?.parentElement;if(excluded(target))continue;state.dirty=true;state.dirtyReason='mutation';state.stats.mutation++;break;}});observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','style','hidden','src','value']});state.observer=observer;globalThis.__gpuDomState=state;return {installed:true};};
 globalThis.__gpuDomAnimationProperties=animation=>{const props=new Set();for(const frame of animation.effect?.getKeyframes?.()||[])for(const key of Object.keys(frame))if(!['offset','computedOffset','easing','composite'].includes(key))props.add(key);return [...props];};
 globalThis.__gpuDomCaptureScopeForTarget=(state,target,props=[])=>{const textbox=state.textboxRoot;if(textbox&&(target===textbox||textbox.contains(target)||target.contains?.(textbox)))return 'full';const style=getComputedStyle(target),position=style.position||'',paintOnly=new Set(['opacity','transform','translate','rotate','scale','filter','clipPath','webkitClipPath','backgroundColor','backgroundPosition','backgroundPositionX','backgroundPositionY','color','boxShadow','textShadow']);return (position==='absolute'||position==='fixed'||(props.length>0&&props.every(p=>paintOnly.has(p))))?'base':'full';};
-globalThis.__gpuDomCapturePlan=()=>{const state=globalThis.__gpuDomState||(__gpuDomInstall(),globalThis.__gpuDomState);state.textboxRoot=state.getTextboxRoot();state.markTextElements();state.stats.capturePlanSamples++;if(state.dirty){const plan={needed:true,scope:'full',reason:state.dirtyReason||'mutation'};state.lastCapturePlan=plan;return plan;}let baseReason=null;for(const animation of document.getAnimations()){const target=animation.effect?.target;if(!(target instanceof Element)||state.excluded(target))continue;const props=__gpuDomAnimationProperties(animation);if((target.classList?.contains('Textelement_start')||target.hasAttribute?.('data-gpu-text-char'))&&(props.length===0||props.every(p=>p==='opacity'))){state.stats.handledTextAnimationSamples++;if(target.hasAttribute?.('data-gpu-intro-text'))state.stats.handledIntroOpacitySamples++;continue;}if(target===state.textboxRoot&&props.length>0&&props.every(p=>p==='opacity')){state.stats.handledTextboxAnimationSamples++;continue;}const rect=target.getBoundingClientRect(),style=getComputedStyle(target);if(rect.width<=0||rect.height<=0||style.display==='none'||style.visibility==='hidden'||Number(style.opacity)===0)continue;const timing=animation.effect?.getComputedTiming?.();if(timing?.iterations===Infinity){state.stats.ignoredInfiniteAnimations++;continue;}const now=Number(animation.currentTime)||0,old=state.animationTimes.get(animation);state.animationTimes.set(animation,now);if(old===undefined||Math.abs(now-old)>.01){const scope=__gpuDomCaptureScopeForTarget(state,target,props),info={tag:String(target.tagName||''),id:String(target.id||''),className:String(target.className?.baseVal??target.className??''),properties:props,scope};state.stats.animation++;state.stats.lastAnimation=info;if(scope==='full'){state.stats.fullAnimationSamples++;state.dirtyReason='animation';const plan={needed:true,scope:'full',reason:'animation',detail:info};state.lastCapturePlan=plan;return plan;}state.stats.baseOnlyAnimationSamples++;baseReason=info;}}for(const video of document.querySelectorAll('video')){if(state.excluded(video))continue;const rect=video.getBoundingClientRect(),style=getComputedStyle(video);if(rect.width<=0||rect.height<=0||style.display==='none'||style.visibility==='hidden'||Number(style.opacity)===0)continue;const now=Number(video.currentTime)||0,old=state.videoTimes.get(video);state.videoTimes.set(video,now);if(old===undefined||Math.abs(now-old)>.00001){const scope=__gpuDomCaptureScopeForTarget(state,video,['video-frame']),info={tag:'VIDEO',id:String(video.id||''),className:String(video.className||''),scope};state.stats.video++;state.stats.lastVideo=info;if(scope==='full'){state.stats.fullVideoSamples++;state.dirtyReason='video';const plan={needed:true,scope:'full',reason:'video',detail:info};state.lastCapturePlan=plan;return plan;}state.stats.baseOnlyVideoSamples++;if(!baseReason)baseReason=info;}}if(baseReason){state.dirtyReason=baseReason.tag==='VIDEO'?'video':'animation';const plan={needed:true,scope:'base',reason:state.dirtyReason,detail:baseReason};state.lastCapturePlan=plan;return plan;}const plan={needed:false,scope:'none',reason:''};state.lastCapturePlan=plan;return plan;};
+globalThis.__gpuDomCapturePlan=()=>{const state=globalThis.__gpuDomState||(__gpuDomInstall(),globalThis.__gpuDomState);state.textboxRoot=state.getTextboxRoot();state.markTextElements();state.stats.capturePlanSamples++;if(state.dirty){const plan={needed:true,scope:'full',reason:state.dirtyReason||'mutation'};state.lastCapturePlan=plan;return plan;}let baseReason=null;for(const animation of document.getAnimations()){const target=animation.effect?.target;if(!(target instanceof Element)||state.excluded(target))continue;const props=__gpuDomAnimationProperties(animation);if((target.classList?.contains('Textelement_start')||target.hasAttribute?.('data-gpu-text-char'))&&(props.length===0||props.every(p=>p==='opacity'))){state.stats.handledTextAnimationSamples++;if(target.hasAttribute?.('data-gpu-intro-text'))state.stats.handledIntroOpacitySamples++;continue;}if(target===state.textboxRoot&&props.length>0&&props.every(p=>p==='opacity')){state.stats.handledTextboxAnimationSamples++;continue;}const rect=target.getBoundingClientRect(),style=getComputedStyle(target);if(rect.width<=0||rect.height<=0||style.display==='none'||style.visibility==='hidden'||Number(style.opacity)===0)continue;const timing=animation.effect?.getComputedTiming?.();if(timing?.iterations===Infinity)state.stats.infiniteAnimationSamples=(state.stats.infiniteAnimationSamples||0)+1;const now=Number(animation.currentTime)||0,old=state.animationTimes.get(animation);state.animationTimes.set(animation,now);if(old===undefined||Math.abs(now-old)>.01){const scope=__gpuDomCaptureScopeForTarget(state,target,props),info={tag:String(target.tagName||''),id:String(target.id||''),className:String(target.className?.baseVal??target.className??''),properties:props,scope};state.stats.animation++;state.stats.lastAnimation=info;if(scope==='full'){state.stats.fullAnimationSamples++;state.dirtyReason='animation';const plan={needed:true,scope:'full',reason:'animation',detail:info};state.lastCapturePlan=plan;return plan;}state.stats.baseOnlyAnimationSamples++;baseReason=info;}}for(const video of document.querySelectorAll('video')){if(state.excluded(video))continue;const rect=video.getBoundingClientRect(),style=getComputedStyle(video);if(rect.width<=0||rect.height<=0||style.display==='none'||style.visibility==='hidden'||Number(style.opacity)===0)continue;const now=Number(video.currentTime)||0,old=state.videoTimes.get(video);state.videoTimes.set(video,now);if(old===undefined||Math.abs(now-old)>.00001){const scope=__gpuDomCaptureScopeForTarget(state,video,['video-frame']),info={tag:'VIDEO',id:String(video.id||''),className:String(video.className||''),scope};state.stats.video++;state.stats.lastVideo=info;if(scope==='full'){state.stats.fullVideoSamples++;state.dirtyReason='video';const plan={needed:true,scope:'full',reason:'video',detail:info};state.lastCapturePlan=plan;return plan;}state.stats.baseOnlyVideoSamples++;if(!baseReason)baseReason=info;}}if(baseReason){state.dirtyReason=baseReason.tag==='VIDEO'?'video':'animation';const plan={needed:true,scope:'base',reason:state.dirtyReason,detail:baseReason};state.lastCapturePlan=plan;return plan;}const plan={needed:false,scope:'none',reason:''};state.lastCapturePlan=plan;return plan;};
 globalThis.__gpuDomCaptureNeeded=()=>!!__gpuDomCapturePlan().needed;
 
 globalThis.__gpuDomPrepareTextAtlas=()=>{
