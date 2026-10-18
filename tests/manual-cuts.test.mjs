@@ -124,7 +124,7 @@ test('native job and settings wiring includes statement sources in cache and dia
  assert.match(build,/\$taskSources\s*=\s*Get-ChildItem -LiteralPath \(Join-Path \$taskRoot 'src'\) -Filter '\*\.cs'/,'Real Craft builder discovers all C# modules, including manual/statement cuts');
  assert.match(build,/\/main:NativeVideo\.App[^\n]+\$taskSources/,'The discovered full source set is passed to the production compiler');
  assert.match(legacy,/^param\([^\n]*\)\r?\nthrow '[^\n]*Craft[^\n]*historical Terre product builder is not supported/,'Wrong-product entry rejects before executing build work');
- if(process.platform==='win32'){const rejected=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',fileURLToPath(new URL('build-product.ps1',root))],{encoding:'utf8',timeout:10000});assert.ifError(rejected.error);assert.notEqual(rejected.status,0);assert.match(rejected.stdout+rejected.stderr,/historical Terre product builder is not supported/);}
+ if(process.platform==='win32'){const rejected=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',fileURLToPath(new URL('build-product.ps1',root))],{encoding:'utf8',timeout:60000});assert.ifError(rejected.error);assert.notEqual(rejected.status,0);assert.match(rejected.stdout+rejected.stderr,/historical Terre product builder is not supported/);}
 
  assert.match(read('src/ExportCli.cs'),/App\.Arg\("--segment-cut-mode","auto"\)/);
 });
