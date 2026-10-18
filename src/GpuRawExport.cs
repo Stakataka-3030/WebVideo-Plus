@@ -1,9 +1,8 @@
 using System;using System.IO;using System.Linq;using System.Collections.Generic;using System.Diagnostics;using System.Threading.Tasks;
 namespace NativeVideo {
  public static class GpuRawExport {
-  static async Task<string> ErrorText(Task<string> error){return await Commands.ErrorText(error);}
   static void StopEncoder(Process process){try{if(!process.HasExited)process.Kill();}catch(InvalidOperationException){}}
-  static async Task CheckEncoder(Process process,Task<string> error,string codec){if(process.HasExited)throw GpuEncoding.EncoderError(codec,"GPU raw 编码进程提前退出："+await ErrorText(error));}
+  static async Task CheckEncoder(Process process,Task<string> error,string codec){if(process.HasExited)throw GpuEncoding.EncoderError(codec,"GPU raw 编码进程提前退出："+await Commands.ErrorText(error));}
   static async Task WriteFrame(Process process,Task<string> error,byte[] frame,string codec){await CheckEncoder(process,error,codec);await Commands.WriteInput(process,error,frame);}
 
   public static async Task Run(BrowserHost browser,object request,object settings,string part,object gpu,int width,int height,int fps,int start,int end,int first,Stopwatch began,double browserStartupSeconds,double navigationSeconds,double setupSeconds,double restoreSeconds){
@@ -39,7 +38,7 @@ namespace NativeVideo {
       }
       mark=Stopwatch.GetTimestamp();await browser.Eval("__gpuReadbackShared("+width+","+height+")",30000);readbackSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
       mark=Stopwatch.GetTimestamp();int copied=0;using(var stream=shared.OpenStream()){while(copied<frameBytes){int n=stream.Read(hostFrame,copied,frameBytes-copied);if(n<=0)break;copied+=n;}}hostCopySeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;hostBytes+=copied;if(copied!=frameBytes)throw new EndOfStreamException("SharedBuffer host copy 不完整："+copied+"/"+frameBytes);
-      mark=Stopwatch.GetTimestamp();IOException pipeFailure=null;try{await WriteFrame(p,err,hostFrame,codec);}catch(IOException writeError){pipeFailure=writeError;}if(pipeFailure!=null){StopEncoder(p);throw GpuEncoding.EncoderError(codec,"GPU raw 编码管道提前结束："+await ErrorText(err)+"\n"+pipeFailure.Message);}pipeSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
+      mark=Stopwatch.GetTimestamp();IOException pipeFailure=null;try{await WriteFrame(p,err,hostFrame,codec);}catch(IOException writeError){pipeFailure=writeError;}if(pipeFailure!=null){StopEncoder(p);throw GpuEncoding.EncoderError(codec,"GPU raw 编码管道提前结束："+await Commands.ErrorText(err)+"\n"+pipeFailure.Message);}pipeSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
       if(rendering.Elapsed.TotalSeconds-last>.5||frame==end-1){last=rendering.Elapsed.TotalSeconds;J.Write(Path.Combine(part,"progress.json"),J.O("phase","rendering","frame",frame,"startFrame",start,"endFrame",end,"outputFrames",frame-start+1,"elapsedSeconds",rendering.Elapsed.TotalSeconds,"pipeline","gpu-raw","codec",codec,"domRefreshes",domRefreshCount,"domFullRefreshes",domFullRefreshCount,"domBaseOnlyRefreshes",domBaseOnlyRefreshCount));}
       if(browser.Errors.Count>0)throw new IOException(string.Join("; ",browser.Errors));
      }
