@@ -41,11 +41,11 @@ async function webVideoProjectRequest(url,options={},timeoutMs=30000,requests=nu
  const api={
   subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},
   state(){return {scope,project,music,error:loadError,metadataError,busy,loading};},
-  async reloadMusic(){const at=scope;if(!at)throw Error('请先打开项目');const loaded=await api.service('/api/music/project',{project:at.game,action:'read'});if(scope!==at)throw Error('项目已切换');music=C.musicProject(loaded.music);musicHash=loaded.hash;loadError='';changed();return music;},
+  async reloadMusic(){const at=scope;if(!at)throw Error('请先打开项目');const loaded=await api.service('/api/music/project',{project:at.game,action:'read'});if(scope!==at)throw Error('项目已切换');musicHash=loaded.hash;if(loaded.error)throw Error(loaded.error);music=C.musicProject(loaded.music);loadError='';changed();return music;},
   async activate(game){
    if(game&&(/[\\/%]/.test(game)||game==='.'||game==='..'))throw Error('项目路径无效');if(scope?.game===game)return;
    scope=game?{game,root:'games/'+game}:null;project=C.metadata();music={schemaVersion:2,enabled:false,players:1,tracks:[]};loadError='';metadataError='';metadataText=null;musicHash=null;const at=scope;loading=!!at;changed();if(!at)return;
-   try{const loaded=await api.service('/api/music/project',{project:at.game,action:'read'});if(scope===at){music=C.musicProject(loaded.music);musicHash=loaded.hash;}}catch(error){if(scope===at)loadError=error.message;}
+   try{const loaded=await api.service('/api/music/project',{project:at.game,action:'read'});if(scope===at){musicHash=loaded.hash;if(loaded.error)throw Error(loaded.error);music=C.musicProject(loaded.music);}}catch(error){if(scope===at)loadError=error.message;}
    try{const text=await read(metadataPath(at),null),next=text===null?C.metadata():C.metadata(JSON.parse(text));if(scope===at){metadataText=text;project=next;}}catch(error){if(scope===at)metadataError='制作配置无法读取，未覆盖原文件：'+error.message;}
    if(scope===at){loading=false;changed();}
   },
@@ -91,7 +91,7 @@ async function webVideoProjectRequest(url,options={},timeoutMs=30000,requests=nu
   async createScene(name,script){
    name=C.safePath(name);if(!name.endsWith('.txt'))name+='.txt';const at=scope,file=projectPath('game/scene/'+name,at);if(await read(file,null)!==null)throw Error('场景已存在，请换一个文件名');parseScene(script);await write(file,script,{create:true});return {file,name};
   },
-  async saveMusic(value){const next=C.musicProject(value);return withLock(async()=>{const at=scope;if(!musicHash)throw Error('请重新打开音乐面板后保存');const saved=await api.service('/api/music/project',{project:at.game,action:'save',expectedHash:musicHash,music:next});if(scope!==at)throw Error('项目已切换');music=C.musicProject(saved.music);musicHash=saved.hash;loadError='';changed();return music;});},
+  async saveMusic(value,{restore=false}={}){const next=C.musicProject(value);return withLock(async()=>{const at=scope,current=restore?await api.service('/api/music/project',{project:at.game,action:'read'}):null,expectedHash=restore?current.hash:musicHash;if(scope!==at)throw Error('项目已切换');if(!expectedHash)throw Error('请重新打开音乐面板后保存');const saved=await api.service('/api/music/project',{project:at.game,action:'save',expectedHash,music:next});if(scope!==at)throw Error('项目已切换');music=C.musicProject(saved.music);musicHash=saved.hash;loadError='';let warning='';try{const p=C.metadata(JSON.parse(JSON.stringify(project)));p.backups.unshift({id:saved.id,kind:'music',label:'音乐时间线',path:musicPath(at),file:saved.file,createdAt:saved.createdAt});p.backups=p.backups.slice(0,200);project=p;}catch(error){warning='音乐已保存，但备份索引更新失败。'+error.message;}changed();return {...music,warning};});},
   async uploadAudio(file){if(!scope)throw Error('请先打开项目');if(file.size>128*1024*1024)throw Error('单个音频不能超过 128 MB');const ext=file.name.split('.').pop().toLowerCase();if(!['wav','mp3','ogg','flac','m4a','aac','webm','opus'].includes(ext))throw Error('不支持此音频格式');const name='wvp-'+crypto.randomUUID()+'.'+ext;const target=projectPath('game/bgm');const data=new FormData();data.append('targetDirectory',target);data.append('files',file,name);const response=await webVideoProjectRequest('/api/assets/upload',{method:'POST',body:data});if(!response.ok)throw Error('导入音频失败');return {file:'game/bgm/'+name,label:file.name,url:url(target+'/'+name)};},
   assetUrl(file){return url(projectPath(C.safePath(file)));},
   async sha(text){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));return [...new Uint8Array(bytes)].map(n=>n.toString(16).padStart(2,'0')).join('');},
