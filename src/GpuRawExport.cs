@@ -1,10 +1,10 @@
 using System;using System.IO;using System.Linq;using System.Collections.Generic;using System.Diagnostics;using System.Threading.Tasks;
 namespace NativeVideo {
  public static class GpuRawExport {
-  static async Task<string> ErrorText(Task<string> error){return await Task.WhenAny(error,Task.Delay(5000))==error?await error:"编码进程未及时关闭错误输出。";}
+  static async Task<string> ErrorText(Task<string> error){return await Commands.ErrorText(error);}
   static void StopEncoder(Process process){try{if(!process.HasExited)process.Kill();}catch(InvalidOperationException){}}
   static async Task CheckEncoder(Process process,Task<string> error,string codec){if(process.HasExited)throw GpuEncoding.EncoderError(codec,"GPU raw 编码进程提前退出："+await ErrorText(error));}
-  static async Task WriteFrame(Process process,Task<string> error,byte[] frame,string codec){await CheckEncoder(process,error,codec);var write=process.StandardInput.BaseStream.WriteAsync(frame,0,frame.Length);if(await Task.WhenAny(write,Task.Delay(60000))!=write){StopEncoder(process);var ignored=write.ContinueWith(t=>{var observed=t.Exception;},TaskContinuationOptions.OnlyOnFaulted);throw new TimeoutException("编码器连续 60 秒未接收完一帧，已停止本次分段。"+await ErrorText(error));}await write;}
+  static async Task WriteFrame(Process process,Task<string> error,byte[] frame,string codec){await CheckEncoder(process,error,codec);await Commands.WriteInput(process,error,frame);}
 
   public static async Task Run(BrowserHost browser,object request,object settings,string part,object gpu,int width,int height,int fps,int start,int end,int first,Stopwatch began,double browserStartupSeconds,double navigationSeconds,double setupSeconds,double restoreSeconds){
    string codec=J.S(request,"gpuRawCodec","x264").ToLowerInvariant(),mode=GpuEncoding.NormalizeMode(J.S(request,"gpuRawMode",J.S(settings,"gpuRawMode","recommended")));if(!new[]{"x264rgb","nvenc","amf","qsv","x264"}.Contains(codec))throw new ArgumentException("gpuRawCodec 不受支持："+codec);
@@ -44,8 +44,8 @@ namespace NativeVideo {
       if(browser.Errors.Count>0)throw new IOException(string.Join("; ",browser.Errors));
      }
      J.Write(Path.Combine(part,"progress.json"),J.O("phase","encoder-finalizing","startFrame",start,"endFrame",end,"outputFrames",end-start,"elapsedSeconds",rendering.Elapsed.TotalSeconds,"pipeline","gpu-raw","codec",codec));
-     long finalMark=Stopwatch.GetTimestamp();p.StandardInput.Close();while(!p.HasExited){if((Stopwatch.GetTimestamp()-finalMark)/(double)Stopwatch.Frequency>120){StopEncoder(p);throw new TimeoutException("帧已提交，但编码器在 120 秒内未完成收尾，已停止本次分段。"+await ErrorText(err));}await Task.Delay(20);}if(await Task.WhenAny(stdout,Task.Delay(5000))!=stdout)throw new TimeoutException("编码进程已退出，但输出管道未关闭。");await stdout;var message=await ErrorText(err);encoderFinalizeSeconds=(Stopwatch.GetTimestamp()-finalMark)/(double)Stopwatch.Frequency;if(p.ExitCode!=0)throw GpuEncoding.EncoderError(codec,"GPU raw 编码失败："+message);
-    }finally{if(!p.HasExited)p.Kill();}}
+     long finalMark=Stopwatch.GetTimestamp();var message=await Commands.FinishInput(p,stdout,err);encoderFinalizeSeconds=(Stopwatch.GetTimestamp()-finalMark)/(double)Stopwatch.Frequency;if(p.ExitCode!=0)throw GpuEncoding.EncoderError(codec,"GPU raw 编码失败："+message);
+    }finally{Commands.Stop(p);}}
    }catch(Exception e){failure=e;}
    try{await browser.ReleaseGpuReadbackBuffer();}catch(Exception e){if(failure==null)failure=e;}
    if(failure!=null)throw failure;
