@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+const MAX_SNAPSHOTS=64,MAX_SNAPSHOT_BYTES=32*1024**3,MIN_FREE_BYTES=256*1024**2;
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 async function fileHash(file){const h=crypto.createHash('sha256');for await(const chunk of createReadStream(file))h.update(chunk);return h.digest('hex');}
 export async function safeChild(root,relative,{missing=false}={}) {
@@ -15,22 +16,22 @@ export class SessionStorage {
   async fingerprint(roots,{withSize=false,skipGit=true}={}){const manifest=[];let bytes=0;const walk=async(dir,prefix)=>{
     for(const item of await fs.readdir(dir,{withFileTypes:true})){if(skipGit&&item.name==='.git')continue;if(item.isSymbolicLink())throw Error('source-link-denied');
       const p=path.join(dir,item.name),name=prefix+'/'+item.name;if(item.isDirectory())await walk(p,name);else if(item.isFile()){
-        const st=await fs.stat(p);bytes+=st.size;if(bytes>32*1024**3||manifest.length>200000)throw Error('project-snapshot-budget');manifest.push([name,st.size,await fileHash(p)]);
+        const st=await fs.stat(p);bytes+=st.size;if(bytes>MAX_SNAPSHOT_BYTES||manifest.length>200000)throw Error('project-snapshot-budget');manifest.push([name,st.size,await fileHash(p)]);
       }else throw Error('source-special-file');}
     };for(let i=0;i<roots.length;i++)await walk(roots[i],String(i));manifest.sort((a,b)=>a[0].localeCompare(b[0]));const hash=sha(JSON.stringify(manifest));return withSize?{hash,bytes}:hash;}
   async allocate(project,sources=[],engineVersion,runtimeId,runtimeVersion){
     if(!project||typeof project.id!=='string'||typeof project.path!=='string'||!path.isAbsolute(project.path))throw Error('invalid-project');
-    if(this.snapshots.size+(this.allocationsInFlight||0)>=64)throw Error('等待中的工程快照过多，请先完成或移除现有任务');
+    if(this.snapshots.size+(this.allocationsInFlight||0)>=MAX_SNAPSHOTS)throw Error('等待中的工程快照过多，请先完成或移除现有任务');
     this.allocationsInFlight=(this.allocationsInFlight||0)+1;try{
-    const projectRoot=await fs.realpath(project.path), id=crypto.randomUUID(),site=path.join(this.root,'games',id);
-    await fs.mkdir(path.dirname(site),{recursive:true});
-    const roots=[...new Set(await Promise.all(sources.map(p=>fs.realpath(p))))];
-    if(!roots.includes(projectRoot))throw Error('source-project-missing');
-    const fingerprint=await this.fingerprint(roots,{withSize:true}),sourceHash=fingerprint.hash;
-    const disk=await fs.statfs(this.root);if(Number(disk.bavail)*Number(disk.bsize)<fingerprint.bytes+256*1024**2)throw Error('可用空间不足以创建工程快照');
-    if([...this.snapshots.values()].reduce((n,s)=>n+(s.sourceBytes||0),fingerprint.bytes)>32*1024**3)throw Error('工程快照空间已达上限');
-    this.snapshots.set(id,{id,site,project:{id:project.id,path:projectRoot},engineVersion,runtimeVersion:runtimeVersion??(runtimeId==='open-webgal.webgal'?engineVersion:undefined),runtimeId,roots,sourceHash,sourceBytes:fingerprint.bytes,ready:false});
-    await this.saveLedger();return {snapshotId:id,site};
+      const projectRoot=await fs.realpath(project.path), id=crypto.randomUUID(),site=path.join(this.root,'games',id);
+      await fs.mkdir(path.dirname(site),{recursive:true});
+      const roots=[...new Set(await Promise.all(sources.map(p=>fs.realpath(p))))];
+      if(!roots.includes(projectRoot))throw Error('source-project-missing');
+      const fingerprint=await this.fingerprint(roots,{withSize:true}),sourceHash=fingerprint.hash;
+      const disk=await fs.statfs(this.root);if(Number(disk.bavail)*Number(disk.bsize)<fingerprint.bytes+MIN_FREE_BYTES)throw Error('可用空间不足以创建工程快照');
+      if([...this.snapshots.values()].reduce((n,s)=>n+(s.sourceBytes||0),fingerprint.bytes)>MAX_SNAPSHOT_BYTES)throw Error('工程快照空间已达上限');
+      this.snapshots.set(id,{id,site,project:{id:project.id,path:projectRoot},engineVersion,runtimeVersion:runtimeVersion??(runtimeId==='open-webgal.webgal'?engineVersion:undefined),runtimeId,roots,sourceHash,sourceBytes:fingerprint.bytes,ready:false});
+      await this.saveLedger();return {snapshotId:id,site};
     }finally{this.allocationsInFlight--;}
   }
   async ready(id){const s=this.snapshots.get(id);if(!s||s.ready)throw Error('unknown-snapshot');
@@ -51,7 +52,7 @@ export class SessionStorage {
     const music=await this.metadata({project:s.project,file:'video-project.json',fallback:null});
     if(music!==null){JSON.parse(music);const target=await safeChild(s.site,'video-project.json',{missing:true});await fs.writeFile(target,music);}
     const walk=async(dir,rel='')=>{for(const item of await fs.readdir(dir,{withFileTypes:true})){if(item.isSymbolicLink())throw Error('snapshot-link-denied');const file=path.join(dir,item.name),name=rel+item.name;
-      if(item.isDirectory())await walk(file,name+'/');else if(item.isFile()){const stat=await fs.stat(file);bytes+=stat.size;if(bytes>32*1024**3)throw Error('snapshot-too-large');manifest.push([name,stat.size,await fileHash(file)]);if(manifest.length>100000)throw Error('snapshot-too-large');}else throw Error('snapshot-special-file');}};
+      if(item.isDirectory())await walk(file,name+'/');else if(item.isFile()){const stat=await fs.stat(file);bytes+=stat.size;if(bytes>MAX_SNAPSHOT_BYTES)throw Error('snapshot-too-large');manifest.push([name,stat.size,await fileHash(file)]);if(manifest.length>100000)throw Error('snapshot-too-large');}else throw Error('snapshot-special-file');}};
     await walk(s.site);if(!manifest.some(x=>x[0]==='index.html')||!manifest.some(x=>x[0].startsWith('game/scene/')))throw Error('not-webgal-snapshot');
     if(await this.fingerprint(s.roots)!==s.sourceHash)throw Error('source-changed-during-snapshot');
     manifest.sort((a,b)=>a[0].localeCompare(b[0]));s.hash=sha(JSON.stringify(manifest));s.ready=true;s.cleanupHash=sha(JSON.stringify(manifest.map(([name,size,hash])=>['0/'+name,size,hash])));await this.saveLedger();
@@ -87,7 +88,7 @@ export class SessionStorage {
     for(const entry of entries){if(!entry.isDirectory()||entry.isSymbolicLink()||!/^[a-f0-9-]{36}$/.test(entry.name))continue;
       const root=await fs.realpath(path.join(directory,entry.name)),file=path.join(root,'owned-snapshots.json');
       try{const stat=await fs.lstat(file);if(!stat.isFile()||stat.isSymbolicLink()||stat.size>1048576)continue;const ledger=JSON.parse(await fs.readFile(file,'utf8'));
-        if(ledger.schemaVersion!==1||!Number.isSafeInteger(ledger.ownerPid)||ledger.ownerPid<=0||!Array.isArray(ledger.snapshots)||ledger.snapshots.length>64)continue;
+        if(ledger.schemaVersion!==1||!Number.isSafeInteger(ledger.ownerPid)||ledger.ownerPid<=0||!Array.isArray(ledger.snapshots)||ledger.snapshots.length>MAX_SNAPSHOTS)continue;
         try{process.kill(ledger.ownerPid,0);continue;}catch(e){if(e.code!=='ESRCH')continue;}
         const pids=ledger.servicePids;if(ledger.serviceStarted===true){
           if(!Array.isArray(pids)||!pids.length||pids.length>2||pids.some(pid=>!Number.isSafeInteger(pid)||pid<=0))continue;

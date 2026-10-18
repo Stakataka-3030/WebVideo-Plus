@@ -45,16 +45,16 @@ export class KernelSession {
     let startError;child.once('error',e=>{startError=e;this._activityRevision++;});
     child.once('exit',()=>{if(this.discovery&&!this._stopping)this._activityProblem||='kernel-service-lost';this._activityRevision++;});
     try {
-    await this.storage?.trackService?.(child.pid);
-    const deadline=Date.now()+this.startTimeoutMs;
-    while(Date.now()<deadline){if(this._stopping)throw Error('Craft 内核正在关闭');if(startError)throw startError;if(child.exitCode!==null)throw Error('kernel-service-exited');
-      try{const d=JSON.parse(await fs.readFile(path.join(terre,'public','assets','video-export-service.json'),'utf8'));
-        const u=new URL(d.baseUrl);if(u.protocol!=='http:'||u.hostname!=='127.0.0.1'||!await this.verifyChild(child,d.pid)||typeof d.token!=='string')throw Error('invalid-kernel-discovery');
-        const response=await fetch(u.origin+'/health',{signal:AbortSignal.timeout(1500)});const health=await response.json();
-        if(health.pid!==d.pid||health.serviceId!==d.serviceId)throw Error('kernel-identity-mismatch');await this.storage?.trackService?.(d.pid);this.servicePid=d.pid;this.discovery=d;this._previousSnapshotsPending=typeof this.storage?.recoverPrevious==='function';this._scheduleSnapshots();return;
-      }catch(e){if(!['ENOENT'].includes(e.code)&&e.message.startsWith('invalid-'))throw e;}
-      await new Promise(r=>setTimeout(r,100));
-    }throw Error('kernel-start-timeout');
+      await this.storage?.trackService?.(child.pid);
+      const deadline=Date.now()+this.startTimeoutMs;
+      while(Date.now()<deadline){if(this._stopping)throw Error('Craft 内核正在关闭');if(startError)throw startError;if(child.exitCode!==null)throw Error('kernel-service-exited');
+        try{const d=JSON.parse(await fs.readFile(path.join(terre,'public','assets','video-export-service.json'),'utf8'));
+          const u=new URL(d.baseUrl);if(u.protocol!=='http:'||u.hostname!=='127.0.0.1'||!await this.verifyChild(child,d.pid)||typeof d.token!=='string')throw Error('invalid-kernel-discovery');
+          const response=await fetch(u.origin+'/health',{signal:AbortSignal.timeout(1500)});const health=await response.json();
+          if(health.pid!==d.pid||health.serviceId!==d.serviceId)throw Error('kernel-identity-mismatch');await this.storage?.trackService?.(d.pid);this.servicePid=d.pid;this.discovery=d;this._previousSnapshotsPending=typeof this.storage?.recoverPrevious==='function';this._scheduleSnapshots();return;
+        }catch(e){if(!['ENOENT'].includes(e.code)&&e.message.startsWith('invalid-'))throw e;}
+        await new Promise(r=>setTimeout(r,100));
+      }throw Error('kernel-start-timeout');
     } catch(error) {await terminateService(child,0);if(this.child===child)this.child=null;throw error;}
   }
   get activityRevision(){return this._activityRevision;}
@@ -149,7 +149,7 @@ export class KernelSession {
     for(const [id,entry] of this.snapshotTasks){
       let task=entry.kind==='queue'?queue.find(row=>row.id===id):await this.request({endpoint:'/api/ai/novel/status',data:{id}});
       // Failed/canceled queue records still support retry from their source.
-      // Retain that source until session shutdown, rather than breaking retry.
+      // Keep its source across sessions until real completion or job deletion.
       if(entry.kind==='queue'&&task&&['failed','canceled'].includes(task.state)){entry.retry=true;continue;}
       if(!task&&entry.retry){await this.storage.discard(entry.snapshotId);this.snapshotTasks.delete(id);continue;}
       if(task&&(entry.kind==='queue'?task.state==='completed'&&task.phase==='completed':['complete','failed','cancelled'].includes(task.state))){

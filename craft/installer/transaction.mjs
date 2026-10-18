@@ -152,36 +152,36 @@ export function recoverInstallation(statePath,options={}){
  if(!exists(parent))return {changed:false};
  if(exists(path.join(adapterRoot+'.recovery.install-lock','owner.json')))releaseAbandonedInstallLock(adapterRoot+'.recovery',options.processCheck);
  return lock(adapterRoot+'.recovery',()=>{
- const journals=fs.readdirSync(parent).filter(name=>name.startsWith(prefix)&&/\.json$/.test(name));let changed=false;
- for(const name of journals){
-  const file=path.join(parent,name),j=readJson(file);if(j.recovered)continue;const fileOnly=['uninstall','remount'].includes(j.operation);
-  if(j.schemaVersion!==2||!same(j.adapterRoot,adapterRoot)||!j.state||!Array.isArray(j.files)||j.files.length!==(fileOnly?4:3))throw Error('Installation journal requires manual inspection');
-  const state=validateState(j.state,path.join(adapterRoot,'config.json'));
-  if(j.installId!==state.installId||!same(j.craftExe,state.craftExe)||j.stage!==adapterRoot+'.stage-'+j.id||j.retired!==adapterRoot+'.retired-'+j.id||name!==prefix+j.id+'.json'||!/^[a-f0-9-]{36}$/.test(j.id))throw Error('Installation journal ownership changed');
-  for(const target of [j.stage,j.retired,adapterRoot])assertNoLinks(target);
-  const allowed=[state.craftExe,path.join(path.dirname(state.craftExe),'webgal-craft.webvideo-original.exe'),hostRecordPath(state.craftExe),path.join(adapterRoot,'config.json')];
-  if(j.files.some((f,i)=>!same(f.file,allowed[i])||f.before!==null&&typeof f.before!=='string'||f.after!==null&&!(/^[a-f0-9]{64}$/.test(f.after||''))))throw Error('Invalid installation recovery files');
-  const before=f=>f.before===null?null:Buffer.from(f.before,'base64');
-  for(const f of j.files){const current=fingerprint(f.file),bytes=before(f);if(current!==(bytes===null?null:hash(bytes))&&current!==f.after)throw Error('Foreign host change prevents installation recovery');}
-  // Do not take over a live coordinator, even if its journal appears complete.
-  for(const key of [state.craftExe+'.webvideo',adapterRoot]){const dir=key+'.install-lock';if(exists(dir)){const owner=installationOwner(key);if(!Number.isSafeInteger(owner.pid)||owner.pid<=0||(owner.pid===process.pid||(options.processCheck||processAlive)(owner.pid)))throw Error('Installation coordinator is still alive');}}
-  const complete=(fileOnly||j.stageTree&&exists(adapterRoot)&&treeHash(adapterRoot)===j.stageTree)&&j.files.every(f=>fingerprint(f.file)===f.after);
-  if(exists(j.retired)&&treeHash(j.retired)!==j.previousTree)throw Error('Foreign recovery directory change');
-  if(complete){if(exists(j.retired))fs.rmSync(j.retired,{recursive:true});}
-  else{
-   if(!fileOnly&&exists(adapterRoot)&&treeHash(adapterRoot)!==j.previousTree&&(!j.stageTree||treeHash(adapterRoot)!==j.stageTree))throw Error('Foreign adapter change prevents installation recovery');
-   for(const f of [...j.files].reverse()){const bytes=before(f);if(fingerprint(f.file)!==(bytes===null?null:hash(bytes)))restore(f.file,bytes);}
-   if(exists(j.retired)){if(exists(adapterRoot))fs.rmSync(adapterRoot,{recursive:true});fs.renameSync(j.retired,adapterRoot);}
-   else if(!j.targetExisted&&exists(adapterRoot))fs.rmSync(adapterRoot,{recursive:true});
+  const journals=fs.readdirSync(parent).filter(name=>name.startsWith(prefix)&&/\.json$/.test(name));let changed=false;
+  for(const name of journals){
+   const file=path.join(parent,name),j=readJson(file);if(j.recovered)continue;const fileOnly=['uninstall','remount'].includes(j.operation);
+   if(j.schemaVersion!==2||!same(j.adapterRoot,adapterRoot)||!j.state||!Array.isArray(j.files)||j.files.length!==(fileOnly?4:3))throw Error('Installation journal requires manual inspection');
+   const state=validateState(j.state,path.join(adapterRoot,'config.json'));
+   if(j.installId!==state.installId||!same(j.craftExe,state.craftExe)||j.stage!==adapterRoot+'.stage-'+j.id||j.retired!==adapterRoot+'.retired-'+j.id||name!==prefix+j.id+'.json'||!/^[a-f0-9-]{36}$/.test(j.id))throw Error('Installation journal ownership changed');
+   for(const target of [j.stage,j.retired,adapterRoot])assertNoLinks(target);
+   const allowed=[state.craftExe,path.join(path.dirname(state.craftExe),'webgal-craft.webvideo-original.exe'),hostRecordPath(state.craftExe),path.join(adapterRoot,'config.json')];
+   if(j.files.some((f,i)=>!same(f.file,allowed[i])||f.before!==null&&typeof f.before!=='string'||f.after!==null&&!(/^[a-f0-9]{64}$/.test(f.after||''))))throw Error('Invalid installation recovery files');
+   const before=f=>f.before===null?null:Buffer.from(f.before,'base64');
+   for(const f of j.files){const current=fingerprint(f.file),bytes=before(f);if(current!==(bytes===null?null:hash(bytes))&&current!==f.after)throw Error('Foreign host change prevents installation recovery');}
+   // Do not take over a live coordinator, even if its journal appears complete.
+   for(const key of [state.craftExe+'.webvideo',adapterRoot]){const dir=key+'.install-lock';if(exists(dir)){const owner=installationOwner(key);if(!Number.isSafeInteger(owner.pid)||owner.pid<=0||(owner.pid===process.pid||(options.processCheck||processAlive)(owner.pid)))throw Error('Installation coordinator is still alive');}}
+   const complete=(fileOnly||j.stageTree&&exists(adapterRoot)&&treeHash(adapterRoot)===j.stageTree)&&j.files.every(f=>fingerprint(f.file)===f.after);
+   if(exists(j.retired)&&treeHash(j.retired)!==j.previousTree)throw Error('Foreign recovery directory change');
+   if(complete){if(exists(j.retired))fs.rmSync(j.retired,{recursive:true});}
+   else{
+    if(!fileOnly&&exists(adapterRoot)&&treeHash(adapterRoot)!==j.previousTree&&(!j.stageTree||treeHash(adapterRoot)!==j.stageTree))throw Error('Foreign adapter change prevents installation recovery');
+    for(const f of [...j.files].reverse()){const bytes=before(f);if(fingerprint(f.file)!==(bytes===null?null:hash(bytes)))restore(f.file,bytes);}
+    if(exists(j.retired)){if(exists(adapterRoot))fs.rmSync(adapterRoot,{recursive:true});fs.renameSync(j.retired,adapterRoot);}
+    else if(!j.targetExisted&&exists(adapterRoot))fs.rmSync(adapterRoot,{recursive:true});
+   }
+   let retainedStage=null;
+   if(exists(j.stage)){if(j.stageTree&&treeHash(j.stage)===j.stageTree)fs.rmSync(j.stage,{recursive:true});else retainedStage=j.stage;}
+   if(retainedStage)writeJson(file,{...j,recovered:true,retainedStage});else fs.unlinkSync(file);
+   releaseAbandonedInstallLock(state.craftExe+'.webvideo',options.processCheck);releaseAbandonedInstallLock(adapterRoot,options.processCheck);changed=true;
   }
-  let retainedStage=null;
-  if(exists(j.stage)){if(j.stageTree&&treeHash(j.stage)===j.stageTree)fs.rmSync(j.stage,{recursive:true});else retainedStage=j.stage;}
-  if(retainedStage)writeJson(file,{...j,recovered:true,retainedStage});else fs.unlinkSync(file);
-  releaseAbandonedInstallLock(state.craftExe+'.webvideo',options.processCheck);releaseAbandonedInstallLock(adapterRoot,options.processCheck);changed=true;
- }
- // Pre-journal failure has not touched the install. Only remove our exact dead-owner lock.
- if(!journals.length&&exists(path.join(adapterRoot+'.install-lock','owner.json')))releaseAbandonedInstallLock(adapterRoot,options.processCheck);
- return {changed};
+  // Pre-journal failure has not touched the install. Only remove our exact dead-owner lock.
+  if(!journals.length&&exists(path.join(adapterRoot+'.install-lock','owner.json')))releaseAbandonedInstallLock(adapterRoot,options.processCheck);
+  return {changed};
  });
 }
 
