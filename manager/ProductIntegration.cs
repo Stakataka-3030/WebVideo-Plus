@@ -138,13 +138,16 @@ namespace NativeVideo {
    ;
    return SamePath(full,Path.GetPathRoot(full))||protectedRoots.Where(x=>!string.IsNullOrWhiteSpace(x)).Any(x=>Files.Within(full,x,true));
   }
+  static void RemoveEmptyOwnedDirectory(string directory){if(Directory.Exists(directory)&&(File.GetAttributes(directory)&FileAttributes.ReparsePoint)==0&&!Directory.EnumerateFileSystemEntries(directory).Any())Directory.Delete(directory);}
+  static void RemoveKnownFiles(string directory,Func<string,bool> owned){if(!Directory.Exists(directory)||(File.GetAttributes(directory)&FileAttributes.ReparsePoint)!=0)return;foreach(string file in Directory.GetFiles(directory))if(owned(Path.GetFileName(file)))File.Delete(file);RemoveEmptyOwnedDirectory(directory);}
   static void RemoveOwnedState(string state){
-   foreach(string name in OwnedStateNames){
-    string path=Files.Under(state,name);
-    if(Directory.Exists(path))Files.DeleteTree(state,path);
-    else if(File.Exists(path))File.Delete(path);
-   }
-   if(!Directory.EnumerateFileSystemEntries(state).Any())Directory.Delete(state);
+   foreach(string name in OwnedStateNames){string path=Files.Under(state,name);if(File.Exists(path))File.Delete(path);}
+   string jobs=Path.Combine(state,"jobs");if(Directory.Exists(jobs)&&(File.GetAttributes(jobs)&FileAttributes.ReparsePoint)==0){foreach(string directory in Directory.GetDirectories(jobs)){Guid id;if((File.GetAttributes(directory)&FileAttributes.ReparsePoint)!=0||!Guid.TryParse(Path.GetFileName(directory),out id))continue;var request=J.TryRead(Path.Combine(directory,"request.json"));Guid recorded;if(Guid.TryParse(J.S(request,"id"),out recorded)&&recorded==id&&(SamePath(J.S(request,"recordDir"),directory)||J.S(request,"sourceSnapshot")!=""&&Files.Within(directory,J.S(request,"sourceSnapshot"))))Files.DeleteTree(jobs,directory);}RemoveEmptyOwnedDirectory(jobs);}
+   string media=Path.Combine(state,"media");if(Directory.Exists(media)&&(File.GetAttributes(media)&FileAttributes.ReparsePoint)==0){foreach(string metadata in Directory.GetFiles(media,"*.json")){Guid id,recorded;var item=J.TryRead(metadata);string dataFile=J.S(item,"file");if(!Guid.TryParse(Path.GetFileNameWithoutExtension(metadata),out id)||!Guid.TryParse(J.S(item,"id"),out recorded)||id!=recorded||dataFile==""||!Files.Within(media,dataFile)||!Guid.TryParse(Path.GetFileNameWithoutExtension(dataFile),out recorded)||recorded!=id||!new[]{".mp3",".wav",".ogg",".flac",".m4a",".aac",".webm"}.Contains(Path.GetExtension(dataFile).ToLowerInvariant()))continue;if(File.Exists(dataFile))File.Delete(dataFile);File.Delete(metadata);}RemoveEmptyOwnedDirectory(media);}
+   string user=Path.Combine(state,"user-data");foreach(var entry in new[]{new[]{"character-map","characters.json","characters.before-reset-"},new[]{"anogo-actions","actions.json","actions.before-reset-"},new[]{"filters","filters.json",""},new[]{"preset-effects","effects.json",""},new[]{"ai","providers.json",""}}){string[] item=entry;RemoveKnownFiles(Path.Combine(user,item[0]),name=>name==item[1]||item[2]!=""&&name.StartsWith(item[2],StringComparison.Ordinal)&&name.EndsWith(".json",StringComparison.OrdinalIgnoreCase)||item[0]=="ai"&&name=="model-lists.json");}RemoveEmptyOwnedDirectory(user);
+   RemoveKnownFiles(Path.Combine(state,"recovery"),name=>new[]{"recovery.json","original.exe","index.html","original-bundle.js"}.Contains(name));
+   foreach(string file in Directory.GetFiles(state,"settings.json.invalid-*.json"))File.Delete(file);
+   RemoveEmptyOwnedDirectory(state);
   }
   static void RequirePlainDirectories(string root){
    if(!Directory.Exists(root))return;
