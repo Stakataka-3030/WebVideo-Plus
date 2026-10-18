@@ -43,10 +43,7 @@ namespace NativeVideo {
   }
 
   static void Stop(Process process){try{if(!process.HasExited)process.Kill();}catch{}}
-  static async Task WritePipe(Process process,Task<string> error,byte[] bytes){
-   await Commands.WriteInput(process,error,bytes);
-  }
-  static async Task<string> ErrorText(Task<string> error){return await Commands.ErrorText(error);}
+
 
   static readonly byte[] UnpremultiplyTable=BuildUnpremultiplyTable();
   static byte[] BuildUnpremultiplyTable(){var table=new byte[65536];for(int alpha=1;alpha<256;alpha++)for(int channel=0;channel<256;channel++)table[alpha*256+channel]=(byte)Math.Min(255,(channel*255+alpha/2)/alpha);return table;}
@@ -62,7 +59,7 @@ namespace NativeVideo {
     for(int frame=start;frame<end;frame++){
      long mark=Stopwatch.GetTimestamp();await browser.Eval("__webviewStep("+frame+")",30000);stepSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
      mark=Stopwatch.GetTimestamp();string encoded=await browser.CaptureDomOverlayPngBase64(captureMode);byte[] png=Convert.FromBase64String(encoded);captureSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;pngBytes+=png.Length;
-     mark=Stopwatch.GetTimestamp();await WritePipe(process,error,png);pipeSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
+     mark=Stopwatch.GetTimestamp();await Commands.WriteInput(process,error,png);pipeSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
      if(rendering.Elapsed.TotalSeconds-last>.5||frame==end-1){last=rendering.Elapsed.TotalSeconds;J.Write(Path.Combine(part,"progress.json"),J.O("phase","rendering","frame",frame,"startFrame",start,"endFrame",end,"outputFrames",frame-start+1,"elapsedSeconds",rendering.Elapsed.TotalSeconds,"pipeline",pipeline,"codec",TransparentCodec(request)));}
      if(browser.Errors.Count>0)throw new IOException(string.Join("; ",browser.Errors));
     }
@@ -100,7 +97,7 @@ namespace NativeVideo {
      }
      mark=Stopwatch.GetTimestamp();await browser.Eval("__gpuReadbackShared("+width+","+height+")",30000);readbackSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
      mark=Stopwatch.GetTimestamp();int copied=CopyShared(shared,hostFrame);hostCopySeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;hostBytes+=copied;if(copied!=frameBytes)throw new EndOfStreamException("透明 GPU RGBA SharedBuffer host copy 不完整："+copied+"/"+frameBytes);if(premultiplied)Unpremultiply(hostFrame);
-     mark=Stopwatch.GetTimestamp();await WritePipe(process,error,hostFrame);pipeSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
+     mark=Stopwatch.GetTimestamp();await Commands.WriteInput(process,error,hostFrame);pipeSeconds+=(Stopwatch.GetTimestamp()-mark)/(double)Stopwatch.Frequency;
      if(rendering.Elapsed.TotalSeconds-last>.5||frame==end-1){last=rendering.Elapsed.TotalSeconds;J.Write(Path.Combine(part,"progress.json"),J.O("phase","rendering","frame",frame,"startFrame",start,"endFrame",end,"outputFrames",frame-start+1,"elapsedSeconds",rendering.Elapsed.TotalSeconds,"pipeline",pipeline,"codec",TransparentCodec(request),"domRefreshes",domRefreshCount));}
      if(browser.Errors.Count>0)throw new IOException(string.Join("; ",browser.Errors));
     }
