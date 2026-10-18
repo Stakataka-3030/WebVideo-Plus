@@ -51,7 +51,8 @@ namespace NativeVideo {
           var previous=J.TryRead(Path.Combine(dir,"request.json"));
           if(J.S(previous,"inputSignature")!=signature)continue;
           var previousState=J.TryRead(Path.Combine(dir,"status.json"));
-          if(J.S(previousState,"state")=="cancelled"||File.Exists(Path.Combine(dir,"cancelled.json")))continue;
+          if(J.S(previousState,"state")=="cancelled"||File.Exists(Path.Combine(dir,"cancelled.json")))break;
+          if(J.S(previousState,"state")=="complete"&&!J.B(input,"reuseCompleted"))break;
           id=Path.GetFileName(dir);
           request=J.D(previous);
           if(J.S(previousState,"state")=="complete"){
