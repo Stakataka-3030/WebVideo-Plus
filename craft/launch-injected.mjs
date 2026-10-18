@@ -10,6 +10,7 @@ import {buildBrowserPayload} from './session/browser-payload.mjs';
 import {SessionRpc,CdpConnection} from './session/rpc.mjs';
 import {SessionStorage} from './session/storage.mjs';
 import {KernelSession} from './session/kernel.mjs';
+import {acquireSessionLease} from './session/lease.mjs';
 import {SessionActivity,readOwnInstallerLaunchState,readOfficialInstallState} from './session/update-safety.mjs';
 import {previewSettings,capturePreviewConfigs,PreviewSessionManager} from './session/preview.mjs';
 import {CleanUpdateCoordinator} from './update/clean-coordinator.mjs';
@@ -41,24 +42,31 @@ const verifiedHostProfile=Object.freeze({version:config.host?.version,sha256:exp
 const stateDir=config.stateDir||path.join(path.dirname(configPath||here),'state');await fs.mkdir(stateDir,{recursive:true});
 const sessionId=crypto.randomUUID();
 const installLocks=[(config.adapterRoot||path.dirname(stateDir))+'.install-lock',(config.craftExe||craft)+'.webvideo.install-lock',path.join(stateDir,'update.lock')];const checkInstall=async()=>{for(const p of installLocks){if(await fs.stat(p).then(()=>true,e=>{if(e.code==='ENOENT')return false;throw e;}))throw Error('适配安装器正在运行，请稍后重试');}};await checkInstall();
-const lockPath=path.join(stateDir,'session.lock');let lock;try{lock=await fs.open(lockPath,'wx');await lock.writeFile(JSON.stringify({sessionId,pid:process.pid}));}catch(e){throw Error('另一个增强会话或未恢复的会话记录存在，请关闭 Craft 后使用安装器检查恢复');}
-try{await checkInstall();}catch(e){await lock.close();await fs.rm(lockPath,{force:true});throw e;}
+const lock=acquireSessionLease(stateDir,{sessionId,installId:config.installId,wrapperPid:Number(option('--wrapper-pid'))||undefined}),lockPath=lock.file;let spawnError;
+const {root,app,lease,port,log,waitForApp}=await lock.prepare(async()=>{
+await checkInstall();
+const recoveryWarnings=await SessionStorage.recoverSessions(path.join(stateDir,'sessions'));
 const sessionRoot=path.join(stateDir,'sessions',sessionId);await fs.mkdir(sessionRoot,{recursive:true});
 // Pin the filesystem spelling once. A legitimate Windows case/short-name alias
 // must not differ from discard's strict current-real-parent ownership check.
 const root=await fs.realpath(sessionRoot);
 const log=data=>fs.appendFile(path.join(root,'session.log'),JSON.stringify({at:new Date().toISOString(),...data})+'\n');
+if(recoveryWarnings.length)await log({event:'snapshot-recovery-retained',snapshots:recoveryWarnings});
 const port=await new Promise((resolve,reject)=>{const s=net.createServer();s.once('error',reject);s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>resolve(p));});});
 const env={...process.env,WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:`--remote-debugging-address=127.0.0.1 --remote-debugging-port=${port}`};
 if(option('--profile'))env.WEBVIEW2_USER_DATA_FOLDER=path.resolve(option('--profile'));
 launchStatus('starting','校验完成，正在启动 Craft 原程序…');
 await log({event:'host-starting',hostExe:craft,port});
+lock.markStarting();
 const app=spawn(craft,hostArgs,{cwd:path.dirname(craft),env,windowsHide:false,stdio:'ignore'});
-let spawnError;app.once('error',e=>spawnError=e);const waitForApp=()=>app.exitCode!==null||app.signalCode!==null?Promise.resolve():new Promise(resolve=>app.once('exit',resolve));
+lock.markHost(app.pid);
+app.once('error',e=>spawnError=e);const waitForApp=()=>app.exitCode!==null||app.signalCode!==null?Promise.resolve():new Promise(resolve=>app.once('exit',resolve));
 const lease={schemaVersion:1,sessionId,coordinatorPid:process.pid,hostPid:app.pid,wrapperPid:Number(option('--wrapper-pid'))||undefined,hostExe:craft,startedAt:new Date().toISOString()};
 await fs.writeFile(path.join(stateDir,'session.json'),JSON.stringify(lease));
 await log({event:'host-started',hostPid:app.pid,port});
 launchStatus('connecting','Craft 已启动，正在等待主窗口并接入增强界面…');
+return {root,app,lease,port,log,waitForApp};
+});
 const storage=new SessionStorage(root),service=new KernelSession({kernel,root,storage,runtimePath:config.runtimePath,stateRoot:path.join(stateDir,"kernel")});
 const updater=new CleanUpdateCoordinator({stateDir,statePath:configPath,hostPid:app.pid,wrapperPid:Number(option('--wrapper-pid')),craftExe:config.craftExe||craft,installMode:config.installMode,observerValidated:manifest.updateObserverValidated===true,sameNameValidated:manifest.sameNameUpdateValidated===true,cleanInstallValidated:manifest.officialCleanUpdateValidated===true,autoInstallEnabled:manifest.officialAutoInstallEnabled===true,hostArgs,releaseWrapper:()=>launchStatus('update-handoff','正在为官方更新释放原启动入口…')});
 const activity=new SessionActivity();
@@ -72,7 +80,7 @@ async function readNativeUpdateState(confirmNormalClose){
 
 let cdp,rpc,previewManager,closed=false;
 async function abortUncommittedUpdate(){if(updater.busy&&!updater.pending?.commitRequested&&!updater.pending?.handedOff)await updater.abort().catch(error=>log({event:'update-abort-pending',error:error.message}));}
-async function shutdown(){if(closed)return;closed=true;rpc?.close();await abortUncommittedUpdate();if(app.exitCode!==null||app.signalCode!==null){if(updater.handoff())process.exitCode=75;}await ownUpdater.close();await previewManager?.close();cdp?.close();await service.stop();
+async function shutdown(){if(closed)return;closed=true;rpc?.close();await abortUncommittedUpdate();if(app.exitCode!==null||app.signalCode!==null){if(updater.handoff())process.exitCode=75;}await ownUpdater.close();await previewManager?.close();cdp?.close();await service.stop();if(service.cleanupWarnings?.length)await log({event:'snapshot-cleanup-retained',snapshots:service.cleanupWarnings});
   const current=JSON.parse(await fs.readFile(path.join(stateDir,'session.json'),'utf8').catch(()=>'{}'));if(current.sessionId===sessionId)await fs.writeFile(path.join(stateDir,'session.json'),JSON.stringify({...lease,closedAt:new Date().toISOString()}));await lock?.close();const owned=JSON.parse(await fs.readFile(lockPath,'utf8').catch(()=>'{}'));if(owned.sessionId===sessionId)await fs.rm(lockPath,{force:true});}
 process.on('SIGINT',()=>console.error('请先保存并关闭此 Craft 窗口；会话会在宿主退出后自动清理。'));
 try{

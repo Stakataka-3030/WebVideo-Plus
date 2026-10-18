@@ -11,22 +11,27 @@ export async function safeChild(root,relative,{missing=false}={}) {
   return current;
 }
 export class SessionStorage {
-  constructor(root){this.root=root;this.snapshots=new Map();this.metadataWrites=new Set();}
-  async fingerprint(roots){const manifest=[];let bytes=0;const walk=async(dir,prefix)=>{
-    for(const item of await fs.readdir(dir,{withFileTypes:true})){if(item.name==='.git')continue;if(item.isSymbolicLink())throw Error('source-link-denied');
+  constructor(root){this.root=root;this.snapshots=new Map();this.metadataWrites=new Set();this.retainedSnapshots=[];this.servicePids=[];}
+  async fingerprint(roots,{withSize=false,skipGit=true}={}){const manifest=[];let bytes=0;const walk=async(dir,prefix)=>{
+    for(const item of await fs.readdir(dir,{withFileTypes:true})){if(skipGit&&item.name==='.git')continue;if(item.isSymbolicLink())throw Error('source-link-denied');
       const p=path.join(dir,item.name),name=prefix+'/'+item.name;if(item.isDirectory())await walk(p,name);else if(item.isFile()){
         const st=await fs.stat(p);bytes+=st.size;if(bytes>32*1024**3||manifest.length>200000)throw Error('project-snapshot-budget');manifest.push([name,st.size,await fileHash(p)]);
       }else throw Error('source-special-file');}
-    };for(let i=0;i<roots.length;i++)await walk(roots[i],String(i));manifest.sort((a,b)=>a[0].localeCompare(b[0]));return sha(JSON.stringify(manifest));}
+    };for(let i=0;i<roots.length;i++)await walk(roots[i],String(i));manifest.sort((a,b)=>a[0].localeCompare(b[0]));const hash=sha(JSON.stringify(manifest));return withSize?{hash,bytes}:hash;}
   async allocate(project,sources=[],engineVersion,runtimeId,runtimeVersion){
     if(!project||typeof project.id!=='string'||typeof project.path!=='string'||!path.isAbsolute(project.path))throw Error('invalid-project');
+    if(this.snapshots.size+(this.allocationsInFlight||0)>=64)throw Error('等待中的工程快照过多，请先完成或移除现有任务');
+    this.allocationsInFlight=(this.allocationsInFlight||0)+1;try{
     const projectRoot=await fs.realpath(project.path), id=crypto.randomUUID(),site=path.join(this.root,'games',id);
     await fs.mkdir(path.dirname(site),{recursive:true});
     const roots=[...new Set(await Promise.all(sources.map(p=>fs.realpath(p))))];
     if(!roots.includes(projectRoot))throw Error('source-project-missing');
-    const sourceHash=await this.fingerprint(roots);
-    this.snapshots.set(id,{id,site,project:{id:project.id,path:projectRoot},engineVersion,runtimeVersion:runtimeVersion??(runtimeId==='open-webgal.webgal'?engineVersion:undefined),runtimeId,roots,sourceHash,ready:false});
-    return {snapshotId:id,site};
+    const fingerprint=await this.fingerprint(roots,{withSize:true}),sourceHash=fingerprint.hash;
+    const disk=await fs.statfs(this.root);if(Number(disk.bavail)*Number(disk.bsize)<fingerprint.bytes+256*1024**2)throw Error('可用空间不足以创建工程快照');
+    if([...this.snapshots.values()].reduce((n,s)=>n+(s.sourceBytes||0),fingerprint.bytes)>32*1024**3)throw Error('工程快照空间已达上限');
+    this.snapshots.set(id,{id,site,project:{id:project.id,path:projectRoot},engineVersion,runtimeVersion:runtimeVersion??(runtimeId==='open-webgal.webgal'?engineVersion:undefined),runtimeId,roots,sourceHash,sourceBytes:fingerprint.bytes,ready:false});
+    await this.saveLedger();return {snapshotId:id,site};
+    }finally{this.allocationsInFlight--;}
   }
   async ready(id){const s=this.snapshots.get(id);if(!s||s.ready)throw Error('unknown-snapshot');
     const st=await fs.lstat(s.site);if(st.isSymbolicLink()||!st.isDirectory())throw Error('invalid-snapshot');
@@ -49,7 +54,7 @@ export class SessionStorage {
       if(item.isDirectory())await walk(file,name+'/');else if(item.isFile()){const stat=await fs.stat(file);bytes+=stat.size;if(bytes>32*1024**3)throw Error('snapshot-too-large');manifest.push([name,stat.size,await fileHash(file)]);if(manifest.length>100000)throw Error('snapshot-too-large');}else throw Error('snapshot-special-file');}};
     await walk(s.site);if(!manifest.some(x=>x[0]==='index.html')||!manifest.some(x=>x[0].startsWith('game/scene/')))throw Error('not-webgal-snapshot');
     if(await this.fingerprint(s.roots)!==s.sourceHash)throw Error('source-changed-during-snapshot');
-    manifest.sort((a,b)=>a[0].localeCompare(b[0]));s.hash=sha(JSON.stringify(manifest));s.ready=true;
+    manifest.sort((a,b)=>a[0].localeCompare(b[0]));s.hash=sha(JSON.stringify(manifest));s.ready=true;s.cleanupHash=sha(JSON.stringify(manifest.map(([name,size,hash])=>['0/'+name,size,hash])));await this.saveLedger();
     return {snapshotId:id,site:s.site,projectId:s.project.id,dependencyHash:s.hash};
   }
   get(id){const s=this.snapshots.get(id);if(!s?.ready)throw Error('snapshot-not-ready');return s;}
@@ -68,10 +73,43 @@ export class SessionStorage {
     const id=slot||crypto.randomUUID(),file='.webvideo-plus/backups/'+(slot||'story-'+id)+'.json',value={schemaVersion:1,kind:'storySet',id,label:slot==='automatic-open'?'打开项目时的故事快照':slot?'最近十分钟故事快照':'Craft 全故事快照',projectId:project.id,createdAt:new Date().toISOString(),files};
     const before=slot?await this.metadata({project,file,fallback:null}):null;
     await this.metadata({project,file,text:JSON.stringify(value),create:before===null,expectedText:before},true);return {file,...value};}
+  async pinSnapshot(id,task){const snapshot=this.get(id);Object.assign(snapshot,{preserve:true,...task});await this.saveLedger();}
+  async recoverPrevious(queue){return SessionStorage.recoverSessions(path.dirname(this.root),{queue});}
+  async trackService(pid){this.serviceStarted=true;if(pid===undefined)this.servicePids=[];if(Number.isSafeInteger(pid)&&pid>0&&!this.servicePids.includes(pid))this.servicePids.push(pid);await this.saveLedger();}
+  async saveLedger(){
+    const write=async()=>{const file=path.join(this.root,'owned-snapshots.json'),temp=file+'.'+crypto.randomUUID()+'.tmp';
+      try{const handle=await fs.open(temp,'wx');try{await handle.writeFile(JSON.stringify({schemaVersion:1,ownerPid:this.ownerPid??process.pid,serviceStarted:this.serviceStarted===true,servicePids:this.servicePids,snapshots:[...this.retainedSnapshots,...[...this.snapshots.values()].map(s=>({id:s.id,site:s.site,ready:s.ready,cleanupHash:s.cleanupHash,preserve:s.preserve,kind:s.kind,taskId:s.taskId}))]}));await handle.sync();}finally{await handle.close();}await fs.rename(temp,file);}finally{await fs.rm(temp,{force:true});}};
+    this.ledgerWrite=(this.ledgerWrite||Promise.resolve()).catch(()=>{}).then(write);return this.ledgerWrite;
+  }
+  async close({preserveTasks=false}={}){const retained=[];for(const id of [...this.snapshots.keys()])try{if(preserveTasks&&this.snapshots.get(id).preserve)continue;await this.discard(id);}catch(error){retained.push({snapshotId:id,message:error.message});}return retained;}
+  static async recoverSessions(directory,{queue}={}){
+    const entries=await fs.readdir(directory,{withFileTypes:true}).catch(e=>{if(e.code==='ENOENT')return [];throw e;});const retained=[];
+    for(const entry of entries){if(!entry.isDirectory()||entry.isSymbolicLink()||!/^[a-f0-9-]{36}$/.test(entry.name))continue;
+      const root=await fs.realpath(path.join(directory,entry.name)),file=path.join(root,'owned-snapshots.json');
+      try{const stat=await fs.lstat(file);if(!stat.isFile()||stat.isSymbolicLink()||stat.size>1048576)continue;const ledger=JSON.parse(await fs.readFile(file,'utf8'));
+        if(ledger.schemaVersion!==1||!Number.isSafeInteger(ledger.ownerPid)||ledger.ownerPid<=0||!Array.isArray(ledger.snapshots)||ledger.snapshots.length>64)continue;
+        try{process.kill(ledger.ownerPid,0);continue;}catch(e){if(e.code!=='ESRCH')continue;}
+        const pids=ledger.servicePids;if(ledger.serviceStarted===true){
+          if(!Array.isArray(pids)||!pids.length||pids.length>2||pids.some(pid=>!Number.isSafeInteger(pid)||pid<=0))continue;
+          let live=false;for(const pid of pids)try{process.kill(pid,0);live=true;}catch(e){if(e.code!=='ESRCH')live=true;}if(live)continue;
+        }
+        if(ledger.snapshots.some(s=>s?.preserve)&&queue===undefined){retained.pending=true;continue;}
+        if(queue!==undefined&&(!Array.isArray(queue)||queue.length>1024||queue.some(job=>!job||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(job.id)||!['queued','running','completed','canceled','failed','needs_attention'].includes(job.state))||new Set(queue.map(job=>job.id)).size!==queue.length)){retained.pending=true;continue;}
+        const storage=new SessionStorage(root);storage.ownerPid=ledger.ownerPid;for(const s of ledger.snapshots){
+          if(s?.preserve){
+            if(s.kind!=='queue'){storage.retainedSnapshots.push(s);continue;}
+            const references=queue.filter(job=>job.id===s.taskId||typeof job.project==='string'&&path.resolve(job.project).toLowerCase()===path.resolve(s.site).toLowerCase());
+            if(references.some(job=>job.state!=='completed'||job.phase!=='completed')){storage.retainedSnapshots.push(s);retained.pending=true;continue;}
+          }
+          if(!s||!/^[a-f0-9-]{36}$/.test(s.id)||s.site!==path.join(root,'games',s.id)||!s.ready||!/^[a-f0-9]{64}$/.test(s.cleanupHash||'')){storage.retainedSnapshots.push(s);continue;}storage.snapshots.set(s.id,s);}
+        if(storage.snapshots.size){await storage.close().then(warnings=>retained.push(...warnings));}
+      }catch(e){if(e.code!=='ENOENT')retained.push({session:entry.name,message:e.message});}
+    }return retained;
+  }
   async discard(id){const s=this.snapshots.get(id);if(!s)throw Error('unknown-owned-snapshot');
     const parent=await fs.realpath(path.join(this.root,'games'));if(path.dirname(s.site)!==parent)throw Error('snapshot-owner-mismatch');
     const stat=await fs.lstat(s.site).catch(e=>{if(e.code==='ENOENT')return null;throw e;});
-    if(stat?.isSymbolicLink())throw Error('snapshot-link-denied');if(stat)await fs.rm(s.site,{recursive:true});this.snapshots.delete(id);
+    if(stat?.isSymbolicLink())throw Error('snapshot-link-denied');if(stat&&s.cleanupHash&&await this.fingerprint([s.site],{skipGit:false})!==s.cleanupHash)throw Error('snapshot-content-changed');if(stat)await fs.rm(s.site,{recursive:true});this.snapshots.delete(id);await this.saveLedger();
   }
   async metadata({project,file,text,expectedText,create=false,fallback=null},write=false){
     if(!project?.path||!path.isAbsolute(project.path))throw Error('invalid-project');

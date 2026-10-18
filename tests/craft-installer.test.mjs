@@ -147,7 +147,7 @@ test('repair refuses foreign writes during rollback and retains recovery evidenc
  const o=setup(home);install(o);fs.writeFileSync(path.join(o.adapterRoot,'node.exe'),'damaged');
  assert.throws(()=>repair({...o,onPhase:phase=>{if(phase==='published'){fs.writeFileSync(path.join(o.adapterRoot,'foreign.txt'),'keep');throw Error('interrupted');}}}),/rollback incomplete/);
  assert.equal(fs.readFileSync(path.join(o.adapterRoot,'foreign.txt'),'utf8'),'keep');assert.ok(fs.readdirSync(home).some(name=>name.includes('.transaction-')));assert.ok(fs.readdirSync(home).some(name=>name.includes('.retired-')));
- assert.throws(()=>repair(o),/Unlisted/);
+ assert.throws(()=>repair(o),/Unlisted|Foreign adapter change/);
 }));
 
 test('install safely accepts an explicitly selected empty target directory',()=>fixture(home=>{

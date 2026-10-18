@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {spawn} from 'node:child_process';
+import {spawnService,ownsService,terminateService} from './process.mjs';
 const GET=new Set(['/api/config','/api/jobs','/api/ai/config','/api/character-map','/api/anogo-actions','/api/filters','/api/preset-effects']);
 const POST=new Set(['/api/jobs','/api/timing','/api/music/duration','/api/ai/save','/api/ai/remove','/api/ai/novel/start','/api/ai/novel/status','/api/ai/novel/cancel','/api/character-map','/api/anogo-actions','/api/filters/save','/api/preset-effects/save','/api/settings','/api/dialog/folder','/api/dialog/subtitle','/api/subtitles/start','/api/subtitles/status','/api/subtitles/cancel']);
 // QueueService/JobRunner use completed/failed/canceled; AiNovelTasks uses
@@ -28,9 +28,9 @@ function taskState(task,kind){
  return 'unknown';
 }
 export class KernelSession {
-  constructor({kernel,root,storage,runtimePath,stateRoot=path.join(root,'kernel'),readRuntimeStartup}){Object.assign(this,{kernel,root,storage,runtimePath,stateRoot,readRuntimeStartup});this.child=null;this.discovery=null;this._tasks=new Map();this._inFlight=0;this._activityRevision=0;this._activityProblem=null;this._everStarted=false;this._stopping=false;this._novelStartsInFlight=0;}
+  constructor({kernel,root,storage,runtimePath,stateRoot=path.join(root,'kernel'),readRuntimeStartup,spawnKernel=spawnService,verifyChild=ownsService,startTimeoutMs=20000}){Object.assign(this,{kernel,root,storage,runtimePath,stateRoot,readRuntimeStartup,spawnKernel,verifyChild,startTimeoutMs});this.snapshotTasks=new Map();this._shutdownController=new AbortController();this.child=null;this.discovery=null;this._tasks=new Map();this._inFlight=0;this._activityRevision=0;this._activityProblem=null;this._everStarted=false;this._stopping=false;this._novelStartsInFlight=0;}
   async start(){
-    if(this.discovery)return;if(this.starting)return this.starting;
+    if(this._stopping)throw Error('Craft 内核正在关闭');if(this.discovery)return;if(this.starting)return this.starting;
     this._everStarted=true;this._activityRevision++;this.starting=this._start();try{await this.starting;}finally{this.starting=null;this._activityRevision++;}
   }
   async _start(){
@@ -40,18 +40,22 @@ export class KernelSession {
       allowedOrigins:[],modules:['exporter','subtitles','generativeAI','musicTimeline'],importLegacyUserData:false,autoRefreshAiModels:false,automaticBackups:false,requireRuntimeParity:true,runtimePath:this.runtimePath||'',servicePort:0};
     for(const dir of [config.gamesRoot,config.outputDir,config.workDir])await fs.mkdir(dir,{recursive:true});
     const file=path.join(state,'config.json');await fs.writeFile(file,JSON.stringify(config));
-    this.child=spawn(this.kernel,['service','--config',file],{cwd:path.dirname(this.kernel),windowsHide:true,stdio:'ignore'});
-    let startError;this.child.once('error',e=>{startError=e;this._activityProblem||='kernel-service-lost';this._activityRevision++;});
-    this.child.once('exit',()=>{this._activityProblem||='kernel-service-lost';this._activityRevision++;});
-    const deadline=Date.now()+20000;
-    while(Date.now()<deadline){if(startError)throw startError;if(this.child.exitCode!==null)throw Error('kernel-service-exited');
+    await this.storage?.trackService?.();
+    const child=this.child=this.spawnKernel(this.kernel,['service','--config',file],{cwd:path.dirname(this.kernel),windowsHide:true,stdio:'ignore'});
+    let startError;child.once('error',e=>{startError=e;this._activityRevision++;});
+    child.once('exit',()=>{if(this.discovery&&!this._stopping)this._activityProblem||='kernel-service-lost';this._activityRevision++;});
+    try {
+    await this.storage?.trackService?.(child.pid);
+    const deadline=Date.now()+this.startTimeoutMs;
+    while(Date.now()<deadline){if(this._stopping)throw Error('Craft 内核正在关闭');if(startError)throw startError;if(child.exitCode!==null)throw Error('kernel-service-exited');
       try{const d=JSON.parse(await fs.readFile(path.join(terre,'public','assets','video-export-service.json'),'utf8'));
-        const u=new URL(d.baseUrl);if(u.protocol!=='http:'||u.hostname!=='127.0.0.1'||d.pid!==this.child.pid||typeof d.token!=='string')throw Error('invalid-kernel-discovery');
+        const u=new URL(d.baseUrl);if(u.protocol!=='http:'||u.hostname!=='127.0.0.1'||!await this.verifyChild(child,d.pid)||typeof d.token!=='string')throw Error('invalid-kernel-discovery');
         const response=await fetch(u.origin+'/health',{signal:AbortSignal.timeout(1500)});const health=await response.json();
-        if(health.pid!==this.child.pid||health.serviceId!==d.serviceId)throw Error('kernel-identity-mismatch');this.discovery=d;return;
+        if(health.pid!==d.pid||health.serviceId!==d.serviceId)throw Error('kernel-identity-mismatch');await this.storage?.trackService?.(d.pid);this.servicePid=d.pid;this.discovery=d;this._previousSnapshotsPending=typeof this.storage?.recoverPrevious==='function';this._scheduleSnapshots();return;
       }catch(e){if(!['ENOENT'].includes(e.code)&&e.message.startsWith('invalid-'))throw e;}
       await new Promise(r=>setTimeout(r,100));
     }throw Error('kernel-start-timeout');
+    } catch(error) {await terminateService(child,0);if(this.child===child)this.child=null;throw error;}
   }
   get activityRevision(){return this._activityRevision;}
   _rememberActivity(endpoint,data,result,attempt){
@@ -77,8 +81,8 @@ export class KernelSession {
   }
   async request(params){
     this._inFlight++;this._activityRevision++;const attempt={dispatched:false,responseComplete:false};
-    try{const result=await this._request(params,attempt);this._rememberActivity(params.endpoint,params.data,result,attempt);return result;}
-    catch(error){if(attempt.dispatched){if(params?.data!==undefined&&STARTS.has(params?.endpoint))this._activityProblem||='kernel-start-outcome-unknown';else if(!attempt.responseComplete)this._activityProblem||='kernel-request-outcome-unknown';}throw error;}
+    try{const result=await this._request(params,attempt);this._rememberActivity(params.endpoint,params.data,result,attempt);if(params.snapshotId&&STARTS.has(params.endpoint)&&validId(result?.id)){const kind=STARTS.get(params.endpoint);await this.storage?.pinSnapshot?.(params.snapshotId,{kind,taskId:result.id}).catch(()=>{});this.snapshotTasks.set(result.id,{snapshotId:params.snapshotId,kind});this._scheduleSnapshots();}else if(params.snapshotId)await this.storage?.discard?.(params.snapshotId);return result;}
+    catch(error){if(params?.snapshotId&&(!attempt.dispatched||attempt.responseComplete))await this.storage?.discard?.(params.snapshotId).catch(()=>{});if(attempt.dispatched){if(params?.data!==undefined&&STARTS.has(params?.endpoint))this._activityProblem||='kernel-start-outcome-unknown';else if(!attempt.responseComplete)this._activityProblem||='kernel-request-outcome-unknown';}throw error;}
     finally{if(attempt.novelStart)this._novelStartsInFlight--;this._inFlight--;this._activityRevision++;}
   }
   async _request({endpoint,data,snapshotId},attempt){
@@ -91,7 +95,8 @@ export class KernelSession {
     // Overlapping singleton starts can return out of order. Receipt arrival must
     // not retire a newer active novel using a delayed older start response.
     if(method==='POST'&&endpoint==='/api/ai/novel/start'){attempt.novelStart=true;if(this._novelStartsInFlight++)this._activityProblem||='kernel-concurrent-start-outcomes';}
-    attempt.dispatched=true;const response=await fetch(this.discovery.baseUrl+endpoint,{method,headers:{Authorization:'Bearer '+this.discovery.token,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(120000)});
+    if(snapshotId&&STARTS.has(endpoint))await this.storage?.pinSnapshot?.(snapshotId,{kind:STARTS.get(endpoint)});
+    attempt.dispatched=true;const response=await fetch(this.discovery.baseUrl+endpoint,{method,headers:{Authorization:'Bearer '+this.discovery.token,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.any([AbortSignal.timeout(120000),this._shutdownController.signal])});
     const result=await response.json();attempt.responseComplete=true;if(!response.ok)throw Error(result.error||'kernel-request-failed');return result;
   }
   async readUpdateActivity(){
@@ -103,9 +108,9 @@ export class KernelSession {
     if(!this._everStarted&&!this.child&&!this.discovery)return result(true,false,undefined,0);
     const discovery=this.discovery,child=this.child,revision=this.activityRevision;
     const identity=discovery&&{baseUrl:discovery.baseUrl,token:discovery.token,pid:discovery.pid,serviceId:discovery.serviceId};
-    const unchanged=()=>this.activityRevision===revision&&!this._inFlight&&!this._stopping&&!this._activityProblem&&this.discovery===discovery&&this.child===child&&child?.pid===identity?.pid&&child?.exitCode===null&&!child.signalCode&&Object.keys(identity||{}).every(key=>discovery[key]===identity[key]);
+    const unchanged=()=>this.activityRevision===revision&&!this._inFlight&&!this._stopping&&!this._activityProblem&&this.discovery===discovery&&this.child===child&&(this.servicePid??child?.pid)===identity?.pid&&child?.exitCode===null&&!child.signalCode&&Object.keys(identity||{}).every(key=>discovery[key]===identity[key]);
     try{
-      if(!identity||!child||child.exitCode!==null||child.signalCode||!Number.isSafeInteger(child.pid)||identity.pid!==child.pid||typeof identity.token!=='string'||!identity.token||typeof identity.serviceId!=='string'||!identity.serviceId)throw Error('kernel-service-identity-unavailable');
+      if(!identity||!child||child.exitCode!==null||child.signalCode||!Number.isSafeInteger(child.pid)||identity.pid!==(this.servicePid??child.pid)||typeof identity.token!=='string'||!identity.token||typeof identity.serviceId!=='string'||!identity.serviceId)throw Error('kernel-service-identity-unavailable');
       const url=new URL(identity.baseUrl);if(url.protocol!=='http:'||url.hostname!=='127.0.0.1'||url.username||url.password||url.search||url.hash||!['','/'].includes(url.pathname))throw Error('kernel-service-identity-unavailable');
       if(this._tasks.size>MAX_TRACKED_TASKS)throw Error('kernel-task-tracking-limit');
       const signal=AbortSignal.timeout(10000),tasks=[...this._tasks.entries()];
@@ -130,7 +135,37 @@ export class KernelSession {
       return result(true,active>0,active?'kernel-background-tasks':undefined,active);
     }catch(error){return result(false,true,unchanged()?String(error.message||'kernel-activity-unavailable'):'kernel-activity-changed');}
   }
-  async stop(){this._stopping=true;this._activityRevision++;if(this.discovery)await fetch(this.discovery.baseUrl+'/api/shutdown',{method:'POST',headers:{Authorization:'Bearer '+this.discovery.token,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(3000)}).catch(()=>{});
-    if(this.child&&this.child.exitCode===null){await Promise.race([new Promise(r=>this.child.once('exit',r)),new Promise(r=>setTimeout(r,3000))]);if(this.child.exitCode===null)this.child.kill();}this.discovery=null;
+  _scheduleSnapshots(){
+    if(this._snapshotTimer||this._stopping||(!this.snapshotTasks.size&&!this._previousSnapshotsPending)||typeof this.storage?.discard!=='function')return;
+    this._snapshotTimer=setTimeout(()=>{this._snapshotTimer=null;this._snapshotSweep=this.sweepSnapshots().catch(()=>{}).finally(()=>{this._snapshotSweep=null;this._scheduleSnapshots();});},1000);
+    this._snapshotTimer.unref?.();
+  }
+  async sweepSnapshots(){
+    if(!this.discovery||this._stopping)return;
+    const identity=serviceKey(this.discovery),queue=await this.request({endpoint:'/api/jobs'});
+    if(this._stopping||identity!==serviceKey(this.discovery))return;
+    if(!Array.isArray(queue)||queue.length>MAX_QUEUE_ROWS||queue.some(task=>!validId(task?.id)))return;
+    if(this._previousSnapshotsPending){const recovered=await this.storage.recoverPrevious(queue);this._previousSnapshotsPending=Boolean(recovered.pending);}
+    for(const [id,entry] of this.snapshotTasks){
+      let task=entry.kind==='queue'?queue.find(row=>row.id===id):await this.request({endpoint:'/api/ai/novel/status',data:{id}});
+      // Failed/canceled queue records still support retry from their source.
+      // Retain that source until session shutdown, rather than breaking retry.
+      if(entry.kind==='queue'&&task&&['failed','canceled'].includes(task.state)){entry.retry=true;continue;}
+      if(!task&&entry.retry){await this.storage.discard(entry.snapshotId);this.snapshotTasks.delete(id);continue;}
+      if(task&&(entry.kind==='queue'?task.state==='completed'&&task.phase==='completed':['complete','failed','cancelled'].includes(task.state))){
+        await this.storage.discard(entry.snapshotId);this.snapshotTasks.delete(id);
+      }
+    }
+  }
+  stop(){
+    if(this._stopPromise)return this._stopPromise;
+    this._stopping=true;this._shutdownController.abort(Error('Craft 内核正在关闭'));this._activityRevision++;clearTimeout(this._snapshotTimer);this._snapshotTimer=null;
+    return this._stopPromise=(async()=>{
+      await this.starting?.catch(()=>{});
+      await this._snapshotSweep?.catch(()=>{});
+      if(this.discovery)await fetch(this.discovery.baseUrl+'/api/shutdown',{method:'POST',headers:{Authorization:'Bearer '+this.discovery.token,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(3000)}).catch(()=>{});
+      await terminateService(this.child);this.discovery=null;
+      this.cleanupWarnings=await this.storage?.close?.({preserveTasks:true});
+    })();
   }
 }

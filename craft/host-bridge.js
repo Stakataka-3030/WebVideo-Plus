@@ -120,8 +120,9 @@
         const document=['/api/timing','/api/jobs'].includes(endpoint)?await bridge.snapshot():null;
         if(document&&data?.sourceText!==undefined&&(data.sourceText!==document.source||data.scene!==document.sceneRelativePath))fail('导出或计时请求的剧本已经变化，请重新预览');
         if(data!==undefined&&['/api/timing','/api/jobs','/api/music/duration','/api/ai/novel/start'].includes(endpoint))snapshotId=(await bridge.exportSnapshot()).snapshotId;
-        if(document){await refreshBinding();validateSnapshot(document);}
-        assertContext(c);return rpc('service.request',{project:{id:c.game.id,path:c.projectPath},endpoint,data,snapshotId});},
+        try{if(document){await refreshBinding();validateSnapshot(document);}assertContext(c);}
+        catch(error){if(snapshotId)await rpc('snapshot.discard',{snapshotId}).catch(()=>{});throw error;}
+        return rpc('service.request',{project:{id:c.game.id,path:c.projectPath},endpoint,data,snapshotId});},
       async cancelJob(jobId){return rpc('job.cancel',{jobId});},
       async exportVideo(options){
         // The caller chooses a project before loading settings/anchors. Preserve
