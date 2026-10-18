@@ -198,3 +198,12 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 并行数仍由用户在 GUI 中选择，支持 1–32 的整数及快捷值。项目不会依据开发机实测写死 8 worker 等“最佳值”；不同 CPU、GPU、显存、内存带宽和磁盘环境应由用户自行选择。GUI 的 `gpuRawMode` 会持久化到 settings，并由 QueueService 映射为 JobRunner 的 `gpuRawExport/gpuRawCodec/gpuRawDom` 请求字段。任务列表会显示当前 GPU Raw codec，便于区分历史任务。
 
 构建链版本同步：`scripts/build-timeline.mjs` 与 `scripts/build-feature-assets.mjs` 不再把 staged `product.json` / `component.json` 写回旧的 0.4.x / 0.3.x 常量，统一从根目录 `version.json` 读取 productVersion/kernelVersion。这样安装包内 MANIFEST、product.json、component.json 和运行时版本元数据保持同源。
+
+
+## 构建材料、许可与生成文件校验
+
+构建前执行 `node scripts/verify-generated-assets.mjs`，在隔离临时目录重建导航并比较三个受跟踪输出；普通构建只校验，不再静默改写 `browser/`。导航的显式更新命令为 `node scripts/build-navigation-metadata.mjs`；Craft 根同名文件仅转发该按版本生成器。滤镜两份拆分文件须与 `browser/batch-filter.js` 的面板边界保持一致，修改这些源码后先更新对应生成输出并审阅差异。
+
+`node scripts/verify-materials.mjs --source` 检查跟踪及未忽略的新源码材料；最终包与 EXE 还会检查注册媒体原字节、专有 Core/模型/用户缓存/未知二进制和归档、固定原生依赖，以及每个锁定 AI 包的适用许可全文。新增可分发媒体或许可来源必须更新 `build/material-policy.json` / `build/third-party-notices.json` 并提供来源和哈希；API SDK 的类型 `models/*.js` 不按游戏模型处理。
+
+最终 EXE 静态核验命令为 `node scripts/verify-installer-materials.mjs <installer.exe>`。它读取内嵌 ZIP，校验 CRC、MANIFEST 与材料/许可闭包，不运行安装器。许可证文本校验允许 Windows LF/CRLF 差异；媒体和固定二进制仍按原字节校验。现存许可、版权、来源和历史验收记录应保留，许可通过只证明分发清单完整，不替代第三方具体使用条款。
