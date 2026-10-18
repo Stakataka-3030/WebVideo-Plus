@@ -33,3 +33,10 @@ The repository-level `LICENSE` and this file provide that notice for covered fil
 The MPL-2.0 grant applies to WebVideo+ original code across the released series, including the original portions corresponding to `v0.4.10.2` and the 1.0.0 release line. The `v0.4.10.2` tag predates the repository-level license files, so that historical tag snapshot itself does not contain them; current release tags should include `LICENSE`, `LICENSES.md`, `NOTICE.md`, and the third-party notices shipped by the build.
 
 For source and executable redistribution, preserve the notices and source-availability requirements of MPL-2.0 and any additional obligations of the separately licensed material listed above.
+
+
+### Supplemental distribution map
+
+- `pi-ai` / `pi-telemetry` 0.85.1: original MIT/Copyright Mario Zechner notice in `licenses/LICENSE-pi-0.85.1-MIT.txt`.
+- `pixi-live2d-display-webgal` 0.5.12: MIT/Copyright Guan, with independently governed Cubism Framework components. See the exact source/submodule references and retained texts in `licenses/THIRD-PARTY.md`; outer MIT/MPL terms do not relicense those components.
+- OPPO Sans v1.00: its unchanged historical public grant/restrictions and existing embedded-use interpretation, retained in `licenses/OPPO-Sans-1.00-NOTICE.txt`.

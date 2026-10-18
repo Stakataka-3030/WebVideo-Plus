@@ -3,18 +3,24 @@ import test from 'node:test';import assert from 'node:assert/strict';import fs f
 const repo=path.dirname(path.dirname(fileURLToPath(import.meta.url))),hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 function put(root,name,value='fixture'){const p=path.join(root,name);fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,value);}
 function prepared(body){const root=fs.mkdtempSync(path.join(os.tmpdir(),'craft-package-check-'));try{
- for(const name of ['craft/build-craft-kernel.mjs','craft/installer/transaction.mjs','craft/installer/build-receipt.mjs'])put(root,name,fs.readFileSync(path.join(repo,name)));
+ for(const name of ['craft/build-craft-kernel.mjs','craft/installer/transaction.mjs','craft/installer/build-receipt.mjs','scripts/verify-materials.mjs'])put(root,name,fs.readFileSync(path.join(repo,name)));
  const versions=JSON.parse(fs.readFileSync(path.join(repo,'craft/version.json')));versions.nodeSha256=hash('inert test Node');put(root,'craft/version.json',JSON.stringify(versions));
  put(root,'version.json',JSON.stringify({productVersion:versions.baseProductVersion,kernelVersion:versions.baseKernelVersion}));
+ for(const name of ['bootstrap/process-guard.cs','launcher/TerreLauncher.cs','craft/build-craft-package.ps1','craft/CraftStarter.cs','craft/update/InstallerObserver.cs','craft/update/OfficialInstallerLauncher.cs','craft/installer/Craft.manifest','craft/installer/ManifestVerifier.cs'])put(root,name);
+ put(root,'build/material-policy.json',JSON.stringify({media:[],inlineMedia:[],dependencyLicenses:['MIT']}));put(root,'build/third-party-notices.json',JSON.stringify({files:[]}));put(root,'build/dependencies.lock.json',JSON.stringify({stagedFiles:{}}));
  put(root,'build.ps1','fixture build');put(root,'native.manifest','fixture PE manifest');put(root,'src/Fixture.cs','// inert compilation fixture');
  for(const name of ['character-map.factory.json','preset-effects.factory.json','ai-providers.factory.json','anogo-actions.factory.json','filter-presets.factory.json'])put(root,name,'{}');
- for(const name of ['WebGAL.Video.exe','WebGAL.Video.exe.config','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll','process-guard.exe','CraftInstallerObserver.exe','CraftOfficialInstaller.exe','WebVideoCraft.Launcher.exe','LICENSE','LICENSES.md','NOTICE.md'])put(root,'package/'+name,'inert '+name);
+ for(const name of ['WebGAL.Video.exe','TerreLauncher.exe','WebGAL.Video.exe.config','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll','process-guard.exe','CraftInstallerObserver.exe','CraftOfficialInstaller.exe','WebVideoCraft.Launcher.exe','LICENSE','LICENSES.md','NOTICE.md'])put(root,'package/'+name,'inert '+name);
  for(const name of ['browser/novel-core.js','browser/navigation-metadata.js','browser/timeline-core.js','browser/filter-library.js','browser/navigation-model.js','runtime/web/index.html','licenses/third-party.txt'])put(root,'package/'+name);
  put(root,'package/ai-runtime/node.exe','inert test Node');put(root,'craft/LICENSE-Node-22.20.0.txt','test notice');
  for(const name of ['worker.mjs','novel-prompt.txt','stage-prompt.txt','package.json','package-lock.json','providers.json','novel-core.mjs','node_modules/@deepseek-ai/dsh-llm-pi-ai/package.json'])put(root,'package/ai-runtime/'+name);
 
  for(const name of ['craft/launch-injected.mjs','craft/host-bridge.js','craft/session/api.mjs','craft/update/observe-installer.ps1','craft/update/clean-handoff.mjs','craft/update/clean-coordinator.mjs','craft/update/minisign.mjs','craft/update/official-stage.mjs','craft/features/editor.js','craft/features/navigation-description.js','craft/features/vendor/LICENSE.txt','craft/features/vendor/parser.ts','craft/ui/styles.css','craft/ui/actual-time.js','craft/ui/music-panel.js','craft/ui/music-panel.css','craft/tests/not-shipped.test.mjs','vendor/js-yaml-4.1.1.min.js','vendor/js-yaml-LICENSE'])put(root,name);
- const receipt=spawnSync(process.execPath,[path.join(root,'craft/installer/build-receipt.mjs'),'--write'],{encoding:'utf8'});assert.equal(receipt.status,0,receipt.stderr);
+ put(root,'package/ai-runtime/package-lock.json',JSON.stringify({packages:{'':{},'node_modules/@deepseek-ai/dsh-llm-pi-ai':{version:'fixture',license:'MIT'}}}));
+ put(root,'package/ai-runtime/node_modules/@deepseek-ai/dsh-llm-pi-ai/package.json',JSON.stringify({version:'fixture',license:'MIT'}));
+ fs.cpSync(path.join(root,'build'),path.join(root,'package/build'),{recursive:true});
+ put(root,'package/ai-runtime/node_modules/@deepseek-ai/dsh-llm-pi-ai/LICENSE',fs.readFileSync(path.join(repo,'licenses/LICENSE-pi-0.85.1-MIT.txt')));
+ const receipt=spawnSync(process.execPath,[path.join(root,'craft/installer/build-receipt.mjs'),'--write'],{encoding:'utf8'});assert.equal(receipt.status,0,receipt.stderr);const helpers=spawnSync(process.execPath,[path.join(root,'craft/installer/build-receipt.mjs'),'--write-helpers'],{encoding:'utf8'});assert.equal(helpers.status,0,helpers.stderr);
  body(root,versions);
  }finally{fs.rmSync(root,{recursive:true,force:true});}}
 const run=root=>spawnSync(process.execPath,[path.join(root,'craft/build-craft-kernel.mjs')],{encoding:'utf8'});

@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "licenses/LICENSE-pi-0.85.1-MIT.txt",
+      "sha256": "0457f5bcec3b3b211605dfb5d1a49042fd638f3686a410fe099c24a25af13c48",
+      "source": "https://raw.githubusercontent.com/earendil-works/pi/v0.85.1/LICENSE",
+      "normalizeTextEol": true
+    },
+    {
+      "path": "licenses/LICENSE-pixi-live2d-display-MIT.txt",
+      "sha256": "8ccace668a041e78ed525d091b0b5daf8b623ff447f912616de535415e4f302f",
+      "source": "https://registry.npmjs.org/pixi-live2d-display-webgal/-/pixi-live2d-display-webgal-0.5.12.tgz",
+      "normalizeTextEol": true
+    },
+    {
+      "path": "licenses/LICENSE-CubismWebFramework.md",
+      "sha256": "7ed849bff1e6499aa7cd882e47d246ddbbe06817c1e84cb974df949488302614",
+      "source": "https://raw.githubusercontent.com/guansss/CubismWebFramework/1f9cdfd140e87ba0ae68a356bb5ec339a0e65f99/LICENSE.md",
+      "normalizeTextEol": true
+    },
+    {
+      "path": "licenses/LICENSE-Live2D-Open-Software.txt",
+      "sha256": "72155528a61f22afebbc065f9bf9acc2d9a160df23dd4f3107dc1ab4f8d6a53c",
+      "source": "https://www.live2d.com/eula/live2d-open-software-license-agreement_en.html",
+      "normalizeTextEol": true
+    },
+    {
+      "path": "licenses/OPPO-Sans-1.00-NOTICE.txt",
+      "sha256": "209a9503a28c7c0c8d2513ef10f478a50130d3d4e8ecbd5ebcb2051f19cea1ba",
+      "source": "https://web.archive.org/web/20200403160245/https://www.coloros.com/topic/coloros7.html",
+      "normalizeTextEol": true
+    },
+    {
+      "path": "licenses/LICENSE-standardwebhooks-1.1.1-MIT.txt",
+      "sha256": "5ec8c7b26b64d881a6706617bed25c049f97f2f35de034c756de8546fd6dbe27",
+      "source": "https://raw.githubusercontent.com/standard-webhooks/standard-webhooks/b4d2c14fc5b4ccff3ff271e3b087dff812254c59/libraries/LICENSE",
+      "normalizeTextEol": true
+    },
+    {
+      "path": "licenses/CubismWebFramework-ATTRIBUTION.txt",
+      "sha256": "71670cd4b473f3e94e6affac279d8b690bf8aae80bc04a4ada488d535531d66e",
+      "normalizeTextEol": true,
+      "source": "https://raw.githubusercontent.com/guansss/CubismWebFramework/1f9cdfd140e87ba0ae68a356bb5ec339a0e65f99/src/live2dcubismframework.ts"
+    }
+  ],
+  "pixiPlugin": {
+    "version": "0.5.12",
+    "gitHead": "6dc2ffc3516cf3d4b7a7cafda8fca25c9d6d0991",
+    "frameworkCommit": "1f9cdfd140e87ba0ae68a356bb5ec339a0e65f99",
+    "frameworkRepository": "https://github.com/guansss/CubismWebFramework"
+  },
+  "dependencyNoticePaths": {
+    "node_modules/@earendil-works/pi-ai": [
+      "licenses/LICENSE-pi-0.85.1-MIT.txt"
+    ],
+    "node_modules/@earendil-works/pi-telemetry": [
+      "licenses/LICENSE-pi-0.85.1-MIT.txt"
+    ],
+    "node_modules/standardwebhooks": [
+      "licenses/LICENSE-standardwebhooks-1.1.1-MIT.txt"
+    ],
+    "node_modules/@aws-sdk/credential-provider-http": [
+      "ai-runtime/node_modules/@aws-sdk/client-bedrock-runtime/LICENSE"
+    ],
+    "node_modules/@aws-sdk/credential-provider-login": [
+      "ai-runtime/node_modules/@aws-sdk/client-bedrock-runtime/LICENSE"
+    ],
+    "node_modules/@aws-sdk/nested-clients": [
+      "ai-runtime/node_modules/@aws-sdk/client-bedrock-runtime/LICENSE"
+    ]
+  }
+}

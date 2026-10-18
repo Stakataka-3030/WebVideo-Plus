@@ -1,5 +1,7 @@
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
+& node (Join-Path $PSScriptRoot 'installer/check-source-inputs.mjs')
+if($LASTEXITCODE -ne 0){throw 'Incomplete Craft build source inputs'}
 $versions=Get-Content (Join-Path $PSScriptRoot 'version.json') -Raw | ConvertFrom-Json
 $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 $starter=Join-Path $root 'package/WebVideoCraft.Launcher.exe'
@@ -25,6 +27,8 @@ try {
  if($LASTEXITCODE -ne 0){throw 'Craft installer observer build failed'}
  & $compiler /nologo /target:exe /platform:x64 /optimize+ ('/out:'+(Join-Path $root 'package/CraftOfficialInstaller.exe')) /r:System.Web.Extensions.dll (Join-Path $PSScriptRoot 'update/OfficialInstallerLauncher.cs')
  if($LASTEXITCODE -ne 0){throw 'Craft clean official installer launcher build failed'}
+ & node (Join-Path $PSScriptRoot 'installer/build-receipt.mjs') --write-helpers
+ if($LASTEXITCODE -ne 0){throw 'Craft helper build receipt failed'}
  & node (Join-Path $PSScriptRoot 'build-craft-kernel.mjs')
  if($LASTEXITCODE -ne 0){throw 'Craft kernel package failed'}
  & (Join-Path $PSScriptRoot 'verify-craft-package.ps1')
@@ -34,6 +38,8 @@ try {
  $installer=$folder+'.exe'
  & $compiler /nologo /target:winexe /platform:x64 /optimize+ ('/win32manifest:'+$nativeManifest) ('/out:'+$installer) ('/resource:'+$zip+',payload.zip') /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll (Join-Path $temp 'CraftSetup.cs') $verifier $setupPaths $setupContracts $productRouting $reminderPreferences
  if($LASTEXITCODE -ne 0){throw 'Craft setup build failed'}
+ & node (Join-Path $root 'scripts/verify-installer-materials.mjs') $installer
+ if($LASTEXITCODE -ne 0){throw 'Final Craft installer material admission failed'}
  & node (Join-Path $PSScriptRoot 'update/build-release-descriptor.mjs') $installer
  if($LASTEXITCODE -ne 0){throw 'Craft release integrity descriptor failed'}
  Get-Item -LiteralPath $zip,$installer | Select-Object FullName,Length

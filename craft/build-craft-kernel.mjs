@@ -3,19 +3,20 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {verifyPackage} from './installer/transaction.mjs';
-import {verifyBuildReceipt} from './installer/build-receipt.mjs';
+import {verifyBuildReceipt,verifyHelperBuildReceipt} from './installer/build-receipt.mjs';
+import {verifyPackageMaterials,verifySourceMaterials} from '../scripts/verify-materials.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url)),root=path.resolve(here,'..'),source=path.join(root,'package');
 const versions=JSON.parse(fs.readFileSync(path.join(here,'version.json'),'utf8'));
 const output=path.join(root,'dist',`WebVideoCraft-Setup-${versions.installerVersion}`),stage=output+'.stage-'+crypto.randomUUID();
 const digest=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-verifyBuildReceipt(root);
+verifyBuildReceipt(root);verifyHelperBuildReceipt(root);verifySourceMaterials(root);
 const base=JSON.parse(fs.readFileSync(path.join(root,'version.json'),'utf8'));
 fs.copyFileSync(path.join(root,'version.json'),path.join(source,'version.json'));
 if(base.productVersion!==versions.baseProductVersion||base.kernelVersion!==versions.baseKernelVersion)throw Error('Craft package requires its declared base product/kernel versions');
 const node=path.join(source,'ai-runtime/node.exe');if(digest(node)!==versions.nodeSha256)throw Error('Craft requires the pinned official Node '+versions.nodeVersion+' executable');
 fs.mkdirSync(stage,{recursive:true});
 try{
- for(const name of ['WebGAL.Video.exe','WebGAL.Video.exe.config','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll','process-guard.exe','CraftInstallerObserver.exe','CraftOfficialInstaller.exe','WebVideoCraft.Launcher.exe','browser','runtime','LICENSE','LICENSES.md','NOTICE.md','licenses','native-source-build.json'])fs.cpSync(path.join(source,name),path.join(stage,name),{recursive:true});
+ for(const name of ['WebGAL.Video.exe','WebGAL.Video.exe.config','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll','process-guard.exe','CraftInstallerObserver.exe','CraftOfficialInstaller.exe','WebVideoCraft.Launcher.exe','browser','runtime','LICENSE','LICENSES.md','NOTICE.md','licenses','build','native-source-build.json','craft-native-build.json'])fs.cpSync(path.join(source,name),path.join(stage,name),{recursive:true});
  fs.cpSync(path.join(root,'vendor'),path.join(stage,'vendor'),{recursive:true});
  if(fs.existsSync(path.join(source,'bin')))fs.cpSync(path.join(source,'bin'),path.join(stage,'bin'),{recursive:true});
  fs.copyFileSync(node,path.join(stage,'node.exe'));fs.copyFileSync(path.join(here,'LICENSE-Node-22.20.0.txt'),path.join(stage,'LICENSE-Node.txt'));
@@ -28,7 +29,7 @@ try{
  }
  copyRuntime(here);fs.writeFileSync(path.join(stage,'version.json'),JSON.stringify(versions,null,2)+'\n');
  const files=[];function walk(dir){for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const file=path.join(dir,entry.name);if(entry.isSymbolicLink())throw Error('Linked package input');if(entry.isDirectory())walk(file);else files.push({path:path.relative(stage,file).split(path.sep).join('/'),bytes:fs.statSync(file).size,sha256:digest(file)});}}walk(stage);files.sort((a,b)=>a.path.localeCompare(b.path));
- fs.writeFileSync(path.join(stage,'MANIFEST.json'),JSON.stringify({schemaVersion:1,product:'WebVideo+ Craft',launchMode:'same-name',version:versions.productVersion,installerVersion:versions.installerVersion,kernelVersion:versions.kernelVersion,baseProductVersion:versions.baseProductVersion,baseKernelVersion:versions.baseKernelVersion,supportedHosts:versions.supportedHosts,updateObserverValidated:versions.updateObserverValidated===true,sameNameUpdateValidated:versions.sameNameUpdateValidated===true,officialCleanUpdateValidated:versions.officialCleanUpdateValidated===true,officialAutoInstallEnabled:versions.officialAutoInstallEnabled===true,entry:'craft/launch-injected.mjs',wrapper:'WebVideoCraft.Launcher.exe',node:'node.exe',kernel:'WebGAL.Video.exe',files},null,2)+'\n');verifyPackage(stage);
+ fs.writeFileSync(path.join(stage,'MANIFEST.json'),JSON.stringify({schemaVersion:1,product:'WebVideo+ Craft',launchMode:'same-name',version:versions.productVersion,installerVersion:versions.installerVersion,kernelVersion:versions.kernelVersion,baseProductVersion:versions.baseProductVersion,baseKernelVersion:versions.baseKernelVersion,supportedHosts:versions.supportedHosts,updateObserverValidated:versions.updateObserverValidated===true,sameNameUpdateValidated:versions.sameNameUpdateValidated===true,officialCleanUpdateValidated:versions.officialCleanUpdateValidated===true,officialAutoInstallEnabled:versions.officialAutoInstallEnabled===true,entry:'craft/launch-injected.mjs',wrapper:'WebVideoCraft.Launcher.exe',node:'node.exe',kernel:'WebGAL.Video.exe',files},null,2)+'\n');verifyPackageMaterials(stage,root);verifyPackage(stage);
  // Replace only a previous package whose manifest still proves ownership.
  if(fs.existsSync(output)){verifyPackage(output);const old=output+'.previous-'+crypto.randomUUID();fs.renameSync(output,old);try{fs.renameSync(stage,output);}catch(error){fs.renameSync(old,output);throw error;}fs.rmSync(old,{recursive:true});}else fs.renameSync(stage,output);
  console.log(`${output}\n${files.length} verified files`);
