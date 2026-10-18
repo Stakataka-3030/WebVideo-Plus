@@ -8,6 +8,7 @@ function terre(version){
  const ctx={URL,console,TextEncoder,AbortController,crypto:crypto.webcrypto,navigator:{},setTimeout,clearTimeout,WebVideoTools:{register(){}},WebVideoHostProfile:{terreVersion:version,transformFrom:version!=='4.6.4',animationV2:version==='4.6.6'},api:{assetsControllerEditTextFile:async()=>{},assetsControllerReadAssets:async p=>{if(!fs.existsSync(physical(p))){const e=Error('Missing');e.status=404;throw e;}return {data:{dirInfo:fs.readdirSync(physical(p),{withFileTypes:true}).map(entry=>({name:entry.name,isDirectory:entry.isDirectory()}))}};}},fetch:async(url,options)=>{
   const response=(value,status=200)=>({ok:status>=200&&status<300,status,text:async()=>JSON.stringify(value)});
   if(String(url)==='/assets/video-export-service.json')return response({baseUrl:'http://127.0.0.1:1234',token:'fixture'});
+  if(String(url)==='http://127.0.0.1:1234/api/authoring/read'){const body=JSON.parse(options.body),text=get('games/'+body.project+'/'+body.path);return response({exists:text!==null,text});}
   if(String(url)==='http://127.0.0.1:1234/api/music/project'){
    const body=JSON.parse(options.body),relative='games/'+body.project+'/video-project.json',raw=get(relative),hash=raw===null?'missing':crypto.createHash('sha256').update(fs.readFileSync(physical(relative))).digest('hex');
    if(body.action==='read'){let music={schemaVersion:2,enabled:false,players:1,tracks:[]};try{if(raw!==null)music=JSON.parse(raw);}catch{return response({music:null,hash,error:'音乐配置无法解析，请先恢复备份。'});}return response({music,hash});}
