@@ -5,15 +5,15 @@ import vm from 'node:vm';
 import {webcrypto} from 'node:crypto';
 const root=new URL('../',import.meta.url),source=fs.readFileSync(new URL('browser/export-component.js',root),'utf8');
 function fixture(){
- const states=[],requests=[],selectionRequests=[];let cursor=0;
+ const states=[],requests=[],selectionRequests=[];let cursor=0,connectionIndex;
  const model={path:'games/demo/game/scene/start.txt',source:'A:test;\n;CutHere\nwait:100;\nB:next;',revision:'r1',statements:[{id:'0:0',command:'say',startLine:1,endLine:1,title:'test',source:'A:test;\n'},{id:'1:1',command:'comment',startLine:2,endLine:2,title:'CutHere',source:';CutHere\n'},{id:'2:2',command:'wait',startLine:3,endLine:3,title:'wait',source:'wait:100;\n'},{id:'3:3',command:'say',startLine:4,endLine:4,title:'next',source:'B:next;'}]};
  let selected={...model,statements:[model.statements[2],model.statements[3]]};
- const context={console,queueMicrotask,crypto:webcrypto,TextEncoder,setTimeout:callback=>{queueMicrotask(callback);return 1;},clearTimeout(){},localStorage:{getItem(){return null;}},useGameEditorContext:fn=>fn({currentTag:{name:'start.txt',path:'games/demo/game/scene/start.txt'}}),useEditorStore:{use:{subPage:()=> 'demo'}},reactExports:{Fragment:'fragment',useState(initial){const index=cursor++;if(!(index in states))states[index]=typeof initial==='function'?initial():initial;return [states[index],value=>{states[index]=typeof value==='function'?value(states[index]):value;}];},useRef(value){const index=cursor++;if(!(index in states))states[index]={current:value};return states[index];},useEffect(){}},jsxRuntimeExports:{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},WebVideoRuntime:{readGameSettings:async()=>({textSpeed:50,autoSpeed:50})},fetch:async(url,options)=>{requests.push({url,body:options.body&&JSON.parse(options.body)});return {ok:true,json:async()=>url.endsWith('/api/jobs')&&options.method==='GET'?[]:{}};}};
+ const context={console,queueMicrotask,crypto:webcrypto,TextEncoder,AbortController,setTimeout,clearTimeout,localStorage:{getItem(){return null;}},useGameEditorContext:fn=>fn({currentTag:{name:'start.txt',path:'games/demo/game/scene/start.txt'}}),useEditorStore:{use:{subPage:()=> 'demo'}},reactExports:{Fragment:'fragment',useState(initial){const index=cursor++;if(initial===null&&connectionIndex===undefined)connectionIndex=index;if(!(index in states))states[index]=typeof initial==='function'?initial():initial;return [states[index],value=>{states[index]=typeof value==='function'?value(states[index]):value;}];},useRef(value){const index=cursor++;if(!(index in states))states[index]={current:value};return states[index];},useEffect(){}},jsxRuntimeExports:{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},WebVideoRuntime:{readGameSettings:async()=>({textSpeed:50,autoSpeed:50})},fetch:async(url,options)=>{requests.push({url,body:options.body&&JSON.parse(options.body)});const value=url.endsWith('/api/jobs')&&options.method==='GET'?[]:{id:'fixture-job'};return {ok:true,status:200,text:async()=>JSON.stringify(value),json:async()=>value};}};
  for(const name of ['Button','Dialog','DialogSurface','DialogBody','DialogTitle','DialogContent','DialogActions','__CODEX_TOOLTIP__','IconWithTextItemSmall','RightSmallUp'])context[name]=name;
  context.window={WebVideoPlus:{modules:['timelineSelector'],state:()=>({model}),validateSelection:s=>!!s&&s.path===model.path&&s.source===model.source&&s.revision===model.revision,requestSelection:async options=>{selectionRequests.push(options);return selected;}},WebVideoTools:{modules:[]}};
  vm.createContext(context);vm.runInContext(source,context);
  const render=()=>{cursor=0;return context.CodexVideoExport();};
- return {context,states,requests,selectionRequests,model,setSelection(value){selected=value;},render,parse:(text,fps)=>Array.from(context.webVideoManualCutFrames(text,fps))};
+ return {context,states,requests,selectionRequests,model,connect:()=>{if(connectionIndex===undefined)render();states[connectionIndex]={baseUrl:'http://127.0.0.1:1234',token:'fixture'};},setSelection(value){selected=value;},render,parse:(text,fps)=>Array.from(context.webVideoManualCutFrames(text,fps))};
 }
 function nodes(node){return !node||typeof node!=='object'?[]:[node,...(Array.isArray(node.props?.children)?node.props.children:[node.props?.children]).flatMap(nodes)];}
 const find=(tree,label)=>nodes(tree).find(node=>node.props?.['aria-label']===label);
@@ -53,13 +53,13 @@ test('repeated cut-picker clicks issue only one pending selection request',async
  tree=f.render();assert.match(texts(tree),/临时切点：1 条语句/);
 });
 test('queued request snapshots statement anchors, excludes old numeric cuts and rejects stale picks',async()=>{
- const f=fixture();let tree=f.render();f.states[1]={baseUrl:'http://test',token:'fixture'};
+ const f=fixture();let tree=f.render();f.connect();
  const settings=f.states.find(value=>value?.fps===30);settings.manualCutPoints='99,100';tree=f.render();
  assert.match(texts(tree),/旧版数字切点/);
  await button(tree,'从时间线选择切点语句…').props.onClick();tree=f.render();
  await button(tree,'加入导出队列').props.onClick();
  const queued=f.requests.find(request=>request.body?.settings).body;
- assert.equal(queued.settings.segmentCutMode,'manual');assert.equal(queued.settings.manualCutPoints,'');
+ assert.match(queued.requestId,/^[0-9a-f-]{36}$/i);assert.equal(queued.settings.segmentCutMode,'manual');assert.equal(queued.settings.manualCutPoints,'');
  assert.deepEqual(queued.manualCutStatements.map(item=>[item.scene,item.line,item.endLine,item.occurrence]),[['start.txt',3,3,1],['start.txt',4,4,1]]);
  assert.match(queued.manualCutStatements[0].sourceHash,/^[a-f0-9]{64}$/);
  assert.equal(queued.sourceText,f.model.source);assert.equal(queued.storyScope,'full');
@@ -94,7 +94,7 @@ test('native job and settings wiring includes statement sources in cache and dia
  assert.match(read('src/ExportCli.cs'),/App\.Arg\("--segment-cut-mode","auto"\)/);
 });
 test('audio ignores temporary statement cuts without losing video UI preference',async()=>{
- const f=fixture();let tree=f.render();f.states[1]={baseUrl:'http://test',token:'fixture'};
+ const f=fixture();let tree=f.render();f.connect();
  await button(tree,'从时间线选择切点语句…').props.onClick();tree=f.render();
  const kindIndex=f.states.lastIndexOf('full');f.states[kindIndex]='audio';tree=f.render();
  assert.equal(find(tree,'分段切点'),undefined);await button(tree,'加入导出队列').props.onClick();

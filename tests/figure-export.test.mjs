@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {webcrypto} from 'node:crypto';
 const root=new URL('../',import.meta.url),read=file=>fs.readFileSync(new URL(file,root),'utf8');
 const source=read('browser/render.js'),filter=source.slice(source.indexOf('globalThis.__exportInstallFigureOutputFilter='),source.indexOf('globalThis.__exportTextSettleApplies='));
 function fixture(includeFigures=false){
@@ -69,24 +70,24 @@ test('request, worker, retry signature and result preserve stage-only figure sel
 });
 
 function ui(){
- const states=[],requests=[],effects=[];let cursor=0;
- const context={console,queueMicrotask,setTimeout:fn=>{queueMicrotask(fn);return 1;},clearTimeout(){},localStorage:{getItem(){return null;}},useGameEditorContext:fn=>fn({currentTag:{name:'start.txt',path:'games/demo/game/scene/start.txt'}}),useEditorStore:{use:{subPage:()=> 'demo'}},reactExports:{Fragment:'fragment',useState(initial){const i=cursor++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return [states[i],value=>states[i]=typeof value==='function'?value(states[i]):value];},useRef(value){const i=cursor++;if(!(i in states))states[i]={current:value};return states[i];},useEffect(fn){effects.push(fn);}},jsxRuntimeExports:{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},WebVideoRuntime:{readGameSettings:async()=>({})},fetch:async(url,options)=>{requests.push({url,body:options.body&&JSON.parse(options.body)});return {ok:true,json:async()=>url.endsWith('/api/jobs')&&options.method==='GET'?[]:{}};}};
+ const states=[],requests=[],effects=[];let cursor=0,connectionIndex;
+ const context={console,queueMicrotask,AbortController,crypto:webcrypto,setTimeout,clearTimeout,localStorage:{getItem(){return null;}},useGameEditorContext:fn=>fn({currentTag:{name:'start.txt',path:'games/demo/game/scene/start.txt'}}),useEditorStore:{use:{subPage:()=> 'demo'}},reactExports:{Fragment:'fragment',useState(initial){const i=cursor++;if(initial===null&&connectionIndex===undefined)connectionIndex=i;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return [states[i],value=>states[i]=typeof value==='function'?value(states[i]):value];},useRef(value){const i=cursor++;if(!(i in states))states[i]={current:value};return states[i];},useEffect(fn){effects.push(fn);}},jsxRuntimeExports:{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},WebVideoRuntime:{readGameSettings:async()=>({})},fetch:async(url,options)=>{requests.push({url,body:options.body&&JSON.parse(options.body)});const value=url.endsWith('/api/jobs')&&options.method==='GET'?[]:{id:'fixture-job'};return {ok:true,status:200,text:async()=>JSON.stringify(value),json:async()=>value};}};
  const listeners={};for(const name of ['Button','Dialog','DialogSurface','DialogBody','DialogTitle','DialogContent','DialogActions','__CODEX_TOOLTIP__','IconWithTextItemSmall','RightSmallUp'])context[name]=name;
  context.window={addEventListener:(type,fn)=>listeners[type]=fn,removeEventListener(){},WebVideoPlus:{modules:[],state:()=>({model:{path:'games/demo/game/scene/start.txt',source:'changeFigure:hero.png;\nwait:1000;'}})},WebVideoTools:{modules:[]}};
  vm.createContext(context);vm.runInContext(read('browser/export-component.js'),context);
  const render=()=>{cursor=0;return context.CodexVideoExport();};render();effects.find(fn=>fn.toString().includes('webvideo:open-export'))();
- return {states,requests,render,open:kind=>listeners['webvideo:open-export']({detail:{exportKind:kind}})};
+ return {states,requests,render,connect:()=>{if(connectionIndex===undefined)render();states[connectionIndex]={baseUrl:'http://127.0.0.1:1234',token:'fixture'};},open:kind=>listeners['webvideo:open-export']({detail:{exportKind:kind}})};
 }
 const nodes=n=>!n||typeof n!=='object'?[]:[n,...[n.props?.children].flat().flatMap(nodes)];
 const checkbox=(tree,label)=>nodes(tree).find(n=>n.type==='label'&&[n.props.children].flat().includes(' '+label))?.props.children[0];
 test('UI places 包含立绘 immediately after 包含背景 and queues all four independent combinations',async()=>{
  for(const background of [true,false])for(const figures of [true,false]){
-  const f=ui();f.open('stage');f.states[1]={baseUrl:'http://test',token:'fixture'};let tree=f.render();
+  const f=ui();f.open('stage');f.connect();let tree=f.render();
   const labels=nodes(tree).filter(n=>n.type==='label').flatMap(n=>[n.props.children].flat().filter(x=>typeof x==='string'));
   assert.equal(labels[labels.indexOf(' 包含背景')+1],' 包含立绘');
   checkbox(tree,'包含背景').props.onChange({target:{checked:background}});checkbox(tree,'包含立绘').props.onChange({target:{checked:figures}});tree=f.render();
   await nodes(tree).find(n=>n.type==='Button'&&n.props.children==='加入导出队列').props.onClick();
-  const queued=f.requests.find(x=>x.body?.settings)?.body;assert.ok(queued);assert.equal(queued.exportKind,'stage');assert.equal(queued.includeBackground,background);assert.equal(queued.includeFigures,figures);
+  const queued=f.requests.find(x=>x.body?.settings)?.body;assert.ok(queued);assert.match(queued.requestId,/^[0-9a-f-]{36}$/i);assert.equal(queued.exportKind,'stage');assert.equal(queued.includeBackground,background);assert.equal(queued.includeFigures,figures);
   f.open('stage');tree=f.render();assert.equal(checkbox(tree,'包含立绘').props.checked,true,'reopen defaults on');
   f.open('full');tree=f.render();assert.equal(checkbox(tree,'包含立绘'),undefined);
  }
