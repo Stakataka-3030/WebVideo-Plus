@@ -51,13 +51,15 @@ Craft 产品版本为 1.1.14c，安装器为 1.1.14.0c，Win32 文件版本为 1
 
 ## 构建（Windows，隔离工作目录）
 
-1. 本轮 Windows QA 按用户要求取得官方 rc.1 源码和签名安装器；运行时与构建依赖复用本机已校验缓存，测试 profile 和项目单独新建。通用全新构建按 `prepare-build.ps1` 的固定来源流程准备输入
-2. 运行 `powershell -File build.ps1`，编译本次源代码的原生内核
-3. 在 `ai-runtime` 执行 `npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund`，再运行 `powershell -File scripts/build-ai.ps1`，准备本次源码的 AI 运行模块；构建不调用模型服务
-4. 运行 `powershell -File craft/build-craft-package.ps1`，生成独立适配安装包
-5. 仅在新建的 Craft 副本、新 WebView profile 和测试项目上安装/验收；确认版本清单、撤销、VFS、导出和恢复结果后再考虑真实使用
+历史 Windows QA 的宿主、缓存和授权边界见 [构建来源](BUILD-PROVENANCE.md) 与对应 ACCEPTANCE 记录。新构建从固定官方归档准备，不要求旧安装器：
 
-版本由根 `version.json` 与 `craft/version.json` 分开记录：根文件是原生内核基础版本，Craft 文件是适配产品版本。没有创建公开发行版。
+1. 运行 `powershell -File prepare-build.ps1`；可用 `-CacheDirectory D:/.../downloads` 复用经 SHA-256 核验的缓存，准备后用 `-Offline` 再验证。
+2. 运行 `powershell -File build.ps1`，校验生成输出并编译本次源码的原生内核、process-guard 和启动器，写入源码/引用/产物收据。
+3. 在 `ai-runtime` 执行 `npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund`，再运行 `powershell -File scripts/build-ai.ps1`；使用固定 Node 和许可，不调用模型服务。
+4. 运行 `powershell -File craft/build-craft-package.ps1`，完整编译 Craft 辅助程序、核验两类收据并组装安装器；静态检查最终 EXE 内嵌清单、CRC、素材与许可。
+5. 用新建宿主副本、独立 WebView profile 和测试项目验收安装、编辑、导出及恢复；构建完成本身不代表这些 UI/运行时验收已完成。
+
+根 `build-ai.ps1` 为兼容转发入口；根 `build-product.ps1` 明确拒绝在 Craft 线误生成 Terre 产品。`craft/version.json` 与根 `version.json` 各有用途；发布流程单独负责提交、标签和 Release，构建脚本不会创建公开发行记录。详细材料准入与生成输出校验见 [构建说明](../docs/BUILDING.md)。
 
 ## 验证
 

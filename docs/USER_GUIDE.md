@@ -4,9 +4,9 @@
 
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [1.1.4 发行说明](releases/RELEASE_NOTES_1.1.4.md) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
 
-**当前源码版本：1.1.4（内部开发标识 0.8.8；安装器 Win32 版本 1.1.4.0，导出内核 0.6.48）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
+**以下 Terre 说明保留自 1.1.4（内部开发标识 0.8.8；安装器 Win32 版本 1.1.4.0，导出内核 0.6.48），不代表本分支当前源码版本。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
 
 本历史指南的适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
 
@@ -46,7 +46,7 @@
 
 并行数支持 1–32，但更多进程不一定更快。Planner 会按剧情安全点和 DOM workload 估算分配分片，且分片数不会超过有效 worker 数，避免额外 WebView2 冷启动。**1080p 是常规推荐档，1440p 适合需要更高输出分辨率的场景；4K 每帧像素量约为 1080p 的 4 倍，建议 2–4 worker。若原始背景、立绘或 Live2D 贴图本身不是 4K，通常不会获得更多真实细节。**
 
-1.1.4 的改动见[发行说明](releases/RELEASE_NOTES_1.1.4.md)与[版本记录](../CHANGELOG.md)；此前版本见[发行说明索引](releases/README.md)。
+本分支保留的历史版本见[版本记录](../CHANGELOG.md)；正式安装器和完整发行记录以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases) 为准。
 
 ## 两轮基础舞台
 
