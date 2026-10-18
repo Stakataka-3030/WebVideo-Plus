@@ -44,8 +44,11 @@
     const advanced = el('details'), advancedBody = el('div'); advanced.append(el('summary', '高级导出设置'), advancedBody); exportCard.append(advanced);
     const cutMode = select(advancedBody, '分段切点', [['auto', '自动安全切点'], ['manual', '手动强制切点']]);
     const numericCuts = field(advancedBody, '手动切点（帧、秒或时间码）');
-    const memoryMode = select(advancedBody, 'Live2D Core 内存模式', [['default', '默认（不修改）'], ['manual', '每进程手动分配']]);
-    const memoryMiB = field(advancedBody, '每进程 Live2D Core 初始内存（MiB）', '64', 'number');
+    const memoryMode = select(advancedBody, 'Live2D Core 内存模式', [['default', '引擎默认'], ['manual', '每进程指定内存']]);
+    const memoryMiB = field(advancedBody, '每进程 Live2D Core 初始内存（MiB）', '128', 'number');
+    memoryMode.value = 'manual';
+    let memoryEdited = false;
+    for (const [input, event] of [[memoryMode, 'change'], [memoryMiB, 'input'], [memoryMiB, 'change']]) on(input, event, () => { memoryEdited = true; });
     const captureFormat = select(advancedBody, '兼容截图格式', [['jpeg', 'JPEG'], ['png', 'PNG（截图无损）']]);
     const gpuChoice = select(advancedBody, '渲染 GPU', [['auto', '自动选择'], ['high', '高性能 GPU'], ['low', '节能 GPU']]);
     const alphaCapture = select(advancedBody, '透明层捕获', [['fast', '快速透明捕获'], ['screenshot', '兼容截图捕获']]);
@@ -53,7 +56,7 @@
     button(advancedBody, '读取已保存的导出设置', async () => {
       const config = await bridge.service('/api/config'), s = config.settings || {};
       for (const [input, key] of [[cutMode,'segmentCutMode'],[numericCuts,'manualCutPoints'],[captureFormat,'compatibilityCaptureFormat'],[gpuChoice,'gpu'],[alphaCapture,'alphaCaptureMode'],[timingMode,'mode'],[bgmBaseMode,'bgmBaseMode'],[holdSeconds,'holdSeconds'],[manualTextSpeed,'textSpeed']]) if (s[key] !== undefined) input.value = String(s[key]);
-      memoryMode.value = s.cubismCoreInitialMemoryMiB ? 'manual' : 'default'; if (s.cubismCoreInitialMemoryMiB) memoryMiB.value = String(s.cubismCoreInitialMemoryMiB);
+      const memory = s.cubismCoreInitialMemoryMiB ?? 128; memoryMode.value = memory === 0 ? 'default' : 'manual'; memoryMiB.value = String(memory || 128); memoryEdited = true;
       for (const [input,key] of [[gpuDom,'gpuRawDom'],[strictCuts,'strictSegmentCuts'],[decorativeCuts,'allowDecorativePixiCuts'],[notendTail,'notendVisualTail']]) if (s[key] !== undefined) input.checked = s[key] === true;
       updateExport();
     }, ['service']);
@@ -209,6 +212,10 @@
       if (interrupted()) return;
       const subtitle = await buildSubtitle(snap);
       if (interrupted()) return;
+      if (!memoryEdited && config.settings.cubismCoreInitialMemoryMiB != null) {
+        const savedMemory = config.settings.cubismCoreInitialMemoryMiB;
+        memoryMode.value = savedMemory === 0 ? 'default' : 'manual'; memoryMiB.value = String(savedMemory || 128); updateExport();
+      }
       const memory = memoryMode.value === 'default' ? 0 : integer(memoryMiB, 'Live2D Core 初始内存', 16, 1024);
       const settings = { ...config.settings, ...speeds, width: size[0], height: size[1], fps: Number(fps.value), workers: parallel, gpuRawMode: !full && quality.value === 'traditional' ? 'recommended' : quality.value, mode: fullMode, bgmBaseMode: bgmBaseMode.value, holdSeconds: finite(holdSeconds, '手动等待秒数', 0, 60), segmentCutMode: kind.value === 'audio' ? 'auto' : cutMode.value, manualCutPoints: kind.value === 'audio' ? '' : numericCuts.value.trim(), cubismCoreInitialMemoryMiB: memory, compatibilityCaptureFormat: captureFormat.value };
       Object.assign(settings, {gpu:gpuChoice.value,alphaCaptureMode:alphaCapture.value,gpuRawDom:gpuDom.checked,strictSegmentCuts:strictCuts.checked,allowDecorativePixiCuts:decorativeCuts.checked,notendVisualTail:notendTail.checked});

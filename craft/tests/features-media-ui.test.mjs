@@ -206,3 +206,20 @@ for (const failure of [false, true]) test('a slow old cancel cannot target or ov
  assert.deepEqual(f.messages, messages, 'old completion or error must not replace the new submission status');
  assert.deepEqual(f.errors, []); f.mounted.dispose();
 });
+
+test('fresh export uses 128 MiB while saved explicit values remain intact',async()=>{
+ for(const value of [undefined,64,256,0]){
+  const f=setup(), service=f.bridge.service;
+  f.bridge.service=async endpoint=>endpoint==='/api/config'?{settings:value===undefined?{}:{cubismCoreInitialMemoryMiB:value}}:service(endpoint);
+  await f.click('加入导出队列');await until(()=>f.calls.find(row=>row[0]==='export'),'memory export request');
+  assert.equal(f.calls.find(row=>row[0]==='export')[1].settings.cubismCoreInitialMemoryMiB,value??128);
+  f.mounted.dispose();
+ }
+});
+test('an explicit panel memory choice wins over saved configuration',async()=>{
+ const f=setup(),service=f.bridge.service;
+ f.bridge.service=async endpoint=>endpoint==='/api/config'?{settings:{cubismCoreInitialMemoryMiB:256}}:service(endpoint);
+ await f.change('Live2D Core 内存模式','manual');await f.change('每进程 Live2D Core 初始内存（MiB）','64');
+ await f.click('加入导出队列');await until(()=>f.calls.find(row=>row[0]==='export'),'custom memory export request');
+ assert.equal(f.calls.find(row=>row[0]==='export')[1].settings.cubismCoreInitialMemoryMiB,64);f.mounted.dispose();
+});
