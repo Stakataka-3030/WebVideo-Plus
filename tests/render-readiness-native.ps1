@@ -48,13 +48,15 @@ $arguments=@('export','--project',('"'+$project+'"'),'--scene','start.txt','--ou
 $arguments+=@('--engine',$Engine,'--compatibility-capture-format',$CaptureFormat)
 if($CoreMemoryMiB -ge 0){$arguments+=@('--cubism-core-memory-mib',[string]$CoreMemoryMiB)}
 $process=Start-Process -FilePath $exe -ArgumentList $arguments -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $run 'full.log') -RedirectStandardError (Join-Path $run 'full-error.log')
+# Preserve the exit status under Windows PowerShell 5.1 as well as PowerShell 7.
+$null=$process.Handle
 [IO.File]::WriteAllText((Join-Path $run 'process.json'),(@{pid=$process.Id;run=$run;project=$project;startedUtc=[DateTime]::UtcNow.ToString('o')}|ConvertTo-Json),$utf8)
 Write-Output "PID=$($process.Id) RUN=$run"
 
 $watch=[Diagnostics.Stopwatch]::StartNew()
 while(-not $process.WaitForExit(1000)){if($watch.Elapsed.TotalSeconds -gt 180){& taskkill /PID $process.Id /T /F | Out-Null;throw "Owned export exceeded 180 seconds: $run"}}
-$process.WaitForExit();$status=Get-Content (Join-Path $run 'full-work/status.json') -Raw|ConvertFrom-Json
-if($process.ExitCode -ne 0 -or $status.state -ne 'completed'){throw "Native readiness export failed: $($status.message); $run"}
+$process.WaitForExit();$code=$process.ExitCode;$process.Dispose();$status=Get-Content (Join-Path $run 'full-work/status.json') -Raw|ConvertFrom-Json
+if($null -eq $code -or $code -ne 0 -or $status.state -ne 'completed'){throw "Native readiness export failed (exit=$code): $($status.message); $run"}
 $result=$status.result
 if($ExpectedMemoryMiB -ge 0){$request=Get-Content (Join-Path $run 'full-work/request.json') -Raw|ConvertFrom-Json;if([int]$request.settings.cubismCoreInitialMemoryMiB -ne $ExpectedMemoryMiB){throw 'Export request memory default/override mismatch'}}
 if(-not $result.engine.runtimeParity -or $result.engine.sourceKind -notin @('project-runtime','mygo-project-runtime')){throw 'The test must use its exact project runtime.'}
