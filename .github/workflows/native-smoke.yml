@@ -167,7 +167,7 @@ jobs:
               foreach ($format in @('jpeg','png')) {
                 $check = [pscustomobject]@{ engine=$engine.name; format=$format; status='RUNNING' }
                 $state.readiness += $check; Save-GraphicsState
-                & './tests/render-readiness-native.ps1' -EngineRoot $engine.root -PackageRoot (Join-Path $fixture 'package') -OutputRoot (Join-Path $evidence ($engine.name + '-' + $format)) -MediaToolDirectory $media -Engine webgal -CaptureFormat $format 2>&1 | Tee-Object -FilePath (Join-Path $evidence ($engine.name + '-' + $format + '.log'))
+                & './tests/render-readiness-native.ps1' -EngineRoot $engine.root -PackageRoot (Join-Path $fixture 'package') -OutputRoot (Join-Path $evidence ($engine.name + '-' + $format)) -MediaToolDirectory $media -Engine webgal -CaptureFormat $format -ExpectedMemoryMiB 128 2>&1 | Tee-Object -FilePath (Join-Path $evidence ($engine.name + '-' + $format + '.log'))
                 if ($LASTEXITCODE -ne 0) { throw "Native readiness regression failed: $($engine.name) $format" }
                 $check.status = 'PASS'; Save-GraphicsState
               }
@@ -182,7 +182,7 @@ jobs:
           }
           finally {
             Save-GraphicsState
-            "Native readiness/capture fault: **$($state.status)**; WebView2 $($state.runtimeVersion); readiness cases: $($state.readiness.Count)." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+            "Native readiness/capture fault: **$($state.status)**; WebView2 $($state.runtimeVersion); readiness PASS=$(@($state.readiness | Where-Object status -eq 'PASS').Count), NA=$(@($state.readiness | Where-Object status -eq 'NA').Count)." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           }
 
       - name: Preserve production regression evidence including failures and NA
