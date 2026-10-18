@@ -22,6 +22,11 @@ for(const flag of flags)assert.equal(version[flag],false,'historical acceptance 
 assert.equal(version.officialAutoInstallEnabled,true,'source runtime policy is enabled independently of acceptance');
 assert.equal(typeof vm.SourceTextModule,'function','run with --experimental-vm-modules');
 const results=[],mode='instrumented-inert-orchestration';
+// Keep evaluated modules alive until all cases and their async callbacks settle.
+// Node 22's experimental VM native finalization can otherwise collect prior
+// module wrappers while this multi-context harness is still executing.
+const liveModules=[];
+function sourceModule(text,options){const module=new vm.SourceTextModule(text,options);liveModules.push(module);return module;}
 const clone=x=>JSON.parse(JSON.stringify(x));
 const tick=()=>new Promise(r=>setImmediate(r));
 async function until(predicate,label){for(let i=0;i<40;i++){if(predicate())return;await tick();}throw Error('Harness did not reach '+label);}
@@ -54,7 +59,7 @@ async function makeCase(options={}){
  fakeProcess.send=(value,callback)=>{const message=clone(value);messages.push(message);event('ipc-send',{message});callback?.();};fakeProcess.disconnect=()=>{fakeProcess.connected=false;event('disconnect');};
  let nextTimer=0,stageCalls=0;
  const context=vm.createContext({process:fakeProcess,Buffer,Date,console:Object.freeze({log(){},error(){}}),setTimeout:(callback,ms)=>{const timer=++nextTimer;timers.set(timer,{callback,ms});event('timer-set',{timer,ms});return timer;},clearTimeout:timer=>{timers.delete(timer);event('timer-clear',{timer});}});
- const classifier=new vm.SourceTextModule(sources['craft/update/handoff-state.mjs'],{context,identifier:'exact:handoff-state.mjs'});await classifier.link(()=>{throw Error('Unexpected classifier import');});
+ const classifier=sourceModule(sources['craft/update/handoff-state.mjs'],{context,identifier:'exact:handoff-state.mjs'});await classifier.link(()=>{throw Error('Unexpected classifier import');});
  const cleanEnv=environment=>Object.fromEntries(Object.entries(environment).filter(([k])=>!['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS','WEBVIEW2_USER_DATA_FOLDER','WEBVIEW2_PIPE_FOR_SCRIPT_DEBUGGER'].includes(k.toUpperCase())));
  const imports={
   'node:fs':{default:virtualFs},'node:path':{default:path.posix},'node:crypto':{default:{randomUUID:()=>crypto.randomUUID()}},
@@ -63,7 +68,7 @@ async function makeCase(options={}){
   './clean-coordinator.mjs':{cleanupOwnedOfficialStage:async()=>{event('cleanup-stage');}},
   './official-stage.mjs':{verifyOfficialStage:async()=>{stageCalls++;if(options.stageDeferred)await options.stageDeferred;if(options.stageRejected)throw Error('synthetic rejected stage: signature or ownership');return clone(staged);},cleanOfficialEnvironment:cleanEnv},
  };
- const module=new vm.SourceTextModule(sources['craft/update/clean-handoff.mjs'],{context,identifier:'exact:clean-handoff.mjs'});
+ const module=sourceModule(sources['craft/update/clean-handoff.mjs'],{context,identifier:'exact:clean-handoff.mjs'});
  await module.link(specifier=>specifier==='./handoff-state.mjs'?classifier:imports[specifier]?synthetic(context,imports[specifier],'mock:'+specifier):Promise.reject(Error('Unapproved import '+specifier)));
  const evaluation=module.evaluate();
  const native=()=>children.find(c=>c.kind==='native'),notice=()=>children.find(c=>c.kind==='notice');
@@ -110,7 +115,7 @@ for(const change of ['none','same-bytes-replacement','changed-content','extra-fi
   const context=vm.createContext({process:{env:{}},Buffer});let swapped=false;
   const asyncFs={...fsPromises,readdir:async folder=>{const names=await fsPromises.readdir(folder);if(!swapped&&['same-bytes-replacement','changed-content'].includes(change)){swapped=true;if(change==='same-bytes-replacement'){fs.renameSync(installer,path.join(home,'previous-installer'));fs.writeFileSync(installer,'owned installer fixture');}else fs.writeFileSync(installer,'foreign replacement bytes');}return names;}};
   const imports={'node:fs/promises':{default:asyncFs},'node:fs':{default:fs},'node:path':{default:path},'../installer/transaction.mjs':{readState:()=>state,assertNoLinks,fileHash},'./official-stage.mjs':{stageOfficialUpdate(){},verifyOfficialStage:async()=>({record}),cleanOfficialEnvironment:value=>value},'./coordinator.mjs':{UpdateCoordinator:class{}}};
-  const module=new vm.SourceTextModule(sources['craft/update/clean-coordinator.mjs'],{context,identifier:'exact:cleanup-coordinator.mjs'});await module.link(specifier=>synthetic(context,imports[specifier],'mock:'+specifier));await module.evaluate();
+  const module=sourceModule(sources['craft/update/clean-coordinator.mjs'],{context,identifier:'exact:cleanup-coordinator.mjs'});await module.link(specifier=>synthetic(context,imports[specifier],'mock:'+specifier));await module.evaluate();
   const work=module.namespace.cleanupOwnedOfficialStage({state,staged:{directory,record}});
   if(change==='none'){await work;assert(!fs.existsSync(directory));}
   else{await assert.rejects(work,/Refusing cleanup/);assert(fs.existsSync(installer));if(change==='changed-content')assert.equal(fs.readFileSync(installer,'utf8'),'foreign replacement bytes');if(change==='extra-file')assert.equal(fs.readFileSync(path.join(directory,'foreign.txt'),'utf8'),'retain');}
@@ -128,7 +133,7 @@ await test('real staging and receipt verification still refuse same-version',asy
  const metadata={version:v,platforms:{'windows-x86_64-nsis':{url:'https://api.github.com/repos/A-kirami/webgal-craft/releases/assets/577401298',signature:'not-used'}}};
  const receipt={schemaVersion:1,type:'official-craft-installer',installId:state.installId,packageManifestSha256:'a',source:'https://github.com/A-kirami/webgal-craft/releases/latest/download/latest.json',hostSha256:originalHash,currentVersion:v,version:v,target:'windows-x86_64-nsis'};
  const imports={'node:fs/promises':{default:{readFile:async()=>JSON.stringify(receipt),writeFile:async()=>{writes++;throw Error('writes forbidden');}}},'node:path':{default:path.posix},'node:crypto':{default:crypto},'../installer/transaction.mjs':{assertNoLinks(){},readState:()=>state},'./minisign.mjs':{verifyMinisign(){signatures++;throw Error('unexpected signature evaluation');}}};
- const module=new vm.SourceTextModule(sources['craft/update/official-stage.mjs'],{context,identifier:'exact:official-stage.mjs'});await module.link(specifier=>synthetic(context,imports[specifier],'mock:'+specifier));await module.evaluate();
+ const module=sourceModule(sources['craft/update/official-stage.mjs'],{context,identifier:'exact:official-stage.mjs'});await module.link(specifier=>synthetic(context,imports[specifier],'mock:'+specifier));await module.evaluate();
  await assert.rejects(module.namespace.stageOfficialUpdate({statePath:'/qa/config',version:v,currentVersion:v,metadata,fetchImpl:async()=>{fetches++;throw Error('network forbidden');}}),/downgrade/);
  await assert.rejects(module.namespace.verifyOfficialStage(state,'/qa/state/official-update/staged-test'),/ownership/);assert.equal(fetches,0);assert.equal(writes,0);assert.equal(signatures,0);
 });
