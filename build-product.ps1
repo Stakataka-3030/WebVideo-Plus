@@ -1,6 +1,8 @@
 param([switch]$Fast,[switch]$InternalBuild,[string]$InternalVersion='')
 $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
+& node (Join-Path $taskRoot 'scripts/verify-materials.mjs') --source
+if($LASTEXITCODE -ne 0){throw 'Source material admission failed'}
 $taskVersions=Get-Content -LiteralPath (Join-Path $taskRoot 'version.json') -Raw | ConvertFrom-Json
 $taskProductVersion=[string]$taskVersions.productVersion
 $taskInstallerVersion=[string]$taskVersions.installerVersion
@@ -80,3 +82,6 @@ if($LASTEXITCODE -ne 0){throw 'Installer build failed'}
 $taskHash+'  '+(Split-Path -Leaf $taskArchive) | Set-Content -LiteralPath ($taskArchive+'.sha256') -Encoding ascii
 if($InternalBuild){Write-Output ('Internal build '+$taskInternalVersion+' complete; product upgrade version remains '+$taskProductVersion+'.')}elseif($Fast){Write-Output 'Fast development build complete. Run a normal build before release.'}
 Get-Item -LiteralPath $taskInstaller | Select-Object Name,Length
+
+& node (Join-Path $taskRoot 'scripts/verify-installer-materials.mjs') $taskInstaller
+if($LASTEXITCODE -ne 0){throw 'Final installer material admission failed'}

@@ -18,3 +18,6 @@
 各项第三方来源与运行关系见 [`licenses/THIRD-PARTY.md`](licenses/THIRD-PARTY.md)；按路径和材料划分的许可范围见 [`LICENSES.md`](LICENSES.md)；许可文本见 `licenses/` 和 `vendor/js-yaml-LICENSE`。
 
 公开上传、构建与分发不改变第三方软件、SDK、服务、商标或素材各自的权利与许可证。对 WebVideo+ 原创部分的 MPL-2.0 授权也不构成对这些第三方材料的再许可。
+
+
+补充的精确第三方范围：`licenses/LICENSE-pi-0.85.1-MIT.txt` 保留 pi-ai/pi-telemetry 作者许可；`LICENSE-pixi-live2d-display-MIT.txt` 与 `LICENSE-CubismWebFramework.md` / `LICENSE-Live2D-Open-Software.txt` 分别保留显示插件和 Framework 的原许可。没有捆绑专有 Cubism Core 或游戏模型，不代表显示插件中不存在 Framework 实现；原许可范围不由 MPL/MIT 覆盖。OPPO 旧字体公开条款及未变更字节的使用范围见 `licenses/OPPO-Sans-1.00-NOTICE.txt`。

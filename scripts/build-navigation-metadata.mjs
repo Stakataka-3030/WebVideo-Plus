@@ -10,7 +10,7 @@ config.fieldGroups[2].keys.push('colorRed','colorGreen','colorBlue');config.fiel
 const fields=Object.fromEntries(Object.entries(config.effectConfig).map(([key,value])=>[key,{label:value.label,path:value.path,default:value.slider?.defaultValue??0}]));
 const nativeEffects=Object.fromEntries([['snow','u/Wc2v'],['heavySnow','DYpFps'],['rain','Ero88N'],['cherryBlossoms','AFjvIu']].map(([key,id])=>[key,translations.get(id)||key]));
 const speakerPositions=Object.fromEntries(Object.entries({center:"hfB0wu",left:"+b1cs9",right:"mL9DmJ",left13:"CoS0hc",right13:"X9IlUv",left14:"HW2q4S",right14:"msP/39"}).map(([key,id])=>[key,translations.get(id)||key]));
-// Built-in character ID to display-name map. Intentionally empty until the user supplies it.
+// Derive display names from the versioned factory character aliases.
 const characterNames=Object.fromEntries(JSON.parse(readFactory()).rows.map(row=>[row.id.toLowerCase(),shortCharacterName(row.names)]));
 function shortCharacterName(names){const aliases=names.split(';').map(name=>name.trim()),full=aliases[0];return aliases.filter(name=>name.length<full.length&&full.toLowerCase().endsWith(name.toLowerCase())).sort((a,b)=>b.length-a.length)[0]||full.split(/[ \u3000]+/).at(-1);}
 function readFactory(){return fs.readFileSync(path.join(root,'character-map.factory.json'),'utf8').replace(/^\uFEFF/,'');}

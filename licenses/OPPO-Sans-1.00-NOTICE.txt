@@ -1,0 +1,12 @@
+OPPO Sans v1.00 (2019) — public grant and distribution scope
+
+Original official page: https://www.coloros.com/topic/coloros7.html
+Historical official-page capture: https://web.archive.org/web/20200403160245/https://www.coloros.com/topic/coloros7.html
+The old ColorOS 7 page states:
+OPPO Sans（含中文及西文，6款字重）允许个人或企业免费使用，含商业用途，版权归OPPO广东移动通信有限公司所有。
+您应遵守以下条款，违者必究：1.不对字体进行改编或二次开发；2.不对外售卖字体；3.仅在指定网址下载，不向他方提供其他下载渠道；4.不用于违法用途。
+
+Bundled file: runtime/web/assets/OPPOSans-R-tAcFw8I3.ttf
+SHA-256: ea92535935f8b5da18b64bb23e5ffbfef1417b7ae4ff3fc15372a65ee95a9580
+Metadata: OPPO, 2019, Version 1.00. The font is unmodified, unconverted and not subsetted.
+This software keeps the upstream WebGAL font embedded for UI compatibility. The project interprets the public use grant as permitting that unchanged embedded use; the wording about other download channels remains an interpretation boundary. The font is not sold separately or offered as a font-download service. This notice is not a new license grant, a separate agreement, or a claim that MPL/OFL applies to OPPO Sans. Future redistributors must preserve the original terms and assess their own distribution scope. A newer OPPO Sans license is not substituted for this older binary.

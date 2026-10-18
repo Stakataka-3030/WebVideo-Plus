@@ -41,3 +41,14 @@ React、Fluent UI、IconPark、TanStack Virtual、Zustand、Monaco Editor、Pixi
 WebVideo+ 不包含用户游戏工程、小说原文、角色模型、角色图像、配音、BGM、背景素材、API Key、本机凭据或用户的 Terre 安装目录。MyGO 引擎及其角色资源也不由本安装包转授；如用户选择 MyGO，由用户现有安装提供。
 
 第三方代码、二进制、素材、商标和服务继续适用各自的许可证与权利声明；本项目的整理、封装、MPL-2.0 授权和致谢都不改变这些条款。
+
+
+## Exact redistributed plugin and supplemental notices
+
+The bundled WebGAL 4.6.4 display plugin derives from `pixi-live2d-display-webgal@0.5.12`, npm gitHead `6dc2ffc3516cf3d4b7a7cafda8fca25c9d6d0991` in https://github.com/guansss/pixi-live2d-display . Its `cubism` submodule is `1f9cdfd140e87ba0ae68a356bb5ec339a0e65f99` in https://github.com/guansss/CubismWebFramework . The plugin's MIT/Guan notice and the Framework's own license scope are separate: see `LICENSE-pixi-live2d-display-MIT.txt`, `LICENSE-CubismWebFramework.md` and `LICENSE-Live2D-Open-Software.txt`. An outer MIT/MPL statement does not replace Framework terms. Proprietary Cubism Core and game models are not bundled; user-supplied Core remains governed by its own terms. Application/publication qualifications are not inferred from a dependency's SPDX label or from non-commercial distribution.
+
+`@earendil-works/pi-ai` and `pi-telemetry` 0.85.1 share the retained original Mario Zechner MIT notice in `LICENSE-pi-0.85.1-MIT.txt`. Upstream package README/LICENCE files are retained, including the full MIT text in data-uri-to-buffer's README. The supplemental source/hash map is `build/third-party-notices.json`.
+
+The unchanged OPPO Sans v1.00 public grant and restrictions are retained in `OPPO-Sans-1.00-NOTICE.txt`. This documents the existing embedded-use interpretation, not a new legal permission or a substitution of newer font terms. Original font/CSS bytes and host typography remain unchanged.
+
+`standardwebhooks@1.1.1` 的 MIT 声明由其 npm gitHead `b4d2c14fc5b4ccff3ff271e3b087dff812254c59` 的父级 `libraries/LICENSE` 确认（Copyright 2023 Svix），保留为 `LICENSE-standardwebhooks-1.1.1-MIT.txt`；根仓库 Apache 许可并不覆盖该更具体的子目录许可。AI 每个锁定包在最终产物中都须具有可定位的适用全文：保留本包的 LICENSE/LICENCE/README 文本或明确映射的共享许可副本，不仅校验 SPDX 字符串。
