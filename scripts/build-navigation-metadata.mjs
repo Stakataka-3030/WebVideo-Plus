@@ -22,5 +22,9 @@ return result;
 const profiles=Object.fromEntries(['4.6.4','4.6.5','4.6.6'].map(version=>[version,metadata(version)]));
 const common=JSON.stringify(profiles['4.6.4']);
 const profileEntries=Object.entries(profiles).map(([version,data])=>JSON.stringify(version)+':'+(JSON.stringify(data)===common?'globalThis.WebVideoNavigationMetadata':JSON.stringify(data,null,2)));
+export function writeNavigationMetadata(){
 fs.writeFileSync(path.join(root,'browser/navigation-metadata.js'),'globalThis.WebVideoNavigationMetadata='+JSON.stringify(profiles['4.6.4'],null,2)+';\nglobalThis.WebVideoNavigationMetadataProfiles={'+profileEntries.join(',')+'};\nglobalThis.WebVideoNavigationMetadata=globalThis.WebVideoNavigationMetadataProfiles[globalThis.WebVideoHostProfile?.terreVersion]||globalThis.WebVideoNavigationMetadata;\n');
 console.log('Navigation metadata extracted and verified for Terre '+Object.keys(profiles).join(' / ')+'.');
+
+}
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))writeNavigationMetadata();
