@@ -132,7 +132,7 @@
     const futureFigure = (item) =>
       item.row.command === "changeFigure" ||
       (item.row.command === "changeFigureDiff" &&
-        root.WebVideoCraftScript.figureKind(item.row.content) === "texture");
+        !root.WebVideoCraftScript.figureDiffRejected(null,item.row.content));
     const expectedId = (item) => {
       if (item.row.command === "changeFigureDiff") {
         const previous = lookup(item.existing || "fig-" + item.pos);
@@ -173,17 +173,16 @@
           line: row.startLine,
         });
     }
-    for (let index = 0; index < items.length; index++) {
+    let uncertain=false;for (let index = 0; index < items.length; index++) {
       const item = items[index],
         { row, pos, existing } = item,
         a = row.args;
+      if(root.WebVideoCraftScript.stateBarrier(row))uncertain=true;if(uncertain){if(row.command!=="comment")warn(row,"条件或交互后的角色状态需确认，保持原样。");continue;}
       let entrance = row.command === "changeFigure";
       if (row.command === "changeFigureDiff") {
         const target = existing || "fig-" + pos,
-          previous = lookup(target),
-          isModel = (value) =>
-            root.WebVideoCraftScript.figureKind(value) !== "texture";
-        if (isModel(row.content) || isModel(previous?.file)) {
+          previous = lookup(target);
+        if (root.WebVideoCraftScript.figureDiffRejected(previous,row.content)) {
           warn(row, "引擎会跳过模型差分，保持原样。");
           continue;
         }
@@ -258,7 +257,7 @@
           id: output,
           actor,
           pos,
-          file: row.content,
+          file: row.content,liveRuntime:root.WebVideoCraftScript.figureModel(row.content,row.args),
           custom,
           order: ++order,
         });

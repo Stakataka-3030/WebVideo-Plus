@@ -8,7 +8,7 @@
   const scalar = (v) =>
       typeof v === "string" || typeof v === "number" ? String(v) : "",
     position = (row) => P.find((p) => row.args[p] === true) || "center",
-    isModel = (value) => S().figureKind(value) !== "texture";
+    rejectsDiff = (previous,content) => S().figureDiffRejected(previous,content);
   const ASSOCIATED = [
     "animationFlag",
     "mouthOpen",
@@ -82,8 +82,9 @@
       result = [],
       warnings = [];
     let speaker = "",
-      previous = null;
+      previous = null, uncertain = false;
     for (const row of m.statements) {
+      if(S().stateBarrier(row)){uncertain=true;states.clear();byPosition.clear();warnings.push('第 '+row.startLine+' 行后的在场角色需确认');}if(uncertain)continue;
       const a = row.args,
         flags = P.filter((p) => a[p] === true),
         explicit = scalar(a.id),
@@ -95,7 +96,7 @@
       const diffTarget = states.get(explicit || "fig-" + pos),
         diffModel =
           row.command === "changeFigureDiff" &&
-          (isModel(row.content) || isModel(diffTarget?.file));
+          rejectsDiff(diffTarget,row.content);
       if (diffModel) {
         warnings.push("第 " + row.startLine + " 行模型差分被引擎跳过");
         continue;
@@ -129,6 +130,7 @@
             pos,
             row,
             file: row.content,
+            liveRuntime:S().figureModel(row.content,row.args),
             template,
           };
           states.set(key, value);
@@ -295,8 +297,9 @@
       stage = new Map(),
       patches = [],
       warnings = [];
-    let inserted = 0;
+    let inserted = 0, uncertain=false;
     for (const r of m.statements) {
+      if(uncertain)continue;if(S().stateBarrier(r)){warnings.push("第 "+r.startLine+" 行后的在场角色需确认，未自动补充离场");uncertain=true;if(!own(r.args,"when")||!["changeFigure","changeFigureDiff"].includes(r.command))continue;}
       if (!["changeFigure", "changeFigureDiff"].includes(r.command)) continue;
       const a = r.args,
         flags = P.filter((p) => a[p] === true);
@@ -309,7 +312,7 @@
         key = explicit || "fig-" + pos;
       if (r.command === "changeFigureDiff") {
         const previous = stage.get(key);
-        if (isModel(r.content) || isModel(previous?.file)) {
+        if (rejectsDiff(previous,r.content)) {
           warnings.push("第 " + r.startLine + " 行模型差分被引擎跳过");
           continue;
         }
@@ -354,7 +357,7 @@
         inserted += lines.length;
         for (const v of victims) stage.delete(v.id);
       }
-      stage.set(key, { id: key, explicit: !!explicit, pos, file: r.content });
+      stage.set(key, { id: key, explicit: !!explicit, pos, file: r.content,liveRuntime:S().figureModel(r.content,r.args) });
     }
     return finalize(snapshot, patches, "自动离场", {
       warnings,
@@ -479,7 +482,7 @@
           JSON.stringify(e) +
           " -target=" +
           target +
-          " -duration=0 -next;",
+          " -duration=0 -next"+(own(r.args,"when")?" -when="+String(r.args.when):"")+";",
       );
       patches.push({
         startOffset: r.endOffset,
@@ -553,7 +556,7 @@
         if (
           group.length !== effects.length ||
           group.some(
-            (x) => x.command !== "setTransform" || targetOf(x) !== targetOf(r),
+            (x) => x.command !== "setTransform" || targetOf(x) !== targetOf(r)||own(x.args,"when")!==own(r.args,"when")||x.args.when!==r.args.when,
           )
         )
           continue;
@@ -630,17 +633,7 @@
         ) {
           if (!after.endsWith(m.eol)) after += m.eol;
           for (const e of replacement.slice(found.group.length))
-            after +=
-              "setTransform:" +
-              JSON.stringify(e) +
-              " -target=" +
-              S().safeId(targetOf(r)) +
-              " -duration=0 -next" +
-              (r.args.transformFrom
-                ? " -transformFrom=" + r.args.transformFrom
-                : "") +
-              ";" +
-              m.eol;
+            after += S().write(r,{content:JSON.stringify(e),args:{duration:0,next:true}}).replace(/[\r\n]+$/,'')+m.eol;
         }
         patches.push(patch(r, after));
       }
@@ -953,43 +946,23 @@
       }),
       stage = new Map(),
       issues = [];
-    let repeated = null,
-      count = 0;
-    for (const r of m.statements) {
-      if (["changeFigure", "changeFigureDiff"].includes(r.command)) {
-        const id = scalar(r.args.id) || "fig-" + position(r),
-          previous = stage.get(id);
-        if (
-          r.command !== "changeFigureDiff" ||
-          (!isModel(r.content) && !isModel(previous))
-        ) {
-          if (!r.content || r.content === "none") stage.delete(id);
-          else stage.set(id, r.content);
-        }
+    let repeated = null,count=0,uncertain=false;
+    for(const r of m.statements){
+      if(S().stateBarrier(r)){uncertain=true;stage.clear();repeated=null;count=0;}if(uncertain)continue;
+      if(['changeFigure','changeFigureDiff'].includes(r.command)){
+        const explicit=scalar(r.args.id),pos=position(r),id=explicit||'fig-'+pos,previous=stage.get(id),diff=r.command==='changeFigureDiff';
+        if(diff&&rejectsDiff(previous,r.content))continue;
+        if(!r.content||r.content==='none'||r.command==='changeFigure'&&r.args.clear===true){if(explicit)stage.delete(id);else for(const [key,value]of stage)if(value.pos===pos)stage.delete(key);}
+        else if(diff&&previous)previous.file=r.content;
+        else stage.set(id,{file:r.content,pos,liveRuntime:S().figureModel(r.content,r.args),motion:r.args.motion||'',expression:r.args.expression||''});
       }
-      if (r.command === "say") {
-        if (r.args.figureId && !stage.has(String(r.args.figureId)))
-          issues.push({
-            rowId: r.id,
-            line: r.startLine,
-            type: "missing-figure",
-            message: "对话引用本场尚未出现的立绘 ID",
-          });
-        const sig = [
-          r.args.figureId || r.speaker,
-          r.args.motion || "",
-          r.args.expression || "",
-        ].join("|");
-        if ((r.args.motion || r.args.expression) && sig === repeated) count++;
-        else count = 1;
-        if (count === 3)
-          issues.push({
-            rowId: r.id,
-            line: r.startLine,
-            type: "repeated-performance",
-            message: "连续三句重复动作/表情，请复核",
-          });
-        repeated = sig;
+      if(r.command==='say'){
+        const id=String(r.args.figureId||''),target=id?stage.get(id):[...stage.values()].find(v=>v.pos===P.find(p=>r.args[p]===true));
+        if(id&&!stage.has(id))issues.push({rowId:r.id,line:r.startLine,type:'missing-figure',message:'对话引用本场尚未出现的立绘 ID'});
+        const motion=target?.motion??r.args.motion??'',expression=target?.expression??r.args.expression??'',sig=[id||r.speaker,motion,expression].join('|');
+        if((motion||expression)&&sig===repeated)count++;else count=1;
+        if(count===3)issues.push({rowId:r.id,line:r.startLine,type:'repeated-performance',message:'连续三句重复动作/表情，请复核'});
+        repeated=sig;
       }
     }
     for (const p of S().hintPairs(m))
@@ -1070,20 +1043,21 @@
     const enabled = new Set(options.commands || [...NEXT_COMMANDS].filter(command => command !== "say"));
     const entrances = new Map();
     if (tool === "exits") {
-      const stage = new Map();
+      const stage = new Map();let uncertain=false;
       for (const row of m.statements) {
+        if(uncertain){entrances.set(row.id,"条件或交互后的在场角色需确认");continue;}if(S().stateBarrier(row)){uncertain=true;if(!own(row.args,"when")||!["changeFigure","changeFigureDiff"].includes(row.command)){entrances.set(row.id,"条件或交互后的在场角色需确认");continue;}}
         if (!["changeFigure", "changeFigureDiff"].includes(row.command)) continue;
         const flags = P.filter(p => row.args[p] === true), pos = position(row), explicit = scalar(row.args.id), key = explicit || "fig-" + pos;
         if (flags.length > 1) { entrances.set(row.id, "角色位置不明确"); continue; }
         if (row.command === "changeFigureDiff") {
           const previous = stage.get(key);
-          if (isModel(row.content) || isModel(previous?.file)) { entrances.set(row.id, "模型差分被引擎跳过"); continue; }
+          if (rejectsDiff(previous,row.content)) { entrances.set(row.id, "模型差分被引擎跳过"); continue; }
           if (previous && row.content && row.content !== "none") { previous.file = row.content; entrances.set(row.id, "已有图片的差分不是入场"); continue; }
         }
         if (!row.content || row.content === "none" || row.args.clear === true) {
           entrances.set(row.id, "只选择入场语句");
           if (explicit) stage.delete(key); else for (const [id, value] of stage) if (value.pos === pos) stage.delete(id);
-        } else { entrances.set(row.id, ""); stage.set(key, { file: row.content, pos }); }
+        } else { entrances.set(row.id, ""); stage.set(key, { file: row.content, pos,liveRuntime:S().figureModel(row.content,row.args) }); }
       }
     }
     return nav.flatMap(row => {

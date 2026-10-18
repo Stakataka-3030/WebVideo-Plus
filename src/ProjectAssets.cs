@@ -213,21 +213,17 @@ namespace NativeVideo {
   }
 
   static string StripArgument(string line,string key){
-   var starts=new List<KeyValuePair<int,string>>();char quote='\0';bool escape=false;int depth=0;
-   for(int i=0;i<line.Length;i++){
-    char c=line[i];
-    if(escape){escape=false;continue;}
-    if(c=='\\'){escape=true;continue;}
-    if(quote!='\0'){if(c==quote)quote='\0';continue;}
-    if(c=='"'||c=='\''){quote=c;continue;}
-    if(c=='{'||c=='[')depth++;if(c=='}'||c==']')depth--;
-    if(depth==0&&char.IsWhiteSpace(c)&&i+1<line.Length&&line[i+1]=='-'){
-     var m=Regex.Match(line.Substring(i+1),@"^-([A-Za-z]\w*)");if(m.Success)starts.Add(new KeyValuePair<int,string>(i,m.Groups[1].Value));
-    }
+   var terminator=Regex.Match(line,@"(?<!\\);");int end=terminator.Success?terminator.Index:line.Length;
+   var starts=new List<KeyValuePair<int,string>>();
+   for(int at=line.IndexOf(" -",StringComparison.Ordinal);at>=0&&at<end;at=line.IndexOf(" -",at+2,StringComparison.Ordinal)){
+    int next=line.IndexOf(" -",at+2,StringComparison.Ordinal);if(next<0||next>end)next=end;
+    string body=line.Substring(at+2,next-at-2);int equals=body.IndexOf('=');
+    string name=(equals<0?body:body.Substring(0,equals)).Trim();if(Regex.IsMatch(name,@".ogg|.mp3|.wav|.opus",RegexOptions.IgnoreCase))name="vocal";
+    starts.Add(new KeyValuePair<int,string>(at,name));
    }
-   int at=starts.FindIndex(x=>x.Value==key);if(at<0)return line;
-   int finish=at+1<starts.Count?starts[at+1].Key:line.LastIndexOf(';')>=0?line.LastIndexOf(';'):line.Length;
-   return line.Substring(0,starts[at].Key)+line.Substring(finish);
+   string result=line;
+   for(int i=starts.Count-1;i>=0;i--)if(starts[i].Value==key){int finish=i+1<starts.Count?starts[i+1].Key:end;result=result.Substring(0,starts[i].Key)+result.Substring(finish);}
+   return result;
   }
 
   public async Task Snapshot(){long bytes=0;int count=0;Report(J.O("phase","copying","copiedFiles",0,"copiedBytes",0));foreach(var item in copies){Files.CopyFile(item.Value,item.Key);bytes+=new FileInfo(item.Value).Length;if(++count%10==0){Report(J.O("phase","copying","copiedFiles",count,"copiedBytes",bytes));await Task.Yield();}}var animationsFrom=Path.Combine(Project,"game/animation");if(Directory.Exists(animationsFrom))Files.CopyTree(animationsFrom,Path.Combine(Root,"game/animation"));var css=Path.Combine(Project,"game/userStyleSheet.css");if(File.Exists(css))Files.CopyFile(css,Path.Combine(Root,"game/userStyleSheet.css"));var table=Path.Combine(Root,"game/animation/animationTable.json");var names=J.A(J.TryRead(table)).Where(n=>File.Exists(Path.Combine(Root,"game/animation",n+".json"))).ToArray();J.Write(table,names);var fontRoot=Directory.Exists(Path.Combine(Project,"game/template"))?Project:Engine;var fonts=new FontSnapshot(fontRoot,Root).Run();Presentation=J.O("fonts",fonts,"animationNames",names,"aggregateCounts",AggregateCounts);foreach(var file in Directory.GetFiles(Path.Combine(Root,"game/animation"),"*.json")){if(Path.GetFileName(file)=="animationTable.json")continue;Animations[Path.GetFileNameWithoutExtension(file)]=J.Read(file);}var mediaFiles=copies.Keys.Where(x=>Regex.IsMatch(x.Substring(Root.Length+1).Replace('\\','/'),@"^game/(vocal|bgm)/",RegexOptions.IgnoreCase)||Regex.IsMatch(x,@"\.(mp3|wav|ogg|m4a|aac|flac|mp4|webm|mov|mkv)$",RegexOptions.IgnoreCase)).ToArray();for(int i=0;i<mediaFiles.Length;i++){var file=mediaFiles[i];Report(J.O("phase","media-info","current",i,"total",mediaFiles.Length));var url="/"+file.Substring(Root.Length+1).Replace('\\','/');object probe;try{probe=await Commands.Probe(file);}catch(Exception e){throw new IOException("无法读取媒体资源："+url+"；"+e.Message,e);}double duration=J.N(J.Get(probe,"format"),"duration")*1000;bool hasAudio=J.A(J.Get(probe,"streams")).Any(stream=>J.S(stream,"codec_type")=="audio");if(double.IsNaN(duration)||double.IsInfinity(duration)||duration<=0)throw new IOException("媒体时长无效："+url);if(Regex.IsMatch(url,@"^/game/(vocal|bgm)/",RegexOptions.IgnoreCase)&&!hasAudio)throw new IOException("媒体资源不含音轨："+url);Media[url]=J.O("durationMs",duration,"hasAudio",hasAudio);}Report(J.O("phase","copying","copiedFiles",count,"copiedBytes",bytes));}

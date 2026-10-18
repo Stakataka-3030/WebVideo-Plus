@@ -65,6 +65,11 @@
         ? "live2d"
         : "texture";
   }
+  const figureImage=value=>/\.(png|jpe?g|webp|gif|bmp|avif|svg)([?#].*)?$/i.test(String(value||''));
+  const figureModel=(file,args={})=>/\.(json|jsonl|wmdl)([?#].*)?$/i.test(file)||/[?&]type=(?:live2d|wmdl|model)(?:&|$)/i.test(file)||['motion','skin','expression','blink','focus','animationFlag','eyesOpen','eyesClose'].some(key=>!!args[key]);
+  const unsupportedFigureDiff=value=>{try{const url=new URL(String(value||''),'http://localhost/'),extension=url.pathname.split('.').pop().toLowerCase();return extension==='json'||extension==='skel'||url.searchParams.get('type')==='spine';}catch{return false;}};
+  const figureDiffRejected=(previous,content)=>{const gone=!content||content==='none';return unsupportedFigureDiff(previous?.file)||unsupportedFigureDiff(content)||!!(previous&&(gone?previous.liveRuntime&&!figureImage(previous.file):!figureImage(previous.file)||!figureImage(content)));};
+  const stateBarrier=row=>own(row.args,'when')||row.args?.userForward===true||(['changeScene','callScene','return','choose','chooseLabel','jumpLabel','getUserInput','if'].includes(row.command)&&!(row.command==='choose'&&/^[^|]*:__wvp_hint_[A-Za-z0-9_]+$/.test(row.content)&&Number(row.args.defaultChoose)===1&&!row.args.next));
   function codeEnd(text) {
     for (let i = 0; i < text.length; i++)
       if (text[i] === ";" && text[i - 1] !== "\\") return i;
@@ -208,60 +213,41 @@
       };
     });
   }
-  function write(row, changes = {}) {
-    const patches = [],
-      raw = row.source,
-      tokens = argTokens(raw),
-      args = changes.args || {};
-    const end = codeEnd(raw);
-    let addition = "";
-    for (const [key, value] of Object.entries(args)) {
-      if (!/^[A-Za-z_][\w]*$/.test(key)) throw Error("参数名无效");
-      const found = tokens.filter((t) => t.key === key);
-      if (value !== false && value !== undefined && value !== null) {
-        const encoded = value === true ? "" : "=" + String(value);
-        if (/[\r\n;]/.test(encoded) || / -/.test(encoded))
-          throw Error("参数值不能注入额外语句或参数");
-        const replacement = " -" + key + encoded;
-        if (found.length) {
-          patches.push({
-            start: found[0].start,
-            end: found[0].end,
-            text: replacement,
-          });
-          for (const t of found.slice(1))
-            patches.push({ start: t.start, end: t.end, text: "" });
-        } else addition += replacement;
-      } else
-        for (const t of found)
-          patches.push({ start: t.start, end: t.end, text: "" });
-    }
-    if (own(changes, "content")) {
-      const prefix = raw.match(/^\uFEFF?[ \t]*/)?.[0] || "",
-        colon = raw.indexOf(":", prefix.length),
-        start = colon >= 0 && colon < end ? colon + 1 : prefix.length;
-      let stop = tokens.length ? tokens[0].start : end;
-      while (stop > start && /[\s]/.test(raw[stop - 1])) stop--;
-      patches.push({ start, end: stop, text: escapeText(changes.content) });
-    }
-    if (addition) {
-      let at = end;
-      while (at > 0 && /[\s]/.test(raw[at - 1])) at--;
-      patches.push({
-        start: at,
-        end: at,
-        text: addition + (raw[end] === ";" ? "" : ";"),
-      });
-    }
-    patches.sort((a, b) => a.start - b.start || a.end - b.end);
-    for (let i = 1; i < patches.length; i++)
-      if (patches[i].start < patches[i - 1].end)
-        throw Error("参数和内容改写范围重叠");
-    let after = raw;
-    for (const p of patches.reverse())
-      after = after.slice(0, p.start) + p.text + after.slice(p.end);
-    return after;
+ function write(row,changes={}){const native=text=>parserFor({changeFigureDiff:true,sceneSemantics:true,multilineStatements:true}).parser.parse(text,'','');
+  const raw=String(row.source||''),end=raw.search(/(?<!\\);/),limit=end<0?raw.length:end,tokens=[];
+  for(let at=raw.indexOf(' -');at>=0&&at<limit;at=raw.indexOf(' -',at+2))tokens.push({start:at});
+  for(let i=0;i<tokens.length;i++){const token=tokens[i];token.end=tokens[i+1]?.start??limit;const body=raw.slice(token.start+2,token.end),equals=body.indexOf('=');token.key=(equals<0?body:body.slice(0,equals)).trim();while(token.end>token.start&&/\s/.test(raw[token.end-1]))token.end--;}
+  const patches=[],updates=changes.args||{};let addition='';
+  for(const [key,value]of Object.entries(updates)){
+   if(!/^[A-Za-z_]\w*$/.test(key))throw Error('参数名无效');
+   const found=tokens.filter(token=>token.key===key),remove=value===false||value===undefined||value===null||value==='';
+   const encoded=remove?'':value===true?'':'='+String(value);
+   if(/[\r\n;]/.test(encoded)||encoded.includes(' -'))throw Error('参数值含有语句或参数分隔符');
+   const text=remove?'':' -'+key+encoded;
+   if(found.length){patches.push({start:found[0].start,end:found[0].end,text});for(const token of found.slice(1))patches.push({start:token.start,end:token.end,text:''});}
+   else if(!remove)addition+=text;
   }
+  if(Object.prototype.hasOwnProperty.call(changes,'content')){
+   const colon=raw.indexOf(':'),start=colon>=0&&colon<limit?colon+1:raw.match(/^\uFEFF?[ \t]*/)[0].length;
+   let stop=tokens[0]?.start??limit;while(stop>start&&/\s/.test(raw[stop-1]))stop--;
+   patches.push({start,end:stop,text:escapeText(changes.content)});
+  }
+  if(addition){let at=limit;while(at>0&&/\s/.test(raw[at-1]))at--;patches.push({start:at,end:at,text:addition+(end<0?';':'')});}
+  patches.sort((a,b)=>a.start-b.start||a.end-b.end);for(let i=1;i<patches.length;i++)if(patches[i].start<patches[i-1].end)throw Error('语句修改范围重叠');
+  let after=raw;for(const patch of patches.reverse())after=after.slice(0,patch.start)+patch.text+after.slice(patch.end);
+  const statements=text=>native(text).sentenceList.filter(item=>!item.isLineBreakHolder&&String(item.commandRaw)!=='comment'),beforeRows=statements(raw),afterRows=statements(after);
+  if(beforeRows.length!==1||afterRows.length!==1||beforeRows[0].command!==afterRows[0].command)throw Error('修改后的语句边界不一致');
+  const original=beforeRows[0],updated=afterRows[0],untouched=args=>args.filter(arg=>!Object.prototype.hasOwnProperty.call(updates,arg.key));
+  if(JSON.stringify(untouched(original.args))!==JSON.stringify(untouched(updated.args)))throw Error('修改改变了其他参数，已停止写入');
+  const expectedContent=Object.prototype.hasOwnProperty.call(changes,'content')?String(changes.content??'').replace(/\r?\n/g,'|').trim():original.content;
+  if(updated.content!==(expectedContent==='none'?'':expectedContent))throw Error('正文含有会被解释为参数的内容，已停止写入');
+  for(const [key,value]of Object.entries(updates)){
+   const found=updated.args.filter(arg=>arg.key===key),remove=value===false||value===undefined||value===null||value==='';
+   if(remove?found.length!==0:found.length!==1)throw Error('参数修改校验失败：'+key);
+   if(!remove){const text=String(value),expected=value===true?true:text==='true'?true:text==='false'?false:!isNaN(Number(text))?Number(text):text;if(found[0].value!==expected)throw Error('参数值修改校验失败：'+key);}
+  }
+  return after;
+ }
   function assertSupported(model, rows = model.statements) {
     const bad = rows.find((r) => r.unsupported.length);
     if (bad)
@@ -428,7 +414,7 @@
     safeId,
     safePath,
     escapeText,
-    figureKind,
+    figureKind,figureImage,figureModel,figureDiffRejected,stateBarrier,
     POSITIONS,
   };
 })(typeof window === "undefined" ? globalThis : window,
