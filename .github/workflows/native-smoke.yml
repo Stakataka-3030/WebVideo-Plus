@@ -112,6 +112,7 @@ jobs:
           }
           Invoke-CiRegression 'cubism-memory-defaults' './tests/cubism-memory-defaults.test.ps1' @{ OutputRoot=(Join-Path $evidence 'memory-defaults') }
           Invoke-CiRegression 'lifecycle-settings' './tests/lifecycle-settings.test.ps1' @{ EvidenceDirectory=(Join-Path $evidence 'settings') }
+          Invoke-CiRegression 'authoring-private-files' './tests/authoring-private-files.test.ps1' @{ OutputRoot=(Join-Path $evidence 'authoring-private-files') }
           # Terre Manager lifecycle-reliability is not part of the Craft implementation; Craft queue has its own native gate below.
           Invoke-CiRegression 'render-process-output' './tests/render-process-output.test.ps1' @{ RepositoryRoot=$PWD.Path; OutputRoot=(Join-Path $evidence 'process-output') }
           # Runtime fixture uses a local SDK substitute and a fixture key; it never calls a paid provider.
