@@ -26,7 +26,7 @@ jobs:
         run: |
           $tests = @(Get-ChildItem -Path 'tests/*.test.mjs' -File | Sort-Object FullName | ForEach-Object { $_.FullName })
           if ($tests.Count -eq 0) { throw 'No shared Node regression files found' }
-          & node --test @tests
+          & node --test --test-concurrency=2 @tests
           if ($LASTEXITCODE -ne 0) { throw "Node regression checks failed" }
           pwsh -NoLogo -NoProfile -File .\tests\installer-product-routing.portable.ps1
           if ($LASTEXITCODE -ne 0) { throw "Installer product/channel checks failed" }
