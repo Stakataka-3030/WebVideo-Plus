@@ -1,3 +1,4 @@
+import {verifyPackageMaterials} from './verify-materials.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -8,6 +9,7 @@ const root=path.dirname(path.dirname(fileURLToPath(import.meta.url))),pkg=path.j
 const read=file=>JSON.parse(fs.readFileSync(path.join(pkg,file),'utf8'));
 const versions=JSON.parse(fs.readFileSync(path.join(root,'version.json'),'utf8'));
 const manifest=read('MANIFEST.json'),product=read('product.json');
+verifyPackageMaterials(pkg,root);
 assert.equal(verifyRuntimeOutput(path.join(pkg,'runtime/web')),16,'Packaged WebGAL runtime must retain exact original font/CSS and pinned instrumentation');
 assert.equal(manifest.version,versions.productVersion);
 assert.equal(manifest.kernelVersion,versions.kernelVersion);

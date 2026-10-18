@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "description": "Known redistributed media bytes. No game models, Core SDK, user project or cache is admitted by discovery alone.",
+  "media": [
+    {
+      "path": "ai-runtime/node_modules/@anthropic-ai/sdk/.github/logo.svg",
+      "sha256": "b150888bc7257af83e3b85d3c2be4294f88986026f8168f6c12fc1fde6697350",
+      "source": "fixed WebGAL runtime or locked dependency"
+    },
+    {
+      "path": "runtime/web/assets/cherryBlossoms-DzBBkOW8.webp",
+      "sha256": "56cf09c9a41863994f7000786d8972b03dcc214f692c479b78962608109bb0e3",
+      "source": "fixed WebGAL runtime or locked dependency"
+    },
+    {
+      "path": "runtime/web/assets/dialog-BDvwibdp.mp3",
+      "sha256": "d5b912353085e44e2fd975dfbfbe6561c38d1c3705687b22bb9bd065791e6bfe",
+      "source": "fixed WebGAL runtime or locked dependency"
+    },
+    {
+      "path": "runtime/web/assets/OPPOSans-R-tAcFw8I3.ttf",
+      "sha256": "ea92535935f8b5da18b64bb23e5ffbfef1417b7ae4ff3fc15372a65ee95a9580",
+      "source": "fixed WebGAL runtime or locked dependency"
+    },
+    {
+      "path": "runtime/web/assets/page-flip-1-CZ8VQh4O.mp3",
+      "sha256": "7df32409e65c6c56707f030a59327de24865e24ad38e243a9ad4a604f4a19161",
+      "source": "fixed WebGAL runtime or locked dependency"
+    },
+    {
+      "path": "runtime/web/assets/rain-Bd8ZRQ7x.png",
+      "sha256": "e0935c5335c65986437f2c2e0e7c7cdc3c6bd1e603edf6acf6bf8d232331bb4a",
+      "source": "fixed WebGAL runtime or locked dependency"
+    },
+    {
+      "path": "runtime/web/assets/ResourceHanRoundedCN-Regular-C1HdCLVq.ttf",
+      "sha256": "1c5c623f008eabef10c45135a48b01b46311f9369c28857355872cfe05f48dc0",
+      "source": "fixed WebGAL runtime or locked dependency"
+    },
+    {
+      "path": "runtime/web/assets/snow-CJh9m2KR.png",
+      "sha256": "5313a7b0259c483f1329b57c2d2744fe4ee506163a7876b3c8a6111ba8e01978",
+      "source": "fixed WebGAL runtime or locked dependency"
+    },
+    {
+      "path": "runtime/web/assets/SourceHanSerifCN-Regular-B_f-kQ2u.ttf",
+      "sha256": "1e60cc2eedfa25bf5e4ecaa794402f581ad770d4c8be46d338bf52064b307ec7",
+      "source": "fixed WebGAL runtime or locked dependency"
+    },
+    {
+      "path": "runtime/web/assets/switch-1-DI-7VpPw.mp3",
+      "sha256": "99b576bc49cf679b735460e30f1b97f7a07e9f3dc053c266a27d6b719f5e8b5b",
+      "source": "fixed WebGAL runtime or locked dependency"
+    },
+    {
+      "path": "WebVideo+_icon.ico",
+      "bytes": 370070,
+      "sha256": "c9139ebdeb50f71da77cf775c9b1843c8e014085a10cb120c057a5b084ab77bc"
+    },
+    {
+      "path": "WebVideo+_icon.svg",
+      "bytes": 2251,
+      "sha256": "f6b676e2f2025be6cff4bb0eac055cd963860af9ad0bbcce72a15dc2d90b2136"
+    }
+  ],
+  "inlineMedia": [
+    {
+      "sha256": "b1442e85b03bdcaf66dc58c7abb98745dd2687d86350be9a298a1d9382ac849b",
+      "mime": "image/gif",
+      "source": "WebGAL 4.6.4 interface sound or transparent placeholder"
+    },
+    {
+      "sha256": "dc250510450f2a24ea1205fe25f77335683aca1e930f2f40f75233922293d758",
+      "mime": "audio/mpeg",
+      "source": "WebGAL 4.6.4 interface sound or transparent placeholder"
+    },
+    {
+      "sha256": "c4a7d04bfe3036d8b457af739af2d391b800967769ea9882ff1f9cad22d829c2",
+      "mime": "audio/mpeg",
+      "source": "WebGAL 4.6.4 interface sound or transparent placeholder"
+    }
+  ],
+  "dependencyLicenses": [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "Unlicense",
+    "0BSD"
+  ]
+}

@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $taskRoot = $PSScriptRoot
+& node (Join-Path $taskRoot 'scripts/verify-generated-assets.mjs')
+if($LASTEXITCODE -ne 0){throw 'Generated source assets do not match their generator'}
 $taskOut = Join-Path $taskRoot 'package'
 $taskCompiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 $taskBrowser=Join-Path $taskOut 'browser'

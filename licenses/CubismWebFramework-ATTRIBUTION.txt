@@ -1,0 +1,6 @@
+Copyright(c) Live2D Inc. All rights reserved.
+
+Use of the Framework source is governed by the Live2D Open Software license retained in LICENSE-Live2D-Open-Software.txt.
+Exact upstream Framework source: https://github.com/guansss/CubismWebFramework/tree/1f9cdfd140e87ba0ae68a356bb5ec339a0e65f99
+Original header: https://github.com/guansss/CubismWebFramework/blob/1f9cdfd140e87ba0ae68a356bb5ec339a0e65f99/src/live2dcubismframework.ts
+The enclosing pixi-live2d-display MIT license does not replace this independently governed component. Proprietary Cubism Core and model rights remain separate.
