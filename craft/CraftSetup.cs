@@ -11,9 +11,9 @@ using System.ComponentModel;
 using System.Collections.Generic;
 using System.Web.Script.Serialization;
 using System.Text;
-[assembly: AssemblyVersion("1.1.14.0")]
-[assembly: AssemblyFileVersion("1.1.14.0")]
-[assembly: AssemblyInformationalVersion("1.1.14.0c")]
+[assembly: AssemblyVersion("1.1.15.0")]
+[assembly: AssemblyFileVersion("1.1.15.0")]
+[assembly: AssemblyInformationalVersion("1.1.15.0c")]
 
 
 static class CraftSetup {
