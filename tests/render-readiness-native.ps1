@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$EngineRoot,[string]$PackageRoot=(Join-Path $PSScriptRoot '../package'),[string]$OutputRoot=(Join-Path $PSScriptRoot '../.build/render-readiness'),[string]$MediaToolDirectory='', [ValidateSet('webgal','mygo')][string]$Engine='webgal',[ValidateSet('jpeg','png')][string]$CaptureFormat='jpeg')
+param([Parameter(Mandatory=$true)][string]$EngineRoot,[string]$PackageRoot=(Join-Path $PSScriptRoot '../package'),[string]$OutputRoot=(Join-Path $PSScriptRoot '../.build/render-readiness'),[string]$MediaToolDirectory='', [ValidateSet('webgal','mygo')][string]$Engine='webgal',[ValidateSet('jpeg','png')][string]$CaptureFormat='jpeg',[int]$CoreMemoryMiB=-1,[int]$ExpectedMemoryMiB=-1)
 $ErrorActionPreference='Stop'
 $allowed=@{
  'd9efa39b4eabdb3a54c3d209ca5db6cb04d1cc60fdef3acdcd2532712a8a6d10'='4.6.4 prepared';
@@ -10,6 +10,7 @@ $entry=Get-ChildItem (Join-Path $EngineRoot 'assets') -Filter 'index-*.js'|Where
 if(@($entry).Count -ne 1){throw 'Use a separately supplied, pinned official runtime.'}
 $run=Join-Path $OutputRoot ([Guid]::NewGuid().ToString('N'));$project=Join-Path $run 'project';New-Item -ItemType Directory -Path $project -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $EngineRoot 'assets') -Destination $project -Recurse
+if(Test-Path (Join-Path $EngineRoot 'lib')){Copy-Item -LiteralPath (Join-Path $EngineRoot 'lib') -Destination $project -Recurse}
 foreach($name in @('index.html','webgal-engine.json','favicon.ico')){if(Test-Path (Join-Path $EngineRoot $name)){Copy-Item -LiteralPath (Join-Path $EngineRoot $name) -Destination $project}}
 $utf8=New-Object Text.UTF8Encoding($false)
 function Write-Text($relative,$value){$file=Join-Path $project $relative;New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($file)) -Force|Out-Null;[IO.File]::WriteAllText($file,$value,$utf8)}
@@ -45,6 +46,7 @@ $ffprobe=if(Test-Path (Join-Path $PackageRoot 'bin/ffprobe.exe')){Join-Path $Pac
 if(-not(Test-Path $exe)){throw 'Build the native package first.'}
 $arguments=@('export','--project',('"'+$project+'"'),'--scene','start.txt','--out',('"'+(Join-Path $run 'full.mp4')+'"'),'--work-dir',('"'+(Join-Path $run 'full-work')+'"'),'--width','1280','--height','720','--fps','30','--workers','1','--mode','manual','--hold','0.2','--text-speed','100','--story-scope','sceneOnly','--gpu-raw-export','traditional')
 $arguments+=@('--engine',$Engine,'--compatibility-capture-format',$CaptureFormat)
+if($CoreMemoryMiB -ge 0){$arguments+=@('--cubism-core-memory-mib',[string]$CoreMemoryMiB)}
 $process=Start-Process -FilePath $exe -ArgumentList $arguments -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $run 'full.log') -RedirectStandardError (Join-Path $run 'full-error.log')
 [IO.File]::WriteAllText((Join-Path $run 'process.json'),(@{pid=$process.Id;run=$run;project=$project;startedUtc=[DateTime]::UtcNow.ToString('o')}|ConvertTo-Json),$utf8)
 Write-Output "PID=$($process.Id) RUN=$run"
@@ -54,6 +56,7 @@ while(-not $process.WaitForExit(1000)){if($watch.Elapsed.TotalSeconds -gt 180){&
 $process.WaitForExit();$status=Get-Content (Join-Path $run 'full-work/status.json') -Raw|ConvertFrom-Json
 if($process.ExitCode -ne 0 -or $status.state -ne 'completed'){throw "Native readiness export failed: $($status.message); $run"}
 $result=$status.result
+if($ExpectedMemoryMiB -ge 0){$request=Get-Content (Join-Path $run 'full-work/request.json') -Raw|ConvertFrom-Json;if([int]$request.settings.cubismCoreInitialMemoryMiB -ne $ExpectedMemoryMiB){throw 'Export request memory default/override mismatch'}}
 if(-not $result.engine.runtimeParity -or $result.engine.sourceKind -notin @('project-runtime','mygo-project-runtime')){throw 'The test must use its exact project runtime.'}
 $probe=& $ffprobe -v error -count_frames -show_streams -of json (Join-Path $run 'full.mp4')|ConvertFrom-Json
 $video=@($probe.streams|Where-Object codec_type -eq 'video')[0]
