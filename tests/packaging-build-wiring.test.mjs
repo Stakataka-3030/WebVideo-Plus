@@ -12,6 +12,13 @@ test('tracked generated output is reproducible without writing browser sources',
   assert.deepEqual(verifyGeneratedAssets(root), {filterOutputs: 2, navigationOutput: 1});
   assert.deepEqual(names.map(read), before);
 });
+test('importing the navigation generator for a normal build does not write tracked source', async () => {
+  const file = path.join(root, 'browser/navigation-metadata.js');
+  const before = {bytes: fs.readFileSync(file), mtime: fs.statSync(file).mtimeMs};
+  await import('../scripts/build-navigation-metadata.mjs');
+  assert.deepEqual(fs.readFileSync(file), before.bytes);
+  assert.equal(fs.statSync(file).mtimeMs, before.mtime);
+});
 test('packaging checks run before discovery manifests and on final EXE bytes', () => {
   const craft = fs.existsSync(path.join(root, 'craft/version.json'));
   const manifest = read(craft ? 'manifest.mjs' : 'scripts/manifest.mjs');

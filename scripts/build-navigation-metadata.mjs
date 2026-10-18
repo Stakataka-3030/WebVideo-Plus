@@ -15,5 +15,9 @@ function readFactory(){return fs.readFileSync(path.join(root,'character-map.fact
 const filterPresets=JSON.parse(fs.readFileSync(path.join(root,"filter-presets.factory.json"),"utf8").replace(/^\uFEFF/,"")).filters;
 const effectPresets=JSON.parse(fs.readFileSync(path.join(root,"preset-effects.factory.json"),"utf8")).effects;
 const result={effectPresets,filterPresets,speakerPositions,characterNames,nativeEffects,fields,groups:config.fieldGroups,eases,blink:{blinkInterval:{label:'眨眼间隔',default:86400000},blinkIntervalRandom:{label:'眨眼间隔随机变化',default:1000},openingDuration:{label:'睁眼',default:150},closingDuration:{label:'闭眼',default:100},closedDuration:{label:'保持闭眼',default:50}},focus:{x:{label:'注视点 X',default:0},y:{label:'注视点 Y',default:0},instant:{label:'立即注视',default:false}},positions:{center:'中间',left:'左侧',right:'右侧',left13:'左侧 1/3',right13:'右侧 1/3',left14:'左侧 1/4',right14:'右侧 1/4'}};
+export function writeNavigationMetadata(){
 fs.writeFileSync(path.join(root,'browser/navigation-metadata.js'),'globalThis.WebVideoNavigationMetadata='+JSON.stringify(result,null,2)+';\n');
 console.log('Navigation metadata extracted from native Terre: '+Object.keys(fields).length+' effect fields, '+result.groups.length+' groups.');
+
+}
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))writeNavigationMetadata();
