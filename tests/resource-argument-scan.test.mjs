@@ -1,0 +1,27 @@
+// Windows: compile the actual production scanner; all resources are inert local sentinels.
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import vm from 'node:vm';import {execFileSync} from 'node:child_process';import {fileURLToPath} from 'node:url';
+const root=process.env.WVP_SOURCE_ROOT||path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+test('production Scan removes only missing argument spans under official quote and continuation grammar',{skip:process.platform!=='win32'},()=>{
+ const out=fs.mkdtempSync(path.join(os.tmpdir(),'wvp-argument-scan-'));
+ try{
+  const file=['4.6.6','4.6.5','4.6.4'].find(v=>fs.existsSync(path.join(root,'baseline/terre-'+v+'.js'))),bundle=fs.readFileSync(path.join(root,'baseline/terre-'+file+'.js'),'utf8'),a=bundle.indexOf('var commandType$1;'),b=bundle.indexOf('function TabItem(',a),ctx=vm.createContext({URL,console});vm.runInContext('const bo=(o,k,v)=>(o[k]=v);'+bundle.slice(a,b)+';globalThis.parse=parseScene;',ctx);
+  const parse=text=>JSON.parse(JSON.stringify(ctx.parse(text))),meaning=parsed=>parsed.sentenceList.filter(s=>!s.isLineBreakHolder&&s.command!==28).map(({command,commandRaw,content,args})=>({command,commandRaw,content,args})),inputs=[];
+  for(const key of ['enter','exit','eyesOpen','eyesClose','mouthOpen','mouthClose','mouthHalfOpen','vocal','backgroundImage'])for(const quote of ['"',"'"]){const source='changeFigure:fixture.png -id=hero -bounds=-500,-500,500,500'+quote+' -'+key+"=absent' -focus={\"x\":-1,\"y\":0} -blink={\"blinkInterval\":5000} -next; inline comment\n:AFTER;";inputs.push({id:key+'-'+(quote==='"'?'double':'single'),source,remove:[key]});}
+  inputs.push({id:'duplicate-argument',source:'changeFigure:fixture.png -eyesOpen=fixture.png -eyesOpen=absent.png -bounds=1,2,3,4" -next;\n:AFTER;',remove:['eyesOpen']});
+  inputs.push({id:'vocal-shorthand',source:':Hello -absent.wav -bounds=1,2,3,4" -focus={"x":-1} -next;\n:AFTER;',remove:['vocal']});
+  inputs.push({id:'multiline',source:'changeFigure:fixture.png\n  -bounds=1,2,3,4"\n  -eyesOpen=absent.png\n  -focus={"x":-1}\n  -next; inline\n:AFTER;',remove:['eyesOpen']});
+  inputs.push({id:'whitespace-key',source:'changeFigure:fixture.png - enter=absent -focus={"x":-1} -next;\n:AFTER;',remove:['enter']});
+  inputs.push({id:'escaped-semicolon',source:'changeFigure:fixture.png -bounds=1,2,3,4" -enter=absent\\;suffix -next; inline\n:AFTER;',remove:['enter']});
+  inputs.push({id:'no-missing-resource',source:'changeFigure:fixture.png -bounds=1,2,3,4" -focus={"x":-1} -blink={"blinkInterval":5000} -next; inline\n:AFTER;',remove:[]});
+  for(const input of inputs)input.parsed=parse(input.source);
+  fs.writeFileSync(path.join(out,'inputs.json'),JSON.stringify(inputs));
+  const core=fs.readFileSync(path.join(root,'src/Core.cs'),'utf8'),end=core.indexOf(' public static class TerreUserData ');assert.ok(end>0);fs.writeFileSync(path.join(out,'Core.cs'),core.slice(0,end)+'}');
+  const probe=`using System;using System.IO;using System.Collections.Generic;using System.Threading.Tasks;using NativeVideo;
+namespace NativeVideo {public static partial class App {public static readonly object LogLock=new object();}public sealed class EngineAdapter {public string Version="${file}";public bool IsMygo=false;public void Prepare(string root){Directory.CreateDirectory(root);}}public static class Commands {public static Task<object> Probe(string path){throw new Exception("Probe outside scanner fixture");}}}
+class ArgumentScanProbe {static void Main(string[] args){var result=new List<object>();foreach(var item in J.A(J.Read(args[1]))){string at=Path.Combine(args[0],J.S(item,"id")),project=Path.Combine(at,"project"),prepared=Path.Combine(at,"prepared");Directory.CreateDirectory(Path.Combine(project,"game/figure"));Directory.CreateDirectory(Path.Combine(project,"lib"));File.WriteAllText(Path.Combine(project,"game/figure/fixture.png"),"INERT TEXT SENTINEL; NEVER LOADED");foreach(var name in new[]{"live2d.min.js","live2dcubismcore.min.js"})File.WriteAllText(Path.Combine(project,"lib",name),"INERT SENTINEL; NEVER EXECUTED");var scan=new ProjectAssets(project,prepared,project,J.S(item,"source"),null,new EngineAdapter());scan.Skeleton();result.Add(J.O("id",J.S(item,"id"),"report",scan.Scan(J.Get(item,"parsed"))));}Console.WriteLine(J.Text(result));}}`;
+  fs.writeFileSync(path.join(out,'Probe.cs'),probe);const exe=path.join(out,'Probe.exe');execFileSync('C:/Windows/Microsoft.NET/Framework64/v4.0.30319/csc.exe',['/nologo','/target:exe','/r:System.Web.Extensions.dll','/out:'+exe,path.join(out,'Core.cs'),path.join(root,'src/ProjectAssets.cs'),path.join(out,'Probe.cs')],{encoding:'utf8'});
+  const results=JSON.parse(execFileSync(exe,[path.join(out,'fixtures'),path.join(out,'inputs.json')],{encoding:'utf8'}));
+  for(const input of inputs){const report=results.find(x=>x.id===input.id).report,after=meaning(parse(report.sanitizedScript)),before=meaning(input.parsed).map(s=>({...s,args:s.args.filter(arg=>!input.remove.includes(arg.key))}));assert.deepEqual(after,before,input.id+' semantic preservation');if(!input.remove.length)assert.equal(report.sanitizedScript,input.source);else assert.ok(report.canContinue,input.id+' remains explicitly skippable');}
+  console.log('Compared '+inputs.length+' real Scan results against pinned official ASTs');
+ }finally{assert.ok(path.resolve(out).startsWith(path.resolve(os.tmpdir())+path.sep));fs.rmSync(out,{recursive:true,force:true});}
+});

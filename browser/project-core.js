@@ -6,7 +6,44 @@
  const safeId=value=>{value=String(value||'').trim();if(!/^[\p{L}\p{N}_][\p{L}\p{N}_.-]{0,95}$/u.test(value))throw Error('ID 只能包含文字、数字、下划线、点和连字符');return value;};
  const safePath=value=>{value=String(value||'').replace(/\\/g,'/').trim();if(!value||/^(?:\/|[A-Za-z]:|https?:|data:)/i.test(value)||value.split('/').some(x=>!x||x==='.'||x==='..')||/[\x00-\x1f<>:"|?*%]/.test(value))throw Error('请填写项目内的相对文件路径');return value;};
  const escapeText=text=>String(text??'').replace(/;/g,'\\;').replace(/\r?\n/g,'|');
- function metadata(value={}){if(value.schemaVersion!==undefined&&value.schemaVersion!==1)throw Error('项目配置版本暂不支持');for(const name of ['templates','markers','backups'])if(value[name]!==undefined&&!Array.isArray(value[name]))throw Error('项目配置中的 '+name+' 无效');return {schemaVersion:1,bindings:{},templates:[],markers:[],backups:[],timings:{},storyTiming:null,showChecks:true,showVideoTime:false,...value};}
+ function metadata(value={}){if(!value||typeof value!=='object'||Array.isArray(value))throw Error('项目配置格式无效');if(value.schemaVersion!==undefined&&value.schemaVersion!==1)throw Error('项目配置版本暂不支持');for(const name of ['templates','markers','backups'])if(value[name]!==undefined&&!Array.isArray(value[name]))throw Error('项目配置中的 '+name+' 无效');return {schemaVersion:1,bindings:{},templates:[],markers:[],backups:[],timings:{},storyTiming:null,showChecks:true,showVideoTime:false,...value};}
+
+ // Source spans follow WebGAL's literal " -" delimiter, not shell quoting.
+ function sourceWrite(row,changes,native){
+  const raw=String(row.source||'').replace(/[\r\n]+$/,''),end=raw.search(/(?<!\\);/),limit=end<0?raw.length:end,tokens=[];
+  for(let at=raw.indexOf(' -');at>=0&&at<limit;at=raw.indexOf(' -',at+2))tokens.push({start:at});
+  for(let i=0;i<tokens.length;i++){const token=tokens[i];token.end=tokens[i+1]?.start??limit;const body=raw.slice(token.start+2,token.end),equals=body.indexOf('=');token.key=(equals<0?body:body.slice(0,equals)).trim();while(token.end>token.start&&/\s/.test(raw[token.end-1]))token.end--;}
+  const patches=[],updates=changes.args||{};let addition='';
+  for(const [key,value]of Object.entries(updates)){
+   if(!/^[A-Za-z_]\w*$/.test(key))throw Error('参数名无效');
+   const found=tokens.filter(token=>token.key===key),remove=value===false||value===undefined||value===null||value==='';
+   const encoded=remove?'':value===true?'':'='+String(value);
+   if(/[\r\n;]/.test(encoded)||encoded.includes(' -'))throw Error('参数值含有语句或参数分隔符');
+   const text=remove?'':' -'+key+encoded;
+   if(found.length){patches.push({start:found[0].start,end:found[0].end,text});for(const token of found.slice(1))patches.push({start:token.start,end:token.end,text:''});}
+   else if(!remove)addition+=text;
+  }
+  if(Object.prototype.hasOwnProperty.call(changes,'content')){
+   const colon=raw.indexOf(':'),start=colon>=0&&colon<limit?colon+1:raw.match(/^\uFEFF?[ \t]*/)[0].length;
+   let stop=tokens[0]?.start??limit;while(stop>start&&/\s/.test(raw[stop-1]))stop--;
+   patches.push({start,end:stop,text:escapeText(changes.content)});
+  }
+  if(addition){let at=limit;while(at>0&&/\s/.test(raw[at-1]))at--;patches.push({start:at,end:at,text:addition+(end<0?';':'')});}
+  patches.sort((a,b)=>a.start-b.start||a.end-b.end);for(let i=1;i<patches.length;i++)if(patches[i].start<patches[i-1].end)throw Error('语句修改范围重叠');
+  let after=raw;for(const patch of patches.reverse())after=after.slice(0,patch.start)+patch.text+after.slice(patch.end);
+  const statements=text=>native(text).sentenceList.filter(item=>!item.isLineBreakHolder&&String(item.commandRaw)!=='comment'),beforeRows=statements(raw),afterRows=statements(after);
+  if(beforeRows.length!==1||afterRows.length!==1||beforeRows[0].command!==afterRows[0].command)throw Error('修改后的语句边界不一致');
+  const original=beforeRows[0],updated=afterRows[0],untouched=args=>args.filter(arg=>!Object.prototype.hasOwnProperty.call(updates,arg.key));
+  if(JSON.stringify(untouched(original.args))!==JSON.stringify(untouched(updated.args)))throw Error('修改改变了其他参数，已停止写入');
+  const expectedContent=Object.prototype.hasOwnProperty.call(changes,'content')?String(changes.content??'').replace(/\r?\n/g,'|').trim():original.content;
+  if(updated.content!==(expectedContent==='none'?'':expectedContent))throw Error('正文含有会被解释为参数的内容，已停止写入');
+  for(const [key,value]of Object.entries(updates)){
+   const found=updated.args.filter(arg=>arg.key===key),remove=value===false||value===undefined||value===null||value==='';
+   if(remove?found.length!==0:found.length!==1)throw Error('参数修改校验失败：'+key);
+   if(!remove){const text=String(value),expected=value===true?true:text==='true'?true:text==='false'?false:!isNaN(Number(text))?Number(text):text;if(found[0].value!==expected)throw Error('参数值修改校验失败：'+key);}
+  }
+  return after;
+ }
  function expand(template,row,project){const values={speaker:row.speaker||'',figureId:project.bindings[row.speaker]?.id||row.args.figureId||row.args.id||'',content:escapeText(row.content),motion:row.args.motion||'',expression:row.args.expression||''};return String(template).replace(/\{\{(\w+)\}\}/g,(_,key)=>{if(!(key in values)||values[key]==='')throw Error(`第 ${row.startLine} 行缺少模板变量 ${key}`);return String(values[key]);});}
  function makePlan(model,selection,operation,project,native){
   if(!model||!selection||selection.path!==model.path||selection.source!==model.source)throw Error('选择已失效，请重新选择');
@@ -113,5 +150,5 @@
   const legacyPlayers=version===1?Object.fromEntries(Object.entries(value.players||{}).filter(([key,count])=>typeof count==='number'&&Number.isInteger(count)&&count>=1&&count<=64)):{},players=version===2?Math.max(1,Math.min(64,Number.isInteger(value.players)?value.players:1)):Math.max(1,...Object.values(legacyPlayers),...tracks.map(t=>t.lane+1));
   return {schemaVersion:version,enabled:value.enabled!==false,replaceGameBgm:!!value.replaceGameBgm,players,tracks};
  }
- root.WebVideoProjectCore={norm,hash,safeId,safePath,escapeText,metadata,expand,makePlan,anchor,resolveAnchor,generatedMarkers,inspect,parseAnogo,importAnogo,musicProject};
+ root.WebVideoProjectCore={norm,hash,safeId,safePath,escapeText,sourceWrite,metadata,expand,makePlan,anchor,resolveAnchor,generatedMarkers,inspect,parseAnogo,importAnogo,musicProject};
 })(typeof window==='undefined'?globalThis:window);

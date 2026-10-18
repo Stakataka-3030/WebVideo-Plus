@@ -1,24 +1,32 @@
 /* Resolve dialogue preparation by explicit ID or the last directive at its position. */
 function webVideoExpressionPreparation(model,native){
- const positions=['center','left','right','left13','right13','left14','right14'],states=new Map(),byPosition=new Map(),rows=[];let previous=null,speaker='',needsConfiguration=false,firstProblemLine=null,needsIdConversion=false;
+ const positions=['center','left','right','left13','right13','left14','right14'],states=new Map(),byPosition=new Map(),rows=[],T=window.WebVideoTimelineCore;let previous=null,speaker='',needsConfiguration=false,firstProblemLine=null,needsIdConversion=false,uncertain=false;
  if(!model)return {rows,needsConfiguration,firstProblemLine,needsIdConversion};
  const rawByLine=new Map((native.parse(model.source).sentenceList||[]).filter(s=>!s.isLineBreakHolder).map(s=>[s.startLine,s]));
- for(const row of model.statements){const a=row.args,raw=rawByLine.get(row.startLine-1);if(row.command==='comment')continue;
-  if(row.command==='changeFigure'){
-   const explicit=typeof a.id==='string'||typeof a.id==='number'?String(a.id):'',fallback=positions.find(p=>a[p]===true),id=explicit||'fig-'+(fallback||'center'),gone=!row.content||row.content==='none'||a.clear===true,position=fallback||(gone&&explicit?states.get(id)?.position:null)||'center',record={row,position,id,explicit:!!explicit,gone};
+ for(const row of model.statements){let current=row;const raw=rawByLine.get(row.startLine-1);if(row.command==='comment')continue;
+  if(T.stateBarrier(row)){uncertain=true;states.clear();byPosition.clear();}
+  if(!uncertain&&row.command==='changeFigureDiff'){
+   const a=row.args,key=String(a.id||'fig-'+(positions.find(p=>a[p]===true)||'center')),old=states.get(key);
+   if(T.figureDiffRejected?.(old?{file:old.row.content,liveRuntime:T.figureModel?.(old.row.content,old.row.args)}:null,row.content)){previous=row;continue;}
+   if(old&&row.content&&row.content!=='none'){
+    const changes={},args={...old.row.args};for(const key of ['animationFlag','mouthOpen','mouthHalfOpen','mouthClose','eyesOpen','eyesClose']){changes[key]=Object.prototype.hasOwnProperty.call(a,key)?a[key]:false;delete args[key];if(Object.prototype.hasOwnProperty.call(a,key))args[key]=a[key];}
+    const template={...old.row,content:row.content,args,source:native.write(old.row,{content:row.content,args:changes})},record={...old,row:template};states.set(key,record);byPosition.set(record.position,record);previous=row;continue;
+   }
+   current={...row,command:'changeFigure',source:row.source.replace(/changeFigureDiff(?=\s*:)/,'changeFigure')};
+  }
+  const a=current.args;
+  if(!uncertain&&current.command==='changeFigure'){
+   const explicit=typeof a.id==='string'||typeof a.id==='number'?String(a.id):'',fallback=positions.find(p=>a[p]===true),id=explicit||'fig-'+(fallback||'center'),gone=!current.content||current.content==='none'||a.clear===true,position=fallback||(gone&&explicit?states.get(id)?.position:null)||'center',record={row:current,position,id,explicit:!!explicit,gone};
    byPosition.set(position,record);if(gone){if(explicit)states.delete(id);else for(const [key,value]of states)if(value.position===position)states.delete(key);}else states.set(id,record);
   }
   if(row.command==='say'){
    if(a.speaker!==undefined&&a.speaker!==null)speaker=String(a.speaker);if(raw?.commandRaw===''||a.clear===true)speaker='';
    const originalId=typeof a.figureId==='string'||typeof a.figureId==='number'?String(a.figureId):'',narration=!speaker,hasId=!!originalId.trim(),explicitPositions=positions.filter(p=>a[p]===true),usesPosition=!hasId&&a.id!==true&&explicitPositions.length===1,position=explicitPositions[0],target=usesPosition?byPosition.get(position):states.get(originalId);
    const alive=target&&!target.gone&&states.get(target.id)===target&&(!position||target.position===position),missingTemplateId=!narration&&usesPosition&&alive&&!target.explicit,id=usesPosition&&target?target.id:originalId;
-   const valid=alive&&explicitPositions.length<=1&&(hasId||usesPosition&&target.explicit),eligible=!narration&&!!valid,convertToId=eligible&&usesPosition;
-   if(missingTemplateId)needsIdConversion=true;
-   const intended=hasId||a.id===true||positions.some(p=>a[p]!==undefined&&a[p]!==false);
-   if(!narration&&intended&&!valid&&!missingTemplateId){needsConfiguration=true;if(firstProblemLine===null)firstProblemLine=row.startLine;}
-   const fallbackTarget=!intended&&states.size===1?[...states.values()][0]:null,manualTarget=valid?target:fallbackTarget,manualEligible=!!manualTarget&&explicitPositions.length<=1;
-   const alreadyPrepared=manualEligible&&previous?.id===manualTarget.row.id;
-   const reason=narration?(manualEligible?'旁白（解锁非推荐后可选）':'旁白（无法确定目标立绘）'):missingTemplateId?'推荐优先一键id补全':!intended?(manualEligible?'画外音（解锁非推荐后使用唯一在场立绘）':'画外音（无法确定目标立绘）'):!valid?'请先配置角色登场和离场':convertToId?'勾选此项会将此项修改为按id执行':'';
+   const valid=!uncertain&&alive&&explicitPositions.length<=1&&(hasId||usesPosition&&target.explicit),eligible=!narration&&!!valid,convertToId=eligible&&usesPosition;if(missingTemplateId)needsIdConversion=true;
+   const intended=hasId||a.id===true||positions.some(p=>a[p]!==undefined&&a[p]!==false);if(!narration&&intended&&!valid&&!missingTemplateId){needsConfiguration=true;if(firstProblemLine===null)firstProblemLine=row.startLine;}
+   const fallbackTarget=!uncertain&&!intended&&states.size===1?[...states.values()][0]:null,manualTarget=valid?target:fallbackTarget,manualEligible=!!manualTarget&&explicitPositions.length<=1,alreadyPrepared=manualEligible&&previous?.id===manualTarget.row.id;
+   const reason=uncertain?'条件或交互后的在场角色需确认':narration?(manualEligible?'旁白（解锁非推荐后可选）':'旁白（无法确定目标立绘）'):missingTemplateId?'推荐优先一键id补全':!intended?(manualEligible?'画外音（解锁非推荐后使用唯一在场立绘）':'画外音（无法确定目标立绘）'):!valid?'请先配置角色登场和离场':convertToId?'勾选此项会将此项修改为按id执行':'';
    rows.push({row,speaker,narration,id,eligible,manualEligible,convertToId,missingTemplateId,template:manualEligible?manualTarget.row:null,alreadyPrepared,reason});
   }
   previous=row;
@@ -27,7 +35,7 @@ function webVideoExpressionPreparation(model,native){
 }
 function webVideoExpressionPlan(model,analysis,selected,native,ignoreExisting=false,allowNonRecommended=false){
  const positions=['center','left','right','left13','right13','left14','right14'],eol=model.source.includes('\r\n')?'\r\n':'\n',patches=[];let inserted=0,converted=0;
- for(const item of analysis.rows){const allowed=item.eligible||allowNonRecommended&&item.manualEligible;if(!selected.has(item.row.id)||!allowed||!item.template)continue;let prefix='';if(ignoreExisting||!item.alreadyPrepared){const text=native.write(item.template,{args:{next:true}});if(/[\r\n]/.test(text))throw Error('生成的切换立绘必须完整保留在一行内。');prefix=text+eol;inserted++;}
+ for(const item of analysis.rows){const allowed=item.eligible||allowNonRecommended&&item.manualEligible;if(!selected.has(item.row.id)||!allowed||!item.template)continue;let prefix='';if(ignoreExisting||!item.alreadyPrepared){const text=native.write(item.template,{args:{next:true}});prefix=text+eol;inserted++;}
   if(item.convertToId){const args={id:true,figureId:item.id};for(const p of positions)args[p]=false;let dialogue=native.write(item.row,{args});if(/\n$/.test(item.row.source))dialogue+=eol;patches.push({startOffset:item.row.startOffset,endOffset:item.row.endOffset,before:item.row.source,after:prefix+dialogue,line:item.row.startLine,reviewRelative:prefix?0:undefined});converted++;}else if(prefix)patches.push({startOffset:item.row.startOffset,endOffset:item.row.startOffset,before:'',after:prefix,line:item.row.startLine,reviewRelative:0});
  }
  let after=model.source;for(const p of [...patches].reverse())after=after.slice(0,p.startOffset)+p.after+after.slice(p.endOffset);native.parse(after);let delta=0;const reviewOffsets=[];for(const p of patches){if(p.reviewRelative!==undefined)reviewOffsets.push(p.startOffset+delta+p.reviewRelative);delta+=p.after.length-(p.endOffset-p.startOffset);}return {path:model.path,before:model.source,after,patches,reviewOffsets,changed:patches.length,inserted,converted,operation:{type:'expressionPrep'}};

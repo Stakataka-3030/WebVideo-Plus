@@ -1,6 +1,6 @@
 /* Uses Terre's existing file API and editor buffers. Project files are plain JSON. */
 const WebVideoProject=((terreApi)=>{
- const C=window.WebVideoProjectCore,listeners=new Set();let scope=null,project=C.metadata(),music={schemaVersion:2,enabled:false,players:1,tracks:[]},loadError='',busy=false,loading=false,localQueue=Promise.resolve(),musicHash=null;
+ const C=window.WebVideoProjectCore,listeners=new Set();let scope=null,project=C.metadata(),music={schemaVersion:2,enabled:false,players:1,tracks:[]},loadError='',metadataError='',metadataText=null,busy=false,loading=false,localQueue=Promise.resolve(),musicHash=null;
 async function webVideoProjectRequest(url,options={},timeoutMs=30000,requests=null){
  const controller=new AbortController();requests?.add(controller);let timer;
  const deadline=new Promise((_,reject)=>{controller.signal.addEventListener('abort',()=>reject(controller.signal.reason||Error('请求已取消')),{once:true});timer=setTimeout(()=>controller.abort(Error('本地服务响应超时，请稍后重试')),timeoutMs);});
@@ -20,6 +20,15 @@ async function webVideoProjectRequest(url,options={},timeoutMs=30000,requests=nu
  async function json(path,fallback){const text=await read(path,null);if(text===null)return fallback;try{return JSON.parse(text);}catch{throw Error('项目配置无法解析，请先恢复备份：'+path);}}
  function projectPath(rel,at=scope){if(!at)throw Error('请先打开项目');return at.root+'/'+C.safePath(rel);}
  const musicPath=at=>projectPath('video-project.json',at);
+ const metadataPath=at=>projectPath('.webvideo-plus/authoring.json',at);
+ async function saveMetadata(value,at=scope){
+  if(metadataError)throw Error(metadataError);
+  const file=metadataPath(at),current=await read(file,null);if(scope!==at)throw Error('项目已切换，未保存制作标记');
+  if(current!==metadataText)throw Error('制作配置已被其他窗口修改，请重新打开项目');
+  if(current===null){try{await terreApi.assetsControllerReadAssets(at.root+'/.webvideo-plus');}catch(error){if(error?.status!==404&&error?.response?.status!==404)throw error;await post('createNewFolder',{source:at.root,name:'.webvideo-plus'});}}
+  const text=JSON.stringify(C.metadata(value),null,2);await write(file,text,{create:true});if(scope===at)metadataText=text;
+ }
+
  function sameScene(path){return scope&&path.startsWith(scope.root+'/game/scene/')&&!path.split('/').some(p=>p==='..')&&!path.includes('%');}
  const withLock=fn=>{const at=scope,key=at?.root;if(!key)return Promise.reject(Error('请先打开项目'));const guarded=()=>{if(scope!==at)throw Error('项目已切换，请重新打开工具');return fn();};if(navigator.locks)return navigator.locks.request('webvideo-project:'+key,guarded);const next=localQueue.then(guarded,guarded);localQueue=next.catch(()=>{});return next;};
  async function currentDisk(snapshot){
@@ -31,20 +40,18 @@ async function webVideoProjectRequest(url,options={},timeoutMs=30000,requests=nu
  }
  const api={
   subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},
-  state(){return {scope,project,music,error:loadError,busy,loading};},
-  async activate(game){if(game&&(/[\\/%]/.test(game)||game==='.'||game==='..'))throw Error('项目路径无效');if(scope?.game===game)return;scope=game?{game,root:'games/'+game}:null;project=C.metadata();music={schemaVersion:2,enabled:false,players:1,tracks:[]};loadError='';const at=scope;loading=!!at;changed();if(!at)return;try{const loaded=await api.service('/api/music/project',{project:at.game,action:'read'});if(scope===at){music=C.musicProject(loaded.music);musicHash=loaded.hash;loading=false;changed();}}catch(e){if(scope===at){loadError=e.message;loading=false;changed();}}},
-  async update(mutator){return withLock(async()=>{const at=scope,p=C.metadata(JSON.parse(JSON.stringify(project)));const next=mutator(p)||p;if(scope===at){project=next;changed();}return next;});},
+  state(){return {scope,project,music,error:loadError,metadataError,busy,loading};},
+  async activate(game){
+   if(game&&(/[\\/%]/.test(game)||game==='.'||game==='..'))throw Error('项目路径无效');if(scope?.game===game)return;
+   scope=game?{game,root:'games/'+game}:null;project=C.metadata();music={schemaVersion:2,enabled:false,players:1,tracks:[]};loadError='';metadataError='';metadataText=null;musicHash=null;const at=scope;loading=!!at;changed();if(!at)return;
+   try{const loaded=await api.service('/api/music/project',{project:at.game,action:'read'});if(scope===at){music=C.musicProject(loaded.music);musicHash=loaded.hash;}}catch(error){if(scope===at)loadError=error.message;}
+   try{const text=await read(metadataPath(at),null),next=text===null?C.metadata():C.metadata(JSON.parse(text));if(scope===at){metadataText=text;project=next;}}catch(error){if(scope===at)metadataError='制作配置无法读取，未覆盖原文件：'+error.message;}
+   if(scope===at){loading=false;changed();}
+  },
+  async update(mutator){return withLock(async()=>{const at=scope,p=C.metadata(JSON.parse(JSON.stringify(project))),next=C.metadata(mutator(p)||p);await saveMetadata(next,at);if(scope===at){project=next;changed();}return next;});},
   parse(text){return parseScene(text);},
   model(path,text){return window.WebVideoTimelineCore.derive(path,text,parseScene(text),commandType);},
-  writer(row,{content=row.content,args={}}={}){
-   const parsed=parseScene(row.source).sentenceList.find(s=>!s.isLineBreakHolder);if(!parsed)throw Error('语句无法解析');
-   const speakerArg=parsed.args.find(a=>a.key==='speaker');let command=parsed.commandRaw;
-   if(row.command==='say')command=speakerArg?String(speakerArg.value):command==='say'?undefined:command;
-   const originalArgs=parsed.args.filter(a=>row.command!=='say'||a.key!=='speaker');
-   const result=combineSubmitString(command,C.escapeText(content),originalArgs,Object.entries(args).map(([key,value])=>({key,value})),parsed.inlineComment||'');
-   if(/[\r\n]/.test(result))throw Error('第 '+row.startLine+' 行的单条语句仍含换行，已停止写入。');
-   return result;
-  },
+  writer(row,changes={}){return C.sourceWrite(row,changes,parseScene);},
   plan(selection,operation){const model=window.WebVideoPlus.state().model;return C.makePlan(model,selection,operation,project,{parse:parseScene,write:api.writer});},
   async commit(plan,label='批量操作'){
    return withLock(async()=>{if(busy)throw Error('上一项操作仍在执行');busy=true;changed();const at=scope;
@@ -57,10 +64,16 @@ async function webVideoProjectRequest(url,options={},timeoutMs=30000,requests=nu
      if(!window.WebVideoPlus.validateSelection(snapshot)||C.norm(await read(plan.path,null))!==C.norm(beforeDisk))throw Error('保存备份期间剧本发生变化，未覆盖原文');
      const afterDisk=beforeDisk.includes('\r\n')?C.norm(plan.after).replace(/\n/g,'\r\n'):plan.after;
      await write(plan.path,afterDisk);window.WebVideoPlus.replaceBuffer(plan.path,C.norm(plan.after));
-     if(plan.reviewOffsets?.length)window.WebVideoPlus.markForReview(plan.path,C.norm(plan.after),plan.reviewOffsets.map(offset=>C.norm(plan.after.slice(0,offset)).length));
-     if(['idize','restore','expressionPrep','batchFilter','batchNext','autoExit','filterEdit','presetEffect','novelImport','importAnogo','singleLineHint'].includes(plan.operation?.type)){changed();return {backupPath,changed:plan.changed};}
-     let warning='';try{const p=C.metadata(JSON.parse(JSON.stringify(project)));p.backups.unshift({id,label,path:plan.path,file:backupPath,createdAt:backup.createdAt});p.backups=p.backups.slice(0,200);const afterModel=api.model(plan.path,C.norm(plan.after));if(plan.operation?.type!=='restore')p.markers.push(...C.generatedMarkers(afterModel,{...plan,patches:plan.patches.map(p=>({...p,startOffset:C.norm(plan.before.slice(0,p.startOffset)).length,endOffset:C.norm(plan.before.slice(0,p.endOffset)).length,after:C.norm(p.after)}))},id));if(scope===at)project=p;}catch(e){warning='剧本已应用，备份文件已保存，但项目索引更新失败：'+e.message;}
-     changed();return {id,backupPath,warning,changed:plan.changed??plan.patches?.length??1};
+
+
+     let warning='';try{
+      const p=C.metadata(JSON.parse(JSON.stringify(project)));p.backups.unshift({id,label,path:plan.path,file:backupPath,createdAt:backup.createdAt});p.backups=p.backups.slice(0,200);const afterModel=api.model(plan.path,C.norm(plan.after));
+      if(!['idize','restore','expressionPrep','batchFilter','batchNext','autoExit','filterEdit','presetEffect','novelImport','importAnogo','singleLineHint'].includes(plan.operation?.type))p.markers.push(...C.generatedMarkers(afterModel,{...plan,patches:plan.patches.map(p=>({...p,startOffset:C.norm(plan.before.slice(0,p.startOffset)).length,endOffset:C.norm(plan.before.slice(0,p.endOffset)).length,after:C.norm(p.after)}))},id));
+      const offsets=new Set((plan.reviewOffsets||[]).map(offset=>C.norm(plan.after.slice(0,offset)).length));for(const row of afterModel.statements)if(offsets.has(row.startOffset))p.markers.push({...C.anchor(afterModel,row,'待核对',id),kind:'review'});
+      await saveMetadata(p,at);if(scope===at)project=p;
+     }catch(error){warning='剧本已应用，备份已保存，但制作配置未保存：'+error.message;if(plan.reviewOffsets?.length)window.WebVideoPlus.markForReview?.(plan.path,C.norm(plan.after),plan.reviewOffsets.map(offset=>C.norm(plan.after.slice(0,offset)).length));}
+
+     changed();if(warning)window.WebVideoPlus.notify?.(warning);return {id,backupPath,warning,changed:plan.changed??plan.patches?.length??1};
     }finally{busy=false;changed();}
    });
   },

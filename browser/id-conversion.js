@@ -17,8 +17,8 @@
   const stage=new Map(),renamed=new Map();let order=0;const liveAt=pos=>[...stage.values()].filter(v=>v.pos===pos).sort((a,b)=>a.order-b.order),lookup=id=>stage.get(renamed.get(id)||id);
   const expectedId=item=>inside(item.row)&&item.actor&&(!item.hasExisting||options.overwrite)?item.actor:item.existing||'fig-'+item.pos;
   function write(row,variants){if(!inside(row)||!variants.length)return;const eol=model.source.includes('\r\n')?'\r\n':'\n';let text=variants.map((value,i)=>{const {__content,...args}=value;return norm(native.write(row,{...(typeof __content==='string'?{content:__content}:{}),args:{...args,...(i<variants.length-1?{next:true}:{})}})).trimEnd();}).join('\n');if(/\n$/.test(row.source))text+='\n';text=text.replace(/\n/g,eol);if(text!==model.source.slice(row.startOffset,row.endOffset))patches.push({startOffset:row.startOffset,endOffset:row.endOffset,before:row.source,after:text,line:row.startLine});}
-  for(let index=0;index<items.length;index++){
-   const item=items[index],{row,pos,existing}=item,a=row.args;
+  let uncertain=false;for(let index=0;index<items.length;index++){
+   const item=items[index],{row,pos,existing}=item,a=row.args;if(root.WebVideoTimelineCore.stateBarrier(row))uncertain=true;if(uncertain){if(row.command!=='comment')warn(row,'条件或交互后的角色状态需确认，保持原样。');continue;}
    if(row.command==='changeFigure'){
     if(item.gone){let victims=existing?[lookup(existing)].filter(Boolean):liveAt(pos);if(!victims.length){warn(row,'没有找到对应的在场角色，离场语句保持原样。');continue;}
      if(inside(row)&&(!item.hasExisting||options.overwrite)){
