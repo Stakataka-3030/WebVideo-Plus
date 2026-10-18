@@ -1,7 +1,7 @@
 (() => {
   const requestedMiB = __CUBISM_CORE_MEMORY_MIB__;
   const state = globalThis.__webvideoCubismMemory = {
-    requestedMiB, done: false, coreLoaded: false, applied: false, error: ''
+    requestedMiB, effectiveMiB: 0, done: false, coreLoaded: false, applied: false, engineReservations: [], error: ''
   };
   let live2dPromise;
   Object.defineProperty(globalThis, 'live2dPromise', {
@@ -18,7 +18,17 @@
             if (typeof initialize !== 'function') {
               state.error = '当前 Cubism Core 未提供初始内存接口';
             } else {
-              memory.initializeAmountOfMemory(requestedMiB * 1024 * 1024);
+              initialize.call(memory, requestedMiB * 1024 * 1024);
+              state.effectiveMiB = requestedMiB;
+              // 4.6.6 reserves 32 MiB after plugin load and may apply the game config later.
+              // An explicit export choice wins. Do not reinitialize Core after allocation:
+              // later reserve calls must not reset an active model's backing buffer.
+              const preserveExplicitMemory = bytes => {
+                state.engineReservations.push(Number(bytes) / (1024 * 1024));
+              };
+              memory.initializeAmountOfMemory = preserveExplicitMemory;
+              if (memory.initializeAmountOfMemory !== preserveExplicitMemory)
+                throw new Error('无法固定显式 Cubism Core 初始内存');
               state.applied = true;
             }
           }
