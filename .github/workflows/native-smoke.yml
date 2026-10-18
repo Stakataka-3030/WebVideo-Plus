@@ -37,7 +37,7 @@ jobs:
         run: |
           $tests = @(Get-ChildItem -Path 'craft/tests/*.test.mjs', 'tests/*.test.mjs' -File | Sort-Object FullName | ForEach-Object { $_.FullName })
           if ($tests.Count -eq 0) { throw "No Craft/shared regression files found" }
-          & node --test @tests
+          & node --test --test-concurrency=2 @tests
           if ($LASTEXITCODE -ne 0) { throw "Craft/shared Node regression checks failed" }
 
       - name: Verify composed Craft feature preflight
