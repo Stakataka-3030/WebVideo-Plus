@@ -8,10 +8,16 @@ try {
  $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
  $exe=Join-Path $testRoot 'reliability-checks.exe'
  $sources=@('src/Core.cs','src/ManualCuts.cs','src/Integration.cs','src/Lifecycle.cs','src/AutomaticBackups.cs','manager/ManagerMain.cs','manager/ProductIntegration.cs','manager/ModuleCatalog.cs','tests/LifecycleReliabilityChecks.cs')|ForEach-Object{Join-Path $repo $_}
- & $compiler /nologo /target:exe /main:LifecycleReliabilityChecks ('/out:'+$exe) /r:System.Web.Extensions.dll /r:System.Net.Http.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll $sources
+ & $compiler /nologo /target:exe /define:LIFECYCLE_TESTS /main:LifecycleReliabilityChecks ('/out:'+$exe) /r:System.Web.Extensions.dll /r:System.Net.Http.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll $sources
  if($LASTEXITCODE -ne 0){throw 'Lifecycle checks compilation failed'}
  & $exe (Join-Path $testRoot ('fixture-'+[Guid]::NewGuid().ToString('N'))) | Tee-Object -FilePath (Join-Path $testRoot 'native-results.log')
  if($LASTEXITCODE -ne 0){throw 'Lifecycle production-path checks failed'}
+ $release=Join-Path $testRoot 'release-manager.exe'
+ $releaseSources=@('src/Core.cs','src/ManualCuts.cs','src/Integration.cs','manager/ManagerMain.cs','manager/ProductIntegration.cs','manager/ModuleCatalog.cs')|ForEach-Object{Join-Path $repo $_}
+ & $compiler /nologo /target:exe /main:NativeVideo.App ('/out:'+$release) /r:System.Web.Extensions.dll /r:System.Net.Http.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll $releaseSources
+ if($LASTEXITCODE -ne 0){throw 'Release Manager compilation failed'}
+ & $exe --inspect-release $release | Tee-Object -FilePath (Join-Path $testRoot 'release-hook-results.log')
+ if($LASTEXITCODE -ne 0){throw 'Release test hook isolation failed'}
  $source=[IO.File]::ReadAllText((Join-Path $repo 'installer/Installer.base.cs'))
  $begin=$source.IndexOf('public void Run(string exe,IEnumerable<string> arguments,string runtimePath,string cwd){');$end=$source.IndexOf('void AppendProcessLog(string line)',$begin)
  if($begin -lt 0 -or $end -lt 0){throw 'Installer method extraction failed'}

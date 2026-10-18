@@ -117,9 +117,14 @@ namespace NativeVideo {
    "config.json","settings.json","last-output.json","install.json","lifecycle-install.json","lifecycle.json","lifecycle.lock","lifecycle-control.json","runtime-session.json","service-state.json",".webvideo-data.json","legacy-user-data-import.json","automatic-backup.log","lifecycle.log","service.log","service-error.log","jobs","media","user-data","recovery","install-backup"
   }
   ;
+#if LIFECYCLE_TESTS
   static Action<string> Fault=null;
+#endif
+  [Conditional("LIFECYCLE_TESTS")]
   static void Phase(string name){
+#if LIFECYCLE_TESTS
    if(Fault!=null)Fault(name);
+#endif
   }
   static void CheckCancellation(){
    string file=App.Arg("--cancel-file");
