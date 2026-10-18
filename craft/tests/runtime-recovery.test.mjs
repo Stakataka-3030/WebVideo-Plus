@@ -17,7 +17,7 @@ const repo=fileURLToPath(new URL('../../',import.meta.url));
 const transaction=new URL('../installer/transaction.mjs',import.meta.url).href;
 const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-function home(t){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'craft-recovery-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));return dir;}
+function home(t){const dir=fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(),'craft-recovery-')));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));return dir;}
 function payload(dir,name='payload',version='1.1.14c'){
  const root=path.join(dir,name),files={'node.exe':'inert node','kernel.exe':'inert kernel','wrapper.exe':'wrapper '+version,'craft/main.mjs':'inert source '+version};
  for(const [name,data]of Object.entries(files)){fs.mkdirSync(path.dirname(path.join(root,name)),{recursive:true});fs.writeFileSync(path.join(root,name),data);}
