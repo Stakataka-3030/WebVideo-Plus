@@ -11,6 +11,9 @@ $commands=$core.Substring($begin,$end-$begin)
 $renderer=[IO.File]::ReadAllText((Join-Path $RepositoryRoot 'src/Renderer.cs'))
 $domContract=[regex]::Match($renderer,'public static bool DialogueDomRequired\(object request\)\{[^\r\n]+').Value
 if(-not $domContract){throw 'Production DOM contract missing'}
+$browser=[IO.File]::ReadAllText((Join-Path $RepositoryRoot 'src/BrowserHost.cs'))
+$captureContract=[regex]::Match($browser,'async Task AwaitCapture\(Task capture,int ms,string what\)\{[^\r\n]+').Value
+if(-not $captureContract){throw 'Production capture deadline missing'}
 $preamble=@'
 using System;using System.IO;using System.Linq;using System.Text;using System.Collections.Generic;using System.Diagnostics;using System.Threading;using System.Threading.Tasks;
 namespace NativeVideo {
@@ -26,6 +29,7 @@ public static class OutputChecks {
  static Process Child(string mode){return Commands.Start(Path.Combine(Files.Root,"output-checks.exe"),new[]{mode},false,true);}
  static async Task Run(){
   var flags=new Dictionary<string,object>();Check(Renderer.DialogueDomRequired(flags),"full capture requires DOM");flags["exportKind"]="stage";Check(!Renderer.DialogueDomRequired(flags),"stage capture skips DOM");flags["exportKind"]="full";flags["gpuRawExport"]=true;flags["gpuRawDom"]=false;Check(!Renderer.DialogueDomRequired(flags),"raw stage-only pixels skip DOM");flags["exportKind"]="dialog";Check(Renderer.DialogueDomRequired(flags),"transparent dialog always requires DOM");flags.Clear();flags["gpuReadbackBenchmark"]=true;Check(!Renderer.DialogueDomRequired(flags),"readback benchmark skips DOM");flags.Clear();flags["gpuEncodeBenchmark"]=true;Check(!Renderer.DialogueDomRequired(flags),"encode benchmark without DOM skips DOM");flags["gpuEncodeDom"]=true;Check(Renderer.DialogueDomRequired(flags),"encode benchmark with DOM requires DOM");
+  await Timeout(new BrowserHost().Wait(new TaskCompletionSource<bool>().Task,50),"capture pending task has wall-clock deadline");var failedBrowser=new BrowserHost();failedBrowser.Fail();try{await failedBrowser.Wait(new TaskCompletionSource<bool>().Task,5000);throw new Exception("No GPU failure");}catch(IOException){Check(true,"GPU failure interrupts pending capture");}await new BrowserHost().Wait(Task.FromResult(true),100);Check(true,"completed capture succeeds");
   await Timeout(Commands.Await(new TaskCompletionSource<bool>().Task,50,"test"),"incomplete output task deadline");
   using(var cancel=new CancellationTokenSource(50)){try{await Commands.Await(new TaskCompletionSource<bool>().Task,5000,"test",cancel.Token);throw new Exception("Missing cancellation");}catch(OperationCanceledException){Check(true,"output task observes cancellation");}}
   using(var p=Child("stall")){var error=p.StandardError.ReadToEndAsync();await Timeout(Commands.WriteInput(p,error,new byte[8*1024*1024],100),"real pipe backpressure deadline");p.WaitForExit(2000);Check(p.HasExited,"backpressure stops owned child");}
@@ -41,7 +45,7 @@ public static class OutputChecks {
 }}
 '@
 $utf8=New-Object Text.UTF8Encoding($false)
-[IO.File]::WriteAllText((Join-Path $run 'output-checks.cs'),$preamble+$commands+"public static class Renderer {"+$domContract+"}"+$checks,$utf8)
+[IO.File]::WriteAllText((Join-Path $run 'output-checks.cs'),$preamble+$commands+"public static class Renderer {"+$domContract+"}public class BrowserHost {readonly TaskCompletionSource<string> captureFailure=new TaskCompletionSource<string>();public void Fail(){captureFailure.SetResult("+'"GPU failure"'+");}public Task Wait(Task capture,int ms){return AwaitCapture(capture,ms,"+'"capture"'+");}"+$captureContract+"}"+$checks,$utf8)
 $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 & $compiler /nologo /target:exe /platform:x64 ('/out:'+(Join-Path $run 'output-checks.exe')) (Join-Path $run 'output-checks.cs')
 if($LASTEXITCODE -ne 0){throw 'Production Commands compile failed'}
