@@ -162,7 +162,8 @@ jobs:
           $package = Join-Path $PWD 'package'
           $evidence = Join-Path $PWD '.build/ci-native-tests/graphics'
           New-Item -ItemType Directory -Path $evidence -Force | Out-Null
-          $state = [pscustomobject]@{ status='RUNNING'; reason=''; runtimeVersion=''; package=$package; engines=@(); captureFault='NOT_RUN'; readiness=@() }
+          $state = [pscustomobject]@{ status='RUNNING'; reason=''; runtimeVersion=''; package=$package; engines=@(); captureFault='NOT_RUN'; readiness=@([pscustomobject]@{engine='webgal-464';format='png';status='NA';reason='Frozen 4.6.4 product does not expose PNG compatibility capture'}) }
+          'PNG readiness: **NA** - frozen 4.6.4 product has no PNG compatibility capture feature; JPEG remains required.' | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           function Save-GraphicsState {
             $state | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $evidence 'graphics-results.json') -Encoding utf8
           }
@@ -200,10 +201,10 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Native capture fault regression failed' }
             $state.captureFault = 'PASS'; Save-GraphicsState
             foreach ($engine in $engines) {
-              foreach ($format in @('jpeg','png')) {
+              foreach ($format in @('jpeg')) {
                 $check = [pscustomobject]@{ engine=$engine.name; format=$format; status='RUNNING' }
                 $state.readiness += $check; Save-GraphicsState
-                & './tests/render-readiness-native.ps1' -EngineRoot $engine.root -PackageRoot (Join-Path $fixture 'package') -OutputRoot (Join-Path $evidence ($engine.name + '-' + $format)) -MediaToolDirectory $media -Engine webgal -CaptureFormat $format 2>&1 | Tee-Object -FilePath (Join-Path $evidence ($engine.name + '-' + $format + '.log'))
+                & './tests/render-readiness-native.ps1' -EngineRoot $engine.root -PackageRoot (Join-Path $fixture 'package') -OutputRoot (Join-Path $evidence ($engine.name + '-' + $format)) -MediaToolDirectory $media -Engine webgal -CaptureFormat $format -ExpectedMemoryMiB 128 2>&1 | Tee-Object -FilePath (Join-Path $evidence ($engine.name + '-' + $format + '.log'))
                 if ($LASTEXITCODE -ne 0) { throw "Native readiness regression failed: $($engine.name) $format" }
                 $check.status = 'PASS'; Save-GraphicsState
               }
@@ -218,7 +219,7 @@ jobs:
           }
           finally {
             Save-GraphicsState
-            "Native readiness/capture fault: **$($state.status)**; WebView2 $($state.runtimeVersion); readiness cases: $($state.readiness.Count)." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+            "Native readiness/capture fault: **$($state.status)**; WebView2 $($state.runtimeVersion); readiness PASS=$(@($state.readiness | Where-Object status -eq 'PASS').Count), NA=$(@($state.readiness | Where-Object status -eq 'NA').Count)." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           }
 
       - name: Preserve production regression evidence including failures and NA
