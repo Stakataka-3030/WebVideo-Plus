@@ -20,7 +20,7 @@ namespace NativeVideo {
    }catch{}return 0;
   }
   static async Task<bool> ReuseExisting(object config,string state,string control,int pid){
-   string lifeFile=Path.Combine(state,"lifecycle.json");var owner=J.Get(J.TryRead(Path.Combine(state,"lifecycle.lock")),"process");
+   var owner=J.Get(J.TryRead(Path.Combine(state,"lifecycle.lock")),"process");
    for(int i=0;i<32;i++){
     if(!ProcessIdentity.Matches(owner,Files.Exe))return false;
     bool requestedStop=J.S(J.TryRead(control),"action")=="stop";

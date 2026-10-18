@@ -106,29 +106,143 @@ namespace NativeVideo {
   static void SaveRecovery(string state,string originalExe,byte[] originalIndex,string originalBundleFile,string originalBundleName){
    string root=RecoveryDir(state);if(Directory.Exists(root))Files.DeleteTree(state,root);Directory.CreateDirectory(root);string exeHash="";if(!string.IsNullOrWhiteSpace(originalExe)&&File.Exists(originalExe)){Files.CopyFile(originalExe,Path.Combine(root,"original.exe"));exeHash=Files.Hash(originalExe);}File.WriteAllBytes(Path.Combine(root,"index.html"),originalIndex);string bundleHash="";if(!string.IsNullOrWhiteSpace(originalBundleFile)&&File.Exists(originalBundleFile)){Files.CopyFile(originalBundleFile,Path.Combine(root,"original-bundle.js"));bundleHash=Files.Hash(originalBundleFile);}J.Write(RecoveryMeta(state),J.O("schemaVersion",1,"originalExeHash",exeHash,"originalIndexHash",Files.Hash(Path.Combine(root,"index.html")),"originalBundle",Path.GetFileName(originalBundleName),"originalBundleHash",bundleHash,"createdAt",DateTime.UtcNow.ToString("o")));
   }
-  static bool RestoreRecoveryBundle(string state,string terre,string bundleName){
-   var meta=J.TryRead(RecoveryMeta(state));string recorded=Path.GetFileName(J.S(meta,"originalBundle"));if(string.IsNullOrWhiteSpace(bundleName))bundleName=recorded;bundleName=Path.GetFileName(bundleName);if(bundleName=="")return false;string target=Path.Combine(terre,"public","assets",bundleName);if(File.Exists(target))return true;string source=Path.Combine(RecoveryDir(state),"original-bundle.js"),expected=J.S(meta,"originalBundleHash");if(!File.Exists(source)||expected!=""&&Files.Hash(source)!=expected)return false;Files.CopyFile(source,target);return true;
+  static readonly string[] OwnedStateNames={
+   "config.json","settings.json","last-output.json","install.json","lifecycle-install.json","lifecycle.json","lifecycle.lock","lifecycle-control.json","runtime-session.json","service-state.json",".webvideo-data.json","legacy-user-data-import.json","automatic-backup.log","lifecycle.log","service.log","service-error.log","jobs","media","user-data","recovery","install-backup"
   }
-  static bool RestoreRecoveryExe(string state,string target,string expectedHash=""){
-   string file=RecoveryExe(state);if(file==null)return false;try{var meta=J.TryRead(RecoveryMeta(state));string hash=J.S(meta,"originalExeHash");if(hash!=""&&Files.Hash(file)!=hash)return false;if(expectedHash!=""&&hash!=""&&hash!=expectedHash)return false;Files.CopyFile(file,target);return true;}catch{return false;}
+  ;
+  static Action<string> Fault=null;
+  static void Phase(string name){
+   if(Fault!=null)Fault(name);
   }
-  static readonly string[] OwnedStateNames={"config.json","settings.json","last-output.json","install.json","lifecycle-install.json","lifecycle.json","lifecycle.lock","lifecycle-control.json","runtime-session.json","service-state.json",".webvideo-data.json","legacy-user-data-import.json","automatic-backup.log","lifecycle.log","service.log","service-error.log","jobs","media","user-data","recovery","install-backup"};
-  static Action<string> Fault;
-  static void Phase(string name){if(Fault!=null)Fault(name);}
-  static void CheckCancellation(){string file=App.Arg("--cancel-file");if(file!=""&&File.Exists(file))throw new OperationCanceledException("已取消");}
-  static bool ProtectedState(string state,string terre,string games){string full=Files.Full(state).TrimEnd('\\','/');string[] protectedRoots={terre,games,Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),Environment.GetFolderPath(Environment.SpecialFolder.Windows),Environment.GetFolderPath(Environment.SpecialFolder.System)};return SamePath(full,Path.GetPathRoot(full))||protectedRoots.Where(x=>!string.IsNullOrWhiteSpace(x)).Any(x=>Files.Within(full,x,true));}
-  static void RemoveOwnedState(string state){foreach(string name in OwnedStateNames){string path=Files.Under(state,name);if(Directory.Exists(path))Files.DeleteTree(state,path);else if(File.Exists(path))File.Delete(path);}if(!Directory.EnumerateFileSystemEntries(state).Any())Directory.Delete(state);}
-  static void RequirePlainDirectories(string root){if(!Directory.Exists(root))return;if((File.GetAttributes(root)&FileAttributes.ReparsePoint)!=0)throw new IOException("数据目录不能包含目录链接："+root);foreach(string child in Directory.GetDirectories(root))RequirePlainDirectories(child);}
-  static string[] CaptureMigrationFiles(string target){RequirePlainDirectories(target);return Directory.Exists(target)?Directory.GetFiles(target,"*",SearchOption.AllDirectories).Concat(Directory.GetDirectories(target,"*",SearchOption.AllDirectories)).Select(Files.Full).ToArray():new string[0];}
-  static void RollbackMigration(string state,string source,string[] retained){var keep=new HashSet<string>(retained,StringComparer.OrdinalIgnoreCase);string prefix=Files.Full(source).TrimEnd('\\','/')+Path.DirectorySeparatorChar;foreach(string original in Directory.GetFiles(source,"*",SearchOption.AllDirectories)){string file=Files.Under(state,Files.Full(original).Substring(prefix.Length));if(keep.Contains(Files.Full(file))||!File.Exists(file))continue;if(Files.Hash(file)!=Files.Hash(original))throw new IOException("迁移副本已变化，已保留："+file);File.Delete(file);}foreach(string original in Directory.GetDirectories(source,"*",SearchOption.AllDirectories).OrderByDescending(x=>x.Length)){string dir=Files.Under(state,Files.Full(original).Substring(prefix.Length));if(!keep.Contains(Files.Full(dir))&&Directory.Exists(dir)&&!Directory.EnumerateFileSystemEntries(dir).Any())Directory.Delete(dir);}if(!Directory.EnumerateFileSystemEntries(state).Any())Directory.Delete(state);}
-  static string TreeHash(string root){if(!Directory.Exists(root))return "";var entries=Directory.GetFiles(root,"*",SearchOption.AllDirectories).OrderBy(x=>x,StringComparer.OrdinalIgnoreCase).Select(file=>file.Substring(root.Length).Replace('\\','/')+":"+Files.Hash(file));return Files.HashText(string.Join("\n",entries));}
-  static void SaveInstallTransaction(string transaction,Dictionary<string,byte[]> before,string terre,string state,string addon,string stage,string retired){var entries=new List<object>();int index=0;foreach(var pair in before){string copy="file-"+(index++)+".bin";if(pair.Value!=null)File.WriteAllBytes(Path.Combine(transaction,copy),pair.Value);entries.Add(J.O("target",pair.Key,"copy",copy,"existed",pair.Value!=null,"hash",pair.Value==null?"":Files.Hash(Path.Combine(transaction,copy))));}J.Write(Path.Combine(transaction,"transaction.json"),J.O("schemaVersion",1,"state","prepared","terreDir",terre,"stateDir",state,"entries",entries,"addon",addon,"stage",stage,"retired",retired,"oldTreeHash",TreeHash(addon),"newTreeHash",TreeHash(stage),"hadRecovery",Directory.Exists(RecoveryDir(state))));}
-  static string ByteHash(byte[] bytes){if(bytes==null)return "";using(var sha=System.Security.Cryptography.SHA256.Create())return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-","").ToLowerInvariant();}
-  static void ExpectInstallWrite(string transaction,string target,byte[] bytes){string journal=Path.Combine(transaction,"transaction.json");var doc=J.D(J.Read(journal));foreach(var entry in J.A(J.Get(doc,"entries")))if(SamePath(J.S(entry,"target"),target))J.D(entry)["expectedAfter"]=ByteHash(bytes);J.Write(journal,doc);}
-  static void WriteInstallJson(string transaction,string file,object value){ExpectInstallWrite(transaction,file,Files.Utf8.GetBytes(J.Text(value)));J.Write(file,value);}
-  static void RequireRecoverableFile(object entry,string transaction){string target=J.S(entry,"target"),current=File.Exists(target)?Files.Hash(target):"";if(current!=J.S(entry,"hash")&&current!=J.S(entry,"expectedAfter"))throw new IOException("恢复目标已被更改，副本保留于 "+transaction+"："+target);}
-  static bool HasInstallRecovery(string state){string root=Path.Combine(state,"transactions");return Directory.Exists(root)&&Directory.GetDirectories(root).Any(dir=>File.Exists(Path.Combine(dir,"transaction.json")));}
-  static void RecoverInstallTransactions(string state,string terre){string root=Path.Combine(state,"transactions");if(!Directory.Exists(root))return;foreach(string transaction in Directory.GetDirectories(root)){string file=Path.Combine(transaction,"transaction.json");if(!File.Exists(file))continue;var doc=J.Read(file);if(J.N(doc,"schemaVersion")!=1||!SamePath(J.S(doc,"terreDir"),terre)||!SamePath(J.S(doc,"stateDir"),state))throw new IOException("安装恢复记录归属无效："+transaction);if(J.S(doc,"state")=="committed"){Files.DeleteTree(state,transaction);continue;}string addon=J.S(doc,"addon"),stage=J.S(doc,"stage"),retired=J.S(doc,"retired"),oldHash=J.S(doc,"oldTreeHash"),newHash=J.S(doc,"newTreeHash");if(!SamePath(addon,Files.Under(terre,"video-export"))||!Files.Within(terre,stage)||!Path.GetFileName(stage).StartsWith("video-export.next-")||!Files.Within(terre,retired)||!Path.GetFileName(retired).StartsWith("video-export.replaced-"))throw new IOException("安装恢复目录无效："+transaction);var entries=J.A(J.Get(doc,"entries"));foreach(var entry in entries){string target=J.S(entry,"target"),copy=J.S(entry,"copy");if(!Files.Within(terre,target)&&!Files.Within(state,target)&&Path.GetFileName(target)!="instances.json")throw new IOException("安装恢复目标无效："+transaction);if(Path.GetFileName(copy)!=copy||J.B(entry,"existed")&&(!File.Exists(Files.Under(transaction,copy))||Files.Hash(Files.Under(transaction,copy))!=J.S(entry,"hash")))throw new IOException("安装恢复副本校验失败："+transaction);RequireRecoverableFile(entry,transaction);}if(Directory.Exists(retired)){if(TreeHash(retired)!=oldHash||Directory.Exists(addon)&&TreeHash(addon)!=newHash)throw new IOException("安装恢复目录已变化："+transaction);if(Directory.Exists(addon))Files.DeleteTree(terre,addon);Directory.Move(retired,addon);}else if(oldHash==""){if(Directory.Exists(addon)){if(TreeHash(addon)!=newHash)throw new IOException("安装目录已变化："+transaction);Files.DeleteTree(terre,addon);}}else if(TreeHash(addon)!=oldHash)throw new IOException("原组件恢复目录缺失："+transaction);foreach(var entry in entries){string target=J.S(entry,"target");if(J.B(entry,"existed"))Files.AtomicBytes(target,File.ReadAllBytes(Files.Under(transaction,J.S(entry,"copy"))));else if(File.Exists(target))File.Delete(target);}if(Directory.Exists(RecoveryDir(state)))Files.DeleteTree(state,RecoveryDir(state));string prior=Path.Combine(transaction,"recovery-old");if(J.B(doc,"hadRecovery")&&Directory.Exists(prior))Files.CopyTree(prior,RecoveryDir(state));if(Directory.Exists(stage)){if(TreeHash(stage)!=newHash)throw new IOException("临时组件已变化："+transaction);Files.DeleteTree(terre,stage);}Files.DeleteTree(state,transaction);}}
+  static void CheckCancellation(){
+   string file=App.Arg("--cancel-file");
+   if(file!=""&&File.Exists(file))throw new OperationCanceledException("已取消");
+  }
+  static bool ProtectedState(string state,string terre,string games){
+   string full=Files.Full(state).TrimEnd('\\','/');
+   string[] protectedRoots={
+    terre,games,Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),Environment.GetFolderPath(Environment.SpecialFolder.Windows),Environment.GetFolderPath(Environment.SpecialFolder.System)
+   }
+   ;
+   return SamePath(full,Path.GetPathRoot(full))||protectedRoots.Where(x=>!string.IsNullOrWhiteSpace(x)).Any(x=>Files.Within(full,x,true));
+  }
+  static void RemoveOwnedState(string state){
+   foreach(string name in OwnedStateNames){
+    string path=Files.Under(state,name);
+    if(Directory.Exists(path))Files.DeleteTree(state,path);
+    else if(File.Exists(path))File.Delete(path);
+   }
+   if(!Directory.EnumerateFileSystemEntries(state).Any())Directory.Delete(state);
+  }
+  static void RequirePlainDirectories(string root){
+   if(!Directory.Exists(root))return;
+   if((File.GetAttributes(root)&FileAttributes.ReparsePoint)!=0)throw new IOException("数据目录不能包含目录链接："+root);
+   foreach(string child in Directory.GetDirectories(root))RequirePlainDirectories(child);
+  }
+  static string[] CaptureMigrationFiles(string target){
+   RequirePlainDirectories(target);
+   return Directory.Exists(target)?Directory.GetFiles(target,"*",SearchOption.AllDirectories).Concat(Directory.GetDirectories(target,"*",SearchOption.AllDirectories)).Select(Files.Full).ToArray():new string[0];
+  }
+  static void RollbackMigration(string state,string source,string[] retained){
+   var keep=new HashSet<string>(retained,StringComparer.OrdinalIgnoreCase);
+   string prefix=Files.Full(source).TrimEnd('\\','/')+Path.DirectorySeparatorChar;
+   foreach(string original in Directory.GetFiles(source,"*",SearchOption.AllDirectories)){
+    string file=Files.Under(state,Files.Full(original).Substring(prefix.Length));
+    if(keep.Contains(Files.Full(file))||!File.Exists(file))continue;
+    if(Files.Hash(file)!=Files.Hash(original))throw new IOException("迁移副本已变化，已保留："+file);
+    File.Delete(file);
+   }
+   foreach(string original in Directory.GetDirectories(source,"*",SearchOption.AllDirectories).OrderByDescending(x=>x.Length)){
+    string dir=Files.Under(state,Files.Full(original).Substring(prefix.Length));
+    if(!keep.Contains(Files.Full(dir))&&Directory.Exists(dir)&&!Directory.EnumerateFileSystemEntries(dir).Any())Directory.Delete(dir);
+   }
+   if(!Directory.EnumerateFileSystemEntries(state).Any())Directory.Delete(state);
+  }
+  static string TreeHash(string root){
+   if(!Directory.Exists(root))return "";
+   var entries=Directory.GetFiles(root,"*",SearchOption.AllDirectories).OrderBy(x=>x,StringComparer.OrdinalIgnoreCase).Select(file=>file.Substring(root.Length).Replace('\\','/')+":"+Files.Hash(file));
+   return Files.HashText(string.Join("\n",entries));
+  }
+  static void SaveInstallTransaction(string transaction,Dictionary<string,byte[]> before,string terre,string state,string addon,string stage,string retired){
+   var entries=new List<object>();
+   int index=0;
+   foreach(var pair in before){
+    string copy="file-"+(index++)+".bin";
+    if(pair.Value!=null)File.WriteAllBytes(Path.Combine(transaction,copy),pair.Value);
+    entries.Add(J.O("target",pair.Key,"copy",copy,"existed",pair.Value!=null,"hash",pair.Value==null?"":Files.Hash(Path.Combine(transaction,copy))));
+   }
+   J.Write(Path.Combine(transaction,"transaction.json"),J.O("schemaVersion",1,"state","prepared","terreDir",terre,"stateDir",state,"entries",entries,"addon",addon,"stage",stage,"retired",retired,"oldTreeHash",TreeHash(addon),"newTreeHash",TreeHash(stage),"hadRecovery",Directory.Exists(RecoveryDir(state))));
+  }
+  static string ByteHash(byte[] bytes){
+   if(bytes==null)return "";
+   using(var sha=System.Security.Cryptography.SHA256.Create())return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-","").ToLowerInvariant();
+  }
+  static void ExpectInstallWrite(string transaction,string target,byte[] bytes){
+   string journal=Path.Combine(transaction,"transaction.json");
+   var doc=J.D(J.Read(journal));
+   foreach(var entry in J.A(J.Get(doc,"entries")))if(SamePath(J.S(entry,"target"),target))J.D(entry)["expectedAfter"]=ByteHash(bytes);
+   J.Write(journal,doc);
+  }
+  static void WriteInstallJson(string transaction,string file,object value){
+   ExpectInstallWrite(transaction,file,Files.Utf8.GetBytes(J.Text(value)));
+   J.Write(file,value);
+  }
+  static void RequireRecoverableFile(object entry,string transaction){
+   string target=J.S(entry,"target"),current=File.Exists(target)?Files.Hash(target):"";
+   if(current!=J.S(entry,"hash")&&current!=J.S(entry,"expectedAfter"))throw new IOException("恢复目标已被更改，副本保留于 "+transaction+"："+target);
+  }
+  static bool HasInstallRecovery(string state){
+   string root=Path.Combine(state,"transactions");
+   return Directory.Exists(root)&&Directory.GetDirectories(root).Any(dir=>File.Exists(Path.Combine(dir,"transaction.json")));
+  }
+  static void RecoverInstallTransactions(string state,string terre){
+   string root=Path.Combine(state,"transactions");
+   if(!Directory.Exists(root))return;
+   foreach(string transaction in Directory.GetDirectories(root)){
+    string file=Path.Combine(transaction,"transaction.json");
+    if(!File.Exists(file))continue;
+    var doc=J.Read(file);
+    if(J.N(doc,"schemaVersion")!=1||!SamePath(J.S(doc,"terreDir"),terre)||!SamePath(J.S(doc,"stateDir"),state))throw new IOException("安装恢复记录归属无效："+transaction);
+    if(J.S(doc,"state")=="committed"){
+     Files.DeleteTree(state,transaction);
+     continue;
+    }
+    string addon=J.S(doc,"addon"),stage=J.S(doc,"stage"),retired=J.S(doc,"retired"),oldHash=J.S(doc,"oldTreeHash"),newHash=J.S(doc,"newTreeHash");
+    if(!SamePath(addon,Files.Under(terre,"video-export"))||!Files.Within(terre,stage)||!Path.GetFileName(stage).StartsWith("video-export.next-")||!Files.Within(terre,retired)||!Path.GetFileName(retired).StartsWith("video-export.replaced-"))throw new IOException("安装恢复目录无效："+transaction);
+    var entries=J.A(J.Get(doc,"entries"));
+    foreach(var entry in entries){
+     string target=J.S(entry,"target"),copy=J.S(entry,"copy");
+     if(!Files.Within(terre,target)&&!Files.Within(state,target)&&Path.GetFileName(target)!="instances.json")throw new IOException("安装恢复目标无效："+transaction);
+     if(Path.GetFileName(copy)!=copy||J.B(entry,"existed")&&(!File.Exists(Files.Under(transaction,copy))||Files.Hash(Files.Under(transaction,copy))!=J.S(entry,"hash")))throw new IOException("安装恢复副本校验失败："+transaction);
+     RequireRecoverableFile(entry,transaction);
+    }
+    if(Directory.Exists(retired)){
+     if(TreeHash(retired)!=oldHash||Directory.Exists(addon)&&TreeHash(addon)!=newHash)throw new IOException("安装恢复目录已变化："+transaction);
+     if(Directory.Exists(addon))Files.DeleteTree(terre,addon);
+     Directory.Move(retired,addon);
+    }
+    else if(oldHash==""){
+     if(Directory.Exists(addon)){
+      if(TreeHash(addon)!=newHash)throw new IOException("安装目录已变化："+transaction);
+      Files.DeleteTree(terre,addon);
+     }
+    }
+    else if(TreeHash(addon)!=oldHash)throw new IOException("原组件恢复目录缺失："+transaction);
+    foreach(var entry in entries){
+     string target=J.S(entry,"target");
+     if(J.B(entry,"existed"))Files.AtomicBytes(target,File.ReadAllBytes(Files.Under(transaction,J.S(entry,"copy"))));
+     else if(File.Exists(target))File.Delete(target);
+    }
+    if(Directory.Exists(RecoveryDir(state)))Files.DeleteTree(state,RecoveryDir(state));
+    string prior=Path.Combine(transaction,"recovery-old");
+    if(J.B(doc,"hadRecovery")&&Directory.Exists(prior))Files.CopyTree(prior,RecoveryDir(state));
+    if(Directory.Exists(stage)){
+     if(TreeHash(stage)!=newHash)throw new IOException("临时组件已变化："+transaction);
+     Files.DeleteTree(terre,stage);
+    }
+    Files.DeleteTree(state,transaction);
+   }
+  }
   static void CopyStateVerified(string source,string target){
    RequirePlainDirectories(source);RequirePlainDirectories(target);Directory.CreateDirectory(target);if(!Directory.Exists(source))return;string prefix=Files.Full(source).TrimEnd('\\','/')+Path.DirectorySeparatorChar;
    foreach(var dir in Directory.GetDirectories(source,"*",SearchOption.AllDirectories)){if((File.GetAttributes(dir)&FileAttributes.ReparsePoint)!=0)throw new IOException("WebVideo+ 数据目录不能包含目录链接："+dir);string relative=Files.Full(dir).Substring(prefix.Length),copy=Path.Combine(target,relative);if(File.Exists(copy))throw new IOException("目标数据目录存在与 WebVideo+ 子目录冲突的同名文件："+relative);}
@@ -144,7 +258,6 @@ namespace NativeVideo {
   static void RelocateJobStatePaths(string source,string target){
    string jobs=Path.Combine(target,"jobs");if(!Directory.Exists(jobs))return;foreach(var dir in Directory.GetDirectories(jobs))foreach(var name in new[]{"request.json","status.json"}){string file=Path.Combine(dir,name);if(!File.Exists(file))continue;try{var data=RelocateStateValue(J.Read(file),source,target);J.Write(file,data);}catch(Exception e){throw new IOException("迁移任务记录路径失败："+file,e);}}
   }
-  static void SaveTransactionCopy(string root,string source,string name){if(!File.Exists(source))return;Directory.CreateDirectory(root);Files.CopyFile(source,Path.Combine(root,name));}
   static void CleanupWorkCaches(object config,string state){
    string jobs=Path.Combine(state,"jobs");if(Directory.Exists(jobs))foreach(var record in Directory.GetDirectories(jobs)){var request=J.TryRead(Path.Combine(record,"request.json"));if(request==null)continue;string root=J.S(request,"cacheRoot"),target=J.S(request,"jobDir");if(root!=""&&target!=""&&StrictlyWithin(root,target)&&Directory.Exists(target))try{Files.DeleteTree(root,target);}catch{}}
    string work=J.S(config,"workDir");if(work!=""&&Directory.Exists(work)){foreach(var file in Directory.GetFiles(work).Where(x=>Path.GetFileName(x).StartsWith(".webvideo-",StringComparison.OrdinalIgnoreCase)))try{File.Delete(file);}catch{}try{if(!Directory.EnumerateFileSystemEntries(work).Any())Directory.Delete(work);}catch{}}
@@ -152,7 +265,7 @@ namespace NativeVideo {
    string media=Path.Combine(state,"media");if(Directory.Exists(media))try{Files.DeleteTree(state,media);}catch{}
   }
   static void DeleteOwnedData(string state,string terre){
-   if(string.IsNullOrWhiteSpace(state)||!Directory.Exists(state))return;string full=Files.Full(state).TrimEnd('\\','/'),root=Path.GetPathRoot(full).TrimEnd('\\','/');var config=J.TryRead(Path.Combine(state,"config.json"));var marker=J.TryRead(Path.Combine(state,".webvideo-data.json"));bool owned=config!=null&&SamePath(J.S(config,"terreDir"),terre)||marker!=null&&SamePath(J.S(marker,"terreDir"),terre);if(!owned){Console.WriteLine("无法确认数据目录仅属于当前 WebVideo+ 实例，已保留："+state);return;}string games=J.S(config,"gamesRoot"),profile=Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),windows=Environment.GetFolderPath(Environment.SpecialFolder.Windows),system=Environment.GetFolderPath(Environment.SpecialFolder.System);if(ProtectedState(state,terre,games)){Console.WriteLine("数据目录位于高风险根目录，已保留目录本身，避免递归删除外部文件："+state);return;}RemoveOwnedState(state);
+   if(string.IsNullOrWhiteSpace(state)||!Directory.Exists(state))return;var config=J.TryRead(Path.Combine(state,"config.json"));var marker=J.TryRead(Path.Combine(state,".webvideo-data.json"));bool owned=config!=null&&SamePath(J.S(config,"terreDir"),terre)||marker!=null&&SamePath(J.S(marker,"terreDir"),terre);if(!owned){Console.WriteLine("无法确认数据目录仅属于当前 WebVideo+ 实例，已保留："+state);return;}string games=J.S(config,"gamesRoot");if(ProtectedState(state,terre,games)){Console.WriteLine("数据目录位于高风险根目录，已保留目录本身，避免递归删除外部文件："+state);return;}RemoveOwnedState(state);
   }
   static void CleanupProjectMetadata(string gamesRoot){
    if(string.IsNullOrWhiteSpace(gamesRoot)||!Directory.Exists(gamesRoot))return;foreach(var game in Directory.GetDirectories(gamesRoot)){string meta=Path.Combine(game,".webvideo-plus");if(Directory.Exists(meta))try{Files.DeleteTree(game,meta);}catch{}string music=Path.Combine(game,"video-project.json");if(File.Exists(music))try{File.Delete(music);}catch{}}
@@ -208,7 +321,7 @@ if(recoveryBundle!=""){source=File.ReadAllText(recoveryBundle);}else if(!TryClea
     Directory.CreateDirectory(state);Directory.CreateDirectory(workDir);Directory.CreateDirectory(installCacheDir);if(File.Exists(exe))using(var access=new FileStream(exe,FileMode.Open,FileAccess.ReadWrite,FileShare.None)){}
     string stage=Files.Under(terre,"video-export.next-"+Guid.NewGuid().ToString("N")),retired=Files.Under(terre,"video-export.replaced-"+Guid.NewGuid().ToString("N"));
     if(modules.Length>0){Directory.CreateDirectory(stage);if(export){foreach(var directory in Directory.GetDirectories(Files.Root)){string name=Path.GetFileName(directory);if(new[]{"source","timeline","features","product-ui"}.Contains(name)||name=="ai-runtime"&&!modules.Contains("generativeAI"))continue;int omitted=CopyRuntimeTree(directory,Path.Combine(stage,name),name=="ai-runtime");if(omitted>0)Console.WriteLine("AI 运行组件：已跳过 "+omitted+" 个非运行时类型声明或 source map 条目。");}foreach(var file in Directory.GetFiles(Files.Root)){string name=Path.GetFileName(file);if(name.StartsWith("WebVideoPlus.Manager")||name=="product.json"||name=="MANIFEST.json")continue;Files.CopyFile(file,Path.Combine(stage,name));}}foreach(var doc in Directory.GetFiles(Files.Root).Where(f=>Path.GetFileName(f)=="README.md"||Path.GetFileName(f).StartsWith("LICENSE")||Path.GetFileName(f).EndsWith("ATTRIBUTION.txt")))Files.CopyFile(doc,Path.Combine(stage,Path.GetFileName(doc)));Files.CopyTree(Path.Combine(Files.Root,"product-ui"),Path.Combine(stage,"product-ui"));if(timeline){var timelineFiles=new List<string>{"timeline-core.js","timeline-host.js","timeline.css","patches.json"};if(modules.Contains("timelineNavigator"))timelineFiles.Add("navigator.js");if(modules.Contains("timelineSelector"))timelineFiles.AddRange(new[]{"selector.js","selector-launcher.js"});foreach(var name in timelineFiles)Files.CopyFile(Path.Combine(Files.Root,"timeline",name),Path.Combine(stage,"timeline",name));}if(modules.Contains("projectCore")){Files.CopyTree(Path.Combine(Files.Root,"features/core"),Path.Combine(stage,"features/core"));foreach(var feature in ModuleCatalog.Selectable.Where(m=>!new[]{"timelineNavigator","timelineSelector","exporter","layerExport","subtitles","compactGameTools"}.Contains(m)&&modules.Contains(m)))Files.CopyFile(Path.Combine(Files.Root,"features/modules",feature+".js"),Path.Combine(stage,"features/modules",feature+".js"));}var stagedProduct=J.O("name","WebVideo+","version",ProductVersion,"kernelVersion",export?KernelVersion:null,"modules",modules,"dependencies",timeline?new[]{"timelineCore"}:new string[0]);if(InternalVersion!="")J.D(stagedProduct)["internalVersion"]=InternalVersion;J.Write(Path.Combine(stage,"product.json"),stagedProduct);}
-    try{CheckCancellation();}catch{if(Directory.Exists(stage))Files.DeleteTree(terre,stage);throw;}string transaction=Path.Combine(state,"transactions",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(transaction);SaveTransactionCopy(transaction,index,"index.html");SaveTransactionCopy(transaction,exe,"terre.exe");SaveTransactionCopy(transaction,original,"terre-original.exe");SaveTransactionCopy(transaction,configFile,"config.json");SaveTransactionCopy(transaction,manifestFile,"install.json");SaveTransactionCopy(transaction,lifeFile,"lifecycle-install.json");SaveTransactionCopy(transaction,ProductFile(terre),"webvideo-plus.json");string oldRecovery=Path.Combine(transaction,"recovery-old");if(Directory.Exists(RecoveryDir(state)))Files.CopyTree(RecoveryDir(state),oldRecovery);
+    try{CheckCancellation();}catch{if(Directory.Exists(stage))Files.DeleteTree(terre,stage);throw;}string transaction=Path.Combine(state,"transactions",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(transaction);string oldRecovery=Path.Combine(transaction,"recovery-old");if(Directory.Exists(RecoveryDir(state)))Files.CopyTree(RecoveryDir(state),oldRecovery);
     string newBundle=modules.Length>0?"webvideo-plus-"+Files.HashText(source).Substring(0,12)+".js":"",bundle=newBundle==""?"":Path.Combine(assets,newBundle);
     var changed=new[]{index,exe,original,wrapperFile,ProductFile(terre),configFile,manifestFile,lifeFile,Path.Combine(assets,"video-export-instance.json"),Path.Combine(assets,"video-export-service.json"),Path.Combine(state,".webvideo-data.json"),Path.Combine(installCacheDir,"instances.json"),Path.Combine(J.S(previous,"installCacheDir",installCacheDir),"instances.json"),recoveryBundle==""?"":Path.Combine(assets,bundleName),bundle,bundle==""?"":bundle+".gz"}.Where(x=>!string.IsNullOrWhiteSpace(x)).ToArray();var rollback=changed.Distinct(StringComparer.OrdinalIgnoreCase).ToDictionary(file=>file,file=>File.Exists(file)?File.ReadAllBytes(file):null,StringComparer.OrdinalIgnoreCase);bool moved=false,staged=false,success=false,rollbackComplete=false;SaveInstallTransaction(transaction,rollback,terre,state,addon,stage,retired);
     try{

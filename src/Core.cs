@@ -135,24 +135,173 @@ namespace NativeVideo {
  }
 
  public static class ProcessIdentity {
-  public static object Capture(int pid){try{using(var process=Process.GetProcessById(pid)){return J.O("pid",pid,"createdUtcTicks",process.StartTime.ToUniversalTime().Ticks.ToString(CultureInfo.InvariantCulture),"exe",Files.Full(process.MainModule.FileName));}}catch{return null;}}
-  public static bool Matches(object identity,string expectedExe=""){int pid=(int)J.N(identity,"pid");if(pid<=0||J.S(identity,"createdUtcTicks")==""||J.S(identity,"exe")=="")return false;var current=Capture(pid);return current!=null&&J.S(current,"createdUtcTicks")==J.S(identity,"createdUtcTicks")&&TerreUserData.SamePath(J.S(current,"exe"),J.S(identity,"exe"))&&(expectedExe==""||TerreUserData.SamePath(J.S(current,"exe"),expectedExe));}
-  public static bool Kill(object identity,string expectedExe){if(!Matches(identity,expectedExe))return false;using(var process=Process.GetProcessById((int)J.N(identity,"pid"))){if(process.StartTime.ToUniversalTime().Ticks.ToString(CultureInfo.InvariantCulture)!=J.S(identity,"createdUtcTicks"))return false;process.Kill();return process.WaitForExit(5000);}}
+  public static object Capture(int pid){
+   try{
+    using(var process=Process.GetProcessById(pid)){
+     return J.O("pid",pid,"createdUtcTicks",process.StartTime.ToUniversalTime().Ticks.ToString(CultureInfo.InvariantCulture),"exe",Files.Full(process.MainModule.FileName));
+    }
+   }
+   catch{
+    return null;
+   }
+  }
+  public static bool Matches(object identity,string expectedExe=""){
+   int pid=(int)J.N(identity,"pid");
+   if(pid<=0||J.S(identity,"createdUtcTicks")==""||J.S(identity,"exe")=="")return false;
+   var current=Capture(pid);
+   return current!=null&&J.S(current,"createdUtcTicks")==J.S(identity,"createdUtcTicks")&&TerreUserData.SamePath(J.S(current,"exe"),J.S(identity,"exe"))&&(expectedExe==""||TerreUserData.SamePath(J.S(current,"exe"),expectedExe));
+  }
+  public static bool Kill(object identity,string expectedExe){
+   if(!Matches(identity,expectedExe))return false;
+   using(var process=Process.GetProcessById((int)J.N(identity,"pid"))){
+    if(process.StartTime.ToUniversalTime().Ticks.ToString(CultureInfo.InvariantCulture)!=J.S(identity,"createdUtcTicks"))return false;
+    process.Kill();
+    return process.WaitForExit(5000);
+   }
+  }
  }
  public sealed class FileSetTransaction {
-  readonly string folder,journal;readonly Dictionary<string,byte[]> before=new Dictionary<string,byte[]>(StringComparer.OrdinalIgnoreCase);readonly Dictionary<string,string> after=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
-  internal static Action<string> Fault;
-  public FileSetTransaction(string root,IEnumerable<string> targets){folder=Path.Combine(root,Guid.NewGuid().ToString("N"));journal=Path.Combine(folder,"files.json");Directory.CreateDirectory(folder);int index=0;var entries=new List<object>();foreach(string target in targets.Distinct(StringComparer.OrdinalIgnoreCase)){string path=Files.Full(target);byte[] bytes=File.Exists(path)?File.ReadAllBytes(path):null;before[path]=bytes;string copy=(index++).ToString(CultureInfo.InvariantCulture)+".bin";if(bytes!=null)File.WriteAllBytes(Path.Combine(folder,copy),bytes);entries.Add(J.O("target",path,"copy",copy,"existed",bytes!=null,"hash",bytes==null?"":Files.Hash(Path.Combine(folder,copy))));}J.Write(journal,J.O("schemaVersion",1,"state","prepared","entries",entries));}
-  public string Folder{get{return folder;}}
-  public void Write(string file,string text){file=Files.Full(file);if(!before.ContainsKey(file))throw new IOException("事务目标未登记");string current=File.Exists(file)?Files.Hash(file):null;byte[] bytes=before[file];string expected=after.ContainsKey(file)?after[file]:bytes==null?null:Hash(bytes);if(current!=expected)throw new IOException("文件已变化，未覆盖："+file);var doc=J.D(J.Read(journal));foreach(var entry in J.A(J.Get(doc,"entries")))if(J.S(entry,"target")==file)J.D(entry)["expectedAfter"]=Files.HashText(text);J.Write(journal,doc);if(Fault!=null)Fault(file);Files.Atomic(file,text);after[file]=Files.Hash(file);}
-  static string Hash(byte[] bytes){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-","").ToLowerInvariant();}
-  public void Commit(){var doc=J.D(J.Read(journal));doc["state"]="committed";J.Write(journal,doc);try{Files.DeleteTree(Path.GetDirectoryName(folder),folder);}catch(IOException){}catch(UnauthorizedAccessException){}}
-  public void Rollback(){var failures=new List<string>();foreach(var pair in before.Reverse()){try{string expected;string current=File.Exists(pair.Key)?Files.Hash(pair.Key):null;expected=after.ContainsKey(pair.Key)?after[pair.Key]:pair.Value==null?null:Hash(pair.Value);if(current!=expected)throw new IOException("恢复目标被其它写入更改");if(pair.Value==null){if(File.Exists(pair.Key))File.Delete(pair.Key);}else{Files.EnsureParent(pair.Key);if(Fault!=null)Fault("rollback:"+pair.Key);Files.AtomicBytes(pair.Key,pair.Value);}}catch(Exception error){failures.Add(pair.Key+": "+error.Message);}}if(failures.Count>0)throw new IOException("恢复未完成，副本保留于 "+folder+"；"+string.Join("；",failures));Files.DeleteTree(Path.GetDirectoryName(folder),folder);}
-  public static void Recover(string root,string allowedRoot){if(!Directory.Exists(root))return;foreach(string folder in Directory.GetDirectories(root)){string journal=Path.Combine(folder,"files.json");if(!File.Exists(journal))continue;var doc=J.Read(journal);if(J.N(doc,"schemaVersion")!=1)throw new IOException("事务记录版本无效："+folder);if(J.S(doc,"state")=="committed"){Files.DeleteTree(root,folder);continue;}var entries=J.A(J.Get(doc,"entries"));foreach(var item in entries){string target=J.S(item,"target"),copy=J.S(item,"copy");if(!Files.Within(allowedRoot,target)||Path.GetFileName(copy)!=copy)throw new IOException("恢复记录路径无效："+folder);string source=Files.Under(folder,copy);if(J.B(item,"existed")&&(!File.Exists(source)||Files.Hash(source)!=J.S(item,"hash")))throw new IOException("恢复副本校验失败："+folder);string current=File.Exists(target)?Files.Hash(target):"",beforeHash=J.S(item,"hash"),expectedAfter=J.S(item,"expectedAfter");if(current!=beforeHash&&current!=expectedAfter)throw new IOException("恢复目标已变化，副本保留于 "+folder);}foreach(var item in entries){string target=J.S(item,"target");if(J.B(item,"existed")){Files.AtomicBytes(target,File.ReadAllBytes(Files.Under(folder,J.S(item,"copy"))));}else if(File.Exists(target))File.Delete(target);}Files.DeleteTree(root,folder);}}
+  readonly string folder,journal;
+  readonly Dictionary<string,byte[]> before=new Dictionary<string,byte[]>(StringComparer.OrdinalIgnoreCase);
+  readonly Dictionary<string,string> after=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+  internal static Action<string> Fault=null;
+  public FileSetTransaction(string root,IEnumerable<string> targets){
+   folder=Path.Combine(root,Guid.NewGuid().ToString("N"));
+   journal=Path.Combine(folder,"files.json");
+   Directory.CreateDirectory(folder);
+   int index=0;
+   var entries=new List<object>();
+   foreach(string target in targets.Distinct(StringComparer.OrdinalIgnoreCase)){
+    string path=Files.Full(target);
+    byte[] bytes=File.Exists(path)?File.ReadAllBytes(path):null;
+    before[path]=bytes;
+    string copy=(index++).ToString(CultureInfo.InvariantCulture)+".bin";
+    if(bytes!=null)File.WriteAllBytes(Path.Combine(folder,copy),bytes);
+    entries.Add(J.O("target",path,"copy",copy,"existed",bytes!=null,"hash",bytes==null?"":Files.Hash(Path.Combine(folder,copy))));
+   }
+   J.Write(journal,J.O("schemaVersion",1,"state","prepared","entries",entries));
+  }
+  public string Folder{
+   get{
+    return folder;
+   }
+  }
+  public void Write(string file,string text){
+   file=Files.Full(file);
+   if(!before.ContainsKey(file))throw new IOException("事务目标未登记");
+   string current=File.Exists(file)?Files.Hash(file):null;
+   byte[] bytes=before[file];
+   string expected=after.ContainsKey(file)?after[file]:bytes==null?null:Hash(bytes);
+   if(current!=expected)throw new IOException("文件已变化，未覆盖："+file);
+   var doc=J.D(J.Read(journal));
+   foreach(var entry in J.A(J.Get(doc,"entries")))if(J.S(entry,"target")==file)J.D(entry)["expectedAfter"]=Files.HashText(text);
+   J.Write(journal,doc);
+   if(Fault!=null)Fault(file);
+   Files.Atomic(file,text);
+   after[file]=Files.Hash(file);
+  }
+  static string Hash(byte[] bytes){
+   using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-","").ToLowerInvariant();
+  }
+  public void Commit(){
+   var doc=J.D(J.Read(journal));
+   doc["state"]="committed";
+   J.Write(journal,doc);
+   try{
+    Files.DeleteTree(Path.GetDirectoryName(folder),folder);
+   }
+   catch(IOException){
+   }
+   catch(UnauthorizedAccessException){
+   }
+  }
+  public void Rollback(){
+   var failures=new List<string>();
+   foreach(var pair in before.Reverse()){
+    try{
+     string expected;
+     string current=File.Exists(pair.Key)?Files.Hash(pair.Key):null;
+     expected=after.ContainsKey(pair.Key)?after[pair.Key]:pair.Value==null?null:Hash(pair.Value);
+     if(current!=expected)throw new IOException("恢复目标被其它写入更改");
+     if(pair.Value==null){
+      if(File.Exists(pair.Key))File.Delete(pair.Key);
+     }
+     else{
+      Files.EnsureParent(pair.Key);
+      if(Fault!=null)Fault("rollback:"+pair.Key);
+      Files.AtomicBytes(pair.Key,pair.Value);
+     }
+    }
+    catch(Exception error){
+     failures.Add(pair.Key+": "+error.Message);
+    }
+   }
+   if(failures.Count>0)throw new IOException("恢复未完成，副本保留于 "+folder+"；"+string.Join("；",failures));
+   Files.DeleteTree(Path.GetDirectoryName(folder),folder);
+  }
+  public static void Recover(string root,string allowedRoot){
+   if(!Directory.Exists(root))return;
+   foreach(string folder in Directory.GetDirectories(root)){
+    string journal=Path.Combine(folder,"files.json");
+    if(!File.Exists(journal))continue;
+    var doc=J.Read(journal);
+    if(J.N(doc,"schemaVersion")!=1)throw new IOException("事务记录版本无效："+folder);
+    if(J.S(doc,"state")=="committed"){
+     Files.DeleteTree(root,folder);
+     continue;
+    }
+    var entries=J.A(J.Get(doc,"entries"));
+    foreach(var item in entries){
+     string target=J.S(item,"target"),copy=J.S(item,"copy");
+     if(!Files.Within(allowedRoot,target)||Path.GetFileName(copy)!=copy)throw new IOException("恢复记录路径无效："+folder);
+     string source=Files.Under(folder,copy);
+     if(J.B(item,"existed")&&(!File.Exists(source)||Files.Hash(source)!=J.S(item,"hash")))throw new IOException("恢复副本校验失败："+folder);
+     string current=File.Exists(target)?Files.Hash(target):"",beforeHash=J.S(item,"hash"),expectedAfter=J.S(item,"expectedAfter");
+     if(current!=beforeHash&&current!=expectedAfter)throw new IOException("恢复目标已变化，副本保留于 "+folder);
+    }
+    foreach(var item in entries){
+     string target=J.S(item,"target");
+     if(J.B(item,"existed")){
+      Files.AtomicBytes(target,File.ReadAllBytes(Files.Under(folder,J.S(item,"copy"))));
+     }
+     else if(File.Exists(target))File.Delete(target);
+    }
+    Files.DeleteTree(root,folder);
+   }
+  }
  }
  public static class RecoverableSettings {
-  static Dictionary<string,object> Apply(Dictionary<string,object> current,object supplied,params string[] keys){var candidate=new Dictionary<string,object>(current);foreach(string key in keys)if(J.Get(supplied,key)!=null)candidate[key]=J.Get(supplied,key);try{return Settings.Validate(candidate);}catch(ArgumentException){return current;}}
-  public static Dictionary<string,object> Load(string file){object stored=J.TryRead(file);try{return Settings.Validate(stored);}catch(ArgumentException){if(File.Exists(file)){string copy=file+".invalid-"+DateTime.UtcNow.ToString("yyyyMMddHHmmssfff")+"-"+Guid.NewGuid().ToString("N")+".json";File.Copy(file,copy);}var recovered=Settings.Validate(null);foreach(string key in recovered.Keys.ToArray())if(!new[]{"width","height","segmentCutMode","manualCutPoints"}.Contains(key))recovered=Apply(recovered,stored,key);recovered=Apply(recovered,stored,"width","height");recovered=Apply(recovered,stored,"segmentCutMode","manualCutPoints");J.Write(file,recovered);return recovered;}}
+  static Dictionary<string,object> Apply(Dictionary<string,object> current,object supplied,params string[] keys){
+   var candidate=new Dictionary<string,object>(current);
+   foreach(string key in keys)if(J.Get(supplied,key)!=null)candidate[key]=J.Get(supplied,key);
+   try{
+    return Settings.Validate(candidate);
+   }
+   catch(ArgumentException){
+    return current;
+   }
+  }
+  public static Dictionary<string,object> Load(string file){
+   object stored=J.TryRead(file);
+   try{
+    return Settings.Validate(stored);
+   }
+   catch(ArgumentException){
+    if(File.Exists(file)){
+     string copy=file+".invalid-"+DateTime.UtcNow.ToString("yyyyMMddHHmmssfff")+"-"+Guid.NewGuid().ToString("N")+".json";
+     File.Copy(file,copy);
+    }
+    var recovered=Settings.Validate(null);
+    foreach(string key in recovered.Keys.ToArray())if(!new[]{
+     "width","height","segmentCutMode","manualCutPoints"
+    }
+    .Contains(key))recovered=Apply(recovered,stored,key);
+    recovered=Apply(recovered,stored,"width","height");
+    recovered=Apply(recovered,stored,"segmentCutMode","manualCutPoints");
+    J.Write(file,recovered);
+    return recovered;
+   }
+  }
  }
  public static partial class App {public static readonly object LogLock=new object();}
 }
