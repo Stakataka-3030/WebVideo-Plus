@@ -41,6 +41,7 @@ async function webVideoProjectRequest(url,options={},timeoutMs=30000,requests=nu
  const api={
   subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},
   state(){return {scope,project,music,error:loadError,metadataError,busy,loading};},
+  async reloadMusic(){const at=scope;if(!at)throw Error('请先打开项目');const loaded=await api.service('/api/music/project',{project:at.game,action:'read'});if(scope!==at)throw Error('项目已切换');music=C.musicProject(loaded.music);musicHash=loaded.hash;loadError='';changed();return music;},
   async activate(game){
    if(game&&(/[\\/%]/.test(game)||game==='.'||game==='..'))throw Error('项目路径无效');if(scope?.game===game)return;
    scope=game?{game,root:'games/'+game}:null;project=C.metadata();music={schemaVersion:2,enabled:false,players:1,tracks:[]};loadError='';metadataError='';metadataText=null;musicHash=null;const at=scope;loading=!!at;changed();if(!at)return;
