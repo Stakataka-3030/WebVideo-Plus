@@ -45,6 +45,10 @@ jobs:
           pwsh -NoLogo -NoProfile -File .\tests\terre-host-patch.test.ps1
           if ($LASTEXITCODE -ne 0) { throw "Dual host patch production checks failed" }
 
+      - name: Verify native process exit codes on Windows PowerShell 5
+        shell: powershell
+        run: .\tests\process-exit-code.test.ps1
+
       - name: Verify injected controls inherit Terre host typography
         shell: pwsh
         run: |

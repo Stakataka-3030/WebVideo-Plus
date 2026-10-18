@@ -37,6 +37,8 @@ $runtimeCheck = Start-Process -FilePath $exe -ArgumentList @('check-runtime') -W
 if ($runtimeCheck.ExitCode -ne 0) { throw 'WebView2 Runtime is required on this Windows runner.' }
 function Invoke-Checked($command, [string[]]$arguments, $name, [int]$timeoutSeconds = 600) {
   $process = Start-Process -FilePath $command -ArgumentList $arguments -PassThru -NoNewWindow -RedirectStandardOutput (Join-Path $run "$name.log") -RedirectStandardError (Join-Path $run "$name-error.log")
+  # Windows PowerShell 5 must retain the native handle before asynchronous waiting.
+  $null = $process.Handle
   if (-not $process.WaitForExit($timeoutSeconds * 1000)) {
     # Terminate only this test's owned process tree when export stalls.
     & taskkill /PID $process.Id /T /F | Out-Null
