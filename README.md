@@ -1,12 +1,12 @@
 # WebVideo+
 
-面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
+面向 **WebGAL Craft** 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 为实验性功能，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [1.1.2 发行说明](RELEASE_NOTES_1.1.2.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前分支：WebVideo+ Craft 1.1.15c（安装器 1.1.15.0c；混合导出内核 0.6.59，产品基线 1.3.2）。** Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases) 为准。
+**当前分支：WebVideo+ Craft 1.1.16c（安装器 1.1.16.0c；混合导出内核 0.6.60，产品基线 1.3.3）。** Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。 正式安装器为 [`WebVideoCraft-Setup-1.1.16.0c.exe`](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.1.16.0c/WebVideoCraft-Setup-1.1.16.0c.exe)，SHA-256 与维护修复见[对应发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c)。
 
-以下保留基础 Terre 产品说明；本分支的 Craft 支持范围请以上方链接为准。原基础适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
+支持精确匹配的官方 Windows x64 **Craft 1.0.0-rc.1 / 1.0.0-beta.2**，工程引擎支持官方 WebGAL **4.6.4 / 4.6.5 / 4.6.6** 和 **MyGO 3.2.1**；自定义同版本包与未来版本需单独适配。Terre 安装使用各自的 [1.1.9](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.9)、[1.2.1](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1) 或 [1.3.3](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.3) 通道。
 
 ## 主要功能
 
@@ -15,10 +15,10 @@
 - **剧情导航**：按连续执行和目标整理主次组件，显示说话人、表情动作及命名滤镜/预制效果，点击即可定位编辑器与预览。
 - **剧情选择与时间线工具**：辅助选择连续区间、整理剧情结构和导出范围。
 - **音乐配置**：直接添加或拖入音频，可增加并行播放器行，按文字/放映速度匹配故事时长。
-- **导出视频**：读取预览速度，导出全文或连续区间；任务、进度和输出位置由本机服务管理。
+- **视频与音轨导出**：读取实际预览速度，导出完整视频、舞台、对话框/DOM 或 48 kHz WAV；支持全篇、由当前场景开始、仅当前场景及语句选区，任务与进度由本机服务管理。
 - **字幕后处理（可选模块）**：导出完成后封装 SRT/ASS/SSA 软字幕或通过 FFmpeg/libass 烧录；可按视频起点、WebGAL 时间线语句、后处理音乐或手动时间定位。字幕内容和样式交给 Subtitle Edit、Aegisub 等外部编辑器处理。
 - **导入 Anogo 故事**：接收粘贴文本及 JSON/YAML 文件，转换后追加故事；动作导入默认关闭，待核对项由作者检查。
-- **检查与标记 / 备份与恢复**：提供制作提醒、待核对标签、历史备份与确认回滚；打开游戏和整十分钟自动备份分别保留最新一份。
+- **检查与标记 / 备份与恢复**：提供制作提醒、待核对标签、历史备份与确认回滚；编辑通过 Craft 原生文档事务提交，保留未保存状态与原生撤销。
 - **游戏工具收纳**：可将场景分支、鉴赏和游戏控制等入口集中到“游戏工具”。
 
 ## 视频导出
@@ -29,22 +29,22 @@
 
 - **推荐 / 高质量**：默认档。自动并行探测 NVIDIA NVENC、AMD AMF、Intel Quick Sync；可用时使用硬件 H.264，不可用时回退 CPU x264。适合大多数成片，兼顾高画质、较小体积和导出速度。
 - **超高质量**：使用同一套自动编码器，但进一步降低压缩损失，适合后期编辑或对压缩痕迹敏感的场景；文件会更大。
-- **完全无损**：使用 `libx264rgb -crf 0` 的 RGB 真无损视频，**文件可能特别大**；仅建议需要像素级保真或特殊后期时使用，部分 Windows 自带播放器兼容性较差。
+- **完全无损**：使用 `libx264rgb -crf 0` 的 RGB 视频流无损编码，**文件可能特别大**；仅建议需要像素级保真或特殊后期时使用，部分 Windows 自带播放器兼容性较差。
 - **传统 / 兼容**：保留旧 JPEG CapturePreview → H.264 路径，用于 GPU Raw 出现兼容问题时回退，**导出速度明显变慢**。
 
 硬件编码器在任务开始前会做一次实际 FFmpeg 预检；导出过程中若硬编仍因驱动或设备问题失败，会保持原画质档自动回退 CPU x264，而不是回退到无损 x264rgb。
 
-导出工作缓存与任务历史已经分离。安装器高级设置允许分别选择 **WebVideo+ 数据目录、导出工作缓存目录、安装缓存目录**；默认位置仍可直接使用。数据目录保存设置、任务历史、日志和 WebVideo+ 用户库，切换目录时会先停止服务、复制并校验内容，成功后再切换；工作缓存和安装缓存则对后续任务/下载生效。
+Craft 的导出快照与工作文件位于适配目录的 `state/sessions/<sessionId>/`，长期内核配置位于 `state/kernel/`；安装器的解压缓存与导出缓存分别管理。成功任务清理重型工作缓存，失败或取消任务保留必要快照和分片供重试；清理失败会保留记录并提示处理。
 
-分片视频、素材快照、混音 WAV 和 WebView2 profile 写入工作缓存目录；默认使用成片目录下的 `.webvideo-cache`。成功导出或时间分析完成后会自动删除重型工作缓存，失败或取消任务保留必要分片以便重试；WebView2 profile 在规划/渲染进程结束后立即清理。临时导入音乐在建任务时复制到任务缓存，服务会回收不再使用的上传副本。
+本版的新配置默认给每个并行渲染进程设置 **128 MiB 的 Live2D Cubism Core 初始内存**；已有显式设置（包括 `0`）保留。`0` 表示使用引擎默认值，手动范围为 16–1024 MiB，仅在加载 Core 时生效。实际内存占用可能更高，贴图显存另计；这项设置与磁盘工作缓存分别管理。
 
-安装/更新仍保留严格校验；若 Terre 文件、启动程序或历史安装记录与预期不一致，安装器不会直接锁死，而会提供显式的 **强制修复**。强制操作先建立事务性临时回滚副本，成功后立即删除。用户可选择是否长期保留另一份 Terre 原始文件恢复备份；该长期备份默认开启并放在所选 WebVideo+ 数据目录内，也可关闭。
+安装器使用原 `webgal-craft.exe` 入口，保留原快捷方式。安装、更新、修复和卸载挂载均校验宿主、文件清单与归属；修复仅重建同包缺失或损坏组件。卸载挂载保留组件、配置、日志和用户数据，官方更新后的新程序也会保留。
 
-点击“卸载 WebVideo+”会弹出清理选项：默认勾选“删除 WebVideo+ 缓存和临时文件”，默认不勾“删除 WebVideo+ 配置和用户数据”。后者包括设置、任务历史、日志、自动备份、项目内 WebVideo+ 成片音乐配置、滤镜/角色映射/预制效果/AI 配置和长期恢复备份。两项都勾选可完整清理 WebVideo+ 产生的数据；**已导出的 MP4 与 WebGAL 游戏工程本身不会删除**。安装状态不一致时同样可以显式选择强制拆卸。
+并行数支持 1–32，但更多进程不一定更快。自动模式按剧情安全点和 DOM workload 估算分配分片，分片数不超过有效 worker 数；手动模式由切点决定分片数，并行数只限制同时执行的分片数。**1080p 是常规推荐档，1440p 适合需要更高输出分辨率的场景；4K 每帧像素量约为 1080p 的 4 倍，建议 2–4 worker。若原始背景、立绘或 Live2D 贴图本身不是 4K，通常不会获得更多真实细节。**
 
-并行数支持 1–32，但更多进程不一定更快。Planner 会按剧情安全点和 DOM workload 估算分配分片，且分片数不会超过有效 worker 数，避免额外 WebView2 冷启动。**1080p 是常规推荐档，1440p 适合需要更高输出分辨率的场景；4K 每帧像素量约为 1080p 的 4 倍，建议 2–4 worker。若原始背景、立绘或 Live2D 贴图本身不是 4K，通常不会获得更多真实细节。**
+历史 Terre 基础版本 1.1.2 的改动见 [发行说明](RELEASE_NOTES_1.1.2.md)和[版本记录](CHANGELOG.md)；此前版本见 [1.1.1 发行说明](RELEASE_NOTES_1.1.1.md)、[1.1.0 发行说明](RELEASE_NOTES_1.1.0.md)、[1.0.4 发行说明](RELEASE_NOTES_1.0.4.md)、[1.0.3 发行说明](RELEASE_NOTES_1.0.3.md)、[1.0.2 发行说明](RELEASE_NOTES_1.0.2.md)、[1.0.1 发行说明](RELEASE_NOTES_1.0.1.md)与[1.0.0 发行说明](RELEASE_NOTES_1.0.0.md)。
 
-1.1.2 的改动见 [发行说明](RELEASE_NOTES_1.1.2.md)和[版本记录](CHANGELOG.md)；此前版本见 [1.1.1 发行说明](RELEASE_NOTES_1.1.1.md)、[1.1.0 发行说明](RELEASE_NOTES_1.1.0.md)、[1.0.4 发行说明](RELEASE_NOTES_1.0.4.md)、[1.0.3 发行说明](RELEASE_NOTES_1.0.3.md)、[1.0.2 发行说明](RELEASE_NOTES_1.0.2.md)、[1.0.1 发行说明](RELEASE_NOTES_1.0.1.md)与[1.0.0 发行说明](RELEASE_NOTES_1.0.0.md)。
+高级导出设置支持语句选择、`;CutHere` 和帧/秒/时间码切点；手动模式按指定边界切段，有效切点为空时单段导出。复杂动画、Live2D / Pixi 的接缝需按工程检查。兼容捕获可选 JPEG / PNG，默认 JPEG；PNG 避免截图压缩，最终 H.264 仍为有损编码。4.6.6 的 animation v2 按实际工程绑定启用；故事链按静态、单向 `changeScene` 展开，交互分支和循环需另行整理。仅音轨包含剧本原声，成片配乐替换用于完整视频。
 
 ## 两轮基础舞台
 
@@ -62,35 +62,36 @@
 
 ### 可选 AI 接入
 
-安装器主界面提供默认不勾选的“安装基于生成式 AI 的组件”。启用后可在配置栏填写 API Key；未启用时不会复制 AI 运行目录，原有制作功能无需 API Key。
+Craft 增强包提供独立 AI 运行环境，可在配置栏填写 API Key；请求由明确的功能操作触发，批量编辑、备份和视频导出可直接使用。Terre 安装器的 AI 组件仍为默认不安装的可选项。
 
 当前 AI 附件固定使用 DSH 0.1.5-rc.1 与 pi-ai 0.85.1，并由 `package-lock.json` 锁定依赖；包含固定 Node 运行时。提供商目录支持常见 Key 服务自动带入地址，也可自定义 Responses、Chat Completions 或 Anthropic Messages 协议。
 
-Key 通过 Windows 当前用户 DPAPI 加密，存于所选 **WebVideo+ 数据目录**下的 `user-data/ai/providers.json`；旧版 `%LOCALAPPDATA%/WebVideoPlus` 数据在首次使用新结构时会尽量导入，不会回显给页面。连接测试由用户手动触发，会发送简短请求并可能产生费用；模型列表读取成功不代表实际生成请求一定兼容。
+Key 通过 Windows 当前用户 DPAPI 加密，存于适配目录的 `state/kernel/user-data/ai/providers.json`；Craft 使用独立配置，旧 Terre 的配置、凭据和模型列表由各自安装管理。连接测试由用户手动触发，会发送简短请求并可能产生费用；模型列表读取成功不代表实际生成请求一定兼容。
 
-## 安装与模块管理
+## 安装与管理
 
-1. 从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 下载最新的 `WebVideo+-Setup-*.exe`。
-2. 运行安装器并选择已有 **Terre 4.6.4** 安装目录。
-3. 默认安装常用模块；在高级选项中可单独增删功能，并可选择 WebVideo+ 数据目录、导出工作缓存、安装缓存以及是否保留长期 Terre 恢复备份。灰选项目表示其他已选模块所需依赖。
-4. 完成后照常启动 Terre。
+1. 保存工程并正常关闭官方 Windows x64 Craft 1.0.0-rc.1 或 1.0.0-beta.2。
+2. 从[对应发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c)下载 `WebVideoCraft-Setup-1.1.16.0c.exe`，按发行正文的 SHA-256 校验。
+3. 选择 Craft 目录、原程序或快捷方式，执行“安装增强组件”或“更新 / 重新检查”。旧独立入口安装会迁移到原 EXE 入口。
+4. 完成后使用原快捷方式，或点击“启动 Craft”。“修复组件”和“卸载挂载”的范围见 [Craft 安装说明](craft/README.md#安装更新与管理)。
 
-安装器会记录实际 Terre 主程序文件名，因此兼容 `WebGAL_Terre.exe`、Steam 版的 `WebGAL Terre.exe`，以及只存在空格/下划线/连字符差异的唯一匹配名称。
+1.1.12c 及更早的增强版请手动下载升级；1.1.13c 起支持当前仅提供 EXE 附件的发行格式。更新面板分别处理 WebVideo+ Craft 与官方 Craft：增强更新经明确检查、下载和校验后打开 Setup，安装前仍需正常关闭 Craft；官方更新保留原来源、公钥和签名校验，确认后交接官方安装器。真实注册安装的跨版本 NSIS 升级仍待验收，新宿主需由明确兼容的增强包重新挂载。详见[更新说明](craft/update/README.md)。
 
-卸载默认只清理缓存，是否同时删除 WebVideo+ 配置和用户数据由卸载弹窗单独选择；关闭全部功能或卸载可尽量恢复原版入口，安装记录不一致时可显式选择强制拆卸。MyGO 为可选本机引擎，优先使用用户现有安装，不随本包捆绑角色素材或模型资源。
+### 本版维护修复
+
+本轮维护完善了迁移、卸载、备份恢复和失败回滚的目录归属与事务处理；制作标记可保存，音乐配置增加并发校验与恢复副本，批量编辑及 Anogo 文本/条件语句处理也已修正。队列请求、子进程收尾和捕获等待加入有界处理，AI 批次保存本地检查点；对白等待按实际舞台/DOM 输出和文本状态判断。具体范围见对应发行说明。Craft 另完善了快照重试保留、队列终态清理、守护进程超时和安装恢复；[本轮验收边界](craft/ACCEPTANCE-1.1.15c.md)保留了具体覆盖。
 
 ## 数据与基线
 
-故事继续保存在 WebGAL 原有 TXT 中；批量操作前静默备份，不使用旧的 `.webvideo-plus/project.json`。
+故事由 Craft 原生文档与 VFS 管理，批量编辑通过原生事务提交；导出通过官方 `export_web` 生成临时快照，并核对源文件、文档及工程引擎绑定。
 
-- 项目备份：项目内 `.webvideo-plus/backups/`（完整卸载并选择删除用户数据时可一并清理）
-- 成片音乐配置：项目根目录 `video-project.json`（由 WebVideo+ 生成；只有完整卸载时明确勾选“删除配置和用户数据”才删除）
-- 角色表、手动滤镜、预制效果、Anogo 动作表与 AI 配置：所选 WebVideo+ 数据目录下的 `user-data/`
-- 任务历史、设置与日志：所选 WebVideo+ 数据目录
-- 导出重型临时文件：所选导出工作缓存目录
-- 安装下载、解包和运行依赖缓存：所选安装缓存目录
+- 项目备份与制作标记：通过 Craft 工程存储适配层管理
+- 成片音乐配置：项目根目录 `video-project.json`
+- 内核配置、用户库与 AI 配置：适配目录的 `state/kernel/`
+- 会话日志、导出快照和工作缓存：适配目录的 `state/sessions/<sessionId>/`
+- 安装解压缓存：安装器高级设置选择的目录
 
-为保证 Terre 4.6.4 的补丁锚点可复现，仓库包含 `baseline/terre-4.6.4.js` 和 `baseline/local-baseline.json`。前者是固定 Terre 4.6.4 发布 bundle；后者保留建立基线时的校验元数据，其中 `baseHash` 会被当前构建脚本写入 `supportedOriginalBundleSha256`。`local-baseline.json` 中的旧 `kernel` 字段和旧文件哈希属于历史验证信息，不代表当前 WebVideo+ 内核版本；当前构建以根目录 `version.json` 的 `kernelVersion` 为准。
+当前 Craft 产品、安装器和内核版本以 [`craft/version.json`](craft/version.json) 为准，根 [`version.json`](version.json) 记录共享产品基线。宿主与工程运行时均按精确构建校验；自定义同版本包需单独适配。原 Terre 基线和历史发行说明继续作为来源与维护记录保留。
 
 ## 许可证
 

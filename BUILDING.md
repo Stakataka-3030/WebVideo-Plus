@@ -1,6 +1,6 @@
 # 构建与发布
 
-本分支为 WebVideo+ Craft 1.1.15c（安装器 1.1.15.0c；内核 0.6.59）；版本以 `craft/version.json` 与根 `version.json` 为准。
+本分支为 WebVideo+ Craft 1.1.16c（安装器 1.1.16.0c；内核 0.6.60）；版本以 `craft/version.json` 与根 `version.json` 为准。
 
 当前 Craft 构建、打包步骤及验收边界以 [Craft 说明](craft/README.md) 为准。构建输入由 `prepare-build.ps1` 按 `build/dependencies.lock.json` 的固定来源和哈希准备；AI 运行模块使用 `scripts/build-ai.ps1`，独立安装包使用 `craft/build-craft-package.ps1`。
 
