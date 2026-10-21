@@ -32,6 +32,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Pinned ffprobe verification failed" }
           $ffmpegBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+      - name: Prepare Windows process ownership queries
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $watch = [Diagnostics.Stopwatch]::StartNew()
+          $current = Get-CimInstance Win32_Process -Filter ("ProcessId=" + $PID)
+          if (-not $current) { throw 'Current process is missing from the Windows process provider' }
+          $parent = Get-CimInstance Win32_Process -Filter ("ProcessId=" + $current.ParentProcessId)
+          if (-not $parent) { throw 'Parent process is missing from the Windows process provider' }
+          Write-Output ("Windows process provider ready in {0} ms; current={1}, parent={2}" -f $watch.ElapsedMilliseconds, $current.ProcessId, $parent.ProcessId)
+
       - name: Verify complete Craft and shared Node regressions
         shell: pwsh
         run: |
