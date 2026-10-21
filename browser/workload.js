@@ -200,15 +200,6 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   const start=Math.max(0,Number(window.startMs)||0),end=Math.min(fullDurationMs,Number(window.endMs)||0);
   if(end>start+.01)replayWindows.push({...window,startMs:start,endMs:end});
  }
- // Motion changes can retain parameters from earlier motions and automatic idle.
- // Prefix fast-preview skips earlier model updates and cached motion state.
- // Replay the scene history to preserve native sampling and saved pose/physics.
- // This adds warmup only; manual cut positions and concurrency stay unchanged.
- for(const lifetime of live2dLifetimes){
-  if(!lifetime.motionEvents.some(event=>Number(event.atMs)>Number(lifetime.startMs)+.01))continue;
-  const exitEnd=resolvedExitReplay.filter(window=>Math.abs(Number(window.triggerMs??window.startMs)-Number(lifetime.endMs))<=2&&String(window.target||'').startsWith(String(lifetime.target||''))).reduce((end,window)=>Math.max(end,Number(window.endMs)||0),Number(lifetime.endMs));
-  replayWindows.push({startMs:Number(lifetime.startMs),endMs:Math.min(fullDurationMs,exitEnd),target:lifetime.target,command:'live2d-motion-history',line:lifetime.line,hold:false,dormantRestorable:false,rootReplay:true,noCut:false});
- }
  return {project,sceneName,sourceLines:sourceLines.length,parsedStatements:parsed.sentenceList.length,counts,fullDuration,duration:fullDuration,fps,events,audio,videoCues,muteWindows,singleLineHints,softCutWindows,live2dLifetimes,replayWindows,relaxedDecorativePixi,strictSegmentCuts:!!strictSegmentCuts,extraAnimations:[...extraAnimations]};
 };
 

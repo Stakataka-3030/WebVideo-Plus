@@ -8,6 +8,11 @@ namespace NativeVideo {
   static void Cuts(string text,int fps,params int[] expected){Check(ManualCuts.Parse(text,fps).SequenceEqual(expected),"Unexpected normalized cuts: "+text+" @ "+fps);}
   public static int Run(){
    checks=0;
+   var livePlan=J.O("live2dLifetimes",new object[]{J.O("startMs",0,"endMs",600000,"target","actor","motionEvents",new object[]{J.O("atMs",0,"group","pose"),J.O("atMs",10000,"group","idle")})},"replayWindows",new object[0],"events",Enumerable.Range(1,3).Select(i=>(object)J.O("line",i,"command","say","script","A:a;","atMs",i*150000)).ToArray());
+   var liveManual=SegmentPlan.CreateManual(livePlan,0,18000,30,new[]{4500,9000,13500});
+   Check(liveManual.Skip(1).All(r=>J.N(r,"warmupFrames")==90&&J.N(r,"replayFrame")==J.N(r,"startFrame")-90),"Live2D manual cuts must retain three-second local warmup");
+   var liveAuto=SegmentPlan.Create(livePlan,18000,30,4);
+   Check(liveAuto.Length==4&&liveAuto.Sum(r=>J.N(r,"warmupFrames"))==270,"Live2D automatic cuts must retain bounded warmup and four parts");
    Check(!ManualCuts.Enabled(Settings.Validate(null)),"Old settings must remain automatic");
    Check(!ManualCuts.Enabled(Settings.Validate(J.O("mode","manual"))),"Playback mode is independent from cut mode");
    Check(J.S(Settings.Validate(J.O("manualCutPoints","invalid but inactive")),"manualCutPoints")=="invalid but inactive","Auto mode must preserve inactive input");

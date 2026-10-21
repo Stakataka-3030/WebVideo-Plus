@@ -2,14 +2,14 @@
 
 面向 **WebGAL Terre 4.6.4** 的视觉小说视频制作辅助工具：批量编辑、剧情导航、音乐配置、备份与检查、Anogo 故事导入，以及本机视频导出。生成式 AI 是默认不安装的可选 Beta 组件，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.8) · [使用指南](docs/USER_GUIDE.md) · [1.1.8 发行说明](docs/releases/RELEASE_NOTES_1.1.8.md) · [构建说明](docs/BUILDING.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.9) · [使用指南](docs/USER_GUIDE.md) · [1.1.9 发行说明](docs/releases/RELEASE_NOTES_1.1.9.md) · [构建说明](docs/BUILDING.md)
 
-当前源码版本 **1.1.8**，内部开发标识 **0.8.12**，安装器 Win32 版本 **1.1.8.0**，导出内核 **0.6.51**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.8) 为准；这是 WebGAL 4.6.4 / MyGO 3.2.1 的稳定维护通道；Terre / WebGAL 4.6.5 请使用 1.2.1 通道。
+当前源码版本 **1.1.9**，内部开发标识 **0.8.13**，安装器 Win32 版本 **1.1.9.0**，导出内核 **0.6.52**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.9) 为准；这是 WebGAL 4.6.4 / MyGO 3.2.1 的稳定维护通道；Terre / WebGAL 4.6.5 使用 [1.2.1](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1)，4.6.6 使用 [1.3.3](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.3)，Craft 使用独立的 [1.1.16.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c) 通道。
 
 ## 安装与开始使用
 
 1. 在 Windows 上准备已有的 **Terre 4.6.4** 安装目录。
-2. 从 [Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.8) 下载 `WebVideo+-Setup-*.exe`，运行并选择 Terre 目录。
+2. 从 [Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.9) 下载 `WebVideo+-Setup-1.1.9.exe`，按发行正文中的 SHA-256 校验，运行并选择 Terre 目录。
 3. 默认安装常用模块；高级选项可单独增删功能、设置数据与缓存目录。灰选模块是其他已选功能的依赖。
 4. 安装完成后照常启动 Terre，在编辑器中使用 WebVideo+ 工具。
 
@@ -19,17 +19,31 @@
 
 卸载时默认清理缓存，删除配置和用户数据需要单独勾选；已导出的 MP4 和 WebGAL 游戏工程本身不会删除。重要工程仍建议保留自己的备份。
 
+更新时先保存工程并正常关闭 Terre，再运行对应通道的安装器。工具栏或导出高级设置中的“检查 WebVideo+ 更新”会按可确认的引擎版本推荐兼容发行页；下载和安装按提示分别完成。
+
 ## 能做什么
 
 - **编辑与演出**：批量 ID、表情、滤镜、`-next`、自动离场，以及分类预制效果
 - **剧情与音乐**：剧情导航、连续区间选择、时间线工具、并行音乐与时长匹配
 - **检查与恢复**：待核对标记、自动备份和确认回滚
-- **视频与字幕**：全文或区间导出；可选软字幕封装或 FFmpeg/libass 烧录，字幕内容由外部编辑器制作
+- **视频与字幕**：完整视频、舞台、对话框/DOM 或 48 kHz WAV 音轨；支持全篇、由本场景开始、仅本场景及语句选区。完整视频可附加 SRT / ASS / SSA 软字幕或 FFmpeg/libass 烧录，内容和样式由外部编辑器制作
 - **故事导入**：Anogo 文本/JSON/YAML；可选 AI 将小说转换为可预览、待核对的剧本骨架
 
-导出默认使用 GPU Raw 管线。建议从 **1080p、推荐 / 高质量** 开始；编码器会探测 NVENC、AMF、Quick Sync，必要时回退 CPU x264。完全无损可能产生非常大的文件，传统兼容管线更慢。分辨率、并行数、缓存和 AI 配置详见[完整使用指南](docs/USER_GUIDE.md)。
+导出默认使用 GPU Raw 管线。建议从 **1080p、推荐 / 高质量** 开始；编码器会探测 NVENC、AMF、Quick Sync，必要时回退 CPU x264。硬件 H.264 属于有损编码；“完全无损”指 RGB 视频流，文件可能很大，传统兼容管线更慢。分辨率、并行数、缓存和 AI 配置详见[完整使用指南](docs/USER_GUIDE.md)。
 
-高级设置支持[按语句指定导出切点](docs/USER_GUIDE.md#按语句指定导出切点)：复用时间线临时选择语句，或在剧本中独立写一行 `;CutHere`。手动模式合并两种来源，只在指定边界切段；没有有效切点则单段，并行数仅限制同时运行的任务数。 舞台导出可独立选择是否包含背景和立绘，并保持原剧本的演出与时序。
+高级设置支持[按语句指定导出切点](docs/USER_GUIDE.md#按语句指定导出切点)：复用时间线临时选择语句，或在剧本中独立写一行 `;CutHere`。手动模式合并两种来源，只在指定边界切段；有效切点为空时单段，并行数仅限制同时运行的任务数。舞台导出可独立选择是否包含背景和立绘，并保持原剧本的演出与时序。
+
+多场景导出按静态、单向 `changeScene` 展开，交互分支与循环需另行整理。仅音轨包含剧本 BGM、语音、音效和视频原声，成片配乐替换只用于完整视频。软字幕的复杂样式以播放器支持为限。
+
+### 缓存与 Live2D 内存
+
+导出工作缓存默认位于成片目录下的 `.webvideo-cache`，与任务历史、配置和安装缓存分别管理。成功导出或时间分析完成后清理重型工作文件；失败或取消时保留必要缓存供重试，浏览器 profile 在所属进程退出后清理。数据与缓存目录可在安装器高级设置中选择。
+
+本版的新配置默认给每个并行渲染进程设置 **128 MiB 的 Live2D Cubism Core 初始内存**；已有显式设置（包括 `0`）保留。`0` 表示使用引擎默认值，手动范围为 16–1024 MiB，仅在加载 Core 时生效。实际内存占用可能更高，贴图显存另计；这项设置与磁盘工作缓存分别管理。
+
+### 本版维护修复
+
+本轮维护完善了迁移、卸载、备份恢复和失败回滚的目录归属与事务处理；制作标记可保存，音乐配置增加并发校验与恢复副本，批量编辑及 Anogo 文本/条件语句处理也已修正。队列请求、子进程收尾和捕获等待加入有界处理，AI 批次保存本地检查点；对白等待按实际舞台/DOM 输出和文本状态判断。具体范围见对应发行说明。本通道保留 WebGAL 4.6.4 引擎适配及 JPEG 捕获。
 
 ## 文档与开发
 
