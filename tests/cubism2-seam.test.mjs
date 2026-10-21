@@ -129,13 +129,17 @@ test('Cubism3/4 stopped poses seek the last pre-stop frame and stop their queues
  }
 });
 
-test('motion switches request scene history including exit, while single epochs keep bounded warmup',()=>{
+test('motion changes retain epochs and bounded replay windows',()=>{
  const single=planFigures([{atMs:0,motion:'pose'},{atMs:8000,motion:'pose'},{atMs:10000,source:'none'}]);
- assert.equal(single.replayWindows.filter(w=>w.command==='live2d-motion-history').length,0);
+ assert.equal(single.live2dLifetimes[0].motionEvents.length,1);
+ assert.equal(single.replayWindows.some(w=>w.rootReplay),false);
  const plan=planFigures([{atMs:3500,motion:'null'},{atMs:7000,motion:'',bounds:'0,0,0,0'},{atMs:8000,motion:'idle',bounds:'0,0,0,0'},{atMs:10000,source:'none'}]);
- const window=plan.replayWindows.find(w=>w.command==='live2d-motion-history');
- assert.ok(window);assert.equal(window.startMs,3500);assert.equal(window.endMs,10450);assert.equal(window.noCut,false);assert.equal(window.rootReplay,true);
- assert.equal(plan.live2dLifetimes[0].endMs,10000,'Logical lifetime remains exclusive at removal');
+ assert.deepEqual(epochs(plan.live2dLifetimes[0]),[[3500,'null'],[7000,''],[8000,'idle']]);
+ assert.equal(plan.replayWindows.some(w=>w.rootReplay),false);
+ assert.equal(plan.live2dLifetimes[0].startMs,3500);
+ assert.equal(plan.live2dLifetimes[0].endMs,10000);
+ const exit=plan.replayWindows.find(w=>w.command==='changeFigure-exit');
+ assert.ok(exit);assert.equal(exit.startMs,10000);assert.equal(exit.endMs,10450);
 });
 test('bound model keeps its birth age through exit and a replacement on the same target',async()=>{
  const begin=source.indexOf('  const bindLive2DDeterminism=async'),end=source.indexOf('  globalThis.__exportBindLive2DDeterminism=',begin);
