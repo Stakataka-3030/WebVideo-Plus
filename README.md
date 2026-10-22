@@ -6,7 +6,7 @@
 
 当前源码版本 **1.3.4**，内部开发标识 **0.9.6**，安装器 Win32 版本 **1.3.4.0**，导出内核 **0.6.60**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和验证范围见 [1.3.4 发行说明](docs/releases/RELEASE_NOTES_1.3.4.md) 及 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.4)。
 
-WebGAL 4.6.4 / MyGO 3.2.1 使用 [1.1.10 稳定维护版](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.10)，4.6.5 使用 [1.2.1 最终稳定版](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1)；本版面向 WebGAL 4.6.6。Craft 使用独立的 [1.1.16.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c) 通道。
+WebGAL 4.6.4 / MyGO 3.2.1 使用 [1.1.10 稳定维护版](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.10)，4.6.5 使用 [1.2.1 最终版，已停止维护（EOL）](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1)；本版面向 WebGAL 4.6.6。Craft 使用独立的 [1.1.16.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c) 通道。
 
 
 ## 安装与开始使用
