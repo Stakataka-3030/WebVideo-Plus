@@ -81,8 +81,8 @@ try {
   # Static ZIP extraction through the existing verifier: no installer entrypoint.
   $extract=@'
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {pathToFileURL} from 'node:url';
-const {readEmbeddedZip}=await import(pathToFileURL(process.argv[1]));
-const entries=readEmbeddedZip(fs.readFileSync(process.argv[2]));
+const {readEmbeddedZip}=await import(pathToFileURL(process.argv[2]));
+const entries=readEmbeddedZip(fs.readFileSync(process.argv[3]));
 const manifests=[...entries.values()].filter(x=>/^[^/]+\/MANIFEST\.json$/.test(x.name));
 if(manifests.length!==1)throw Error('Previous package manifest missing');
 const prefix=manifests[0].name.slice(0,-'MANIFEST.json'.length), manifest=JSON.parse(manifests[0].data.toString('utf8'));
@@ -93,10 +93,11 @@ for(const {name,data} of entries.values()){
  if(!name.startsWith(prefix))throw Error('Unexpected previous package root');
  const relative=name.slice(prefix.length), record=records.get(relative);
  if(relative!=='MANIFEST.json'&&(!record||record.bytes!==data.length||record.sha256!==crypto.createHash('sha256').update(data).digest('hex')))throw Error('Previous package manifest mismatch: '+relative);
- const file=path.join(process.argv[3],relative);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,data);
+ const file=path.join(process.argv[4],relative);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,data);
 }
 '@
-  & node --input-type=module -e $extract (Join-Path $repository 'scripts/verify-installer-materials.mjs') $PreviousInstaller $oldInstallPackage
+  # argv[1] must differ from the imported verifier's file, so its CLI does not run.
+  & node --input-type=module -e $extract 'preflight-static-extraction' (Join-Path $repository 'scripts/verify-installer-materials.mjs') $PreviousInstaller $oldInstallPackage
   Require ($LASTEXITCODE -eq 0) 'Previous release static extraction failed.'
   $PreviousPatchPackageRoot=$oldInstallPackage
   $summary.inputs.previousInstallerSha256=$pins.previousInstaller.sha256
