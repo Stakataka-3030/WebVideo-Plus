@@ -4,7 +4,7 @@
 
 [下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.10) · [使用指南](docs/USER_GUIDE.md) · [1.1.10 发行说明](docs/releases/RELEASE_NOTES_1.1.10.md) · [构建说明](docs/BUILDING.md)
 
-当前源码版本 **1.1.10**，内部开发标识 **0.8.14**，安装器 Win32 版本 **1.1.10.0**，导出内核 **0.6.53**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.10) 为准；这是 WebGAL 4.6.4 / MyGO 3.2.1 的稳定维护通道；Terre / WebGAL 4.6.5 使用 [1.2.1](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1)，4.6.6 使用 [1.3.4](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.4)，Craft 使用独立的 [1.1.16.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c) 通道。
+当前源码版本 **1.1.10**，内部开发标识 **0.8.14**，安装器 Win32 版本 **1.1.10.0**，导出内核 **0.6.53**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.10) 为准；这是 WebGAL 4.6.4 / MyGO 3.2.1 的稳定维护通道；Terre / WebGAL 4.6.5 使用 [1.2.1 最终版，已停止维护（EOL）](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1)，4.6.6 使用 [1.3.4](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.4)，Craft 使用独立的 [1.1.16.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c) 通道。
 
 
 ## 安装与开始使用
