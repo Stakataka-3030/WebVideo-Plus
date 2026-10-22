@@ -1,7 +1,9 @@
 // GUI visibility changes can asynchronously reload saved engine options.
 // Pin only the export's two timing controls; leave other engine data intact.
+// Capture options are scoped to this export, outside the engine option store.
 globalThis.__lockExportSettings=options=>{
  globalThis.__exportSettingsLock?.dispose();
+ globalThis.__exportCaptureSettings=Object.freeze({preciseTextboxLoopAnimations:options.preciseTextboxLoopAnimations===true});
  const store=__wgProbe.store;
  const fixed={textSpeed:Number(options.textSpeed),autoSpeed:Number(options.autoSpeed)};
  let applying=false;

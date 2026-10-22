@@ -21,6 +21,7 @@ if($InternalBuild){
 }
 $taskPackageFolderLabel=if($InternalBuild){'webvideo-plus-'+$taskBuildLabel}else{'webvideo-plus'}
 New-Item -ItemType Directory -Path (Join-Path $taskRoot 'dist') -Force | Out-Null
+if(Test-Path (Join-Path $taskRoot 'package/terre-adapter')){throw 'Obsolete Terre adapter must not enter the package.'}
 & (Join-Path $taskRoot 'build.ps1')
 if($LASTEXITCODE -ne 0){throw 'Export kernel build failed'}
 if($Fast){& (Join-Path $taskRoot 'scripts/build-ai.ps1') -ReuseDependencies}else{& (Join-Path $taskRoot 'scripts/build-ai.ps1')}

@@ -1,0 +1,4 @@
+using System;using System.IO;using System.Reflection;
+class CandidateFrontendProbe {
+ static int Main(string[] args){try{var assembly=Assembly.LoadFile(Path.GetFullPath(args[0]));assembly.GetType("NativeVideo.Files",true).GetField("Root").SetValue(null,Path.GetFullPath(args[1]));var catalog=assembly.GetType("NativeVideo.ModuleCatalog",true);var chosen=(string[])catalog.GetField("Advanced").GetValue(null);var modules=(string[])catalog.GetMethod("Resolve").Invoke(null,new object[]{chosen});string source=File.ReadAllText(args[2]);string patched=(string)assembly.GetType("NativeVideo.ProductIntegration",true).GetMethod("Patch").Invoke(null,new object[]{source,modules,null});File.WriteAllText(args[3],patched);Console.WriteLine("Patched official editor source without installation: "+patched.Length+" chars");return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
+}

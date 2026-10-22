@@ -13,8 +13,13 @@ try {
  $core=$core.Substring(0,$end)+" public static class VideoWorkflow {$($canonical[0])}`n public static partial class App {public static readonly object LogLock=new object();}`n public static class Commands {public static Task<object> Probe(string file){throw new InvalidOperationException(`"Media probe is outside scanner/path resolution tests`");}}`n}`n"
  $corePath=Join-Path $temp 'Core.cs'
  [IO.File]::WriteAllText($corePath,$core,[Text.UTF8Encoding]::new($false))
- $sources=@($corePath,(Join-Path $SourceRoot 'src/EngineAdapter.cs'),(Join-Path $SourceRoot 'src/ProjectAssets.cs'),(Join-Path $SourceRoot 'src/SceneChain.cs'),(Join-Path $SourceRoot 'tests/resource-url.portable-json.cs'),(Join-Path $PSScriptRoot 'ResourceUrlScanChecks.cs'))
+ $resource=[IO.File]::ReadAllText((Join-Path $SourceRoot 'src/SharedResourceServer.cs'))
+ $resourceEnd=$resource.IndexOf(' public sealed class SharedResourceServer:')
+ if($resourceEnd -lt 0){throw 'Shared resource helper extraction boundary changed'}
+ $resourcePath=Join-Path $temp 'SharedResourceHelpers.cs'
+ [IO.File]::WriteAllText($resourcePath,$resource.Substring(0,$resourceEnd)+"}`n",[Text.UTF8Encoding]::new($false))
+ $sources=@($corePath,(Join-Path $SourceRoot 'src/EngineAdapter.cs'),(Join-Path $SourceRoot 'src/ProjectAssets.cs'),(Join-Path $SourceRoot 'src/SharedAssets.cs'),$resourcePath,(Join-Path $SourceRoot 'src/SceneChain.cs'),(Join-Path $SourceRoot 'tests/resource-url.portable-json.cs'),(Join-Path $PSScriptRoot 'ResourceUrlScanChecks.cs'))
  Add-Type -Path $sources
  $count=[ResourceUrlScanChecks]::Run()
  Write-Output "PASS $count production C# resource Scan/Resolve checks"
-}finally{Remove-Item -LiteralPath $temp -Recurse -Force}
+}finally{if(-not([IO.Path]::GetFullPath($temp).StartsWith([IO.Path]::GetFullPath([IO.Path]::GetTempPath()),[StringComparison]::OrdinalIgnoreCase))){throw 'Unexpected scanner test cleanup path'};Remove-Item -LiteralPath $temp -Recurse -Force}

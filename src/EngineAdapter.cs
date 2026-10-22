@@ -154,10 +154,11 @@ namespace NativeVideo {
    return options.ToArray();
   }
   public static EngineAdapter Select(object request) {
+   string projectRuntime=J.S(J.Get(request,"externalEngine"),"root",J.S(request,"project"));
    var selected=J.S(J.Get(request,"settings"),"engine","webgal");
    if(selected=="webgal") {
     string projectReason,templateReason;
-    var project=TryWebgalRuntime(J.S(request,"project"),"project-runtime",out projectReason);
+    var project=TryWebgalRuntime(projectRuntime,"project-runtime",out projectReason);
     if(project!=null)return project;
     var template=TryWebgalRuntime(J.S(request,"engineRoot"),"terre-template",out templateReason);
     if(template!=null)return template;
@@ -166,7 +167,7 @@ namespace NativeVideo {
    }
    if(selected!="mygo")throw new IOException("未知导出引擎");
    string mygoFallbackReason;
-   var projectMygo=TryMygoProjectRuntime(J.S(request,"project"),out mygoFallbackReason);
+   var projectMygo=TryMygoProjectRuntime(projectRuntime,out mygoFallbackReason);
    if(projectMygo!=null)return projectMygo;
    string source=J.S(request,"mygoRoot");
    if(string.IsNullOrEmpty(source))source=FindMygo(Path.GetDirectoryName(Files.Full(J.S(request,"project"))));

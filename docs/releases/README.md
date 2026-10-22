@@ -1,5 +1,7 @@
 # 发行说明
 
+- [1.1.10 · WebGAL 4.6.4](RELEASE_NOTES_1.1.10.md)
+
 - [1.1.9 · WebGAL 4.6.4 维护版](RELEASE_NOTES_1.1.9.md)
 - [1.1.8 · WebGAL 4.6.4 维护版](RELEASE_NOTES_1.1.8.md)
 [返回项目首页](../../README.md) · [完整变更记录](../../CHANGELOG.md)
