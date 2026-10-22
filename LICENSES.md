@@ -9,6 +9,9 @@ This scope statement is intended to make the repository's mixed provenance expli
 | Path / material | License / status | Notes |
 | --- | --- | --- |
 | WebVideo+ original code under `src/`, `browser/`, `manager/`, `installer/`, `launcher/`, `bootstrap/`, and project build scripts | MPL-2.0 | Except where a file contains separately attributed third-party material. |
+| WebVideo+ original prose documentation, including `README.md`, `CHANGELOG.md`, original guides and release notes under `docs/`, and original adaptation/fixture documentation | All rights reserved (ARR) | The reserved scope and prior-license limitations are defined below. |
+| `WebVideo+_icon.svg`, `WebVideo+_icon.ico` | All rights reserved (ARR) | WebVideo+ original Logo artwork. |
+| WebVideo+ project name, trademarks, service marks and other brand identifiers | All rights reserved (ARR); no brand-use license granted | No assertion of registration or exclusive control over descriptive references. |
 | `baseline/terre-4.6.4.js` | MPL-2.0 (upstream) | Unmodified/fixed WebGAL Terre 4.6.4 release bundle used as the patching baseline. Upstream copyright remains with its contributors. |
 | `baseline/terre-4.6.5.js` | MPL-2.0 (upstream) | Unmodified WebGAL Terre 4.6.5 release bundle used for its independent host profile; upstream copyright remains with its contributors. |
 | Terre/WebGAL-derived snippets or modifications embedded in patch definitions | MPL-2.0 | These remain under the same MPL-2.0 family as the upstream source. |
@@ -20,6 +23,19 @@ This scope statement is intended to make the repository's mixed provenance expli
 | Files under `licenses/` | Their named upstream licenses/notices | These files are copies of third-party license/notice texts and are not relicensed by the root MPL-2.0 license. |
 | WebView2, FFmpeg, Node.js, DeepSeek Harness / DSH, pi-ai and other packaged/runtime dependencies | Their respective upstream licenses | See `NOTICE.md`, `licenses/THIRD-PARTY.md`, package lockfiles, and license files shipped with dependencies. |
 | Playwright / Electron references | Historical/research provenance only | Current 1.0.0 runtime does not bundle these runtimes; retained license/notice files document historical provenance. |
+
+## Reserved original documentation, Logo and brand identifiers
+
+All rights reserved (ARR) applies only to WebVideo+ original material for which the project is entitled to reserve rights:
+
+- Original prose in `README.md`, `CHANGELOG.md`, usage/building/architecture and other guides under `docs/`, release notes, original root-level adaptation reports, and explanatory README files in test fixtures.
+- Logo artwork in `WebVideo+_icon.svg` and `WebVideo+_icon.ico`.
+
+This notice grants no additional permission to reproduce, modify, redistribute or otherwise reuse these reserved materials. The WebVideo+ name, trademarks, service marks and other brand identifiers are reserved; no license to use them is granted. This statement makes no assertion of registration or exclusive control over descriptive references to the project.
+
+The documentation reservation excludes `LICENSE`, `LICENSES.md`, `NOTICE.md`, third-party license/attribution texts, and notices required by applicable licenses; their existing terms and notice obligations remain unchanged. Original code examples, ordinary UI text, source comments, CSS, configuration/schema data, runtime prompts, and executable test fixtures/data remain within the MPL-2.0 code/data scope. Quoted third-party code retains its own terms.
+
+This reservation takes effect when this notice is first published, only to the extent of rights the project may reserve. It does not revoke or narrow licenses previously validly granted, including for previously distributed versions or content; those grants remain effective under their original terms. It does not restrict uses permitted by applicable law. Third-party and separately licensed material retains its own terms.
 
 ## MPL notice
 

@@ -167,7 +167,9 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于所选 **WebVideo+ 数据�
 
 ## 许可证
 
-除 [`LICENSES.md`](../LICENSES.md) 另有说明的第三方或独立许可材料外，**WebVideo+ 的原创源代码、构建脚本、项目特定实现和原创数据采用 Mozilla Public License 2.0（MPL-2.0）**，完整文本见 [`LICENSE`](../LICENSE)。
+除 [`LICENSES.md`](../LICENSES.md) 另有说明的材料外，**WebVideo+ 的原创源代码、构建脚本、项目特定实现和原创数据采用 Mozilla Public License 2.0（MPL-2.0）**，完整文本见 [`LICENSE`](../LICENSE)。
+
+原创文档（包括 README、CHANGELOG、原创使用/构建指南等）及 `WebVideo+_icon.svg`、`WebVideo+_icon.ico` 保留所有权利（ARR）；项目名称、商标和品牌标识不随代码许可证授予使用许可。具体边界见[许可范围映射](../LICENSES.md#reserved-original-documentation-logo-and-brand-identifiers)。既有有效授权继续适用，法律允许的使用不受本声明限制。
 
 仓库是混合来源项目，因此根许可证不会覆盖或替换其他权利人的既有条款。主要例外包括：Terre/WebGAL 上游代码仍按 MPL-2.0；`anogo-actions.factory.json` 中来自 Anogo 的默认动作词表继续按 AGPL-3.0；`js-yaml` 继续按 MIT；来自 `webgal-skill` 或其他公开/社区资料的已归属内容保留原有许可与署名。具体到路径和材料的映射见 [`LICENSES.md`](../LICENSES.md)、[`NOTICE.md`](../NOTICE.md) 和 [`licenses/THIRD-PARTY.md`](../licenses/THIRD-PARTY.md)。
 
