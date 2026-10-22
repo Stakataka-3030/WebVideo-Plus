@@ -2,16 +2,17 @@
 
 面向 **WebGAL Terre 4.6.6** 的视觉小说视频制作辅助工具：批量编辑、剧情导航、音乐配置、备份与检查、Anogo 故事导入，以及本机视频导出。生成式 AI 是默认不安装的可选 Beta 组件，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.3) · [使用指南](docs/USER_GUIDE.md) · [1.3.3 发行说明](docs/releases/RELEASE_NOTES_1.3.3.md) · [构建说明](docs/BUILDING.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.4) · [使用指南](docs/USER_GUIDE.md) · [1.3.4 发行说明](docs/releases/RELEASE_NOTES_1.3.4.md) · [构建说明](docs/BUILDING.md)
 
-当前源码版本 **1.3.3**，内部开发标识 **0.9.5**，安装器 Win32 版本 **1.3.3.0**，导出内核 **0.6.59**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和验证范围见 [1.3.3 发行说明](docs/releases/RELEASE_NOTES_1.3.3.md) 及 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.3)。
+当前源码版本 **1.3.4**，内部开发标识 **0.9.6**，安装器 Win32 版本 **1.3.4.0**，导出内核 **0.6.60**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和验证范围见 [1.3.4 发行说明](docs/releases/RELEASE_NOTES_1.3.4.md) 及 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.4)。
 
-WebGAL 4.6.4 / MyGO 3.2.1 使用 [1.1.9 稳定维护版](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.9)，4.6.5 使用 [1.2.1 最终稳定版](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1)；本版面向 WebGAL 4.6.6。Craft 使用独立的 [1.1.16.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c) 通道。
+WebGAL 4.6.4 / MyGO 3.2.1 使用 [1.1.10 稳定维护版](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.10)，4.6.5 使用 [1.2.1 最终稳定版](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1)；本版面向 WebGAL 4.6.6。Craft 使用独立的 [1.1.16.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c) 通道。
+
 
 ## 安装与开始使用
 
 1. 在 Windows 上准备已有的 **Terre 4.6.6** 安装目录。
-2. 从 [Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.3) 下载 `WebVideo+-Setup-1.3.3.exe`，按发行正文中的 SHA-256 校验，运行并选择 Terre 目录。
+2. 从 [Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.4) 下载 `WebVideo+-Setup-1.3.4.exe`，按发行正文中的 SHA-256 校验，运行并选择 Terre 目录。
 3. 默认安装常用模块；高级选项可单独增删功能、设置数据与缓存目录。灰选模块是其他已选功能的依赖。
 4. 安装完成后照常启动 Terre，在编辑器中使用 WebVideo+ 工具。
 
@@ -35,15 +36,29 @@ WebGAL 4.6.4 / MyGO 3.2.1 使用 [1.1.9 稳定维护版](https://github.com/Stak
 
 多场景导出按静态、单向 `changeScene` 展开，交互分支与循环需另行整理。仅音轨包含剧本 BGM、语音、音效和视频原声，成片配乐替换只用于完整视频。软字幕的复杂样式以播放器支持为限。
 
+### 共享素材与空白项目
+
+安装器的可选模块“共享素材与项目资源”让多个项目引用同一份本机素材。素材页在同一页显示项目素材与共享素材，共享区使用淡紫色背景；共享文件只读，需要编辑时先复制到当前项目。复制会一并收集模型依赖，重名自动区分。
+
+创建游戏时可选择“创建空白项目”，跳过示例剧本和素材，保留运行所需的配置与界面。勾选后可启用“共享资源使用引擎内自带的资源”：默认跟随创建流程所选引擎的 `game` 文件夹，手动选择仅覆盖素材来源，项目引擎保持原选择。旧正式版升级会补选共享模块，已经明确取消的选择继续保留。
+
+视频导出收集共享依赖到任务快照；游戏打包先在临时项目副本中复制所需素材并转换为包内引用，再交给原 Terre 打包。原项目和共享原件保留，打包结果可独立运行。详见[共享素材使用说明](docs/SHARED-ASSETS.md)。
+
+### 导出设置与易用性
+
+高级设置按用途整理。新增默认关闭的“精确文本框循环动画”，需要完整呈现文本框循环装饰时可开启，可能增加导出时间；其他动画与文字显示沿用既有处理。
+
+新增渲染设备选择与实际设备诊断，编码器仍单独选择。错误提示提供摘要、下一步操作和可展开的技术详情，并可打开日志文件夹；共享模型地址缩短显示，动作、表情及预览切换也更稳定。
+
 ### 缓存与 Live2D 内存
 
 导出工作缓存默认位于成片目录下的 `.webvideo-cache`，与任务历史、配置和安装缓存分别管理。成功导出或时间分析完成后清理重型工作文件；失败或取消时保留必要缓存供重试，浏览器 profile 在所属进程退出后清理。数据与缓存目录可在安装器高级设置中选择。
 
 本版的新配置默认给每个并行渲染进程设置 **128 MiB 的 Live2D Cubism Core 初始内存**；已有显式设置（包括 `0`）保留。`0` 表示使用引擎默认值，手动范围为 16–1024 MiB，仅在加载 Core 时生效。实际内存占用可能更高，贴图显存另计；这项设置与磁盘工作缓存分别管理。
 
-### 本版维护修复
+### 本版更新
 
-本轮维护完善了迁移、卸载、备份恢复和失败回滚的目录归属与事务处理；制作标记可保存，音乐配置增加并发校验与恢复副本，批量编辑及 Anogo 文本/条件语句处理也已修正。队列请求、子进程收尾和捕获等待加入有界处理，AI 批次保存本地检查点；对白等待按实际舞台/DOM 输出和文本状态判断。具体范围见对应发行说明。本通道保留 WebGAL 4.6.6 的 animation v2，兼容捕获可选 JPEG / PNG，默认 JPEG。PNG 避免截图阶段的压缩，最终 H.264 仍为有损编码。
+共享素材浏览、模型选项、预览取消与输出重名处理已完善。4.6.6 安装识别保留已知版本快速匹配，并通过唯一结构与能力锚点减少版本耦合；备份、完整性校验与原子恢复保持。
 
 ## 文档与开发
 

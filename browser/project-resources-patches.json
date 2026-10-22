@@ -1,0 +1,44 @@
+[
+  {
+    "scopeStart": "function Sidebar(",
+    "scopeEnd": "const sidebar_main=",
+    "regex": "function Sidebar\\((?<props>[A-Za-z_$][A-Za-z0-9_$]*)\\)\\{",
+    "replace": "function Sidebar(${props}){const __wvpProjectCreate=WebVideoProjectResources.useOptions();"
+  },
+  {
+    "scopeStart": "function Sidebar(",
+    "scopeEnd": "const sidebar_main=",
+    "regex": "(?<prefix>value:[^,]+,selectedOptions:\\[[^\\]]+\\],onOptionSelect:\\((?<event>[A-Za-z_$][A-Za-z0-9_$]*),(?<selection>[A-Za-z_$][A-Za-z0-9_$]*)\\)=>\\{(?<setter>[A-Za-z_$][A-Za-z0-9_$]*)\\()(?<value>\\k<selection>\\.optionValue===[A-Za-z_$][A-Za-z0-9_$]*\\?void 0:\\k<selection>\\.optionValue)(?<suffix>\\)\\},children:\\[jsxRuntimeExports\\.jsx\\(Option,[\\s\\S]*?,\"default-engine\"\\))",
+    "replace": "${prefix}${value});__wvpProjectCreate.setDerivative(${value}${suffix}"
+  },
+  {
+    "scopeStart": "function Sidebar(",
+    "scopeEnd": "const sidebar_main=",
+    "regex": "function (?<submit>[A-Za-z_$][A-Za-z0-9_$]*)\\(\\)\\{(?<condition>[^{}]+?)&&\\((?<props>[A-Za-z_$][A-Za-z0-9_$]*)\\.createGame\\((?<payload>\\{gameName:[^{}]+\\})\\),(?<success>[A-Za-z_$][A-Za-z0-9_$]*\\(!1\\),[A-Za-z_$][A-Za-z0-9_$]*\\(i18n\\._\\(\\{id:\"[^\"]+\"\\}\\)\\))\\)\\}",
+    "replace": "function ${submit}(){if(${condition})return __wvpProjectCreate.submit(()=>${props}.createGame(__wvpProjectCreate.withOptions(${payload})),()=>{${success}});}"
+  },
+  {
+    "scopeStart": "function Sidebar(",
+    "scopeEnd": "const sidebar_main=",
+    "regex": "(?<prefix>jsxRuntimeExports\\.jsx\\(Button,\\{appearance:\"primary\",disabled:)(?<condition>[^,]+)(?<click>,onClick:[A-Za-z_$][A-Za-z0-9_$]*,children:)",
+    "replace": "jsxRuntimeExports.jsx(WebVideoProjectResourceFields,{state:__wvpProjectCreate}),${prefix}__wvpProjectCreate.disabled||(${condition})${click}"
+  },
+  {
+    "scopeStart": "function Sidebar(",
+    "scopeEnd": "const sidebar_main=",
+    "regex": "open:(?<open>[A-Za-z_$][A-Za-z0-9_$]*),onOpenChange:\\(\\)=>(?<set>[A-Za-z_$][A-Za-z0-9_$]*)\\(!\\k<open>\\)",
+    "replace": "open:${open},onOpenChange:()=>{if(__wvpProjectCreate.canToggle())${set}(!${open})}"
+  },
+  {
+    "scopeStart": "function Sidebar(",
+    "scopeEnd": "const sidebar_main=",
+    "find": "jsxRuntimeExports.jsxs(\"form\",{style:",
+    "replace": "jsxRuntimeExports.jsxs(\"form\",{onSubmit:__wvpEvent=>__wvpEvent.preventDefault(),style:"
+  },
+  {
+    "scopeStart": "function DashBoard(",
+    "scopeEnd": "const initState$1=",
+    "regex": "api\\.manageGameControllerCreateGame\\((?<data>[A-Za-z_$][A-Za-z0-9_$]*)\\)",
+    "replace": "WebVideoProjectResources.create(${data})"
+  }
+]

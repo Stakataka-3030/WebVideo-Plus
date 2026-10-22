@@ -1,6 +1,6 @@
 param(
  [Parameter(Mandatory=$true)][string]$TerreSource,
- [Parameter(Mandatory=$true)][ValidateSet("4.6.4","4.6.5")][string]$HostVersion,
+ [Parameter(Mandatory=$true)][ValidateSet("4.6.4","4.6.5","4.6.6")][string]$HostVersion,
  [string]$PackageRoot=(Join-Path $PSScriptRoot '../package'),
  [string]$OutputRoot=(Join-Path $PSScriptRoot '../.build/terre-install')
 )
@@ -11,7 +11,7 @@ if($env:OS -ne 'Windows_NT'){throw 'This fixture requires Windows.'}
 $TerreSource=[IO.Path]::GetFullPath($TerreSource)
 $PackageRoot=[IO.Path]::GetFullPath($PackageRoot)
 $OutputRoot=[IO.Path]::GetFullPath($OutputRoot)
-$baselineFile=if($HostVersion -eq '4.6.4'){'../baseline/local-baseline.json'}else{'../baseline/terre-4.6.5.json'}
+$baselineFile=if($HostVersion -eq '4.6.4'){'../baseline/local-baseline.json'}else{'../baseline/terre-'+$HostVersion+'.json'}
 $baseline=Get-Content (Join-Path $PSScriptRoot $baselineFile) -Raw | ConvertFrom-Json
 $bundleRelative=if($HostVersion -eq '4.6.4'){'public/assets/'+$baseline.baseBundle}else{$baseline.bundle -replace '^release/',''}
 function Hash-OrMissing([string]$file){if(Test-Path -LiteralPath $file -PathType Leaf){return (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()};return '<absent>'}

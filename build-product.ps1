@@ -21,6 +21,7 @@ if($InternalBuild){
 }
 $taskPackageFolderLabel=if($InternalBuild){'webvideo-plus-'+$taskBuildLabel}else{'webvideo-plus'}
 New-Item -ItemType Directory -Path (Join-Path $taskRoot 'dist') -Force | Out-Null
+if(Test-Path (Join-Path $taskRoot 'package/terre-adapter')){throw 'Obsolete Terre adapter must not enter the package.'}
 & (Join-Path $taskRoot 'build.ps1')
 if($LASTEXITCODE -ne 0){throw 'Export kernel build failed'}
 if($Fast){& (Join-Path $taskRoot 'scripts/build-ai.ps1') -ReuseDependencies}else{& (Join-Path $taskRoot 'scripts/build-ai.ps1')}
@@ -29,7 +30,7 @@ $taskCompiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.ex
 if($LASTEXITCODE -ne 0){throw 'Timeline build failed'}
 & node (Join-Path $taskRoot 'scripts/configure-installer.mjs') @taskNodeArgs
 if($LASTEXITCODE -ne 0){throw 'Installer configuration failed'}
-& $taskCompiler /nologo /target:exe /platform:x64 /optimize+ /main:NativeVideo.App ('/win32icon:'+(Join-Path $taskRoot 'WebVideo+_icon.ico')) ('/out:'+(Join-Path $taskRoot 'package/WebVideoPlus.Manager.exe')) /r:System.Web.Extensions.dll /r:System.Net.Http.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll (Join-Path $taskRoot 'src/Core.cs') (Join-Path $taskRoot 'src/ManualCuts.cs') (Join-Path $taskRoot 'src/Integration.cs') (Join-Path $taskRoot 'manager/ManagerMain.cs') (Join-Path $taskRoot 'manager/ProductIntegration.cs') (Join-Path $taskRoot 'manager/ModuleCatalog.cs')
+& $taskCompiler /nologo /target:exe /platform:x64 /optimize+ /main:NativeVideo.App ('/win32icon:'+(Join-Path $taskRoot 'WebVideo+_icon.ico')) ('/out:'+(Join-Path $taskRoot 'package/WebVideoPlus.Manager.exe')) /r:System.Web.Extensions.dll /r:System.Net.Http.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll (Join-Path $taskRoot 'src/Core.cs') (Join-Path $taskRoot 'src/ManualCuts.cs') (Join-Path $taskRoot 'src/Integration.cs') (Join-Path $taskRoot 'manager/ManagerMain.cs') (Join-Path $taskRoot 'manager/ProductIntegration.cs') (Join-Path $taskRoot 'manager/TerreHostCompatibility.cs') (Join-Path $taskRoot 'manager/ModuleCatalog.cs')
 if($LASTEXITCODE -ne 0){throw 'Product manager build failed'}
 & node (Join-Path $taskRoot 'scripts/build-feature-assets.mjs') @taskNodeArgs
 if($LASTEXITCODE -ne 0){throw 'Feature assets failed'}

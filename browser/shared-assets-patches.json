@@ -1,0 +1,80 @@
+[
+  {
+    "scopeStart": "function WebVideoLocalAssets({",
+    "scopeEnd": "function FileUploader(",
+    "find": "allowedExtNames:nt}){var",
+    "replace": "allowedExtNames:nt,webVideoPathChanged:__wvpPathChanged}){var"
+  },
+  {
+    "scopeStart": "function WebVideoLocalAssets({",
+    "scopeEnd": "function FileUploader(",
+    "find": "return jsxRuntimeExports.jsxs(\"div\",{style:{display:\"flex\",flexDirection:\"column\",overflow:\"hidden\",height:\"100%\"}",
+    "replace": "return reactExports.useEffect(()=>{__wvpPathChanged?.(gt.value)},[gt.value]),jsxRuntimeExports.jsxs(\"div\",{style:{display:\"flex\",flexDirection:\"column\",overflow:\"hidden\",height:\"100%\"}"
+  },
+  {
+    "scopeStart": "function ChooseFile(",
+    "scopeEnd": "var commandType",
+    "regex": "(?<validate>[A-Za-z_$][A-Za-z0-9_$]*)\\((?<file>[A-Za-z_$][A-Za-z0-9_$]*)\\.path\\)&&(?=\\()",
+    "replace": "(WebVideoSharedMaterials.isResourceUrl(${file}.path)||${validate}(${file}.path))&&"
+  },
+  {
+    "scopeStart": "function ExportTab(",
+    "scopeEnd": "function IconWithTextItemSmall(",
+    "regex": "api\\.manageGameControllerEjectGameAsWeb\\((?<game>[A-Za-z_$][A-Za-z0-9_$]*)\\)",
+    "replace": "WebVideoSharedMaterials.exportGame(${game},\"web\")"
+  },
+  {
+    "scopeStart": "function ExportTab(",
+    "scopeEnd": "function IconWithTextItemSmall(",
+    "regex": "api\\.manageGameControllerEjectGameAsExe\\((?<game>[A-Za-z_$][A-Za-z0-9_$]*)\\)",
+    "replace": "WebVideoSharedMaterials.exportGame(${game},\"electron-windows\")"
+  },
+  {
+    "scopeStart": "function ExportTab(",
+    "scopeEnd": "function IconWithTextItemSmall(",
+    "regex": "api\\.manageGameControllerEjectGameAsAndroid\\((?<game>[A-Za-z_$][A-Za-z0-9_$]*)\\)",
+    "replace": "WebVideoSharedMaterials.exportGame(${game},\"android\")"
+  },
+  {
+    "scopeStart": "function FileElement(",
+    "scopeEnd": "function WebVideoLocalAssets(",
+    "regex": "(?<target>[A-Za-z_$][A-Za-z0-9_$]*)=\\[\\.\\.\\.(?<root>[A-Za-z_$][A-Za-z0-9_$]*),(?<file>[A-Za-z_$][A-Za-z0-9_$]*)\\.path\\]\\.join\\(\"/\"\\)",
+    "replace": "${target}=${file}.webVideoResourceUrl??[...${root},${file}.path].join(\"/\")"
+  },
+  {
+    "scopeStart": "function FileElement(",
+    "scopeEnd": "function WebVideoLocalAssets(",
+    "regex": "(?<event>[A-Za-z_$][A-Za-z0-9_$]*)\\.dataTransfer\\.setData\\(\"text/plain\",(?<file>[A-Za-z_$][A-Za-z0-9_$]*)\\.path\\.split\\(\"/\"\\)\\.slice\\(1\\)\\.join\\(\"/\"\\)\\)",
+    "replace": "${event}.dataTransfer.setData(\"text/plain\",${file}.webVideoResourceUrl??${file}.path.split(\"/\").slice(1).join(\"/\"))"
+  },
+  {
+    "scopeStart": "function ChangeFigure(",
+    "scopeEnd": "function Bgm(",
+    "regex": "reactExports\\.useEffect\\(\\(\\)=>\\{(?<reference>[A-Za-z_$][\\w$]*)\\.value\\.includes\\(\"json\"\\)\\?(?=[\\s\\S]*?Object\\.keys\\([A-Za-z_$][\\w$]*\\.animations\\);if\\((?<motions>[A-Za-z_$][\\w$]*)\\()(?=[\\s\\S]*?else (?<skins>[A-Za-z_$][\\w$]*)\\(\\[\\]\\);(?<expressions>[A-Za-z_$][\\w$]*)\\(\\[\\]\\))\\(console\\.log\\(\"loading JSON file to get motion and expression\"\\),axios\\$1\\.get\\(`/games/\\$\\{(?<project>[A-Za-z_$][\\w$]*)\\}/game/figure/\\$\\{\\k<reference>\\.value\\}`\\)\\.then\\([\\s\\S]*?\\)\\):(?<spine>[A-Za-z_$][\\w$]*)\\(!1\\)\\},\\[\\k<reference>\\.value\\]\\),",
+    "replace": "const __wvpFigureMetadata=WebVideoSharedMaterials.useFigureMetadata(${project},${reference}.value,{motions:${motions},expressions:${expressions},skins:${skins},spine:${spine}});"
+  },
+  {
+    "scopeStart": "function ChangeFigure(",
+    "scopeEnd": "function Bgm(",
+    "regex": "(?<prefix>(?<current>[A-Za-z_$][\\w$]*)=useValue\\(getArgByKey\\([^,]+,\"motion\"\\)[\\s\\S]*?)jsxRuntimeExports\\.jsx\\(SearchableCascader,\\{optionList:(?<options>[A-Za-z_$][\\w$]*),value:\\k<current>\\.value",
+    "replace": "${prefix}jsxRuntimeExports.jsx(WebVideoModelOptions,{metadata:__wvpFigureMetadata,kind:\"motions\",optionList:${options},value:${current}.value"
+  },
+  {
+    "scopeStart": "function ChangeFigure(",
+    "scopeEnd": "function Bgm(",
+    "regex": "(?<prefix>(?<current>[A-Za-z_$][\\w$]*)=useValue\\(getArgByKey\\([^,]+,\"expression\"\\)[\\s\\S]*?)jsxRuntimeExports\\.jsx\\(SearchableCascader,\\{optionList:(?<options>[A-Za-z_$][\\w$]*),value:\\k<current>\\.value",
+    "replace": "${prefix}jsxRuntimeExports.jsx(WebVideoModelOptions,{metadata:__wvpFigureMetadata,kind:\"expressions\",optionList:${options},value:${current}.value"
+  },
+  {
+    "scopeStart": "function ChangeFigure(",
+    "scopeEnd": "function Bgm(",
+    "regex": "(?<prefix>(?<current>[A-Za-z_$][\\w$]*)=useValue\\(getArgByKey\\([^,]+,\"skin\"\\)[\\s\\S]*?)jsxRuntimeExports\\.jsx\\(SearchableCascader,\\{optionList:(?<options>[A-Za-z_$][\\w$]*),value:\\k<current>\\.value",
+    "replace": "${prefix}jsxRuntimeExports.jsx(WebVideoModelOptions,{metadata:__wvpFigureMetadata,kind:\"skins\",optionList:${options},value:${current}.value"
+  },
+  {
+    "scopeStart": "function ChangeFigure(",
+    "scopeEnd": "function Bgm(",
+    "regex": "(?<prefix>function ChangeFigure\\([\\s\\S]*?)jsxRuntimeExports\\.jsx\\(AssetPreview,\\{basePath:\"figure\",file:(?<reference>[A-Za-z_$][\\w$]*)\\.value\\}\\),jsxRuntimeExports\\.jsx\\(\"span\",\\{children:\\k<reference>\\.value\\}\\)",
+    "replace": "${prefix}jsxRuntimeExports.jsx(AssetPreview,{basePath:\"figure\",file:${reference}.value}),jsxRuntimeExports.jsx(WebVideoFigureAddress,{value:${reference}.value})"
+  }
+]

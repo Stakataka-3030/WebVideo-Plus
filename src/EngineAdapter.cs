@@ -197,10 +197,11 @@ namespace NativeVideo {
    return adapter;
   }
   static EngineAdapter SelectCore(object request) {
+   string projectRuntime=J.S(J.Get(request,"externalEngine"),"root",J.S(request,"project"));
    var selected=J.S(J.Get(request,"settings"),"engine","webgal");
    if(selected=="webgal") {
     bool strict=J.B(request,"requireRuntimeParity",false);
-    string expected=J.S(request,"expectedRuntimeVersion"),projectRoot=J.S(request,"project");
+    string expected=J.S(request,"expectedRuntimeVersion"),projectRoot=projectRuntime;
     if(!string.IsNullOrEmpty(expected)&&WebgalEngineProfile.ForVersion(expected)==null)throw new IOException("不支持绑定的 WebGAL 引擎版本");
     string projectReason,templateReason;
     var project=TryWebgalRuntime(projectRoot,"project-runtime",out projectReason,strict);
@@ -221,7 +222,7 @@ namespace NativeVideo {
    if(selected!="mygo")throw new IOException("未知导出引擎");
    string mygoFallbackReason;
    bool strictMygo=J.B(request,"requireRuntimeParity",false);
-   var projectMygo=TryMygoProjectRuntime(J.S(request,"project"),out mygoFallbackReason,strictMygo);
+   var projectMygo=TryMygoProjectRuntime(projectRuntime,out mygoFallbackReason,strictMygo);
    if(projectMygo!=null)return projectMygo;
    if(strictMygo)throw new IOException("绑定项目 MyGO 引擎无法安全接入导出；未改用机器上的 MyGO、模板或内置引擎。"+mygoFallbackReason);
    string source=J.S(request,"mygoRoot");

@@ -28,7 +28,7 @@ try {
  $yaml=(Get-Content (Join-Path $repo 'vendor/js-yaml-4.1.1.min.js') -Raw) -replace '(?m)//# sourceMappingURL=.*$',''
  $textImport='(()=>{const exports={},module={exports};'+"`n"+$yaml+"`nwindow.WebVideoYaml=exports;})();`n"+(Get-Content (Join-Path $repo 'browser/anogo-import-core.js') -Raw)+"`n"+(Get-Content (Join-Path $repo 'browser/text-import.js') -Raw)
  [IO.File]::WriteAllText((Join-Path $package 'features/modules/textImport.js'),$textImport)
- $sources=@('src/Core.cs','src/ManualCuts.cs','src/Integration.cs','manager/ManagerMain.cs','manager/ProductIntegration.cs','manager/ModuleCatalog.cs','tests/terre-host-patch-checks.cs') | ForEach-Object {Join-Path $repo $_}
+ $sources=@('src/Core.cs','src/ManualCuts.cs','src/Integration.cs','manager/ManagerMain.cs','manager/ProductIntegration.cs','manager/TerreHostCompatibility.cs','manager/ModuleCatalog.cs','tests/terre-host-patch-checks.cs') | ForEach-Object {Join-Path $repo $_}
  # Newer integrated Core.cs resolves official runtime profiles.
  if(Test-Path (Join-Path $repo 'src/WebgalEngineProfile.cs')){$sources+=Join-Path $repo 'src/WebgalEngineProfile.cs'}
  Add-Type -Path ($sources+@([IO.Path]::GetFullPath($PortableJson))) -IgnoreWarnings -WarningAction SilentlyContinue

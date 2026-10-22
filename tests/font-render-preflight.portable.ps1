@@ -15,7 +15,12 @@ try {
  $core=$core.Substring(0,$end)+" public static class VideoWorkflow {$($canonical[0])}`n public static partial class App {public static readonly object LogLock=new object();}`n public static class Commands {public static Task<object> Probe(string file){throw new InvalidOperationException(`"Media probe is outside portable scanner tests`" );}}`n}`n"
  $corePath=Join-Path $temp 'Core.cs'
  [IO.File]::WriteAllText($corePath,$core,[Text.UTF8Encoding]::new($false))
- Add-Type -Path @($corePath,(Join-Path $PSScriptRoot '../src/EngineAdapter.cs'),(Join-Path $PSScriptRoot '../src/WebgalEngineProfile.cs'),(Join-Path $PSScriptRoot '../src/ProjectAssets.cs'),(Join-Path $PSScriptRoot '../src/SceneChain.cs'),(Join-Path $PSScriptRoot 'engine-adapter-dual-profile.portable-json.cs'),(Join-Path $PSScriptRoot 'font-render-preflight-checks.cs'))
+ $resource=[IO.File]::ReadAllText((Join-Path $PSScriptRoot '../src/SharedResourceServer.cs'))
+ $resourceEnd=$resource.IndexOf(' public sealed class SharedResourceServer:')
+ if($resourceEnd -lt 0){throw 'Shared resource helper extraction boundary changed'}
+ $resourcePath=Join-Path $temp 'SharedResourceHelpers.cs'
+ [IO.File]::WriteAllText($resourcePath,$resource.Substring(0,$resourceEnd)+"}`n",[Text.UTF8Encoding]::new($false))
+ Add-Type -Path @($corePath,(Join-Path $PSScriptRoot '../src/EngineAdapter.cs'),(Join-Path $PSScriptRoot '../src/WebgalEngineProfile.cs'),(Join-Path $PSScriptRoot '../src/ProjectAssets.cs'),(Join-Path $PSScriptRoot '../src/SharedAssets.cs'),$resourcePath,(Join-Path $PSScriptRoot '../src/SceneChain.cs'),(Join-Path $PSScriptRoot 'engine-adapter-dual-profile.portable-json.cs'),(Join-Path $PSScriptRoot 'font-render-preflight-checks.cs'))
  $passed=[FontPreflightChecks]::Run([IO.Path]::GetFullPath($PackageRoot))
  Write-Output "Portable production-source scanner checks passed: $passed (real Windows product test remains separate)."
-}finally{Remove-Item -LiteralPath $temp -Recurse -Force}
+}finally{if(-not([IO.Path]::GetFullPath($temp).StartsWith([IO.Path]::GetFullPath([IO.Path]::GetTempPath()),[StringComparison]::OrdinalIgnoreCase))){throw 'Unexpected preflight test cleanup path'};Remove-Item -LiteralPath $temp -Recurse -Force}
