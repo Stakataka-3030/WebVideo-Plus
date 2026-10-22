@@ -11,7 +11,7 @@
 | 使用环境 | 推荐版本（导出内核） | Windows 安装器 | 发行说明与校验 |
 | --- | --- | --- | --- |
 | Terre / WebGAL **4.6.4**，或 **MyGO 3.2.1** | **1.1.10**（0.6.53，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.10.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.1.10/WebVideo%2B-Setup-1.1.10.exe) | [v1.1.10](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.10) |
-| Terre / WebGAL **4.6.5** | **1.2.1**（0.6.54，4.6.5 最终稳定通道） | [WebVideo+-Setup-1.2.1.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.2.1/WebVideo%2B-Setup-1.2.1.exe) | [v1.2.1](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1) |
+| Terre / WebGAL **4.6.5** | **1.2.1**（0.6.54，Terre 4.6.5 最终版，已停止维护（EOL）） | [WebVideo+-Setup-1.2.1.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.2.1/WebVideo%2B-Setup-1.2.1.exe) | [v1.2.1](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1) |
 | Terre / WebGAL **4.6.6** | **1.3.4**（0.6.60） | [WebVideo+-Setup-1.3.4.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.4/WebVideo%2B-Setup-1.3.4.exe) | [v1.3.4](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.4) |
 | 官方 Windows x64 **Craft 1.0.0-rc.1 / 1.0.0-beta.2** | **Craft 1.1.16c**（安装器 1.1.16.0c，内核 0.6.60） | [WebVideoCraft-Setup-1.1.16.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.1.16.0c/WebVideoCraft-Setup-1.1.16.0c.exe) | [craft-v1.1.16.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c) |
 
