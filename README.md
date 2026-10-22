@@ -71,6 +71,10 @@
 
 ## 许可证与致谢
 
-WebVideo+ 原创源代码、构建脚本和原创数据采用 **[MPL-2.0](LICENSE)**。仓库包含混合来源材料，根许可证不会覆盖第三方原有条款；Anogo 默认动作词表继续采用 AGPL-3.0，js-yaml 采用 MIT，其他材料以[许可范围映射](LICENSES.md)、[来源说明](NOTICE.md)和[第三方许可](licenses/THIRD-PARTY.md)为准。
+WebVideo+ 原创源代码、构建脚本和原创数据采用 **[MPL-2.0](LICENSE)**。
+
+原创文档（包括 README、CHANGELOG、原创使用/构建指南等）及 `WebVideo+_icon.svg`、`WebVideo+_icon.ico` 保留所有权利（ARR）；项目名称、商标和品牌标识不随代码许可证授予使用许可。具体边界见[许可范围映射](LICENSES.md#reserved-original-documentation-logo-and-brand-identifiers)。既有有效授权继续适用，法律允许的使用不受本声明限制。
+
+仓库包含混合来源材料，根许可证不会覆盖第三方原有条款；Anogo 默认动作词表继续采用 AGPL-3.0，js-yaml 采用 MIT，其他材料以[许可范围映射](LICENSES.md)、[来源说明](NOTICE.md)和[第三方许可](licenses/THIRD-PARTY.md)为准。
 
 感谢 WebGAL / Terre、FFmpeg、WebView2、DeepSeek Harness、pi-ai、Anogo、webgal-skill 及社区贡献者，特别感谢北风的猫5306 提供的工作流与演出资料。[完整引用与致谢](docs/USER_GUIDE.md#开源项目引用与致谢)保留了来源和用途说明。角色、Live2D、音乐等素材的权利仍归各自权利人。

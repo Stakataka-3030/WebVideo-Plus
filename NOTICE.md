@@ -2,7 +2,9 @@
 
 本仓库包含 WebVideo+ 当前实现、构建脚本和预置数据。没有上传用户游戏工程、小说原文、角色/背景/音乐素材、API Key 或本机凭据配置。
 
-除 [`LICENSES.md`](LICENSES.md) 明确列出的第三方或独立许可材料外，WebVideo+ 的原创源代码、构建脚本、项目特定实现和原创数据采用 **Mozilla Public License 2.0（MPL-2.0）**。完整许可证文本见根目录 [`LICENSE`](LICENSE)。根许可证不会覆盖或替换其他权利人的既有条款。
+除 [`LICENSES.md`](LICENSES.md) 另有说明的材料外，WebVideo+ 的原创源代码、构建脚本、项目特定实现和原创数据采用 **Mozilla Public License 2.0（MPL-2.0）**。完整许可证文本见根目录 [`LICENSE`](LICENSE)。根许可证不会覆盖或替换其他权利人的既有条款。
+
+原创文档（包括 README、CHANGELOG、原创使用/构建指南等）及 `WebVideo+_icon.svg`、`WebVideo+_icon.ico` 保留所有权利（ARR）；项目名称、商标和品牌标识不随代码许可证授予使用许可。具体边界见[许可范围映射](LICENSES.md#reserved-original-documentation-logo-and-brand-identifiers)。既有有效授权继续适用，法律允许的使用不受本声明限制。
 
 - **WebGAL / Terre**：编辑器与播放引擎基座遵循其各自 MPL-2.0 许可。`baseline/terre-4.6.4.js` 来源于 OpenWebGAL/WebGAL_Terre 4.6.4，用于精确挂载定位，SHA-256 为 `3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133`。
 - **内置运行时字体**：`WebgalUI` 保留 WebGAL 4.6.4 所含未经修改的 OPPO Sans v1.00。OPPO 的历史公开说明允许个人和企业免费商用；本项目暂按允许软件内嵌分发理解该许可，并保留其使用限制，未宣称取得单独授权。公开来源、解释边界及其他字体许可见 `licenses/WEBGAL-RUNTIME-SOURCES.md`。
