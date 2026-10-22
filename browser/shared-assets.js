@@ -97,14 +97,23 @@ function WebVideoParseFigureMetadata(data){
  else{if(data?.motions)motions=Object.keys(data.motions);if(Array.isArray(data?.expressions))expressions=data.expressions.map(e=>e?.name);if(data?.FileReferences?.Motions)motions=Object.keys(data.FileReferences.Motions);if(Array.isArray(data?.FileReferences?.Expressions))expressions=data.FileReferences.Expressions.map(e=>e?.Name);}
  return {motions:sorted(motions),expressions:sorted(expressions),skins:sorted(skins),spine};
 }
-function WebVideoUseFigureMetadata(project,reference,setters){
+function WebVideoUseFigureMetadata(project,reference,setters,nativeFormats){
  const R=reactExports,identity=project+'\u0000'+reference,[attempt,setAttempt]=R.useState(0),[state,setState]=R.useState({identity:null,status:'idle',error:''});
  R.useEffect(()=>{
-  let active=true,timedOut=false;const controller=new AbortController(),clear=()=>{setters.motions([]);setters.expressions([]);setters.skins([]);setters.spine(false);};clear();
-  if(typeof reference!=='string'||!reference.includes('json')){setState({identity,status:'idle',error:''});return()=>{active=false;controller.abort();};}
+  let active=true,timedOut=false;const controller=new AbortController(),clear=()=>{setters.motions([]);setters.expressions([]);setters.skins([]);setters.spine(false);setters.jsonl?.(false);};clear();
+  const lower=typeof reference==='string'?reference.toLowerCase():'',jsonl=!!(lower&&nativeFormats?.isJsonl(reference)),wmdl=!!nativeFormats&&lower.endsWith('.wmdl');
+  if(typeof reference!=='string'||!(jsonl||wmdl||(nativeFormats?(lower.endsWith('.json')||lower.includes('.json?')):reference.includes('json')))){setState({identity,status:'idle',error:''});return()=>{active=false;controller.abort();};}
+  if(jsonl)setters.jsonl?.(true);
   setState({identity,status:'loading',error:''});const timeout=setTimeout(()=>{timedOut=true;controller.abort();},15000);
-  Promise.resolve().then(()=>fetch(WebVideoFigureMetadataUrl(project,reference),{signal:controller.signal,cache:'no-cache'})).then(response=>{if(!response.ok)throw Error('HTTP '+response.status);return response.json();}).then(data=>{
-   if(!active||controller.signal.aborted)return;const parsed=WebVideoParseFigureMetadata(data);setters.motions(parsed.motions);setters.expressions(parsed.expressions);setters.skins(parsed.skins);setters.spine(parsed.spine);setState({identity,status:'ready',error:''});
+  Promise.resolve().then(async()=>{
+   const url=WebVideoFigureMetadataUrl(project,reference),options={signal:controller.signal,cache:'no-cache'},read=async target=>{const response=await fetch(target,options);if(!response.ok)throw Error('HTTP '+response.status);return response;};
+   const response=await read(url);
+   if(jsonl)return nativeFormats.parseJsonl(await response.text());
+   let data=await response.json();
+   if(wmdl){data=data?.modelRelativePath?await (await read(url.substring(0,url.lastIndexOf('/')+1)+String(data.modelRelativePath))).json():{};data={motions:data?.motions,expressions:data?.expressions};}
+   return WebVideoParseFigureMetadata(data);
+  }).then(parsed=>{
+   if(!active||controller.signal.aborted)return;setters.motions(parsed.motions||[]);setters.expressions(parsed.expressions||[]);setters.skins(parsed.skins||[]);setters.spine(!!parsed.spine);setState({identity,status:'ready',error:''});
   }).catch(error=>{if(active)setState({identity,status:'error',error:timedOut?'模型选项读取超时':'模型选项读取失败：'+error.message});}).finally(()=>clearTimeout(timeout));
   return()=>{active=false;controller.abort();clearTimeout(timeout);};
  },[project,reference,attempt]);

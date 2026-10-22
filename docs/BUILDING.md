@@ -1,10 +1,10 @@
 # 构建与发布
 
-当前分支产品版本 **1.1.10**，产品内部开发标识 **0.8.14**，安装器 Win32 版本 **1.1.10.0**，导出内核 **0.6.53**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
+当前分支产品版本 **1.1.11**，产品内部开发标识 **0.8.14**，安装器 Win32 版本 **1.1.11.0**，导出内核 **0.6.53**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`scripts/manifest.mjs`、`build-product.ps1`、`scripts/configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
-更新检查读取 GitHub 正式 Release 列表。发布 1.1.10 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"webgal":["4.6.4"]} -->` 一并放进 Release 正文，并按实际适配基线更新数组；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
+更新检查读取 GitHub 正式 Release 列表。发布 1.1.11 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"webgal":["4.6.4"]} -->` 一并放进 Release 正文，并按实际适配基线更新数组；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
 
 ## 初次准备（不需要旧安装器）
 
@@ -39,7 +39,7 @@ Pop-Location
 
 `-Offline` 只适用于构建输入准备，不等同于 `npm ci` 离线；首次恢复 AI npm 依赖仍需要网络或已有 npm 缓存。缺失或损坏的离线输入会明确报错，不会绕过校验。
 
-输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正式安装器为 `dist/WebVideo+-Setup-1.1.10.exe`，Win32 文件版本 `1.1.10.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
+输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正式安装器为 `dist/WebVideo+-Setup-1.1.11.exe`，Win32 文件版本 `1.1.11.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
 
 ### 旧 bootstrap 的显式迁移入口
 
@@ -72,6 +72,26 @@ Pop-Location
 
 Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复准备、回归检查、完整产品安装器编译和清单校验；不运行生成的安装器，也不发布 Release。修改依赖锁文件时应同时核对官方来源、许可、运行快照和完整 CI，不要只替换版本字符串。
 
+### 4.6.4 发布前的官方 / MyGO 前端检查
+
+涉及编辑器接入点的发行，发布前还须运行以下本机检查。样本清单在 `build/frontend-compatibility-fixtures.json`：官方 Terre 4.6.4 Windows 发行前端，以及反馈中确认的 `WebGAL_Terre_MyGO_v3.2.1.zip`。MyGO 基于 WebGAL 4.6.4；清单固定原始 ZIP、入口、前端和引擎版本信息的 SHA-256。只提交来源与指纹，第三方完整前端和本机生成结果留在仓库外或忽略的 `.build/`，不作为发布资产。
+
+```powershell
+.\tests\terre-release-preflight.ps1 `
+  -OfficialTerreRoot D:\Fixtures\Terre-4.6.4\release `
+  -MygoArchive D:\Fixtures\WebGAL_Terre_MyGO_v3.2.1.zip `
+  -PackageRoot .\package `
+  -PreviousInstaller D:\Fixtures\WebVideo+-Setup-1.1.7.exe
+```
+
+`OfficialTerreRoot` 指向未安装 WebVideo+ 的官方发行目录，内含 `public/index.html` 和 `WebGAL_Terre.exe`；它与仓库内的历史 JS 基线分别保留，不能相互冒充。1.1.7 安装器来源和哈希也在清单中。脚本只静态解包安装器，不运行安装器入口；只提取 MyGO 的固定必要文件，不执行其中的程序或脚本。
+
+检查分别报告两层：补丁层调用真实管理器的 `Patch` 及升级原文件选择；文件事务层在新建的精简宿主副本中调用真实管理器 CLI 安装。两份前端均覆盖全新安装、实际 1.1.7 CLI 安装后的升级，以及共享素材开 / 关；已安装入口还需通过 JS 语法和模块状态检查。脚本核对输入、全局最近安装记录及失败时原安装文件未变，结果原子写入临时目录 `webvideo-terre-preflight/<id>/result.json`。默认采用较短的临时路径，避免测试副本的嵌套路径超过 Windows 运行文件路径限制；可用 `OutputRoot` 指定其他短目录。
+
+任一失败、缺样本、指纹不符或未执行项都会返回非零并阻止发布；已知不兼容也按失败保留。1.1.10 在这份 MyGO 前端上的原始失败证据应保留；修复后须以相同输入取得真实通过，不能靠跳过该前端或仅取消共享模块放行。`PreviousPatchPackageRoot` 仅供排障使用：源码构建的旧管理器可核对补丁层，但不能代替已核验的完整 1.1.7 安装器，升级文件事务将记为 `NOT_RUN`，总结果仍阻断。
+
+精简宿主只包含安装所需的原始入口、前端、后台二进制及引擎元数据，不是完整编辑器验收。此检查不启动 Terre、浏览器、lifecycle 或导出服务，也不运行 GPU 测试。安装器 GUI、启动与实际编辑器交互仍需在各自独立验收中完成；CI 的官方结构检查不能代替这份本机 MyGO 检查。
+
 ## 开发快速构建
 
 兼容性调试时可使用：
@@ -100,7 +120,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 .\build-product.ps1 -Fast -InternalBuild
 ```
 
-`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.1.10` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
+`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.1.11` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
 
 需要重现某个旧内部标识时，可直接覆盖：
 
@@ -108,7 +128,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 .\build-product.ps1 -Fast -InternalVersion 0.5.7
 ```
 
-指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.1.10`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
+指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.1.11`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
 
 ## 安装恢复与存储目录
 

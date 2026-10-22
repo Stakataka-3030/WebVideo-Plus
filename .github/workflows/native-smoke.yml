@@ -28,6 +28,10 @@ jobs:
           if ($tests.Count -eq 0) { throw 'No shared Node regression files found' }
           & node --test --test-concurrency=2 @tests
           if ($LASTEXITCODE -ne 0) { throw "Node regression checks failed" }
+          node tests/shared-model-options.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw "Model metadata format and cancellation checks failed" }
+          node tests/project-resources-ui.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw "Native project creation integration checks failed" }
           pwsh -NoLogo -NoProfile -File .\tests\installer-product-routing.portable.ps1
           if ($LASTEXITCODE -ne 0) { throw "Installer product/channel checks failed" }
           pwsh -NoLogo -NoProfile -File .\tests\recent-install-record.portable.ps1

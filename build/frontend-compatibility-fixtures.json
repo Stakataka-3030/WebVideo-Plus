@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "hostVersion": "4.6.4",
+  "official": {
+    "archiveSha256": "317f3cc0c03c933d4ab34af0cafac628f37ac521f421226f2469b56ceb7e789e",
+    "files": {
+      "public/index.html": "032557572136fd903a8b979126b7595a565af28f0792d07c111f03dd8ab3839f",
+      "public/assets/index-01972026.js": "633feac547e87cc2912ae30416ecfcb6ee94b43138e6b641805acd4a646ad73d",
+      "WebGAL_Terre.exe": "3aa355e00562186fbd85b71e834328d74d6e1cb9ac797b3a0ff69c26ed0efe84",
+      "assets/templates/WebGAL_Template/webgal-engine.json": "a49a40c80608be8a7ed3c97c1c64dcd507abed1e58c91bdd96766f8bcac82eed"
+    },
+    "bundle": "public/assets/index-01972026.js"
+  },
+  "mygo": {
+    "archiveFileName": "WebGAL_Terre_MyGO_v3.2.1.zip",
+    "archiveSha256": "028f20b89c931b714ed8278ff710ae6bd5ede9a2574b9cf31147d7f72fd5dc8f",
+    "version": "3.2.1",
+    "baseWebgalVersion": "4.6.4",
+    "archivePrefix": "release/",
+    "bundle": "public/assets/index-f95daee0.js",
+    "metadata": "assets/templates/Derivative_Engine/MyGO_v3.2.1/webgal-engine.json",
+    "files": {
+      "public/index.html": "a948e9b282483674b18db9c97e2783d8861c67c572ccdc568d3e7e03cc7f277b",
+      "public/assets/index-f95daee0.js": "d5907864d744032ad0a6b787f824ac2dd0f39f8a0f8c678347d4015a789ec4b8",
+      "WebGAL_Terre.exe": "ff37415f476934c659bcde432c33f2072f6b98c710cb32dc28daa0e10a9cbbd1",
+      "assets/templates/Derivative_Engine/MyGO_v3.2.1/webgal-engine.json": "42683864f7a409ac7fa31130391d86a85cdf5fa0a81a180f9e4bcb3a22d600c6",
+      "assets/templates/WebGAL_Template/webgal-engine.json": "a49a40c80608be8a7ed3c97c1c64dcd507abed1e58c91bdd96766f8bcac82eed"
+    }
+  },
+  "previousInstaller": {
+    "version": "1.1.7",
+    "tag": "v1.1.7",
+    "commit": "d4dbf97805c40e6987c9e4e2a3152f467e536315",
+    "fileName": "WebVideo+-Setup-1.1.7.exe",
+    "sha256": "84c3e29b2e5743a3b30f55b966e9f6a5fb71978b577bcdae8de7929708118db6",
+    "url": "https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.1.7/WebVideo%2B-Setup-1.1.7.exe"
+  }
+}

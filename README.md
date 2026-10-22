@@ -2,15 +2,15 @@
 
 面向 **WebGAL Terre 4.6.4** 的视觉小说视频制作辅助工具：批量编辑、剧情导航、音乐配置、备份与检查、Anogo 故事导入，以及本机视频导出。生成式 AI 是默认不安装的可选 Beta 组件，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.10) · [使用指南](docs/USER_GUIDE.md) · [1.1.10 发行说明](docs/releases/RELEASE_NOTES_1.1.10.md) · [构建说明](docs/BUILDING.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.11) · [使用指南](docs/USER_GUIDE.md) · [1.1.11 发行说明](docs/releases/RELEASE_NOTES_1.1.11.md) · [构建说明](docs/BUILDING.md)
 
-当前源码版本 **1.1.10**，内部开发标识 **0.8.14**，安装器 Win32 版本 **1.1.10.0**，导出内核 **0.6.53**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.10) 为准；这是 WebGAL 4.6.4 / MyGO 3.2.1 的稳定维护通道；Terre / WebGAL 4.6.5 使用 [1.2.1 最终版，已停止维护（EOL）](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1)，4.6.6 使用 [1.3.4](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.4)，Craft 使用独立的 [1.1.16.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c) 通道。
+当前源码版本 **1.1.11**，内部开发标识 **0.8.14**，安装器 Win32 版本 **1.1.11.0**，导出内核 **0.6.53**，统一以 [`version.json`](version.json) 为准。最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.11) 为准；这是 WebGAL 4.6.4 / MyGO 3.2.1 的稳定维护通道；Terre / WebGAL 4.6.5 使用 [1.2.1 最终版，已停止维护（EOL）](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1)，4.6.6 使用 [1.3.4](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.4)，Craft 使用独立的 [1.1.16.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c) 通道。
 
 
 ## 安装与开始使用
 
 1. 在 Windows 上准备已有的 **Terre 4.6.4** 安装目录。
-2. 从 [Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.10) 下载 `WebVideo+-Setup-1.1.10.exe`，按发行正文中的 SHA-256 校验，运行并选择 Terre 目录。
+2. 从 [Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.11) 下载 `WebVideo+-Setup-1.1.11.exe`，按发行正文中的 SHA-256 校验，运行并选择 Terre 目录。
 3. 默认安装常用模块；高级选项可单独增删功能、设置数据与缓存目录。灰选模块是其他已选功能的依赖。
 4. 安装完成后照常启动 Terre，在编辑器中使用 WebVideo+ 工具。
 
@@ -58,7 +58,7 @@
 
 ### 本版更新
 
-共享素材浏览、模型选项、预览取消与输出重名处理已完善。本通道继续保留 WebGAL 4.6.4 引擎适配及 JPEG 捕获。
+修复 MyGO 3.2.1 前端安装接入，并保留其 JSONL / WMDL 模型动作与表情读取。共享素材、导出与其他既有功能延续 1.1.10。
 
 ## 文档与开发
 
