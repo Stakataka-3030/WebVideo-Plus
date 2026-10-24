@@ -2,13 +2,13 @@
 
 面向 **WebGAL Craft** 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 为实验性功能，需要自行配置 API Key。
 
-[正式版适配测试说明](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
+[下载 1.2.0.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.0.0c/WebVideoCraft-Setup-1.2.0.0c.exe) · [正式版适配](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前分支：WebVideo+ Craft 1.2.0c（安装器 1.2.0.0c；混合导出内核 0.6.61，产品基线 1.3.3）。** Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。 本分支构建为正式版适配测试产物，尚未另发 Release。
+**当前分支：WebVideo+ Craft 1.2.0c（安装器 1.2.0.0c；混合导出内核 0.6.61，产品基线 1.3.3）。** Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。
 
-支持精确匹配的官方 Windows x64 **Craft 1.0.0 正式版**，工程引擎支持官方 WebGAL **4.6.4 / 4.6.5 / 4.6.6** 和 **MyGO 3.2.1**；自定义同版本包与未来版本需单独适配。Terre 安装使用各自的 [1.1.9](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.9)、[1.2.1](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1) 或 [1.3.3](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.3) 通道。
+支持精确匹配的官方 Windows x64 **Craft 1.0.0 正式版**，工程引擎支持官方 WebGAL **4.6.4 / 4.6.5 / 4.6.6** 和 **MyGO 3.2.1**；自定义同版本包与未来版本需单独适配。Terre 安装请按[项目首页](https://github.com/Stakataka-3030/WebVideo-Plus#下载与版本选择)选择维护通道。
 
-此分支适配官方 Craft 1.0.0。RC1 最终维护版为 1.1.17c，对应 `release/craft-1.1.15c` 已 EOL；正式版适配先交付构建与测试，不另发 Release。
+此分支适配官方 Craft 1.0.0。已 EOL 版本的下载与兼容范围见[历史版本说明](docs/LEGACY-VERSIONS.md)。
 
 ## 主要功能
 
@@ -44,7 +44,7 @@ Craft 的导出快照与工作文件位于适配目录的 `state/sessions/<sessi
 
 并行数支持 1–32，但更多进程不一定更快。自动模式按剧情安全点和 DOM workload 估算分配分片，分片数不超过有效 worker 数；手动模式由切点决定分片数，并行数只限制同时执行的分片数。**1080p 是常规推荐档，1440p 适合需要更高输出分辨率的场景；4K 每帧像素量约为 1080p 的 4 倍，建议 2–4 worker。若原始背景、立绘或 Live2D 贴图本身不是 4K，通常不会获得更多真实细节。**
 
-历史 Terre 基础版本 1.1.2 的改动见 [发行说明](RELEASE_NOTES_1.1.2.md)和[版本记录](CHANGELOG.md)；此前版本见 [1.1.1 发行说明](RELEASE_NOTES_1.1.1.md)、[1.1.0 发行说明](RELEASE_NOTES_1.1.0.md)、[1.0.4 发行说明](RELEASE_NOTES_1.0.4.md)、[1.0.3 发行说明](RELEASE_NOTES_1.0.3.md)、[1.0.2 发行说明](RELEASE_NOTES_1.0.2.md)、[1.0.1 发行说明](RELEASE_NOTES_1.0.1.md)与[1.0.0 发行说明](RELEASE_NOTES_1.0.0.md)。
+历史基线资料见[历史版本说明](docs/LEGACY-VERSIONS.md#历史基线文档)。
 
 高级导出设置支持语句选择、`;CutHere` 和帧/秒/时间码切点；手动模式按指定边界切段，有效切点为空时单段导出。复杂动画、Live2D / Pixi 的接缝需按工程检查。兼容捕获可选 JPEG / PNG，默认 JPEG；PNG 避免截图压缩，最终 H.264 仍为有损编码。4.6.6 的 animation v2 按实际工程绑定启用；故事链按静态、单向 `changeScene` 展开，交互分支和循环需另行整理。仅音轨包含剧本原声，成片配乐替换用于完整视频。
 
@@ -72,12 +72,12 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于适配目录的 `state/kern
 
 ## 安装与管理
 
-1. 保存工程并正常关闭官方 Windows x64 Craft 1.0.0-rc.1 或 1.0.0-beta.2。
-2. 按[适配说明](craft/ADAPTATION-1.0.0.md)构建测试安装器 `WebVideoCraft-Setup-1.2.0.0c.exe`，按发行正文的 SHA-256 校验。
+1. 保存工程并正常关闭官方 Windows x64 Craft 1.0.0。
+2. 从[发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.0.0c)下载安装器 `WebVideoCraft-Setup-1.2.0.0c.exe`，按发行正文的 SHA-256 校验。
 3. 选择 Craft 目录、原程序或快捷方式，执行“安装增强组件”或“更新 / 重新检查”。旧独立入口安装会迁移到原 EXE 入口。
 4. 完成后使用原快捷方式，或点击“启动 Craft”。“修复组件”和“卸载挂载”的范围见 [Craft 安装说明](craft/README.md#安装更新与管理)。
 
-1.1.12c 及更早的增强版请手动下载升级；1.1.13c 起支持当前仅提供 EXE 附件的发行格式。更新面板分别处理 WebVideo+ Craft 与官方 Craft：增强更新经明确检查、下载和校验后打开 Setup，安装前仍需正常关闭 Craft；官方更新保留原来源、公钥和签名校验，确认后交接官方安装器。真实注册安装的跨版本 NSIS 升级仍待验收，新宿主需由明确兼容的增强包重新挂载。详见[更新说明](craft/update/README.md)。
+更新面板分别处理 WebVideo+ Craft 与官方 Craft：增强更新经明确检查、下载和校验后打开 Setup，安装前仍需正常关闭 Craft；官方更新保留原来源、公钥和签名校验，确认后交接官方安装器。真实注册安装的跨版本 NSIS 升级仍待验收，新宿主需由明确兼容的增强包重新挂载。详见[更新说明](craft/update/README.md)。
 
 ### 本版维护修复
 

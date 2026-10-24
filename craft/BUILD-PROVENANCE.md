@@ -1,13 +1,13 @@
 # Development source provenance
 
 - Current formal-host adaptation: `adapt/craft-1.0.0`, product 1.2.0c /
-  installer 1.2.0.0c / kernel 0.6.61, starting from RC1 final maintenance
-  `ed45c0468b5228de08d148d4f4a76839be1355c0`. The current installer accepts only
+  installer 1.2.0.0c / kernel 0.6.61, including RC1 final maintenance
+  `craft-v1.1.17.0c` (`e9316088048a3b0cf0ef220bc2a0a93ff66c0f44`). The current installer accepts only
   official Windows Craft 1.0.0, source tag commit
   `a4179024ab53100ab42a1432b8360a31193e5bd0`, EXE SHA-256
   `0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c`.
   Its unchanged official update controller/store/service blobs passed the
-  pinned Pinia 4.0.3 and Vue 3.5.43 guard test. This branch has no new Release;
+  pinned Pinia 4.0.3 and Vue 3.5.43 guard test. The formal-host release uses `craft-v1.2.0.0c`;
   historical records below keep their original validation scope.
 
 - Current local candidate: Craft 1.1.14c / installer 1.1.14.0c, branch

@@ -1,6 +1,6 @@
 # Craft 1.0.0 正式版适配
 
-分支 `adapt/craft-1.0.0`。测试产品 1.2.0c、安装器 1.2.0.0c，内核 0.6.61；暂不另发 Release。
+分支 `adapt/craft-1.0.0`。产品 1.2.0c、安装器 1.2.0.0c，内核 0.6.61；[发行与 SHA-256](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.0.0c)，[本版验收](ACCEPTANCE-1.2.0c.md)。
 
 - 官方 Release/tag：[`v1.0.0`](https://github.com/A-kirami/webgal-craft/releases/tag/v1.0.0)，提交 `a4179024ab53100ab42a1432b8360a31193e5bd0`；发布于 2026-10-24，`prerelease=false`。
 - 官方 Windows x64 安装器 SHA-256：`e80d10a9ce05a5a9aab886f69df05d528af036c65a4d0838a4f293527ae70f26`；原 Minisign 公钥验证通过。
