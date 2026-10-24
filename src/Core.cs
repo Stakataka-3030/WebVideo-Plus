@@ -169,20 +169,31 @@ namespace NativeVideo {
  }
 
  public static class ProcessIdentity {
-  public static object Capture(int pid){
+#if LIFECYCLE_TESTS
+  internal static Func<int,object> CaptureOverride;
+#endif
+  public static object Capture(int pid){Exception error;return Capture(pid,out error);}
+  public static object Capture(int pid,out Exception error){
+   error=null;
    try{
+#if LIFECYCLE_TESTS
+    if(CaptureOverride!=null)return CaptureOverride(pid);
+#endif
     using(var process=Process.GetProcessById(pid)){
      return J.O("pid",pid,"createdUtcTicks",process.StartTime.ToUniversalTime().Ticks.ToString(CultureInfo.InvariantCulture),"exe",Files.Full(process.MainModule.FileName));
     }
    }
-   catch{
+   catch(Exception failure){
+    error=failure;
     return null;
    }
   }
-  public static bool Matches(object identity,string expectedExe=""){
+  public static bool Matches(object identity,string expectedExe=""){Exception error;return Matches(identity,expectedExe,out error);}
+  public static bool Matches(object identity,string expectedExe,out Exception error){
+   error=null;
    int pid=(int)J.N(identity,"pid");
    if(pid<=0||J.S(identity,"createdUtcTicks")==""||J.S(identity,"exe")=="")return false;
-   var current=Capture(pid);
+   var current=Capture(pid,out error);
    return current!=null&&J.S(current,"createdUtcTicks")==J.S(identity,"createdUtcTicks")&&TerreUserData.SamePath(J.S(current,"exe"),J.S(identity,"exe"))&&(expectedExe==""||TerreUserData.SamePath(J.S(current,"exe"),expectedExe));
   }
   public static bool Kill(object identity,string expectedExe){

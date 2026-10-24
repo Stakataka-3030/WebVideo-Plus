@@ -60,6 +60,34 @@ namespace NativeVideo {
    if(oldDiscovery!=null&&!healthy)try{File.Delete(discovery);}catch{}
    string stateFile=Path.Combine(state,"service-state.json");var oldState=J.TryRead(stateFile);int pid=(int)J.N(oldState,"pid");bool dead=pid>0&&!Commands.Alive(pid),sameStaleService=!healthy&&discoveryId!=""&&J.S(oldState,"serviceId")==discoveryId;if(dead||sameStaleService)try{if(File.Exists(stateFile))File.Delete(stateFile);}catch{}
   }
+  static async Task<object> InitialBackendIdentity(int pid,string expectedExe,Process started,Action<object> log,int timeoutMs=1000){
+   var watch=Stopwatch.StartNew();int attempts=0;string created="",reason="";object identity=null;Exception error=null;
+   Action<string> record=phase=>{var native=error as System.ComponentModel.Win32Exception;log(J.O("at",DateTime.UtcNow.ToString("o"),"phase",phase,"operation",started==null?"attach":"start","backendPid",pid,"expectedExe",expectedExe,"observedExe",J.S(identity,"exe"),"expectedCreatedUtcTicks",created,"observedCreatedUtcTicks",J.S(identity,"createdUtcTicks"),"attempts",attempts,"elapsedMs",watch.ElapsedMilliseconds,"reason",reason,"errorType",error==null?"":error.GetType().FullName,"nativeError",native==null?0:native.NativeErrorCode,"message",error==null?"":error.Message));};
+   while(true){
+    attempts++;identity=null;error=null;reason="read-unavailable";
+    try{
+     if(started!=null&&started.HasExited)reason="process-exited";
+     else{
+      if(started!=null&&created=="")created=started.StartTime.ToUniversalTime().Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
+      identity=ProcessIdentity.Capture(pid,out error);
+      if(identity!=null){
+       if(J.N(identity,"pid")!=pid)reason="pid-mismatch";
+       else if(!TerreUserData.SamePath(J.S(identity,"exe"),expectedExe))reason="image-mismatch";
+       else if(created!=""&&J.S(identity,"createdUtcTicks")!=created)reason="creation-mismatch";
+       else if(ProcessIdentity.Matches(identity,expectedExe,out error)){
+        if(started!=null&&started.HasExited)reason="process-exited";
+        else{if(attempts>1){reason="confirmed";record("backend-identity-ready");}return identity;}
+       }else if(error==null)reason="identity-changed";
+      }
+     }
+    }catch(Exception failure){error=failure;reason="read-unavailable";}
+    long remaining=timeoutMs-watch.ElapsedMilliseconds;
+    if(reason=="read-unavailable"&&remaining<=0)reason="read-timeout";
+    if(started==null||reason!="read-unavailable"||remaining<=0){record("backend-identity-failed");throw new IOException("无法确认 Terre 进程归属",error);}
+    if(attempts==1)record("backend-identity-retry");
+    await Task.Delay((int)Math.Min(25,remaining));
+   }
+  }
   public static async Task Run(){
    string configFile=Files.Full(App.Arg("--config")),backend=Files.Full(App.Arg("--backend"));var config=J.D(J.Read(configFile));string terre=Path.GetDirectoryName(backend),state=J.S(config,"stateDir");Directory.CreateDirectory(state);config["terreDir"]=terre;config["backendExe"]=backend;config["sourcePackageRoot"]=Files.Root;Commands.RuntimePath=J.S(config,"runtimePath");int wrapperPid;if(!int.TryParse(App.Arg("--wrapper-pid","0"),out wrapperPid))wrapperPid=0;
    string environmentPort=Environment.GetEnvironmentVariable("WEBGAL_PORT");int portValue;if(int.TryParse(environmentPort,out portValue)){var address=new UriBuilder(J.S(config,"terreUrl")){Port=portValue+1};config["terreUrl"]=address.Uri.ToString();var alt=new UriBuilder(address.Uri){Host=address.Host=="localhost"?"127.0.0.1":"localhost"};config["allowedOrigins"]=new[]{address.Uri.GetLeftPart(UriPartial.Authority),alt.Uri.GetLeftPart(UriPartial.Authority)};}
@@ -89,7 +117,7 @@ namespace NativeVideo {
     bool attach=false;try{var identity=await Integration.LocalGet(new Uri(new Uri(J.S(config,"terreUrl")),"/assets/video-export-instance.json").ToString());attach=J.S(identity,"id")==J.S(config,"instanceId");}catch{}
     if(attach){backendPid=await CurrentTerreListenerPid(config);if(backendPid==0)throw new IOException("无法确认这份 Terre 的监听进程");}
     else{int at=Array.IndexOf(App.Args,"--");var args=at<0?new string[0]:App.Args.Skip(at+1).ToArray();backendProcess=Process.Start(new ProcessStartInfo(backend,string.Join(" ",args.Select(Commands.Quote))){WorkingDirectory=terre,UseShellExecute=false,CreateNoWindow=J.B(config,"hideBackendWindow")});backendPid=backendProcess.Id;}
-    backendIdentity=ProcessIdentity.Capture(backendPid);if(!ProcessIdentity.Matches(backendIdentity,backend))throw new IOException("无法确认 Terre 进程归属");log(J.O("at",DateTime.UtcNow.ToString("o"),"phase",attach?"attached":"backend-started","backendPid",backendPid));
+    backendIdentity=await InitialBackendIdentity(backendPid,backend,backendProcess,log);log(J.O("at",DateTime.UtcNow.ToString("o"),"phase",attach?"attached":"backend-started","backendPid",backendPid));
     while(true){
      if(wrapperPid>0&&!ProcessIdentity.Matches(wrapperIdentity)){stopBackend=true;if(!ProcessIdentity.Matches(backendIdentity,backend)){int adopted=await CurrentTerreListenerPid(config);if(adopted>0){backendPid=adopted;backendIdentity=ProcessIdentity.Capture(adopted);}}log(J.O("at",DateTime.UtcNow.ToString("o"),"phase","wrapper-exited","wrapperPid",wrapperPid,"backendPid",backendPid));break;}
      if(J.S(J.TryRead(control),"action")=="stop"){stopBackend=true;if(!ProcessIdentity.Matches(backendIdentity,backend)){int adopted=await CurrentTerreListenerPid(config);if(adopted>0){backendPid=adopted;backendIdentity=ProcessIdentity.Capture(adopted);}}break;}
