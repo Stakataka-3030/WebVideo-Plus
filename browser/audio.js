@@ -1,4 +1,4 @@
-const volume=value=>Math.max(0,Math.min(100,Number(value??100)))/100;
+const volume=(value,clamp=true)=>{const n=Number(value??100);if(!Number.isFinite(n))throw Error('音量未取得有效数值：'+value);return (clamp?Math.max(0,Math.min(100,n)):n)/100;};
 
 function scheduleAudioCommand(tracks,{command,name,file,atMs,durationMs,params}) {
   const id=String(params.id??'');

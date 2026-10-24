@@ -2,11 +2,13 @@
 
 面向 **WebGAL Craft** 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 为实验性功能，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.17.0c) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前分支：WebVideo+ Craft 1.1.16c（安装器 1.1.16.0c；混合导出内核 0.6.60，产品基线 1.3.3）。** Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。 正式安装器为 [`WebVideoCraft-Setup-1.1.16.0c.exe`](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.1.16.0c/WebVideoCraft-Setup-1.1.16.0c.exe)，SHA-256 与维护修复见[对应发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c)。
+**当前分支：WebVideo+ Craft 1.1.17c（安装器 1.1.17.0c；混合导出内核 0.6.61，产品基线 1.3.3）。** Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。 正式安装器为 [`WebVideoCraft-Setup-1.1.17.0c.exe`](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.1.17.0c/WebVideoCraft-Setup-1.1.17.0c.exe)，SHA-256 与维护修复见[对应发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.17.0c)。
 
 支持精确匹配的官方 Windows x64 **Craft 1.0.0-rc.1 / 1.0.0-beta.2**，工程引擎支持官方 WebGAL **4.6.4 / 4.6.5 / 4.6.6** 和 **MyGO 3.2.1**；自定义同版本包与未来版本需单独适配。Terre 安装使用各自的 [1.1.9](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.9)、[1.2.1](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1) 或 [1.3.3](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.3) 通道。
+
+Craft RC1 维护线已结束维护（EOL）。1.1.17c 是支持官方 1.0.0-rc.1 / beta.2 的最终版本；Craft 1.0.0 正式版使用独立适配分支，不在本版兼容范围内。
 
 ## 主要功能
 
@@ -71,7 +73,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于适配目录的 `state/kern
 ## 安装与管理
 
 1. 保存工程并正常关闭官方 Windows x64 Craft 1.0.0-rc.1 或 1.0.0-beta.2。
-2. 从[对应发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.16.0c)下载 `WebVideoCraft-Setup-1.1.16.0c.exe`，按发行正文的 SHA-256 校验。
+2. 从[对应发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.17.0c)下载 `WebVideoCraft-Setup-1.1.17.0c.exe`，按发行正文的 SHA-256 校验。
 3. 选择 Craft 目录、原程序或快捷方式，执行“安装增强组件”或“更新 / 重新检查”。旧独立入口安装会迁移到原 EXE 入口。
 4. 完成后使用原快捷方式，或点击“启动 Craft”。“修复组件”和“卸载挂载”的范围见 [Craft 安装说明](craft/README.md#安装更新与管理)。
 
@@ -144,3 +146,5 @@ React、Fluent UI、IconPark、TanStack Virtual、Zustand、Monaco Editor、Pixi
 也感谢提供滤镜资料、表格、基础角色映射，以及持续进行标准 Terre、MyGO 分发版和 Steam 版兼容性测试并逐项反馈问题的贡献者。
 
 Live2D 模型、角色图像、背景、音乐、配音等素材权利仍归各自权利人，本安装包不因此取得或转授这些素材的权利。更完整的第三方来源与许可说明见 [NOTICE.md](NOTICE.md)、[LICENSES.md](LICENSES.md) 和 [licenses/THIRD-PARTY.md](licenses/THIRD-PARTY.md)。
+
+原创文档、Logo 与品牌标识保留所有权利（ARR），代码仍按 MPL-2.0 提供；既有有效授权继续适用。见[许可范围](LICENSES.md)。

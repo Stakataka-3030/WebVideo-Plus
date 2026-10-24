@@ -30,6 +30,12 @@ class RuntimeContractChecks {
   if(mygoPersisted==null||J.S(mygoPersisted,"expectedRuntimeVersion")!="3.2.1"||J.S(mygoPersisted,"expectedWebgalVersion")!="4.6.4"||J.S(J.Get(mygoPersisted,"settings"),"engine")!="mygo"||J.S(mygoPersisted,"engineRoot")!=project||!string.IsNullOrEmpty(J.S(mygoPersisted,"mygoRoot")))throw new Exception("Queue lost MyGO identity or searched a foreign runtime");
   foreach(string fault in new[]{"expectedRuntimeId","expectedRuntimeVersion","expectedWebgalVersion"}){var bad=new Dictionary<string,object>(mygoBody);bad[fault]=fault=="expectedRuntimeId"?"open-webgal.webgal":fault=="expectedRuntimeVersion"?"4.6.4":"4.6.5";bool failed=false;try{Call(service,new HttpRequest{Method="POST",Path="/api/timing",Body=Encoding.UTF8.GetBytes(J.Text(bad))});}catch(IOException){failed=true;}if(!failed)throw new Exception("Invalid MyGO queue contract passed: "+fault);}
   if(Directory.GetFiles(Path.Combine(state,"jobs"),"request.json",SearchOption.AllDirectories).Length!=2)throw new Exception("Invalid MyGO contract created a runnable job");
+  var named=new Dictionary<string,object>(J.D(request.Json));named["fileName"]="Case.mp4";
+  Call(service,new HttpRequest{Method="POST",Path="/api/jobs",Body=Encoding.UTF8.GetBytes(J.Text(named))});
+  named["fileName"]="case.mp4";
+  Call(service,new HttpRequest{Method="POST",Path="/api/jobs",Body=Encoding.UTF8.GetBytes(J.Text(named))});
+  bool suffixed=false;foreach(string p in Directory.GetFiles(Path.Combine(state,"jobs"),"request.json",SearchOption.AllDirectories))if(Path.GetFileName(J.S(J.Read(p),"output"))=="case (2).mp4")suffixed=true;
+  if(!suffixed)throw new Exception("Queued Windows output names collided by case");
   if(File.Exists(Path.Combine(state,"legacy-user-data-import.json")))throw new Exception("Craft imported legacy user data");
   foreach(string kind in new[]{"analysis","audio","full"}){
    string job=Path.Combine(root,"cached-"+kind),planning=Path.Combine(job,"planning");Directory.CreateDirectory(Path.Combine(planning,"prepared"));

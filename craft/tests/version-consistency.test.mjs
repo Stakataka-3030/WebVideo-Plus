@@ -5,8 +5,8 @@ import {OFFICIAL_HOST_PROFILES} from '../update/official-stage.mjs';
 const read = name => fs.readFileSync(new URL('../../' + name, import.meta.url), 'utf8');
 test('current Craft identifiers agree across product, installer, PE metadata and current documentation', () => {
  const v = JSON.parse(read('craft/version.json')), base = JSON.parse(read('version.json'));
- assert.equal(v.productVersion, '1.1.16c'); assert.equal(v.installerVersion, '1.1.16.0c'); assert.equal(v.fileVersion, '1.1.16.0');
- assert.equal(v.kernelVersion, '0.6.60'); assert.equal(v.baseKernelVersion, base.kernelVersion); assert.equal(v.kernelVersion, base.kernelVersion); assert.equal(v.baseProductVersion, base.productVersion);
+ assert.equal(v.productVersion, '1.1.17c'); assert.equal(v.installerVersion, '1.1.17.0c'); assert.equal(v.fileVersion, '1.1.17.0');
+ assert.equal(v.kernelVersion, '0.6.61'); assert.equal(v.baseKernelVersion, base.kernelVersion); assert.equal(v.kernelVersion, base.kernelVersion); assert.equal(v.baseProductVersion, base.productVersion);
  for (const file of ['craft/CraftStarter.cs', 'craft/CraftSetup.cs']) {
   const source = read(file);
   for (const [field, value] of [['AssemblyVersion', v.fileVersion], ['AssemblyFileVersion', v.fileVersion], ['AssemblyInformationalVersion', v.installerVersion]])

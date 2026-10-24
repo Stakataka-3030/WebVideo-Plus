@@ -115,7 +115,7 @@
         if(file.startsWith('game/')){try{const result=await c.editor.readTextDocumentFile(c.projectPath+'/'+file);assertContext(c);return result.content;}catch(e){throw Error('工程资源读取失败：'+e.message);}}
         return rpc('metadata.read',{project:{id:c.game.id,path:c.projectPath},file,fallback});},
       async writeProjectFile(file,text,options={}){const c=context();relative(file);return rpc('metadata.write',{expectedText:options.expectedText,create:options.create===true,project:{id:c.game.id,path:c.projectPath},file,text});},
-      async service(endpoint,data){const c=context();let snapshotId;
+      async service(endpoint,data){if(endpoint==='/api/logs/folder')return rpc('logs.open',{});const c=context();let snapshotId;
         if(endpoint==='/api/music/duration'){const file=relative(data?.file);if(!/^game\/(bgm|vocal)\//.test(file))fail('音乐必须位于工程音频目录');const physicalPath=await c.file.resolveFilePath(c.projectPath+'/'+file);assertContext(c);return rpc('audio.duration',{project:{id:c.game.id,path:c.projectPath},file,physicalPath});}
         const document=['/api/timing','/api/jobs'].includes(endpoint)?await bridge.snapshot():null;
         if(document&&data?.sourceText!==undefined&&(data.sourceText!==document.source||data.scene!==document.sceneRelativePath))fail('导出或计时请求的剧本已经变化，请重新预览');

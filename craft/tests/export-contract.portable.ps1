@@ -24,7 +24,7 @@ try {
   return $source.Substring($first,$last-$first)
  }
  $base=Section $core 'using System;' ' public static class WorkCache {'
- $settings=Section $core ' public static class Settings {' ' public static partial class App {'
+ $settings=Section $core ' public static class CompatibilityCapture {' ' public static partial class App {'
  $normal=ExactLine $core '  public static string NormalizeMode('
  $ranges=Section $workflow '  public static string CanonicalSource(' '  public static string PlanningSource('
  $extension=ExactLine $layer '  public static string RequiredExtension('
@@ -57,7 +57,7 @@ try {
 "@
  $cs=Join-Path $temp 'ProductionExportValidation.cs'
  [IO.File]::WriteAllText($cs,$base+$fixture,[Text.UTF8Encoding]::new($false))
- Add-Type -Path @($cs,(Join-Path $repo 'tests/engine-adapter-dual-profile.portable-json.cs'))
+ Add-Type -Path @($cs,(Join-Path $repo 'src/ManualCuts.cs'),(Join-Path $repo 'tests/engine-adapter-dual-profile.portable-json.cs'))
  $passed=[NativeVideo.ExportContractChecks]::Run([IO.File]::ReadAllText($inputs))
  if($passed -ne 48){throw "Unexpected contract case count: $passed"}
  Write-Output "Portable production export validation passed: $passed (40 full-payload requests, 8 negative controls; native rendering remains separate)."

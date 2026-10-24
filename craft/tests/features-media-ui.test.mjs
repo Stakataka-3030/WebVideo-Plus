@@ -223,3 +223,24 @@ test('an explicit panel memory choice wins over saved configuration',async()=>{
  await f.click('加入导出队列');await until(()=>f.calls.find(row=>row[0]==='export'),'custom memory export request');
  assert.equal(f.calls.find(row=>row[0]==='export')[1].settings.cubismCoreInitialMemoryMiB,64);f.mounted.dispose();
 });
+
+test('GPU device and precise textbox loop settings survive saved settings and queue submission',async()=>{
+ const f=setup(),service=f.bridge.service;
+ f.bridge.service=async endpoint=>endpoint==='/api/config'?{settings:{gpu:'high',gpuAdapterLuid:'0,23',preciseTextboxLoopAnimations:true},gpuAdapters:{adapters:[{name:'Discrete GPU',luid:'0,23'}]}}:service(endpoint);
+ assert.equal(f.field('精确捕获文本框循环动画（较慢）').checked,false);
+ await f.click('读取已保存的导出设置');
+ assert.equal(f.field('指定 GPU 设备').value,'0,23');
+ assert.equal(f.field('精确捕获文本框循环动画（较慢）').checked,true);
+ await f.click('加入导出队列');await until(()=>f.calls.find(row=>row[0]==='export'),'GPU export request');
+ const settings=f.calls.find(row=>row[0]==='export')[1].settings;
+ assert.equal(settings.gpu,'high');assert.equal(settings.gpuAdapterLuid,'0,23');assert.equal(settings.preciseTextboxLoopAnimations,true);
+ await f.click('打开日志文件夹');assert(f.calls.some(row=>row[0]==='/api/logs/folder'));f.mounted.dispose();
+});
+
+test('operation failure keeps native detail available without placing a stack in the status line',async()=>{
+ const f=setup();f.bridge.exportVideo=async()=>{throw Error('synthetic native failure\nfull detail');};
+ await f.click('加入导出队列');await until(()=>f.errors.length,'failed export');
+ const detail=f.nodes().find(n=>n.tag==='pre'&&n.textContent.includes('synthetic native failure'));
+ assert(detail);assert.equal(detail.parent.hidden,false);assert.match(detail.textContent,/full detail/);
+ assert(f.messages.some(m=>m.includes('展开技术详情')));f.mounted.dispose();
+});

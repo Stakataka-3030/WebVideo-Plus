@@ -6,13 +6,14 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const source=fs.readFileSync(new URL('../browser/workload.js',import.meta.url),'utf8');
+const audioSource=fs.readFileSync(new URL('../browser/audio.js',import.meta.url),'utf8');
 const plain=value=>JSON.parse(JSON.stringify(value));
 function sentence(commandRaw,content,args={}){
   return{command:commandRaw==='say'?0:1,commandRaw,content,args:Object.entries(args).map(([key,value])=>({key,value}))};
 }
 function workload(statements,{performWindows=[],animations={},media={},durationSeconds=2,...extra}={}){
-  const context={URL,scheduleAudioCommand:(audio,entry)=>audio.push(entry)};context.globalThis=context;
-  vm.runInNewContext(source,context);
+  const context={URL};context.globalThis=context;
+  vm.runInNewContext(audioSource+'\n'+source,context);
   const parsed={sentenceList:statements.map((s,index)=>({...s,startLine:index,endLine:index}))};
   const script=statements.map(s=>s.commandRaw+':'+s.content+s.args.map(a=>' -'+a.key+(a.value===true?'':'='+a.value)).join('')+';').join('\n');
   return plain(context.__buildNativeWorkload({script,parsed,animations,media,root:'C:/fixture',project:'C:/fixture',sceneName:'start.txt',fps:30,timing:{lineTimes:statements.map((_,i)=>i*100),durationSeconds,sourceEvents:[],stageExitWindows:[],performWindows},...extra}));

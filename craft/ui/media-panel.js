@@ -10,7 +10,7 @@
     const status = el('p', '读取配乐配置、打开游戏预览后，可使用实测时间和速度工具', { className: 'wvc-help', role: 'status' });
     const message = value => { if (disposed) return; status.textContent = String(value); notify(String(value)); };
     function refreshCapabilities() { for (const input of exportCard?.querySelectorAll?.('input,select') || []) input.disabled = working; if (!working) replaceBgm.disabled = !useMusic.checked; caps = bridge.capabilities() || {}; for (const b of buttons) { const missing = b.required.find(key => caps[key] !== true); b.node.disabled = (working && !b.cancel) || !!missing; b.node.title = missing ? caps[missing + 'Reason'] || caps.reason || `${missing} 尚未绑定，请先打开支持的 Craft 工程/游戏预览` : ''; } }
-    async function action(fn, cancellable = false) { return run(async () => { if (disposed || working) return; working = true; refreshCapabilities(); const operation = cancellable ? { cancelled: false } : null; if (operation) queueOperation = operation; try { const pending = Promise.resolve().then(() => fn(operation)); if (operation) { const cancelled = new Promise(resolve => { operation.wake = resolve; }); await Promise.race([pending, cancelled]); } else await pending; } catch (error) { if (disposed || operation?.cancelled) return; exportStatus.textContent = error.message || String(error); message(exportStatus.textContent); throw error; } finally { if (queueOperation === operation) queueOperation = null; working = false; if (!disposed) refreshCapabilities(); } }); }
+    async function action(fn, cancellable = false) { return run(async () => { if (disposed || working) return; working = true; refreshCapabilities(); const operation = cancellable ? { cancelled: false } : null; if (operation) queueOperation = operation; try { const pending = Promise.resolve().then(() => fn(operation)); if (operation) { const cancelled = new Promise(resolve => { operation.wake = resolve; }); await Promise.race([pending, cancelled]); } else await pending; } catch (error) { if (disposed || operation?.cancelled) return; showExportError(error); message(exportStatus.textContent); throw error; } finally { if (queueOperation === operation) queueOperation = null; working = false; if (!disposed) refreshCapabilities(); } }); }
     function button(parent, text, fn, required = [], cancel = false, cancellable = false) { const node = el('button', text, { type: 'button' }); buttons.push({ node, required, cancel }); on(node, 'click', () => { if (cancel) Promise.resolve(fn()).catch(e => message(e.message)); else action(fn, cancellable); }); parent.append(node); return node; }
     function field(parent, label, value = '', type = 'text') { const box = el('label', null, { className: 'wvc-field' }), input = el('input', null, { type, value, 'aria-label': label }); box.append(el('span', label), input); parent.append(box); return input; }
     function select(parent, label, choices) { const box = el('label', null, { className: 'wvc-field' }), input = el('select', null, { 'aria-label': label }); for (const [value, text] of choices) input.append(el('option', text, { value })); box.append(el('span', label), input); parent.append(box); return input; }
@@ -51,13 +51,26 @@
     for (const [input, event] of [[memoryMode, 'change'], [memoryMiB, 'input'], [memoryMiB, 'change']]) on(input, event, () => { memoryEdited = true; });
     const captureFormat = select(advancedBody, '兼容截图格式', [['jpeg', 'JPEG'], ['png', 'PNG（截图无损）']]);
     const gpuChoice = select(advancedBody, '渲染 GPU', [['auto', '自动选择'], ['high', '高性能 GPU'], ['low', '节能 GPU']]);
+    const gpuDevice = select(advancedBody, '指定 GPU 设备', [['', '跟随渲染 GPU 偏好']]);
+    const gpuNote = el('p', '可读取本机 GPU 设备；实际渲染器记录在导出结果和日志中。', { className: 'wvc-help' }); advancedBody.append(gpuNote);
+    function populateGpu(config) {
+      const selected = gpuDevice.value, adapters = config.gpuAdapters?.adapters || [];
+      gpuDevice.replaceChildren(el('option', '跟随渲染 GPU 偏好', { value: '' }), ...adapters.map(a => el('option', a.name, { value: a.luid })));
+      if (selected && !adapters.some(a => a.luid === selected)) gpuDevice.append(el('option', '已保存设备（当前不可用）', { value: selected }));
+      gpuDevice.value = selected; gpuNote.textContent = config.gpuAdapters?.error || '指定设备优先于 GPU 偏好。实际渲染器记录在导出结果和日志中。';
+    }
+    button(advancedBody, '读取 GPU 设备', async () => populateGpu(await bridge.service('/api/config')), ['service']);
     const alphaCapture = select(advancedBody, '透明层捕获', [['fast', '快速透明捕获'], ['screenshot', '兼容截图捕获']]);
+    const preciseLoops = check(advancedBody, '精确捕获文本框循环动画（较慢）', false);
     const gpuDom = check(advancedBody, '完整视频包含对话框与 DOM', true), strictCuts = check(advancedBody, '严格自动安全切段', false), decorativeCuts = check(advancedBody, '允许装饰性 Pixi 切点', false), notendTail = check(advancedBody, '保留 -notend 的演出尾段', true);
     button(advancedBody, '读取已保存的导出设置', async () => {
       const config = await bridge.service('/api/config'), s = config.settings || {};
+      populateGpu(config); const savedGpu = s.gpuAdapterLuid || '';
+      if (savedGpu && ![...gpuDevice.children].some(n => n.value === savedGpu)) gpuDevice.append(el('option', '已保存设备（当前不可用）', { value: savedGpu }));
+      gpuDevice.value = savedGpu;
       for (const [input, key] of [[cutMode,'segmentCutMode'],[numericCuts,'manualCutPoints'],[captureFormat,'compatibilityCaptureFormat'],[gpuChoice,'gpu'],[alphaCapture,'alphaCaptureMode'],[timingMode,'mode'],[bgmBaseMode,'bgmBaseMode'],[holdSeconds,'holdSeconds'],[manualTextSpeed,'textSpeed']]) if (s[key] !== undefined) input.value = String(s[key]);
       const memory = s.cubismCoreInitialMemoryMiB ?? 128; memoryMode.value = memory === 0 ? 'default' : 'manual'; memoryMiB.value = String(memory || 128); memoryEdited = true;
-      for (const [input,key] of [[gpuDom,'gpuRawDom'],[strictCuts,'strictSegmentCuts'],[decorativeCuts,'allowDecorativePixiCuts'],[notendTail,'notendVisualTail']]) if (s[key] !== undefined) input.checked = s[key] === true;
+      for (const [input,key] of [[preciseLoops,'preciseTextboxLoopAnimations'],[gpuDom,'gpuRawDom'],[strictCuts,'strictSegmentCuts'],[decorativeCuts,'allowDecorativePixiCuts'],[notendTail,'notendVisualTail']]) if (s[key] !== undefined) input.checked = s[key] === true;
       updateExport();
     }, ['service']);
     advancedBody.append(el('p', '手动切点不自动移动或补点；;CutHere 注释也会合并到实际语句边界。Live2D 内存 16–1024 MiB，按每个并行进程分配。PNG 截图无损不代表最终 H.264 无损。', { className: 'wvc-help' }));
@@ -190,7 +203,7 @@
       return true;
     }
     button(exportActions, '加入导出队列', async operation => {
-      const ticket = ++queueSerial; cancelRequested = false;
+      const ticket = ++queueSerial; cancelRequested = false; errorDetails.hidden = true;
       const interrupted = () => disposed || operation.cancelled || ticket !== queueSerial;
       const snap = await bridge.snapshot();
       if (interrupted()) return;
@@ -218,7 +231,7 @@
       }
       const memory = memoryMode.value === 'default' ? 0 : integer(memoryMiB, 'Live2D Core 初始内存', 16, 1024);
       const settings = { ...config.settings, ...speeds, width: size[0], height: size[1], fps: Number(fps.value), workers: parallel, gpuRawMode: !full && quality.value === 'traditional' ? 'recommended' : quality.value, mode: fullMode, bgmBaseMode: bgmBaseMode.value, holdSeconds: finite(holdSeconds, '手动等待秒数', 0, 60), segmentCutMode: kind.value === 'audio' ? 'auto' : cutMode.value, manualCutPoints: kind.value === 'audio' ? '' : numericCuts.value.trim(), cubismCoreInitialMemoryMiB: memory, compatibilityCaptureFormat: captureFormat.value };
-      Object.assign(settings, {gpu:gpuChoice.value,alphaCaptureMode:alphaCapture.value,gpuRawDom:gpuDom.checked,strictSegmentCuts:strictCuts.checked,allowDecorativePixiCuts:decorativeCuts.checked,notendVisualTail:notendTail.checked});
+      Object.assign(settings, {gpu:gpuChoice.value,gpuAdapterLuid:gpuDevice.value,preciseTextboxLoopAnimations:preciseLoops.checked,alphaCaptureMode:alphaCapture.value,gpuRawDom:gpuDom.checked,strictSegmentCuts:strictCuts.checked,allowDecorativePixiCuts:decorativeCuts.checked,notendVisualTail:notendTail.checked});
       const ranges = selected ? selection.ranges : [null]; let submitted = 0;
       if (queueProject !== snap.projectId) { exportJobs = []; queueProject = snap.projectId; }
       for (let index = 0; index < ranges.length; index++) {
@@ -251,11 +264,15 @@
           const entry = el('div', null, { className: 'wvc-export-job' });
           const stateText = job.phase === 'canceling' ? '取消中 · 正在停止所属进程' : job.phase === 'cleanup' ? '正在清理' : states[job.state] || job.state;
           entry.append(el('strong', (job.output || job.title || '导出任务').split(/[\\/]/).pop()), el('p', `${stateText}${Number.isFinite(job.progress) ? ' · ' + Math.round(job.progress * 100) + '%' : ''}${job.message ? ' · ' + job.message : ''}`, { className: 'wvc-help' }));
+          if (['failed', 'needs_attention'].includes(job.state)) {
+            const detail = el('details', null, { className: 'wvc-row-details' }); detail.append(el('summary', '技术详情'), el('pre', job.message || '未提供更多信息')); entry.append(detail);
+          }
           return entry;
         }));
       } finally { jobsRefreshing = false; }
     }
     button(exportActions, '刷新导出状态', refreshJobs, ['service']);
+    button(exportActions, '打开日志文件夹', () => bridge.service('/api/logs/folder', {}), ['service']);
     button(exportActions, '取消本面板导出任务', async () => {
       if (disposed) return;
       cancelRequested = true;
@@ -266,7 +283,14 @@
       if (disposed || serial !== queueSerial) return;
       exportStatus.textContent = '已请求取消导出任务'; message(exportStatus.textContent);
     }, ['exportVideo'], true);
-    exportCard.append(exportStatus, jobInfo);
+    const errorDetails = el('details', null, { className: 'wvc-row-details', hidden: true }), errorText = el('pre');
+    errorDetails.append(el('summary', '技术详情'), errorText);
+    function showExportError(error) {
+      const raw = error?.message || String(error), first = raw.split(/\r?\n/)[0];
+      exportStatus.textContent = /[\u3400-\u9fff]/.test(first) && first.length <= 160 ? first : '本次操作未完成，请展开技术详情或打开日志文件夹。';
+      errorText.textContent = error?.stack || raw; errorDetails.hidden = false;
+    }
+    exportCard.append(exportStatus, errorDetails, jobInfo);
     for (const input of [kind, includeBackground, transparentFormat]) on(input, 'change', () => updateExport({ rename: true }));
     for (const input of [resolution, quality, useMusic, scope, timingMode, bgmBaseMode, memoryMode, cutMode]) on(input, 'change', () => updateExport());
     for (const input of [subtitleOn, anchorType]) on(input, 'change', updateSubtitle);
