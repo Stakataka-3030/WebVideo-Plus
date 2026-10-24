@@ -5,7 +5,7 @@ import {OFFICIAL_HOST_PROFILES} from '../update/official-stage.mjs';
 const read = name => fs.readFileSync(new URL('../../' + name, import.meta.url), 'utf8');
 test('current Craft identifiers agree across product, installer, PE metadata and current documentation', () => {
  const v = JSON.parse(read('craft/version.json')), base = JSON.parse(read('version.json'));
- assert.equal(v.productVersion, '1.1.17c'); assert.equal(v.installerVersion, '1.1.17.0c'); assert.equal(v.fileVersion, '1.1.17.0');
+ assert.equal(v.productVersion, '1.2.0c'); assert.equal(v.installerVersion, '1.2.0.0c'); assert.equal(v.fileVersion, '1.2.0.0');
  assert.equal(v.kernelVersion, '0.6.61'); assert.equal(v.baseKernelVersion, base.kernelVersion); assert.equal(v.kernelVersion, base.kernelVersion); assert.equal(v.baseProductVersion, base.productVersion);
  for (const file of ['craft/CraftStarter.cs', 'craft/CraftSetup.cs']) {
   const source = read(file);
@@ -17,5 +17,5 @@ test('current Craft identifiers agree across product, installer, PE metadata and
   assert.ok(current, file); assert.ok(current.includes(v.installerVersion), file); assert.ok(current.includes(v.kernelVersion), file);
  }
  assert.equal(v.officialAutoInstallEnabled, true); assert.equal(v.updateObserverValidated, false); assert.equal(v.sameNameUpdateValidated, false); assert.equal(v.officialCleanUpdateValidated, false);
- assert.deepEqual(Object.fromEntries(v.supportedHosts.map(h=>[h.version,h.sha256])),OFFICIAL_HOST_PROFILES);
+ assert.deepEqual(v.supportedHosts,[{version:'1.0.0',sha256:OFFICIAL_HOST_PROFILES['1.0.0']}]);
 });

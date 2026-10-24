@@ -31,6 +31,14 @@ test('rc.1 exact profile supports serialized state reader and rejects crossed ex
     for(const invalid of [{...rc,sha256:profile.sha256},{...profile,sha256:rc.sha256},{...rc,version:'1.0.0-rc.2'}])assert.throws(()=>reader(fixture(),invalid),/版本未验证/);
   }
 });
+test('formal 1.0.0 profile is exact in both direct and serialized state readers',()=>{
+  const formal={version:'1.0.0',sha256:'0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c'};
+  const serialized=vm.runInNewContext('('+read.toString()+')');
+  for(const reader of [read,serialized]){
+    assert.equal(reader(fixture(),formal).hasBlockingTasks,false);
+    assert.throws(()=>reader(fixture(),{...formal,sha256:profile.sha256}),/版本未验证/);
+  }
+});
 test('missing Pinia, mandatory store, field, or unloaded resource collection remains unknown',()=>{
   for(const value of [undefined,{}, {_s:{}},{_s:[]}])assert.throws(()=>read(value,profile),/Pinia/);
   for(const id of ['editor','modal','resource']){const p=fixture();p._s.delete(id);assert.throws(()=>read(p,profile),/未就绪/);}

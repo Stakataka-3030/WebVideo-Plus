@@ -13,6 +13,7 @@ export const OFFICIAL_HOST_SHA256='3515c1329b3b033d1882329026a4c5d3cf9eb21cb50b5
 export const OFFICIAL_HOST_PROFILES=Object.freeze({
  [OFFICIAL_HOST_VERSION]:OFFICIAL_HOST_SHA256,
  '1.0.0-rc.1':'c1f3cd843a5b3d09a8c7232a7e8158492a1c4feec3d96c99f8b809d30e3a5b1f',
+ '1.0.0':'0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c',
 });
 function verifiedSourceHost(state,currentVersion){
  return Object.hasOwn(OFFICIAL_HOST_PROFILES,currentVersion||'')&&state.host.version===currentVersion

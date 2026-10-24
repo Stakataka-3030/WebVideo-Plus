@@ -1,19 +1,19 @@
-# WebVideo+ Craft 维护版
+# WebVideo+ Craft 正式版适配
 
 此目录是基于 `craft/mvp`（bee5888）继续开发的完整 Craft 编辑器适配。当前保留官方 Craft 自动检查更新，功能入口通过当前启动会话的 WebView2/CDP 注入。未改官方更新源、公钥和签名校验。
 
-[下载 1.1.17.0c 安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.1.17.0c/WebVideoCraft-Setup-1.1.17.0c.exe) · [正式发行与 SHA-256](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.17.0c)
+[正式版适配与测试](ADAPTATION-1.0.0.md) · [RC1 最终维护版](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.17.0c)
 
 ## 当前边界
 
-- 当前版本 `1.1.17c` 对齐 Terre/WebVideo+ `1.3.3` 的适用能力，继续支持官方 Windows `1.0.0-rc.1`，SHA-256 `c1f3cd843a5b3d09a8c7232a7e8158492a1c4feec3d96c99f8b809d30e3a5b1f`；既有验收和限制见 [此前测试说明](ACCEPTANCE-1.1.15c.md)
-- 已验证宿主：官方 Windows `1.0.0-beta.2`，SHA-256 `3515c1329b3b033d1882329026a4c5d3cf9eb21cb50b5b0040d7882daf933d0d`
-- 引擎匹配范围：官方 WebGAL 4.6.4 / 4.6.5 / 4.6.6、MyGO 3.2.1（基础 WebGAL 4.6.4），逐项校验描述、运行时字节及工程绑定，不接受未来版本或自定义同版本包。本轮四个固定运行时均完成真实视频、配乐、字幕验证；严格取消终态、复杂动画和高级导出的具体覆盖见本轮验收。
+- 当前版本 `1.2.0c` 适配官方 Windows x64 Craft `1.0.0`，EXE SHA-256 `0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c`；尚未另发 Release。
+- 精确官方来源与接口核对见 [正式版适配记录](ADAPTATION-1.0.0.md)，不以相同版本字符串代替构建校验。
+- 引擎匹配范围仍为官方 WebGAL 4.6.4 / 4.6.5 / 4.6.6、MyGO 3.2.1（基础 WebGAL 4.6.4）。历史验收记录不自动作为本次构建的结果。
 - 仅使用原 `webgal-craft.exe` 入口：安装安全保存可校验原程序，并用包装器替换原 EXE。原快捷方式继续有效；不再提供单独的增强启动模式
 - 旧独立入口安装可事务迁移到原入口，保留安装身份、配置、日志及用户数据。旧增强快捷方式重定向到原入口。未知宿主哈希仍拒绝挂载
 - 完整功能状态见 [FEATURE-COVERAGE.md](FEATURE-COVERAGE.md)，云端单元测试与 Windows 实测分开记录
 - Craft 官方更新检查、下载源、公钥和签名校验保留。已实现保留官方密钥/签名验证的干净环境交接：确认后释放包装器和宿主，再由有界助手打开未经修改的官方安装器。运行策略 `officialAutoInstallEnabled` 已开放，三项历史验收记录仍为 false，真实注册安装的跨版本 NSIS 升级仍待验收。官方原生下载完成后直接提供安装确认，随后重新核验官方签名并请求正常关闭 Craft；新宿主不自动重新挂载增强功能。详情见 [官方更新与验收边界](update/README.md)
-- 原生编辑/撤销、重载注入、VFS、实际预览速度、音乐/字幕、提示计时及安装恢复的历史验收见 [FINAL-ACCEPTANCE.md](FINAL-ACCEPTANCE.md)，此前维护版的新增证据见 [1.1.15c](ACCEPTANCE-1.1.15c.md)；本次验证见[正式发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.17.0c)。
+- 原生编辑/撤销、重载注入、VFS、实际预览速度、音乐/字幕、提示计时及安装恢复的历史验收见 [FINAL-ACCEPTANCE.md](FINAL-ACCEPTANCE.md)，此前维护版的新增证据见 [1.1.15c](ACCEPTANCE-1.1.15c.md)；本次验证见[正式发行页](ADAPTATION-1.0.0.md)。
 
 ## 编辑与工程
 
@@ -23,9 +23,9 @@
 
 音乐时长来自实际探测，故事时间来自实际引擎运行。预览速度通过经过所属页面检查的独立 iframe/CDP session 读取。没有准确加载配置证据时，速度修改只影响本次预览，并明确说明；不会猜测 IndexedDB 存档键。
 
-## 当前版本 1.1.17.0c（RC1 最终版，EOL）
+## 当前版本 1.2.0.0c（Craft 1.0.0 测试适配）
 
-Craft 产品版本为 1.1.17c，安装器为 1.1.17.0c，Win32 文件版本为 1.1.17.0；功能基线为 Terre 1.3.3，Craft 内核为 0.6.61（Terre 维护基线 0.6.59）。移植手动/语句切点、Cubism 内存、更新提醒、兼容 PNG、4.6.6、animation v2 和 1.3.3 资源解析修复，并保留 Craft 原生编辑、VFS、精确绑定与原 EXE 挂载。
+Craft 产品版本为 1.2.0c，安装器为 1.2.0.0c，Win32 文件版本为 1.2.0.0；功能基线为 Terre 1.3.3，Craft 内核为 0.6.61（Terre 维护基线 0.6.59）。移植手动/语句切点、Cubism 内存、更新提醒、兼容 PNG、4.6.6、animation v2 和 1.3.3 资源解析修复，并保留 Craft 原生编辑、VFS、精确绑定与原 EXE 挂载。
 
 本轮维护完善了制作标记持久化、批量编辑与 Anogo 文本/条件语句处理、音乐并发保存与恢复副本、迁移/卸载/备份恢复事务、队列与子进程超时、AI 批次检查点，以及按实际舞台/DOM 状态等待文本。Craft 另完善快照重试保留、队列终态清理、守护进程超时与安装恢复，范围见[本轮验收](ACCEPTANCE-1.1.15c.md)。
 
@@ -51,7 +51,7 @@ Craft 产品版本为 1.1.17c，安装器为 1.1.17.0c，Win32 文件版本为 1
 
 精确 GPU 设备选择、实际渲染器诊断及默认关闭的“精确捕获文本框循环动画”位于高级导出设置。导出面板可打开日志文件夹，错误详情可展开查看。变量音量按引擎预演的实际值混音；排队文件名按 Windows 大小写规则避免冲突。
 
-本维护分支 `release/craft-1.1.15c` 已结束维护（EOL）。Craft 1.0.0 正式版的独立适配不随此发行发布。
+RC1 维护分支 `release/craft-1.1.15c` 已结束维护（EOL）。本分支 `adapt/craft-1.0.0` 面向 Craft 1.0.0 正式版，暂不另发 Release。
 
 ## 启动反馈与完整性检查（1.1.3.0c）
 

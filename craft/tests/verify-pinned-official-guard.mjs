@@ -8,7 +8,7 @@ const [sourceRoot,dependencyRoot,clientFile]=process.argv.slice(2);
 if(!sourceRoot||!dependencyRoot||!clientFile)throw Error('Usage: node verify-pinned-official-guard.mjs <audited-official-source-root> <inert-npm-dependency-root> <client.js>');
 const require=createRequire(path.join(path.resolve(dependencyRoot),'package.json'));
 const version=JSON.parse(fs.readFileSync(path.join(sourceRoot,'package.json'),'utf8')).version;
-const profiles={'1.0.0-beta.2':['3.0.4','3.5.35'],'1.0.0-rc.1':['4.0.3','3.5.43']};
+const profiles={'1.0.0-beta.2':['3.0.4','3.5.35'],'1.0.0-rc.1':['4.0.3','3.5.43'],'1.0.0':['4.0.3','3.5.43']};
 assert.ok(Object.hasOwn(profiles,version),'Audited official source version required');
 assert.equal(require('pinia/package.json').version,profiles[version][0]);assert.equal(require('vue/package.json').version,profiles[version][1]);
 const {createPinia,setActivePinia,defineStore}=require('pinia'),{ref,computed}=require('vue');
