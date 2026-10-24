@@ -126,7 +126,7 @@ try{
   'backups.list':p=>storage.listBackups(p.project),'backups.capture':p=>storage.captureStory(p.snapshotId,p.project),
   'metadata.read':p=>storage.metadata(p), 'metadata.write':p=>storage.metadata(p,true),
   'snapshot.allocate':p=>storage.allocate(p.project,p.sources,p.engineVersion,p.runtimeId,p.runtimeVersion), 'snapshot.ready':p=>storage.ready(p.snapshotId), 'snapshot.discard':p=>storage.discard(p.snapshotId),
-  'logs.open':async()=>{await promisify(execFile)('explorer.exe',[stateDir],{windowsHide:true});return {ok:true};},
+  'logs.open':async()=>{await new Promise((resolve,reject)=>{const child=spawn('explorer.exe',[stateDir],{windowsHide:true,detached:true,stdio:'ignore'});child.once('error',reject);child.once('spawn',()=>{child.unref();resolve();});});return {ok:true};},
   'service.request':p=>service.request(p),
   'export.start':async p=>service.request({endpoint:'/api/jobs',data:p.options||{},snapshotId:p.snapshotId}),
   'job.cancel':p=>service.request({endpoint:'/api/jobs/'+p.jobId+'/cancel',data:{}}),
