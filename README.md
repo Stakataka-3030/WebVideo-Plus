@@ -6,18 +6,17 @@
 
 ## 下载与版本选择
 
-以下为 **2026-10-24 核对的正式版本**：
+当前维护的正式版本：
 
 | 使用环境 | 推荐版本（导出内核） | Windows 安装器 | 发行说明与校验 |
 | --- | --- | --- | --- |
 | Terre / WebGAL **4.6.4**，或 **MyGO 3.2.1** | **1.1.11**（0.6.53，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.11.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.1.11/WebVideo%2B-Setup-1.1.11.exe) | [v1.1.11](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.11) |
-| Terre / WebGAL **4.6.5** | **1.2.1**（0.6.54，Terre 4.6.5 最终版，已停止维护（EOL）） | [WebVideo+-Setup-1.2.1.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.2.1/WebVideo%2B-Setup-1.2.1.exe) | [v1.2.1](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1) |
 | Terre / WebGAL **4.6.6** | **1.3.4**（0.6.60） | [WebVideo+-Setup-1.3.4.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.4/WebVideo%2B-Setup-1.3.4.exe) | [v1.3.4](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.4) |
-| 官方 Windows x64 **Craft 1.0.0-rc.1 / 1.0.0-beta.2** | **Craft 1.1.17c**（安装器 1.1.17.0c，内核 0.6.61；RC1 最终版，EOL） | [WebVideoCraft-Setup-1.1.17.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.1.17.0c/WebVideoCraft-Setup-1.1.17.0c.exe) | [craft-v1.1.17.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.17.0c) |
+| 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.0c**（安装器 1.2.0.0c，内核 0.6.61） | [WebVideoCraft-Setup-1.2.0.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.0.0c/WebVideoCraft-Setup-1.2.0.0c.exe) | [craft-v1.2.0.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.0.0c) |
 
-GitHub 全局 **Latest 当前指向 1.3.4**，请按上表的宿主和引擎选择；Craft 使用独立的 stable 通道。1.1.11、1.3.4 和 Craft 1.1.17.0c 的 SHA-256 写在各自发行正文中，1.2.1 则提供 `SHA256SUMS.txt` 附件。下载后可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对；发布状态、兼容范围与验证记录以对应发行页为准。
+GitHub 全局 **Latest 当前指向 1.3.4**，请按上表的宿主和引擎选择；Craft 使用独立的 stable 通道。1.1.11、1.3.4 和 Craft 1.2.0.0c 的 SHA-256 写在各自发行正文中。下载后可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对；发布状态、兼容范围与验证记录以对应发行页为准。
 
-Craft RC1 维护分支 `release/craft-1.1.15c` 已结束维护（EOL）。官方 Craft **1.0.0 正式版**基于官方标签 `v1.0.0` 单独适配，测试产品版本 **1.2.0c**，尚未另发 Release。
+已 EOL 的 Terre 4.6.5、Craft RC1 / beta.2 的下载与兼容范围收纳于[历史版本说明](docs/LEGACY-VERSIONS.md)。
 
 这些发布版的产品源码尚未合入 `main`；复现发布版时请检出对应标签，不要用 `main` 的开发基线代替。
 
@@ -27,7 +26,7 @@ Craft RC1 维护分支 `release/craft-1.1.15c` 已结束维护（EOL）。官方
 
 1.1.11 修复 MyGO 3.2.1 前端安装兼容，并保留 JSONL / WMDL 模型动作与表情读取。
 
-1. 保存工程并关闭 Terre，确认已有安装使用 WebGAL 4.6.4 / MyGO 3.2.1，还是 WebGAL 4.6.5 / 4.6.6。
+1. 保存工程并关闭 Terre，确认已有安装使用 WebGAL 4.6.4 / MyGO 3.2.1，还是 WebGAL 4.6.6。
 2. 按上表下载对应的 `WebVideo+-Setup-*.exe`，运行并选择 Terre 安装目录。
 3. 默认安装常用模块；高级选项可单独增删功能、设置数据与缓存目录。灰选模块是其他已选功能的依赖。
 4. 安装完成后照常启动 Terre，在编辑器中使用 WebVideo+ 工具。
@@ -40,21 +39,20 @@ Terre 卸载默认清理缓存，删除配置和用户数据需要单独勾选�
 
 ### Craft
 
-1. 准备官方 Windows x64 **Craft 1.0.0-rc.1 或 1.0.0-beta.2**，保存工程并正常关闭 Craft。
-2. 运行上表中的 `WebVideoCraft-Setup-1.1.17.0c.exe`，选择 Craft 安装目录、原程序或快捷方式，执行“安装增强组件”或“更新 / 重新检查”。
+1. 准备官方 Windows x64 **Craft 1.0.0**，保存工程并正常关闭 Craft。
+2. 运行上表中的 `WebVideoCraft-Setup-1.2.0.0c.exe`，选择 Craft 安装目录、原程序或快捷方式，执行“安装增强组件”或“更新 / 重新检查”。
 3. 安装器安全保存并校验原程序，统一覆盖 **原 `webgal-craft.exe` 入口**；完成后继续使用原快捷方式。旧独立增强安装可迁移，已取消单独的增强启动模式。
 4. 需要维护时重新运行安装器，可更新、修复或“卸载挂载”；卸载挂载保留组件、配置、日志和用户数据，不删除工程或视频。
 
 Craft 会核验宿主与工程引擎的精确构建，同版本的自定义包不自动视为兼容。
 
-**1.1.12c 及更早的 Craft 增强版请手动下载并安装新版本**：1.1.13c 起支持当前仅提供 EXE 附件的发行格式，早期更新客户端依赖的独立描述文件已不随新版本发布。
 
 新版本的更新面板分别处理两类更新：
 
 - **WebVideo+ Craft 增强组件**：明确点击检查、下载、校验后打开普通 Setup；打开不代表安装完成。Craft 运行中会阻止覆盖安装，请先保存并正常关闭，再继续安装。
 - **官方 Craft**：保留官方检查、下载源与签名校验，官方安装交接功能已开放；下载完成后需明确确认，再正常关闭 Craft 并交接官方安装器。来源、签名、反降级、安装归属与恢复保护仍保留。
 
-当前允许列表包含精确的 **1.0.0-rc.1 / 1.0.0-beta.2** 构建，工程引擎支持 WebGAL 4.6.4 / 4.6.5 / 4.6.6 和 MyGO 3.2.1。官方安装交接已开放，真实注册安装的跨版本 NSIS 升级仍待验收。官方升级后需使用明确支持新宿主的增强安装器重新挂载；兼容范围继续由精确构建校验决定。
+当前允许列表包含精确的官方 Windows x64 **1.0.0** 构建，工程引擎支持 WebGAL 4.6.4 / 4.6.5 / 4.6.6 和 MyGO 3.2.1。官方安装交接已开放，真实注册安装的跨版本 NSIS 升级仍待验收。官方升级后需使用明确支持新宿主的增强安装器重新挂载；兼容范围继续由精确构建校验决定。
 
 ## 能做什么
 
@@ -72,19 +70,19 @@ Craft 会核验宿主与工程引擎的精确构建，同版本的自定义包�
 
 舞台的 **“包含背景”与“包含立绘”可以独立勾选**，支持四种组合。有背景输出 MP4，无背景输出带 Alpha 的 MOV / WebM；两者都取消时，其他舞台效果仍保留，其余区域透明。“包含立绘”只控制 `changeFigure` 创建的对象画面，剧本命令、动作、等待与时长继续保留，不改写原工程。
 
-兼容捕获格式按引擎区分：Terre 1.1.11 保留 JPEG；Terre 1.2.1 / 1.3.4 和 Craft 1.1.17c 提供 JPEG / PNG 选择，默认 JPEG。PNG 避免截图阶段的压缩，最终 H.264 仍为有损编码。4.6.6 的 animation v2 支持仅用于精确匹配的 4.6.6 运行时。
+兼容捕获格式按引擎区分：Terre 1.1.11 保留 JPEG；Terre 1.3.4 和 Craft 1.2.0c 提供 JPEG / PNG 选择，默认 JPEG。PNG 避免截图阶段的压缩，最终 H.264 仍为有损编码。4.6.6 的 animation v2 支持仅用于精确匹配的 4.6.6 运行时。
 
 ### 手动切点
 
 Terre 在 **高级设置 → 分段切点** 启用“按指定语句强制切段”，可从时间线临时选择语句，或在剧本中独立写一行区分大小写的 `;CutHere`。临时选择在所选语句开始前切段；注释标记在其后下一条实际执行语句开始前切段。
 
-手动模式合并两种来源，只在有效的指定位置切段，**不会自动补点**；有效切点为空时单段导出，并行数只限制同时执行的分片数。默认自动模式不使用这些标记。Craft 1.1.17c 的“高级导出设置”也支持语句选择、`;CutHere`，以及帧、秒或时间码切点。仅音轨导出不执行视频分段。手动切点不按自动安全策略移动，复杂动画、Live2D / Pixi 的接缝连续性仍需按工程检查。
+手动模式合并两种来源，只在有效的指定位置切段，**不会自动补点**；有效切点为空时单段导出，并行数只限制同时执行的分片数。默认自动模式不使用这些标记。Craft 1.2.0c 的“高级导出设置”也支持语句选择、`;CutHere`，以及帧、秒或时间码切点。仅音轨导出不执行视频分段。手动切点不按自动安全策略移动，复杂动画、Live2D / Pixi 的接缝连续性仍需按工程检查。
 
 ### 缓存与 Live2D 内存
 
 Terre 的工作缓存默认位于成片目录下的 `.webvideo-cache`；Craft 的快照和工作文件位于适配目录的 `state/sessions/<sessionId>/`，长期内核配置位于 `state/kernel/`。成功任务清理重型工作缓存，失败或取消任务保留必要的重试材料；清理失败会保留记录并提示处理。Craft 安装器的解压缓存与导出缓存分别管理。
 
-1.1.11、1.3.4 和 Craft 1.1.17c 的新配置默认给每个并行渲染进程设置 **128 MiB 的 Live2D Cubism Core 初始内存**；已有显式设置（包括 `0`）保留。`0` 表示使用引擎默认值，手动范围为 16–1024 MiB，仅在加载 Core 时生效。实际内存占用可能更高，贴图显存另计；这项设置与磁盘工作缓存分别管理。
+1.1.11、1.3.4 和 Craft 1.2.0c 的新配置默认给每个并行渲染进程设置 **128 MiB 的 Live2D Cubism Core 初始内存**；已有显式设置（包括 `0`）保留。`0` 表示使用引擎默认值，手动范围为 16–1024 MiB，仅在加载 Core 时生效。实际内存占用可能更高，贴图显存另计；这项设置与磁盘工作缓存分别管理。
 
 ### Terre 本轮更新
 
@@ -92,13 +90,13 @@ Terre 的工作缓存默认位于成片目录下的 `.webvideo-cache`；Craft �
 
 创建游戏可选空白项目，并共享所选引擎 `game` 文件夹内的素材；默认跟随创建流程，手动目录仅覆盖素材来源。视频导出收集依赖到快照，游戏打包只在临时副本中复制素材和转换引用，打包结果可独立运行。
 
-导出高级设置按用途整理，“精确文本框循环动画”默认关闭，需要精确呈现循环装饰时可开启。另新增渲染设备选择与诊断，改善模型选项、预览和可展开的错误提示，并可打开日志文件夹。Craft 维持现有版本。
+导出高级设置按用途整理，“精确文本框循环动画”默认关闭，需要精确呈现循环装饰时可开启。另新增渲染设备选择与诊断，改善模型选项、预览和可展开的错误提示，并可打开日志文件夹。Craft 1.2.0c 的正式版适配见对应发行说明。
 
 ## 文档与开发
 
-- Terre 使用指南：[1.1.11](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.11/docs/USER_GUIDE.md) / [1.2.1](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.2.1/docs/USER_GUIDE.md) / [1.3.4](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.4/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.4/docs/USER_GUIDE.md#按语句指定导出切点)
-- Craft：[安装与管理](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.1.17.0c/craft/README.md)、[功能范围](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.1.17.0c/craft/FEATURE-COVERAGE.md)、[导出说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.1.17.0c/craft/EXPORT-PARITY.md)和[既有验收边界](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.1.17.0c/craft/ACCEPTANCE-1.1.15c.md)
-- 构建与发布：Terre [1.1.11](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.11/docs/BUILDING.md) / [1.2.1](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.2.1/docs/BUILDING.md) / [1.3.4](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.4/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
+- Terre 使用指南：[1.1.11](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.11/docs/USER_GUIDE.md) / [1.3.4](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.4/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.4/docs/USER_GUIDE.md#按语句指定导出切点)
+- Craft：[安装与管理](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.0.0c/craft/README.md)、[功能范围](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.0.0c/craft/FEATURE-COVERAGE.md)、[导出说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.0.0c/craft/EXPORT-PARITY.md)和[本版验收](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.0.0c/craft/ACCEPTANCE-1.2.0c.md)
+- 构建与发布：Terre [1.1.11](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.11/docs/BUILDING.md) / [1.3.4](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.4/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
 - 当前分支的 [1.1.4 发行说明](docs/releases/RELEASE_NOTES_1.1.4.md)、[历史发行说明索引](docs/releases/README.md)、[变更记录](CHANGELOG.md)与[仓库结构](docs/REPOSITORY.md)
 
 当前 `main` 的开发基线仍是 **1.1.4**（内部标识 **0.8.8**、安装器 Win32 版本 **1.1.4.0**、导出内核 **0.6.48**），以 [`version.json`](version.json) 为准。版本标签中的文档保留部分开发、候选和历史测试记录；是否正式发布、当前更新策略及验证边界请以上表的发行页为准。
