@@ -43,7 +43,7 @@ public partial class SetupEngine {
  public void CleanupPayloadArtifacts(){
   string archive=Path.Combine(Root,"payload-"+InstallerBuild.PayloadHash+".zip"),packages=Path.Combine(Root,"packages"),destination=Path.Combine(packages,InstallerBuild.PayloadHash.Substring(0,16));Exception last=null;
   for(int attempt=0;attempt<4;attempt++){
-   last=null;try{if(File.Exists(archive))File.Delete(archive);}catch(Exception e){last=e;}try{if(Directory.Exists(destination))Directory.Delete(destination,true);}catch(Exception e){last=e;}
+   last=null;try{if(File.Exists(archive))File.Delete(archive);}catch(Exception e){last=e;}try{if(Directory.Exists(destination))Directory.Delete(PayloadFileSystemPath(destination),true);}catch(Exception e){last=e;}
    if(!File.Exists(archive)&&!Directory.Exists(destination)){try{if(Directory.Exists(packages)&&!Directory.EnumerateFileSystemEntries(packages).Any())Directory.Delete(packages);}catch{}return;}
    System.Threading.Thread.Sleep(100*(attempt+1));
   }
@@ -51,7 +51,7 @@ public partial class SetupEngine {
  }
  public static bool IsPayloadHash(string value,int length){if(String.IsNullOrWhiteSpace(value)||value.Length!=length)return false;foreach(char ch in value)if(!((ch>='0'&&ch<='9')||(ch>='a'&&ch<='f')||(ch>='A'&&ch<='F')))return false;return true;}
  public static bool DeletePayloadFile(string file){for(int attempt=0;attempt<4;attempt++){try{if(File.Exists(file))File.Delete(file);if(!File.Exists(file))return true;}catch{}System.Threading.Thread.Sleep(100*(attempt+1));}return !File.Exists(file);}
- public static bool DeletePayloadDirectory(string directory){for(int attempt=0;attempt<4;attempt++){try{if(Directory.Exists(directory))Directory.Delete(directory,true);if(!Directory.Exists(directory))return true;}catch{}System.Threading.Thread.Sleep(100*(attempt+1));}return !Directory.Exists(directory);}
+ public static bool DeletePayloadDirectory(string directory){directory=PayloadFileSystemPath(directory);for(int attempt=0;attempt<4;attempt++){try{if(Directory.Exists(directory))Directory.Delete(directory,true);if(!Directory.Exists(directory))return true;}catch{}System.Threading.Thread.Sleep(100*(attempt+1));}return !Directory.Exists(directory);}
  public void CleanupStalePayloadArtifacts(){
   try{
    if(!Directory.Exists(Root))return;string defaultRoot=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"WebGALVideoExporter"),marker=Path.Combine(Root,".webvideo-install-cache"),registry=Path.Combine(Root,"instances.json");
@@ -67,8 +67,8 @@ public partial class SetupEngine {
   }catch(Exception e){Report("历史安装 payload 清理未完成："+e.Message);}
  }
  public void Extract(string archive,string destination){
-  Directory.CreateDirectory(destination);string boundary=Path.GetFullPath(destination)+Path.DirectorySeparatorChar;int n=0;
-  using(var zip=ZipFile.OpenRead(archive))foreach(var entry in zip.Entries){Check();string target=Path.GetFullPath(Path.Combine(destination,entry.FullName));if(!target.StartsWith(boundary,StringComparison.OrdinalIgnoreCase))throw new Exception("压缩包路径校验失败");if(entry.Name.Length==0){Directory.CreateDirectory(target);continue;}Directory.CreateDirectory(Path.GetDirectoryName(target));entry.ExtractToFile(target,true);if(++n%80==0)Report("正在解压组件… "+n+" / "+zip.Entries.Count,(int)(100L*n/zip.Entries.Count));}
+  Directory.CreateDirectory(PayloadFileSystemPath(destination));string boundary=Path.GetFullPath(destination)+Path.DirectorySeparatorChar;int n=0;
+  using(var zip=ZipFile.OpenRead(PayloadFileSystemPath(archive)))foreach(var entry in zip.Entries){Check();string target=Path.GetFullPath(Path.Combine(destination,entry.FullName));if(!target.StartsWith(boundary,StringComparison.OrdinalIgnoreCase))throw new Exception("压缩包路径校验失败");if(entry.Name.Length==0){Directory.CreateDirectory(PayloadFileSystemPath(target));continue;}Directory.CreateDirectory(PayloadFileSystemPath(Path.GetDirectoryName(target)));entry.ExtractToFile(PayloadFileSystemPath(target),true);if(++n%80==0)Report("正在解压组件… "+n+" / "+zip.Entries.Count,(int)(100L*n/zip.Entries.Count));}
  }
  string FindProgram(string name,Func<string,bool> valid){
   if(!systemPaths)return null;var dirs=(Environment.GetEnvironmentVariable("PATH")??"").Split(Path.PathSeparator).ToList();

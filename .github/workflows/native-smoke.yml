@@ -163,6 +163,7 @@ jobs:
           $media = (Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json).ffmpegTest
           .\tests\bundled-runtime.test.ps1 -OutputRoot .build/ci-installer-tests/tools -FFmpegArchive (Join-Path $PWD ('.build/downloads/' + $media.file))
           .\tests\grouped-installer.test.ps1 -InstallerPath ".build/ci-installer/WebVideo+-Setup-$version.exe" -EvidenceDirectory .build/ci-installer-tests/grouped
+          .\tests\installer-long-path.test.ps1 -InstallerPath ".build/ci-installer/WebVideo+-Setup-$version.exe" -EvidenceDirectory .build/ci-installer-tests/long-path -BaseRoot $env:RUNNER_TEMP
           # Repeat in the same host to catch locked outputs and stale staging.
           .\build-product.ps1 -Fast
 
