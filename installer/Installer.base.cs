@@ -24,12 +24,14 @@ public class SetupProgress {
  public SetupProgress(string message,int percent=-1){Message=message;Percent=percent;}
 }
 public class RuntimePlan {
+ public string BundledFFmpegDir;
  public string Native,FFmpeg,FFprobe,Payload,FFmpegSourceDir;public bool NeedFFmpeg,NeedWebView2;
  public string RuntimePath {get{return string.Join(Path.PathSeparator.ToString(),new[]{FFmpeg,FFprobe}.Where(x=>!string.IsNullOrEmpty(x)).Select(Path.GetDirectoryName).Distinct());}}
- public List<string> Downloads {get{var a=new List<string>();if(NeedFFmpeg)a.Add("FFmpeg 9.0.1，含 ffprobe（约 106 MB）");if(NeedWebView2)a.Add("Microsoft WebView2 Runtime（由微软安装程序下载）");return a;}}
+ public List<string> Downloads {get{var a=new List<string>();if(NeedFFmpeg&&String.IsNullOrEmpty(BundledFFmpegDir))a.Add("FFmpeg 9.0.2，含 ffprobe（约 185 MB）");if(NeedWebView2)a.Add("Microsoft WebView2 Runtime（由微软安装程序下载）");return a;}}
 }
-public class SetupEngine {
- public const string FFVersion="9.0.1";
+public partial class SetupEngine {
+ public const string FFVersion="n9.0.2-17-g2a571b6068-20260930";
+ public const string FFDirectory="ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0";
  public readonly string Root,Tools,Cache,LogFile; readonly Action<SetupProgress> progress; readonly bool systemPaths;
  readonly object logLock=new object(); public volatile bool Canceled;
  public SetupEngine(string root,Action<SetupProgress> report,bool searchSystem=true){Root=Path.GetFullPath(root);Tools=Path.Combine(Root,"tools");Cache=Path.Combine(Root,"downloads");LogFile=Path.Combine(Root,"installer.log");progress=report;systemPaths=searchSystem;Directory.CreateDirectory(Root);}
@@ -37,14 +39,7 @@ public class SetupEngine {
  void Check(){if(Canceled)throw new OperationCanceledException("已取消；下载缓存保留，可重新安装继续。");}
  public static string Quote(string s){return "\""+System.Text.RegularExpressions.Regex.Replace(System.Text.RegularExpressions.Regex.Replace(s,@"(\\*)""","$1$1\\\""),@"(\\+)$","$1$1")+"\"";}
  public static string Hash(string file){using(var sha=SHA256.Create())using(var f=File.OpenRead(file))return BitConverter.ToString(sha.ComputeHash(f)).Replace("-","").ToLowerInvariant();}
- public string ExtractPayload(){
-  Report("正在读取安装文件…");var assembly=Assembly.GetExecutingAssembly();string archive=Path.Combine(Root,"payload-"+InstallerBuild.PayloadHash+".zip");
-  if(!File.Exists(archive)||Hash(archive)!=InstallerBuild.PayloadHash){using(var input=assembly.GetManifestResourceStream("payload.zip"))using(var output=File.Create(archive)){if(input==null)throw new Exception("安装包缺少组件文件");input.CopyTo(output);}}
-  if(Hash(archive)!=InstallerBuild.PayloadHash)throw new Exception("安装包校验失败，请重新获取安装器。");
-  string destination=Path.Combine(Root,"packages",InstallerBuild.PayloadHash.Substring(0,16)),payload=Path.Combine(destination,"webgal-native-exporter");
-  if(!File.Exists(Path.Combine(destination,"ready"))){Extract(archive,destination);File.WriteAllText(Path.Combine(destination,"ready"),InstallerBuild.PayloadHash);}
-  return payload;
- }
+ public string ExtractPayload(){return ReadInstallerPayload();}
  public void CleanupPayloadArtifacts(){
   string archive=Path.Combine(Root,"payload-"+InstallerBuild.PayloadHash+".zip"),packages=Path.Combine(Root,"packages"),destination=Path.Combine(packages,InstallerBuild.PayloadHash.Substring(0,16));Exception last=null;
   for(int attempt=0;attempt<4;attempt++){
@@ -63,7 +58,8 @@ public class SetupEngine {
    bool trusted=String.Equals(Path.GetFullPath(Root).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar),Path.GetFullPath(defaultRoot).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar),StringComparison.OrdinalIgnoreCase)||File.Exists(marker)||File.Exists(registry);if(!trusted)return;
    var prefixes=new HashSet<string>(StringComparer.OrdinalIgnoreCase);int removed=0,failed=0;
    foreach(var file in Directory.GetFiles(Root,"payload-*.zip")){string name=Path.GetFileName(file);if(name.Length!=76||!name.StartsWith("payload-",StringComparison.OrdinalIgnoreCase)||!name.EndsWith(".zip",StringComparison.OrdinalIgnoreCase))continue;string hash=name.Substring(8,64);if(!IsPayloadHash(hash,64))continue;prefixes.Add(hash.Substring(0,16));if(DeletePayloadFile(file))removed++;else failed++;}
-   string packages=Path.Combine(Root,"packages");if(Directory.Exists(packages))foreach(var directory in Directory.GetDirectories(packages)){string name=Path.GetFileName(directory);if(!IsPayloadHash(name,16))continue;bool owned=prefixes.Contains(name);string ready=Path.Combine(directory,"ready");if(!owned&&File.Exists(ready))try{string hash=File.ReadAllText(ready).Trim();owned=IsPayloadHash(hash,64)&&hash.StartsWith(name,StringComparison.OrdinalIgnoreCase);}catch{}
+   foreach(var partial in Directory.GetFiles(Root,"payload-*.zip.part-*")){if(System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(partial),@"^payload-[a-f0-9]{64}\.zip\.part-[a-f0-9]{32}$")){if(DeletePayloadFile(partial))removed++;else failed++;}}
+   string packages=Path.Combine(Root,"packages");if(Directory.Exists(packages))foreach(var directory in Directory.GetDirectories(packages)){string name=Path.GetFileName(directory);var staged=System.Text.RegularExpressions.Regex.Match(name,@"^([a-f0-9]{16})\.stage-[a-f0-9]{32}$");if(staged.Success){string owner=Path.Combine(directory,"stage-owner");if(File.Exists(owner)){string hash=File.ReadAllText(owner).Trim();if(IsPayloadHash(hash,64)&&hash.StartsWith(staged.Groups[1].Value,StringComparison.Ordinal)){if(DeletePayloadDirectory(directory))removed++;else failed++;}}continue;}if(!IsPayloadHash(name,16))continue;bool owned=prefixes.Contains(name);string ready=Path.Combine(directory,"ready");if(!owned&&File.Exists(ready))try{string hash=File.ReadAllText(ready).Trim();owned=IsPayloadHash(hash,64)&&hash.StartsWith(name,StringComparison.OrdinalIgnoreCase);}catch{}
     if(!owned)foreach(var payloadRoot in new[]{Path.Combine(directory,"webvideo-plus"),Path.Combine(directory,"webgal-"+"native-exporter")}){if(!Directory.Exists(payloadRoot))continue;if(File.Exists(Path.Combine(payloadRoot,"MANIFEST.json"))||File.Exists(Path.Combine(payloadRoot,"WebGAL.Video.exe"))||File.Exists(Path.Combine(payloadRoot,"WebVideoPlus.Manager.exe"))||Directory.Exists(Path.Combine(payloadRoot,"browser"))||Directory.Exists(Path.Combine(payloadRoot,"bin"))||Directory.Exists(Path.Combine(payloadRoot,"source"))||Directory.Exists(Path.Combine(payloadRoot,"product-ui"))){owned=true;break;}}
     if(!owned)continue;if(DeletePayloadDirectory(directory))removed++;else failed++;}
    try{if(Directory.Exists(packages)&&!Directory.EnumerateFileSystemEntries(packages).Any())Directory.Delete(packages);}catch{}
@@ -96,8 +92,9 @@ public class SetupEngine {
  }
  public RuntimePlan Inspect(string payload){
   Report("正在检测原生运行环境…");var plan=new RuntimePlan{Payload=payload,Native=Path.Combine(payload,"WebGAL.Video.exe")};if(!File.Exists(plan.Native))throw new Exception("安装包缺少原生导出程序");
-  string ff=Path.Combine(Tools,"ffmpeg-"+FFVersion+"-essentials_build","bin");plan.FFmpeg=File.Exists(Path.Combine(ff,"ffmpeg.exe"))&&ValidFF(Path.Combine(ff,"ffmpeg.exe"))?Path.Combine(ff,"ffmpeg.exe"):FindProgram("ffmpeg.exe",ValidFF);plan.FFprobe=File.Exists(Path.Combine(ff,"ffprobe.exe"))&&ValidFF(Path.Combine(ff,"ffprobe.exe"))?Path.Combine(ff,"ffprobe.exe"):FindProgram("ffprobe.exe",ValidFF);
-  plan.NeedFFmpeg=plan.FFmpeg==null||plan.FFprobe==null;string result=Probe(plan.Native,"check-runtime");plan.NeedWebView2=string.IsNullOrWhiteSpace(result)||!result.Contains("webview2");return plan;
+  string ff=Path.Combine(Tools,FFDirectory,"bin"),legacy=Path.Combine(Tools,"ffmpeg-9.0.1-essentials_build","bin");
+  plan.FFmpeg=new[]{Path.Combine(ff,"ffmpeg.exe"),Path.Combine(legacy,"ffmpeg.exe")}.FirstOrDefault(f=>File.Exists(f)&&ValidFF(f))??FindProgram("ffmpeg.exe",ValidFF);plan.FFprobe=new[]{Path.Combine(ff,"ffprobe.exe"),Path.Combine(legacy,"ffprobe.exe")}.FirstOrDefault(f=>File.Exists(f)&&ValidFF(f))??FindProgram("ffprobe.exe",ValidFF);
+  plan.NeedFFmpeg=plan.FFmpeg==null||plan.FFprobe==null;string bundled=Path.Combine(payload,"bin");if(plan.NeedFFmpeg&&File.Exists(Path.Combine(bundled,"ffmpeg.exe"))&&File.Exists(Path.Combine(bundled,"ffprobe.exe")))plan.BundledFFmpegDir=bundled;string result=Probe(plan.Native,"check-runtime");plan.NeedWebView2=string.IsNullOrWhiteSpace(result)||!result.Contains("webview2");return plan;
  }
  public void Download(string[] urls,string hash,string destination){
   Directory.CreateDirectory(Path.GetDirectoryName(destination));if(File.Exists(destination)&&Hash(destination)==hash){Report("使用已校验的下载缓存",100);return;}
@@ -114,9 +111,21 @@ public class SetupEngine {
   }catch(OperationCanceledException){throw;}catch(Exception e){last=e;if(attempt+1<urls.Length*2)Report("下载暂时失败，保留进度并重试："+e.Message);}}
   throw new Exception("依赖下载失败。请检查网络后重试，已下载部分保留。",last);
  }
+ public void InstallBundledFFmpeg(RuntimePlan plan){
+  Check();string target=Path.Combine(Tools,FFDirectory),stage=target+".stage-"+Guid.NewGuid().ToString("N"),backup=target+".previous-"+Guid.NewGuid().ToString("N");
+  Directory.CreateDirectory(Path.Combine(stage,"bin"));try{
+   foreach(string name in new[]{"ffmpeg.exe","ffprobe.exe"}){Check();string expected=name=="ffmpeg.exe"?"__FFMPEG_SHA256__":"__FFPROBE_SHA256__",source=Path.Combine(plan.BundledFFmpegDir,name),output=Path.Combine(stage,"bin",name);if(Hash(source)!=expected)throw new Exception("安装包中的 "+name+" 校验失败");File.Copy(source,output);if(Hash(output)!=expected||!ValidFF(output))throw new Exception(name+" 释放后验证未通过");}
+   File.Copy(Path.Combine(plan.Payload,"licenses/FFMPEG-GPL-3.0.txt"),Path.Combine(stage,"LICENSE"));File.Copy(Path.Combine(plan.Payload,"licenses/FFMPEG-BUILD-README.txt"),Path.Combine(stage,"README.txt"));File.Copy(Path.Combine(plan.Payload,"licenses/FFMPEG-DEPENDENCY-NOTICES.txt"),Path.Combine(stage,"THIRD-PARTY-NOTICES.txt"));Check();
+   if(Directory.Exists(target))Directory.Move(target,backup);
+   try{Directory.Move(stage,target);}catch{if(Directory.Exists(backup)&&!Directory.Exists(target))Directory.Move(backup,target);throw;}
+   if(Directory.Exists(backup)&&!DeletePayloadDirectory(backup))Report("旧 FFmpeg 工具目录仍被占用，保留在："+backup);
+   plan.FFmpeg=Path.Combine(target,"bin/ffmpeg.exe");plan.FFprobe=Path.Combine(target,"bin/ffprobe.exe");plan.NeedFFmpeg=false;Report("已从安装包释放 FFmpeg 和 ffprobe");
+  }finally{if(Directory.Exists(stage))DeletePayloadDirectory(stage);}
+ }
  public void EnsureRuntimes(RuntimePlan plan,bool downloadAuthorized){
   if(plan.Downloads.Count>0&&!downloadAuthorized)throw new InvalidOperationException("尚未获得下载和安装依赖的授权");Check();Directory.CreateDirectory(Tools);
-  if(plan.NeedFFmpeg){string name="ffmpeg-"+FFVersion+"-essentials_build.zip",file=Path.Combine(Cache,name);Download(new[]{"https://www.gyan.dev/ffmpeg/builds/packages/"+name,"https://github.com/GyanD/codexffmpeg/releases/download/"+FFVersion+"/"+name},"fec81ae03971d9dd4be3ebe02e263bd2ec1d789483f931bdba5f5715e65da2e9",file);Extract(file,Tools);string bin=Path.Combine(Tools,"ffmpeg-"+FFVersion+"-essentials_build/bin");plan.FFmpeg=Path.Combine(bin,"ffmpeg.exe");plan.FFprobe=Path.Combine(bin,"ffprobe.exe");if(!ValidFF(plan.FFmpeg)||!ValidFF(plan.FFprobe))throw new Exception("FFmpeg 安装后验证未通过");plan.NeedFFmpeg=false;}
+  if(plan.NeedFFmpeg&&!String.IsNullOrEmpty(plan.BundledFFmpegDir))InstallBundledFFmpeg(plan);
+  if(plan.NeedFFmpeg){string file=Path.Combine(Cache,FFDirectory+".zip"),stage=Path.Combine(Cache,FFDirectory+".stage-"+Guid.NewGuid().ToString("N"));Download(new[]{"__FFMPEG_ARCHIVE_URL__"},"__FFMPEG_ARCHIVE_SHA256__",file);try{Extract(file,stage);plan.BundledFFmpegDir=Path.Combine(stage,FFDirectory,"bin");InstallBundledFFmpeg(plan);}finally{if(Directory.Exists(stage))DeletePayloadDirectory(stage);}}
   if(plan.NeedWebView2){string bootstrap=Path.Combine(plan.Payload,"bin/MicrosoftEdgeWebview2Setup.exe");if(!File.Exists(bootstrap)||Hash(bootstrap)!="__WEBVIEW2_BOOTSTRAP_SHA256__")throw new Exception("WebView2 安装引导程序校验失败");Report("正在安装 Microsoft WebView2 Runtime…");Run(bootstrap,new[]{"/silent","/install"},plan.RuntimePath,plan.Payload);string result=Probe(plan.Native,"check-runtime");if(string.IsNullOrWhiteSpace(result)||!result.Contains("webview2"))throw new Exception("WebView2 Runtime 安装后未通过检测");}
   Check();Report("运行环境准备完成，无需 Node.js 或 Electron",100);
  }

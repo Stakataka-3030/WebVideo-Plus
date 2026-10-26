@@ -18,7 +18,12 @@ test('every direct build dependency is versioned, HTTPS and SHA-256 pinned',()=>
 });
 test('default preparation and CI do not require a legacy installer',()=>{
  assert.doesNotMatch(read('prepare-build.ps1'),/Mandatory\s*=\s*\$true|0\.4\.10\.2/);
- assert.doesNotMatch(read('.github/workflows/native-smoke.yml'),/0\.4\.10\.2|InstallerPath|bootstrap\.exe/);
+ const workflow=read('.github/workflows/native-smoke.yml');
+ assert.doesNotMatch(workflow,/0\.4\.10\.2|bootstrap\.exe|import-legacy-bootstrap\.ps1/);
+ // InstallerPath for the freshly built installer regression is not an upstream input.
+ const preparationSteps=workflow.split(/^ {6}- name:/m).filter(step=>/prepare-build(?:-inputs)?\.ps1/.test(step));
+ assert.ok(preparationSteps.length>0,'CI must retain clean upstream preparation');
+ assert.doesNotMatch(preparationSteps.join('\n'),/InstallerPath/);
  assert.ok(read('scripts/prepare-build-inputs.ps1').includes('prepare-webgal-runtime.mjs'));
  assert.ok(read('scripts/configure-installer.mjs').includes('inputs.webview2Bootstrap.sha256'));
  assert.doesNotMatch(read('scripts/build-ai.ps1'),/Get-Command node/);
@@ -39,5 +44,9 @@ test('bundled UI font and CSS preserve the original WebGAL bytes',()=>{
 test('CI media encoder pin matches the installer runtime pin',()=>{
  const installer=read('installer/Installer.base.cs');
  assert.ok(installer.includes(`FFVersion="${lock.ffmpegTest.version}"`));
- assert.ok(installer.includes(lock.ffmpegTest.sha256));
+ assert.ok(installer.includes(`FFDirectory="${lock.ffmpegTest.cacheDirectory}"`));
+ assert.equal(lock.ffmpegTest.cacheDirectory,lock.ffmpegTest.archiveRoot);
+ assert.ok(installer.includes('__FFMPEG_ARCHIVE_SHA256__'));
+ assert.ok(read('scripts/configure-installer.mjs').includes("replace('__FFMPEG_ARCHIVE_SHA256__',inputs.ffmpegTest.sha256)"));
+ assert.ok(read('.github/workflows/native-smoke.yml').includes('$lock.ffmpegTest.archiveRoot'));
 });

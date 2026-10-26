@@ -1,1 +1,5 @@
 tests/fixtures/update-channel/terre-1.1.6-update-check.js text eol=lf
+
+# Preserve pinned upstream license and bundled-build notice bytes on checkout.
+licenses/7ZIP-LICENSE.txt -text
+licenses/FFMPEG-*.txt -text

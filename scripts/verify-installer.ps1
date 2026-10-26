@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$InstallerPath)
+﻿param([Parameter(Mandatory=$true)][string]$InstallerPath)
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'build-common.ps1')
@@ -36,6 +36,12 @@ try{
   $reader=[IO.StreamReader]::new($entries['MANIFEST.json'].Open())
   try{$manifest=$reader.ReadToEnd() | ConvertFrom-Json}finally{$reader.Dispose()}
   if($manifest.version -ne $versions.productVersion -or $manifest.kernelVersion -ne $versions.kernelVersion){throw 'Embedded product/kernel versions mismatch'}
+  if($entries.ContainsKey('GROUPS.json')){
+   & node (Join-Path $root 'scripts/verify-installer-materials.mjs') $installer
+   if($LASTEXITCODE-ne 0){throw 'Grouped installer verification failed'}
+   Write-Output ('Grouped installer verified with pinned embedded decoder and expanded manifest; Win32 version '+$version+'.')
+   return
+  }
   $seen=@{}
   foreach($record in $manifest.files){
    if($seen.ContainsKey($record.path)){throw ('Duplicate manifest record: '+$record.path)}

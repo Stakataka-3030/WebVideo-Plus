@@ -9,6 +9,8 @@ $taskInstallerVersion=[string]$taskVersions.installerVersion
 $taskConfiguredInternalVersion=[string]$taskVersions.productInternalVersion
 if([string]::IsNullOrWhiteSpace($taskProductVersion)-or[string]::IsNullOrWhiteSpace($taskInstallerVersion)){throw 'version.json is missing productVersion or installerVersion'}
 if(-not [string]::IsNullOrWhiteSpace($InternalVersion)){$InternalBuild=$true}
+$taskFFmpegSources=Get-Content -LiteralPath (Join-Path $taskRoot 'build/ffmpeg-corresponding-source.json') -Raw | ConvertFrom-Json
+if(-not $InternalBuild -and $taskFFmpegSources.status -ne 'verified'){throw 'FFmpeg corresponding-source materials are pending. Only private internal candidates may be built until the redistribution review is complete.'}
 $taskInternalVersion=if([string]::IsNullOrWhiteSpace($InternalVersion)){$taskConfiguredInternalVersion}else{$InternalVersion.Trim()}
 if($InternalBuild){
  if([string]::IsNullOrWhiteSpace($taskInternalVersion)){throw 'Internal build requires productInternalVersion in version.json or -InternalVersion.'}
@@ -22,6 +24,7 @@ if($InternalBuild){
 $taskPackageFolderLabel=if($InternalBuild){'webvideo-plus-'+$taskBuildLabel}else{'webvideo-plus'}
 New-Item -ItemType Directory -Path (Join-Path $taskRoot 'dist') -Force | Out-Null
 if(Test-Path (Join-Path $taskRoot 'package/terre-adapter')){throw 'Obsolete Terre adapter must not enter the package.'}
+if(-not $Fast){& (Join-Path $taskRoot 'scripts/prepare-installer-decoder.ps1');if($LASTEXITCODE-ne 0){throw 'Installer decoder preparation failed'}}
 & (Join-Path $taskRoot 'build.ps1')
 if($LASTEXITCODE -ne 0){throw 'Export kernel build failed'}
 if($Fast){& (Join-Path $taskRoot 'scripts/build-ai.ps1') -ReuseDependencies}else{& (Join-Path $taskRoot 'scripts/build-ai.ps1')}
@@ -60,12 +63,8 @@ if($Fast){
   }finally{$taskZip.Dispose()}
  }finally{$taskStream.Dispose()}
 }else{
- $taskOut=Join-Path $taskRoot 'dist/webvideo-plus'
- if(Test-Path $taskOut){Remove-Item -LiteralPath $taskOut -Recurse -Force}
- if(Test-Path $taskArchive){Remove-Item -LiteralPath $taskArchive -Force}
- New-Item -ItemType Directory -Path $taskOut | Out-Null
- Copy-Item -Path (Join-Path $taskRoot 'package/*') -Destination $taskOut -Recurse -Force
- Compress-Archive -LiteralPath $taskOut -DestinationPath $taskArchive -Force
+ & (Join-Path $taskRoot 'scripts/pack-installer.ps1') -Destination $taskArchive
+ if($LASTEXITCODE-ne 0){throw 'Grouped installer packing failed'}
 }
 $taskHash=(Get-FileHash -LiteralPath $taskArchive -Algorithm SHA256).Hash.ToLowerInvariant()
 $taskGenerated=Join-Path $taskRoot 'installer/InstallerBuild.cs'

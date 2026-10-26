@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import {fileURLToPath} from 'node:url';
 import {verifyPackageMaterials} from './verify-materials.mjs';
+import {expandGroupedEntries} from './grouped-payload.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const digest = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const table = Array.from({length: 256}, (_, n) => {for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1; return n >>> 0;});
@@ -45,6 +46,11 @@ export function verifyInstallerMaterials(installer, sourceRoot = root) {
   const candidates = [...entries.values()].filter(x => /^[^/]+\/MANIFEST\.json$/.test(x.name));
   if (candidates.length !== 1) throw Error('Installer must contain one root package manifest');
   const entry = candidates[0], prefix = entry.name.slice(0, -'MANIFEST.json'.length), manifest = JSON.parse(entry.data.toString('utf8'));
+  if(entries.has((prefix+'GROUPS.json').toLowerCase())){
+    const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'webvideo-grouped-materials-'));
+    try{const expanded=expandGroupedEntries(entries,prefix,manifest,sourceRoot,temporary);const result=verifyPackageMaterials(expanded,sourceRoot);return {...result,version:manifest.version,installerSha256:digest(bytes),payloadFiles:manifest.files.length+1,grouped:true};}
+    finally{fs.rmSync(temporary,{recursive:true,force:true});}
+  }
   const expected = new Map(manifest.files.map(x => [x.path, x]));
   if (expected.size !== manifest.files.length || entries.size !== expected.size + 1) throw Error('Installer manifest closure mismatch');
   for (const {name, data} of entries.values()) {

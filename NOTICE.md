@@ -8,7 +8,7 @@
 
 - **WebGAL / Terre**：编辑器与播放引擎基座遵循其各自 MPL-2.0 许可。`baseline/terre-4.6.4.js` 来源于 OpenWebGAL/WebGAL_Terre 4.6.4，用于精确挂载定位，SHA-256 为 `3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133`。
 - **内置运行时字体**：`WebgalUI` 保留 WebGAL 4.6.4 所含未经修改的 OPPO Sans v1.00。OPPO 的历史公开说明允许个人和企业免费商用；本项目暂按允许软件内嵌分发理解该许可，并保留其使用限制，未宣称取得单独授权。公开来源、解释边界及其他字体许可见 `licenses/WEBGAL-RUNTIME-SOURCES.md`。
-- **WebView2 / FFmpeg / Node.js**：按各自许可用于原生导出、媒体处理和可选 AI 运行环境。WebView2 与 Node 构建输入按 `build/dependencies.lock.json` 从官方归档准备；FFmpeg 仍由安装器按独立固定版本与校验值获取。保留各自原有许可，不视为 WebVideo+ 自有代码。
+- **WebView2 / FFmpeg / Node.js**：按各自许可用于原生导出、媒体处理和可选 AI 运行环境。WebView2 与 Node 构建输入按 `build/dependencies.lock.json` 从官方归档准备；FFmpeg 内置工具按独立固定版本与校验值准备，保留 GPLv3、依赖许可和固定构建来源记录；对应源码与构建材料随发行提供独立附件，详见 `docs/FFMPEG-DISTRIBUTION.md`。保留各自原有许可，不视为 WebVideo+ 自有代码。
 - **DeepSeek Harness / pi-ai**：可选 AI 组件使用 DSH 0.1.5-rc.1 与 pi-ai 0.85.1；依赖版本由 `ai-runtime/package-lock.json` 固定，相关第三方许可保留在依赖目录或上游包内。
 - **Anogo**：`anogo-actions.factory.json` 中的默认动作词表来自 A-kirami/anogo，继续适用其 AGPL-3.0 来源与许可；WebVideo+ 自行实现的 Anogo 导入适配代码采用 MPL-2.0。完整 Anogo 创作工具并不随 WebVideo+ 捆绑。
 - **js-yaml**：随包使用 4.1.1 压缩版本，保留 MIT 许可。
@@ -22,3 +22,6 @@
 
 
 补充的精确第三方范围：`licenses/LICENSE-pi-0.85.1-MIT.txt` 保留 pi-ai/pi-telemetry 作者许可；`LICENSE-pixi-live2d-display-MIT.txt` 与 `LICENSE-CubismWebFramework.md` / `LICENSE-Live2D-Open-Software.txt` 分别保留显示插件和 Framework 的原许可。没有捆绑专有 Cubism Core 或游戏模型，不代表显示插件中不存在 Framework 实现；原许可范围不由 MPL/MIT 覆盖。OPPO 旧字体公开条款及未变更字节的使用范围见 `licenses/OPPO-Sans-1.00-NOTICE.txt`。
+
+
+- **安装器解压支持**：7-Zip 25.00 Windows x64 命令行和 DLL，保留完整上游许可与版权声明 `licenses/7ZIP-LICENSE.txt`。官方归档地址及原始字节 SHA256 记录在 `build/dependencies.lock.json`，不安装图形界面或系统文件关联。

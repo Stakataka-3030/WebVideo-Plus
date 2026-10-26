@@ -13,7 +13,7 @@ const gameResource = /\.(?:moc3?|mtn|model3?\.json|motion3?\.json|exp3?\.json|ph
 const coreFile = /(?:^|\/)(?:live2d|live2dcubismcore)(?:\.min)?\.js$/i;
 const opaqueArchive = /\.(?:zip|tgz|tar|gz|7z|rar|asar|pak|bin|wasm)$/i;
 const unwantedRoot = /^(?:\.git|\.build|\.env(?:\..*)?|game|games|user-data|snapshots|output|outputs|cache|state|logs)(?:\/|$)/i;
-const binaryPaths = new Set(['WebGAL.Video.exe', 'WebVideoPlus.Manager.exe', 'TerreLauncher.exe', 'process-guard.exe', 'WebVideoCraft.Launcher.exe', 'CraftInstallerObserver.exe', 'CraftOfficialInstaller.exe', 'Microsoft.Web.WebView2.Core.dll', 'Microsoft.Web.WebView2.WinForms.dll', 'WebView2Loader.dll', 'node.exe', 'ai-runtime/node.exe', 'bin/MicrosoftEdgeWebview2Setup.exe']);
+const binaryPaths = new Set(['WebGAL.Video.exe', 'WebVideoPlus.Manager.exe', 'TerreLauncher.exe', 'process-guard.exe', 'WebVideoCraft.Launcher.exe', 'CraftInstallerObserver.exe', 'CraftOfficialInstaller.exe', 'Microsoft.Web.WebView2.Core.dll', 'Microsoft.Web.WebView2.WinForms.dll', 'WebView2Loader.dll', 'node.exe', 'ai-runtime/node.exe', 'bin/MicrosoftEdgeWebview2Setup.exe', 'bin/ffmpeg.exe', 'bin/ffprobe.exe']);
 const licenseText = {
   MIT: /Permission\s+is\s+hereby\s+granted[\s\S]*permission\s+notice\s+shall\s+be\s+included/i,
   'Apache-2.0': /Apache License[\s\S]*Version 2\.0[\s\S]*Redistribution/i,

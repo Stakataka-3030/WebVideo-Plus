@@ -123,7 +123,7 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
     lastCommand=s.command===0?'say':s.commandRaw;
     lastParams=Object.fromEntries(s.args.map(a=>[a.key,a.value]));
     lastLine=core.sceneManager.sceneData.currentSentenceId;
-    events.push({index:lastLine,atMs:nowMs(),command:lastCommand,forwardGroup:currentForwardGroup()});
+    events.push({index:lastLine,atMs:nowMs(),command:lastCommand,forwardGroup:currentForwardGroup(),...(['bgm','playEffect','say'].includes(lastCommand)?{audioVolume:lastParams.volume??100}:{})});
     if(manualTimer){clearTimeout(manualTimer);manualTimer=null;}
     if(hintTimer){clearTimeout(hintTimer);hintTimer=null;}
     const hintMs=singleLineHintDuration(s,lastParams);

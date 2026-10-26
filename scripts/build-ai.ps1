@@ -17,6 +17,10 @@ if($taskCanReuse){
  if(Test-Path $taskDestModules){Remove-Item -LiteralPath $taskDestModules -Recurse -Force}
  Copy-Item -LiteralPath $taskSourceModules -Destination $taskDest -Recurse -Force
 }
+# These files are already omitted by ProductIntegration.CopyRuntimeTree after installation.
+$taskBuildOnlyFiles=@(Get-ChildItem -LiteralPath $taskDestModules -Recurse -File | Where-Object {$_.Name.EndsWith('.d.ts',[StringComparison]::OrdinalIgnoreCase)-or $_.Name.EndsWith('.map',[StringComparison]::OrdinalIgnoreCase)})
+foreach($taskBuildOnlyFile in $taskBuildOnlyFiles){Remove-Item -LiteralPath $taskBuildOnlyFile.FullName -Force}
+Write-Output ('AI package: omitted '+$taskBuildOnlyFiles.Count+' installed-runtime-excluded declarations and source maps; notices retained.')
 foreach($taskFile in @('worker.mjs','novel-prompt.txt','stage-prompt.txt','package-lock.json')){Copy-Item -LiteralPath (Join-Path $taskSource $taskFile) -Destination $taskDest -Force}
 # prepare-build.ps1 stages the exact Windows Node archive and required license.
 $taskInputs=Get-Content -LiteralPath (Join-Path $taskRoot 'build/dependencies.lock.json') -Raw | ConvertFrom-Json

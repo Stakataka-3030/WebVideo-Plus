@@ -1,0 +1,33 @@
+{
+  "status": "verified",
+  "binaryBuild": "n9.0.2-17-g2a571b6068-20260930",
+  "provider": "BtbN/FFmpeg-Builds",
+  "upstreamArchiveSha256": "a0e45723c72141975f51d8666302e614711745f3102b704ca3f82c897a58d278",
+  "ffmpegSourceCommit": "2a571b606854520cf89804d8030c8b328e621689",
+  "ffmpegSourceUrl": "https://github.com/FFmpeg/FFmpeg/tree/2a571b606854520cf89804d8030c8b328e621689",
+  "recipeCommit": "6c9aec5fc9a72ec3abedd1fa84db141fa18cf52b",
+  "recipeUrl": "https://github.com/BtbN/FFmpeg-Builds/tree/6c9aec5fc9a72ec3abedd1fa84db141fa18cf52b",
+  "configuration": "configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --disable-libxcb --disable-xlib --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libdav1d --enable-libvorbis --enable-librav1e --enable-librsvg --disable-libpulse --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-opencl --enable-amf --enable-libaom --enable-avisynth --enable-chromaprint --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribb24 --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --disable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20260930",
+  "missing": [],
+  "sourceFiles": [
+    "build/ffmpeg-source-materials.json"
+  ],
+  "materialCollection": "fixed-source-archives-collected-and-hash-verified",
+  "sourceManifest": "build/ffmpeg-source-materials.json",
+  "sourceBundle": {
+    "file": "BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip",
+    "bytes": 876694235,
+    "sha256": "faf6e08870a17d5a97ea4bc4c95c05178b92d1e27de29f6ae713e6d0e98c72c7",
+    "sourceRecords": 711
+  },
+  "distribution": {
+    "releaseTag": "v1.3.5",
+    "assetName": "BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip",
+    "downloadUrl": "https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.5/BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip",
+    "sharedBy": [
+      "v1.1.12",
+      "v1.3.5"
+    ],
+    "publicationRequirement": "Publish this source asset with the installers; verify unauthenticated public access before completing publication."
+  }
+}

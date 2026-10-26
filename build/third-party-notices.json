@@ -42,6 +42,15 @@
       "sha256": "71670cd4b473f3e94e6affac279d8b690bf8aae80bc04a4ada488d535531d66e",
       "normalizeTextEol": true,
       "source": "https://raw.githubusercontent.com/guansss/CubismWebFramework/1f9cdfd140e87ba0ae68a356bb5ec339a0e65f99/src/live2dcubismframework.ts"
+    },
+    {
+      "path": "licenses/7ZIP-LICENSE.txt",
+      "sha256": "3a184aa13dc8ad30734e28ff901b478ccbcb5b41be52427a5e7609c8fd9e5ddb"
+    },
+    {
+      "path": "licenses/FFMPEG-DEPENDENCY-NOTICES.txt",
+      "sha256": "25828825198fbb4eeb6db24de6149a54bc6e6807759819c8af8d2f19276fa08e",
+      "source": "build/ffmpeg-source-materials.json"
     }
   ],
   "pixiPlugin": {

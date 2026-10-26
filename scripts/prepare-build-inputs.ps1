@@ -10,7 +10,7 @@ if([string]::IsNullOrWhiteSpace($CacheDirectory)){$CacheDirectory=Join-Path $wor
 $CacheDirectory=[IO.Path]::GetFullPath($CacheDirectory)
 # Resolve and validate inputs before touching the previously prepared package.
 $archives=@{}
-foreach($name in @('webview2Sdk','webview2Bootstrap','node')){$archives[$name]=Get-PinnedBuildInput $lock.$name $CacheDirectory -Offline:$Offline}
+foreach($name in @('webview2Sdk','webview2Bootstrap','node','ffmpegTest')){$archives[$name]=Get-PinnedBuildInput $lock.$name $CacheDirectory -Offline:$Offline}
 if([string]::IsNullOrWhiteSpace($InstallerPath)){$archives.webgal=Get-PinnedBuildInput $lock.webgal $CacheDirectory -Offline:$Offline}
 else{$InstallerPath=(Resolve-Path -LiteralPath $InstallerPath).Path}
 $stage=Join-Path $work ('prepare-'+[Guid]::NewGuid().ToString('N'))
@@ -28,6 +28,9 @@ try{
   # Explicit migration aid only. Never silently fall back to historical installers.
   & (Join-Path $PSScriptRoot 'import-legacy-bootstrap.ps1') -InstallerPath $InstallerPath -Destination (Join-Path $out 'runtime/web') -WorkDirectory $stage
  }
+ $ffmpegStage=Join-Path $stage 'ffmpeg'
+ Expand-CheckedBuildArchive $archives.ffmpegTest $ffmpegStage
+ foreach($tool in @('ffmpeg.exe','ffprobe.exe')){Copy-RequiredBuildFile (Join-Path $ffmpegStage ($lock.ffmpegTest.archiveRoot+'/bin/'+$tool)) (Join-Path $out ('bin/'+$tool))}
  $sdk=Join-Path $stage 'webview2-sdk'
  Expand-CheckedBuildArchive $archives.webview2Sdk $sdk
  foreach($name in @('Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll')){

@@ -100,7 +100,7 @@ jobs:
           $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
           $archive = Get-PinnedBuildInput $lock.ffmpegTest (Join-Path $PWD '.build/downloads')
           Expand-CheckedBuildArchive $archive (Join-Path $PWD '.build/ffmpeg-test')
-          $env:PATH = (Join-Path $PWD ('.build/ffmpeg-test/ffmpeg-' + $lock.ffmpegTest.version + '-essentials_build/bin')) + ';' + $env:PATH
+          $env:PATH = (Join-Path $PWD ('.build/ffmpeg-test/' + $lock.ffmpegTest.archiveRoot + '/bin')) + ';' + $env:PATH
           .\tests\font-render-native.ps1
 
       - name: Restore locked optional AI dependencies
@@ -119,6 +119,9 @@ jobs:
           $version = (Get-Content version.json -Raw | ConvertFrom-Json).productVersion
           New-Item -ItemType Directory -Path .build/ci-installer -Force | Out-Null
           Copy-Item -LiteralPath "dist/WebVideo+-Setup-$version.exe" -Destination .build/ci-installer
+          $media = (Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json).ffmpegTest
+          .\tests\bundled-runtime.test.ps1 -OutputRoot .build/ci-installer-tests/tools -FFmpegArchive (Join-Path $PWD ('.build/downloads/' + $media.file))
+          .\tests\grouped-installer.test.ps1 -InstallerPath ".build/ci-installer/WebVideo+-Setup-$version.exe" -EvidenceDirectory .build/ci-installer-tests/grouped
           # Repeat in the same host to catch locked outputs and stale staging.
           .\build-product.ps1 -Fast
 
@@ -196,7 +199,7 @@ jobs:
             throw "NA: graphical release gates require an available desktop and WebView2 Runtime: $($state.reason)"
           }
           $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
-          $media = Join-Path $PWD ('.build/ffmpeg-test/ffmpeg-' + $lock.ffmpegTest.version + '-essentials_build/bin')
+          $media = Join-Path $PWD ('.build/ffmpeg-test/' + $lock.ffmpegTest.archiveRoot + '/bin')
           foreach ($tool in @('ffmpeg.exe','ffprobe.exe')) { if (-not (Test-Path -LiteralPath (Join-Path $media $tool))) { throw "Missing pinned media tool: $tool" } }
           $engines = @(@{name='webgal-464';root=(Join-Path $package 'runtime/web')})
           $state.engines = @($engines | ForEach-Object { $_.name })

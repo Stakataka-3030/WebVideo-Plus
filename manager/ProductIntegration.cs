@@ -63,7 +63,13 @@ namespace NativeVideo {
   static IOException ForceRequired(string message){return new IOException("[FORCE_AVAILABLE] "+message);}
   static bool OptionalRuntimeArtifact(string path){string name=Path.GetFileName(path.TrimEnd('\\','/'));return name.Equals("dist-types",StringComparison.OrdinalIgnoreCase)||name.EndsWith(".d.ts",StringComparison.OrdinalIgnoreCase)||name.EndsWith(".map",StringComparison.OrdinalIgnoreCase);}
   static int CopyRuntimeTree(string source,string target,bool optionalArtifacts){
-   if(!optionalArtifacts){Files.CopyTree(source,target);return 0;}
+   if(!optionalArtifacts){
+    if(!SamePath(source,Path.Combine(Files.Root,"bin"))){Files.CopyTree(source,target);return 0;}
+    Directory.CreateDirectory(target);
+    foreach(var directory in Directory.GetDirectories(source)){if((File.GetAttributes(directory)&FileAttributes.ReparsePoint)!=0)throw new IOException("组件目录不能包含目录链接："+directory);Files.CopyTree(directory,Path.Combine(target,Path.GetFileName(directory)));}
+    foreach(var file in Directory.GetFiles(source)){if(new[]{"ffmpeg.exe","ffprobe.exe"}.Contains(Path.GetFileName(file),StringComparer.OrdinalIgnoreCase))continue;Files.CopyFile(file,Path.Combine(target,Path.GetFileName(file)));}
+    return 0;
+   }
    if(!Directory.Exists(source))throw new IOException("AI 运行组件目录缺失："+source);
    if(Files.Within(source,target,true))throw new IOException("AI 运行组件副本必须位于源目录之外");
    Directory.CreateDirectory(target);int skipped=0;

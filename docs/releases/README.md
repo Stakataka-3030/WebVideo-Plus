@@ -1,5 +1,7 @@
 # 发行说明
 
+- [1.1.12](RELEASE_NOTES_1.1.12.md)
+
 - [1.1.11 · WebGAL 4.6.4 / MyGO 3.2.1 修订版](RELEASE_NOTES_1.1.11.md)
 
 - [1.1.10 · WebGAL 4.6.4](RELEASE_NOTES_1.1.10.md)
