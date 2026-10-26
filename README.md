@@ -37,7 +37,7 @@ GitHub 全局 **Latest 当前指向 1.3.5**，请按上表的宿主和引擎选�
 
 Terre 卸载默认清理缓存，删除配置和用户数据需要单独勾选；已导出的 MP4 和 WebGAL 游戏工程本身不会删除。重要工程仍建议保留自己的备份。
 
-FFmpeg 的对应源码与构建材料提供[独立下载](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.5/BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip)，两条 Terre 维护线使用同一份材料；许可与来源说明见[固定版本文档](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.5/docs/FFMPEG-DISTRIBUTION.md)。WebView2 仍优先使用系统运行时，缺失时由微软引导程序安装。
+FFmpeg 的对应源码与构建材料提供[独立下载](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/third-party-sources-ffmpeg-20260930-7zip-25.00/BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip)，两条 Terre 维护线使用同一份材料；许可与来源说明见[固定版本文档](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.5/docs/FFMPEG-DISTRIBUTION.md)。WebView2 仍优先使用系统运行时，缺失时由微软引导程序安装。
 
 ### Craft
 

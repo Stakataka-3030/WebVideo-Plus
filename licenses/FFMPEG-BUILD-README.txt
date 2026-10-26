@@ -17,5 +17,5 @@ The exact configure command is retained in build/ffmpeg-corresponding-source.jso
 and the separately prepared source-material index. Source-material completeness
 must be checked there; this record alone is not a complete corresponding source.
 
-Corresponding-source delivery: https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.5/BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip
+Corresponding-source delivery: https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/third-party-sources-ffmpeg-20260930-7zip-25.00/BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip
 Source archive SHA256: faf6e08870a17d5a97ea4bc4c95c05178b92d1e27de29f6ae713e6d0e98c72c7

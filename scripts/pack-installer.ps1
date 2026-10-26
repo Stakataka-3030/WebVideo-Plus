@@ -1,5 +1,6 @@
 param([Parameter(Mandatory=$true)][string]$Destination)
 $ErrorActionPreference='Stop'
+Add-Type -AssemblyName System.IO.Compression
 $root=Split-Path -Parent $PSScriptRoot
 $pin=(Get-Content -LiteralPath (Join-Path $root 'build/dependencies.lock.json') -Raw | ConvertFrom-Json).installerDecoder
 $decoder=Join-Path $root '.build/installer-decoder'

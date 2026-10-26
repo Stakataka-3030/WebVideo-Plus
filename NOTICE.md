@@ -24,4 +24,4 @@
 补充的精确第三方范围：`licenses/LICENSE-pi-0.85.1-MIT.txt` 保留 pi-ai/pi-telemetry 作者许可；`LICENSE-pixi-live2d-display-MIT.txt` 与 `LICENSE-CubismWebFramework.md` / `LICENSE-Live2D-Open-Software.txt` 分别保留显示插件和 Framework 的原许可。没有捆绑专有 Cubism Core 或游戏模型，不代表显示插件中不存在 Framework 实现；原许可范围不由 MPL/MIT 覆盖。OPPO 旧字体公开条款及未变更字节的使用范围见 `licenses/OPPO-Sans-1.00-NOTICE.txt`。
 
 
-- **安装器解压支持**：7-Zip 25.00 Windows x64 命令行和 DLL，保留完整上游许可与版权声明 `licenses/7ZIP-LICENSE.txt`。官方归档地址及原始字节 SHA256 记录在 `build/dependencies.lock.json`，不安装图形界面或系统文件关联。
+- **安装器解压支持**：7-Zip 25.00 Windows x64 命令行和 DLL，保留完整上游许可与版权声明 `licenses/7ZIP-LICENSE.txt`。官方归档地址及原始字节 SHA256 记录在 `build/dependencies.lock.json`，不安装图形界面或系统文件关联。固定版本的源码和构建文件通过独立第三方源码发行提供，入口见 `docs/FFMPEG-DISTRIBUTION.md`。
