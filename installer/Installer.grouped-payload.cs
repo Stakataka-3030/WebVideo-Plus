@@ -1,6 +1,11 @@
 public partial class SetupEngine {
  const string DecoderExeHash="__7ZIP_EXE_SHA256__",DecoderDllHash="__7ZIP_DLL_SHA256__",DecoderLicenseHash="__7ZIP_LICENSE_SHA256__";
  const string PayloadFolder="webgal-native-exporter";
+ static string PayloadFileSystemPath(string path){
+  string full=Path.GetFullPath(path);
+  if(full.StartsWith(@"\\?\",StringComparison.Ordinal))return full;
+  return full.StartsWith(@"\\",StringComparison.Ordinal)?@"\\?\UNC\"+full.Substring(2):@"\\?\"+full;
+ }
  static bool MediaTool(string path){return path.Equals("bin/ffmpeg.exe",StringComparison.OrdinalIgnoreCase)||path.Equals("bin/ffprobe.exe",StringComparison.OrdinalIgnoreCase);}
  public static string SafePayloadRelative(string path){
   if(String.IsNullOrWhiteSpace(path)||path.StartsWith("/")||path.StartsWith("\\")||path.IndexOf(':')>=0||path.Any(c=>c<32))throw new IOException("组件路径不安全："+path);
@@ -22,6 +27,7 @@ public partial class SetupEngine {
   foreach(var file in Directory.GetFiles(directory)){if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0)throw new IOException("组件包含文件链接："+file);yield return file;}
  }
  void ValidatePayload(string payload){
+  payload=PayloadFileSystemPath(payload);
   var payloadFiles=PayloadFiles(payload).ToArray();string manifest=Path.Combine(payload,"MANIFEST.json");var records=PayloadRecords(manifest);
   var document=new JavaScriptSerializer{MaxJsonLength=32*1024*1024,RecursionLimit=256}.Deserialize<Dictionary<string,object>>(File.ReadAllText(manifest));
   string prefix=Path.GetFullPath(payload).TrimEnd('\\','/')+Path.DirectorySeparatorChar;
@@ -70,7 +76,7 @@ public partial class SetupEngine {
    string file=Path.Combine(root,"groups",id+".7z"),hash=Convert.ToString(group["sha256"]);if(!IsPayloadHash(hash,64)||new FileInfo(file).Length!=Convert.ToInt64(group["bytes"])||Hash(file)!=hash)throw new IOException("压缩组校验失败："+id);
    var subset=expected.Where(p=>MediaTool(p.Key)==(id=="ffmpeg")).ToDictionary(p=>p.Key,p=>p.Value,StringComparer.OrdinalIgnoreCase);if(subset.Count==0||id=="ffmpeg"&&subset.Count!=2)throw new IOException("压缩组组件范围不匹配");
    string support=Path.Combine(root,"installer-support");ValidateGroupListing(RunDecoder(support,new[]{"l","-slt","-ba","-sccUTF-8","--",file}),subset);
-   Report(id=="ffmpeg"?"正在释放媒体工具…":"正在释放组件…");RunDecoder(support,new[]{"x","-y","-bd","-sccUTF-8","-o"+payload,"--",file});
+   Report(id=="ffmpeg"?"正在释放媒体工具…":"正在释放组件…");RunDecoder(support,new[]{"x","-y","-bd","-sccUTF-8","-o"+PayloadFileSystemPath(payload),"--",file});
   }
  }
  string ReadInstallerPayload(){
