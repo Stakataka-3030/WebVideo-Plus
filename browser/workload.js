@@ -30,6 +30,9 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   if(timing&&Number.isFinite(timing.lineTimes[i]))cursor=timing.lineTimes[i];
   const s=parsed.sentenceList[i];if(s.isLineBreakHolder)continue;
   const cmd=s.command===0?'say':s.commandRaw,params=Object.fromEntries(s.args.map(a=>[a.key,a.value])),range=statementRange(s,i),raw=statementSource(s,i),hintMs=singleLineHintDuration(cmd,params,s.content,raw),sourceEvent=sourceEventByIndex.get(i),plannedPerform=primaryPerform(i,cmd);
+  // Measurement observes the engine's variable-substituted audio arguments.
+  if(sourceEvent&&Object.hasOwn(sourceEvent,'audioVolume'))params.volume=sourceEvent.audioVolume;
+  else if(!timing&&!Number.isFinite(Number(params.volume??100)))params.volume=100;
   counts[cmd]=(counts[cmd]||0)+1;
   if(cmd==='comment'||!raw.trim()||raw.trim().startsWith(';'))continue;
   if(['changeScene','callScene','choose','jumpLabel','chooseLabel','if','getUserInput'].includes(cmd)&&!(cmd==='choose'&&hintMs))throw Error('无法导出第'+(range.start+1)+'行交互命令：'+cmd);
@@ -40,7 +43,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   if(cmd==='say'&&params.vocal){
    const voiceInfo=info('vocal',params.vocal);voiceMs=Number(voiceInfo.durationMs);
    if(!Number.isFinite(voiceMs)||voiceMs<=0||voiceInfo.hasAudio===false)throw Error('配音资源未取得有效音频时长（第'+(range.start+1)+'行）：'+params.vocal);
-   audio.push({kind:'voice',path:local('vocal',params.vocal),atMs:cursor,endMs:cursor+voiceMs,volume:Number(params.volume??100)/100,loop:false,target:speakerTarget(params)});
+   audio.push({kind:'voice',path:local('vocal',params.vocal),atMs:cursor,endMs:cursor+voiceMs,volume:volume(params.volume,false),loop:false,target:speakerTarget(params)});
    snippet=snippet.replace(/\s+-vocal=[^;]*?(?=\s+-|;|$)/,'');
   }
   const namedDuration=cmd==='setAnimation'?ensureAnimation(s.content):0;

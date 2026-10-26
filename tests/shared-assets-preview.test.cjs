@@ -48,7 +48,7 @@ function harness(line, request, previewClient = {}, showPreview = () => {}) {
   function render() {cursor=0;dirty=false;tree=sandbox.api.WebVideoSharedAssets(props); for(const i of pending.splice(0)){effects[i].cleanup?.();effects[i].cleanup=effects[i].fn();}}
   function nodes(n=tree,out=[]) {if(n && typeof n==='object'){out.push(n);for(const c of n.children || [])nodes(c,out);}return out;}
   function text(n) {return typeof n==='object'?(n.children||[]).map(text).join(''):String(n ?? '');}
-  return {cells,events,api:sandbox.api,setState,mountFrame,frame:()=>frame,ready(value=true){eventBus.emit('editor-preview:ready',{ready:value});},bootstrap(){for(const fn of messages)fn({source:frame?.contentWindow,data:{type:'webgal.preview.bootstrap.request'}});},expire(){for(const fn of [...timers.values()])fn();},subscriptionCount:()=>storeListeners.size,pending:()=>timers.size,timerCount:()=>timerId,waiters:()=>busListeners.get('editor-preview:ready')?.size,
+  return {nodes,cells,events,api:sandbox.api,setState,mountFrame,frame:()=>frame,ready(value=true){eventBus.emit('editor-preview:ready',{ready:value});},bootstrap(){for(const fn of messages)fn({source:frame?.contentWindow,data:{type:'webgal.preview.bootstrap.request'}});},expire(){for(const fn of [...timers.values()])fn();},subscriptionCount:()=>storeListeners.size,pending:()=>timers.size,timerCount:()=>timerId,waiters:()=>busListeners.get('editor-preview:ready')?.size,
     mount(p={}){props={rootPath:['games','Audit','game'],basePath:['figure'],isProtected:true,...p};render();},
     async flush(){for(let i=0;i<8;i++){await tick();if(dirty)render();}return tree;},
     button(label){const n=nodes().find(n=>(n.type==='Button' || n.type==='button') && text(n)===label);assert.ok(n,'button '+label);return n;},
@@ -89,6 +89,19 @@ async function audit() {
   return {client,register,transport,sent,ack,requests:()=>received.filter(x=>x.kind==='request'&&x.type.startsWith('preview.command.')),disconnect(){socket.readyState=3;socket.onclose?.();}};
  }
  const record=name=>{evidence.push({name,passed:true});console.error('PASS: '+name);};
+ {
+  const h=harness('',async endpoint=>{if(endpoint==='/api/shared/libraries')return {libraries:[]};throw Error('Unexpected '+endpoint);});h.mount();await h.flush();
+  const toggle=()=>h.nodes().find(n=>Object.hasOwn(n.props,'aria-expanded'));
+  assert.equal(toggle().props['aria-expanded'],false);assert.equal(h.nodes().find(n=>n.props['data-wvp-local-region']).props.style.flex,'1 1 100%');assert.equal(h.nodes().filter(n=>n.type==='List').length,0);
+  toggle().props.onClick();await h.flush();assert.equal(toggle().props['aria-expanded'],true);assert.ok(h.text().includes('添加共享文件夹'));h.unmount();record('no libraries: shared region defaults collapsed, manual expand retains add entry');
+ }
+ {
+  let mounted=false;const h=harness('',async endpoint=>{if(endpoint==='/api/shared/libraries')return {libraries:mounted?[lib]:[]};if(endpoint==='/api/shared/dialog')return {path:'X:/fixture'};if(endpoint==='/api/shared/add'){mounted=true;return {id:lib.id};}if(endpoint==='/api/shared/list')return {entries:[entry]};throw Error('Unexpected '+endpoint);});h.mount();await h.flush();
+  await h.nodes().find(n=>n.props['aria-label']==='添加共享文件夹').props.onClick();await h.flush();assert.equal(h.nodes().find(n=>Object.hasOwn(n.props,'aria-expanded')).props['aria-expanded'],true);assert.ok(h.text().includes('a.png'));h.unmount();record('adding first library expands the shared region without reopening');
+ }
+ {
+  const h=harness('',async endpoint=>endpoint==='/api/shared/libraries'?{libraries:[lib]}:{entries:[]});h.mount();await h.flush();assert.equal(h.nodes().find(n=>Object.hasOwn(n.props,'aria-expanded')).props['aria-expanded'],true);h.nodes().find(n=>Object.hasOwn(n.props,'aria-expanded')).props.onClick();await h.flush();assert.equal(h.nodes().find(n=>Object.hasOwn(n.props,'aria-expanded')).props['aria-expanded'],false);h.unmount();record('registered library expands by default and can be collapsed manually');
+ }
  {
   const s=session();const {h}=await ready('',{previewClient:s.client,showPreview(h){setImmediate(()=>{h.mountFrame();h.bootstrap();s.register();});}});
   await h.click('预览');assert.equal(s.requests().length,2,'closed preview must receive both commands on the first click');assert.deepEqual(s.sent.map(x=>x.type),['preview.command.set-component-visibility','preview.command.run-snippet']);assert.equal(s.requests()[0].payload.showStarter,false);assert.equal(s.requests()[1].payload.snippet,'changeFigure:http://audit/webvideo-shared/'+('b'.repeat(32))+'/'+lib.id+'/a.png;');assert.equal(h.pending(),0);assert.equal(h.subscriptionCount(),1);record('closed preview: first click waits for registration, then sends exactly visibility + snippet');

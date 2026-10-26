@@ -33,14 +33,31 @@
     "WebView2Loader.dll": "c66e4a92fdc7a216118e43b7a5024ea2200e8c43f9310bf20d96a0084f82c5bc",
     "licenses/WebView2-SDK-LICENSE.txt": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55",
     "ai-runtime/node.exe": "fdddbf4581e046b8102815d56208d6a248950bb554570b81519a8a5dacfee95d",
-    "ai-runtime/LICENSE-Node.txt": "339c50294da6a84322dcbe7285b57b248123bd4d9e37a2f72d68d5abf2574783"
+    "ai-runtime/LICENSE-Node.txt": "339c50294da6a84322dcbe7285b57b248123bd4d9e37a2f72d68d5abf2574783",
+    "licenses/FFMPEG-GPL-3.0.txt": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+    "licenses/FFMPEG-BUILD-README.txt": "dafe9ae2f069ba1536669746820fd8f21003142454ece4a208cd935ff0de5f08",
+    "bin/ffmpeg.exe": "513368c81583572ce1d09d5c7ff827feed1a63db352412a5001f4da3a1583d98",
+    "bin/ffprobe.exe": "0fd8f3bae96cc707993bcd8c56c13f8cd73962d37dbcaac0dad4fe3a0ce1f68f",
+    "licenses/7ZIP-LICENSE.txt": "3a184aa13dc8ad30734e28ff901b478ccbcb5b41be52427a5e7609c8fd9e5ddb",
+    "licenses/FFMPEG-DEPENDENCY-NOTICES.txt": "25828825198fbb4eeb6db24de6149a54bc6e6807759819c8af8d2f19276fa08e"
   },
   "ffmpegTest": {
-    "version": "9.0.1",
-    "file": "ffmpeg-9.0.1-essentials_build.zip",
-    "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0.1/ffmpeg-9.0.1-essentials_build.zip",
-    "sha256": "fec81ae03971d9dd4be3ebe02e263bd2ec1d789483f931bdba5f5715e65da2e9",
-    "purpose": "CI-only video export regression; matches installer runtime pin and is not bundled by preparation"
+    "version": "n9.0.2-17-g2a571b6068-20260930",
+    "file": "ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0.zip",
+    "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0.zip",
+    "sha256": "a0e45723c72141975f51d8666302e614711745f3102b704ca3f82c897a58d278",
+    "purpose": "Pinned bundled ffmpeg/ffprobe pair and CI media tools",
+    "sourceReview": "build/ffmpeg-corresponding-source.json",
+    "bundledFiles": [
+      "bin/ffmpeg.exe",
+      "bin/ffprobe.exe"
+    ],
+    "archiveRoot": "ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0",
+    "cacheDirectory": "ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0",
+    "provider": "BtbN/FFmpeg-Builds",
+    "recipeCommit": "6c9aec5fc9a72ec3abedd1fa84db141fa18cf52b",
+    "releaseTag": "autobuild-2026-09-30-13-08",
+    "ffmpegCommit": "2a571b606854520cf89804d8030c8b328e621689"
   },
   "webgal465Test": {
     "version": "4.6.5",
@@ -57,5 +74,18 @@
     "sha256": "d8011933005f62397b3d1ea6cd14b8a7f58ce34a390000afa48f12a2d8f0349a",
     "source": "https://github.com/OpenWebGAL/WebGAL/tree/4.6.6",
     "purpose": "Exact 4.6.6 project/template compatibility regression; bundled legacy fallback remains 4.6.4"
+  },
+  "installerDecoder": {
+    "version": "25.00",
+    "file": "7z2500-x64.exe",
+    "url": "https://www.7-zip.org/a/7z2500-x64.exe",
+    "sha256": "7b67375b2b303e05d2989f23e986126eda67435c71231fa4b0bdaeb7a619a0a6",
+    "source": "https://www.7-zip.org/download.html",
+    "provenance": "Locally retained Chocolatey 7zip.install 25.0.0 archive; legal/VERIFICATION.txt records the same official URL and SHA256. Installer is extracted, never executed.",
+    "files": {
+      "7z.exe": "634d38c0c414178e2f35de5cc0fb29aa082eec227e630c4481e1af7694980ac9",
+      "7z.dll": "1d3bd7cfcb033c61966c890953919be21561590b95b63f9226809e92d79afd2a",
+      "License.txt": "3a184aa13dc8ad30734e28ff901b478ccbcb5b41be52427a5e7609c8fd9e5ddb"
+    }
   }
 }

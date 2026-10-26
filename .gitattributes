@@ -1,1 +1,5 @@
 baseline/*.js -text
+
+# Preserve pinned upstream license and bundled-build notice bytes on checkout.
+licenses/7ZIP-LICENSE.txt -text
+licenses/FFMPEG-*.txt -text

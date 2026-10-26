@@ -6,16 +6,17 @@ const internalAt=process.argv.indexOf('--internal-version'),internalVersion=inte
 const inputs=JSON.parse(fs.readFileSync(path.join(root,'build/dependencies.lock.json'),'utf8'));
 const versions=JSON.parse(fs.readFileSync(path.join(root,'version.json'),'utf8')),productVersion=versions.productVersion,installerVersion=versions.installerVersion,kernelVersion=versions.kernelVersion;
 if(!productVersion||!installerVersion||!kernelVersion)throw Error('version.json is missing required version fields');
-let s=fs.readFileSync(path.join(root,'installer/Installer.base.cs'),'utf8').replaceAll('\r\n','\n');
+let s=(fs.readFileSync(path.join(root,'installer/Installer.base.cs'),'utf8')+'\n'+fs.readFileSync(path.join(root,'installer/Installer.grouped-payload.cs'),'utf8')).replaceAll('\r\n','\n');
 function replace(a,b){if(!s.includes(a))throw Error('Missing installer anchor '+a);s=s.replace(a,b);}
 if(!/^[a-f0-9]{64}$/.test(inputs.webview2Bootstrap.sha256))throw Error('Invalid pinned WebView2 bootstrap hash');
 replace('__WEBVIEW2_BOOTSTRAP_SHA256__',inputs.webview2Bootstrap.sha256);
+if(!/^[a-f0-9]{64}$/.test(inputs.ffmpegTest.sha256)||!/^https:\/\/github\.com\/BtbN\/FFmpeg-Builds\/releases\/download\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\.zip$/.test(inputs.ffmpegTest.url))throw Error('Invalid pinned FFmpeg archive');
+replace('__FFMPEG_ARCHIVE_URL__',inputs.ffmpegTest.url);replace('__FFMPEG_ARCHIVE_SHA256__',inputs.ffmpegTest.sha256);
+if(!s.includes('FFVersion="'+inputs.ffmpegTest.version+'"')||!s.includes('FFDirectory="'+inputs.ffmpegTest.cacheDirectory+'"')||inputs.ffmpegTest.archiveRoot!==inputs.ffmpegTest.cacheDirectory)throw Error('FFmpeg cache identity differs from pinned input');
+for(const [token,file] of [['__7ZIP_EXE_SHA256__','7z.exe'],['__7ZIP_DLL_SHA256__','7z.dll'],['__7ZIP_LICENSE_SHA256__','License.txt']]){const hash=inputs.installerDecoder.files[file];if(!/^[a-f0-9]{64}$/.test(hash))throw Error('Invalid decoder pin');replace(token,hash);}replace('__7ZIP_VERSION__',inputs.installerDecoder.version);
+for(const [token,file] of [['__FFMPEG_SHA256__','bin/ffmpeg.exe'],['__FFPROBE_SHA256__','bin/ffprobe.exe']]){const digest=inputs.stagedFiles[file];if(!/^[a-f0-9]{64}$/.test(digest))throw Error('Invalid pinned tool hash '+file);replace(token,digest);}
 function between(a,b,t){let i=s.indexOf(a),j=s.indexOf(b,i+a.length);if(i<0||j<0)throw Error(a);s=s.slice(0,i)+t+s.slice(j);}
 s=s.replaceAll('WebGAL Video Exporter Setup','WebVideo+ Setup').replaceAll('WebGAL Video Exporter','WebVideo+').replaceAll('0.3.1.0',installerVersion).replaceAll('"webgal-native-exporter"','"webvideo-plus"');
-replace('  return payload;',`  string manifestFile=Path.Combine(payload,"MANIFEST.json");if(!File.Exists(manifestFile)||Hash(manifestFile)!=InstallerBuild.ManifestHash)throw new Exception("安装文件清单校验失败，请重新获取安装包。");
-  if(new FileInfo(manifestFile).Length>32L*1024*1024)throw new Exception("安装文件清单超过支持范围。");var inventory=new JavaScriptSerializer{MaxJsonLength=32*1024*1024,RecursionLimit=256}.Deserialize<Dictionary<string,object>>(File.ReadAllText(manifestFile));
-  foreach(var item in (System.Collections.IEnumerable)inventory["files"]){var record=(Dictionary<string,object>)item;string relative=(string)record["path"],file=Path.GetFullPath(Path.Combine(payload,relative.Replace('/',Path.DirectorySeparatorChar)));if(!file.StartsWith(Path.GetFullPath(payload)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)||!File.Exists(file)||new FileInfo(file).Length!=Convert.ToInt64(record["bytes"])||Hash(file)!=(string)record["sha256"])throw new Exception("安装缓存校验失败："+relative+"。请移除安装器缓存后重试。");}
-  return payload;`);
 replace('Check();Directory.CreateDirectory(Tools);','Check();if(plan.Modules!=null&&!plan.Modules.Contains("exporter")){Report("所选模块无需额外运行环境",100);return;}Directory.CreateDirectory(Tools);');
 replace('Report("运行环境准备完成，无需 Node.js 或 Electron",100);','Report("运行环境准备完成",100);');
 replace('public string Native,FFmpeg,FFprobe,Payload,FFmpegSourceDir;','public string Native,FFmpeg,FFprobe,Payload,FFmpegSourceDir;public string[] Modules;');

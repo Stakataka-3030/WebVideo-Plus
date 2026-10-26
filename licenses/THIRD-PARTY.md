@@ -9,7 +9,7 @@
 - **OpenWebGAL / Terre 与 WebGAL 4.6.5**：新增编辑器独立前端基线与固定官方项目/模板运行时适配。`build/runtime-4.6.5-test.json` 记录原始测试资源字节；4.6.5 播放运行时不替换随包 4.6.4 回退快照。来源为 https://github.com/OpenWebGAL/WebGAL_Terre/tree/4.6.5 与 https://github.com/OpenWebGAL/WebGAL/tree/4.6.5 。
 - **OPPO Sans v1.00**：保留上游原始字体与 `WebgalUI` CSS，不进行字体替换、修改或重新授权。本项目暂按 OPPO 历史公开免费商用许可涵盖软件内嵌分发理解；公开限制和解释边界见上述来源说明。资源圆体与思源宋体仍分别适用其原有 OFL 许可。
 - **Microsoft WebView2**：C# 原生导出与嵌入浏览器运行环境。managed SDK/loader 固定使用 Microsoft.Web.WebView2 1.0.4191.47 官方 NuGet 包；安装引导程序固定 Microsoft 官方最终下载地址及 SHA-256，Windows 上验证签名。两者不再要求旧安装器，不解析 latest，并随包保留相应许可文本。
-- **FFmpeg / ffprobe**：视频编码、媒体探测和音频混合。安装器在缺少可用版本时按固定版本获取；FFmpeg 适用其自身许可。
+- **FFmpeg / ffprobe**：视频编码、媒体探测和音频混合。内置工具采用固定 BtbN win64 GPL 9.0 构建（n9.0.2-17-g2a571b6068，2026-09-30），单独命令行程序按 GPLv3 分发，保留 `FFMPEG-GPL-3.0.txt` 和 `FFMPEG-BUILD-README.txt`。对应源码与构建材料作为独立发行附件提供，两条维护线共用同一固定附件，见 `../docs/FFMPEG-DISTRIBUTION.md`。
 - **Node.js**：仅用于可选 AI 运行环境及构建工具。准备时下载官方 Node.js 22.20.0 Windows x64 ZIP，验证 SHA-256；启用 AI 模块时随其运行目录提供固定可执行文件和许可证。
 - **DeepSeek Harness / DSH 0.1.5-rc.1** 与 **@earendil-works/pi-ai 0.85.1**：可选 AI 模块的多提供商、流式协议和模型目录基础。版本由 `ai-runtime/package-lock.json` 固定。
 - **js-yaml 4.1.1**：Anogo YAML 导入使用的解析器；仓库包含压缩版本及 MIT 许可。
@@ -52,3 +52,6 @@ The bundled WebGAL 4.6.4 display plugin derives from `pixi-live2d-display-webgal
 The unchanged OPPO Sans v1.00 public grant and restrictions are retained in `OPPO-Sans-1.00-NOTICE.txt`. This documents the existing embedded-use interpretation, not a new legal permission or a substitution of newer font terms. Original font/CSS bytes and host typography remain unchanged.
 
 `standardwebhooks@1.1.1` 的 MIT 声明由其 npm gitHead `b4d2c14fc5b4ccff3ff271e3b087dff812254c59` 的父级 `libraries/LICENSE` 确认（Copyright 2023 Svix），保留为 `LICENSE-standardwebhooks-1.1.1-MIT.txt`；根仓库 Apache 许可并不覆盖该更具体的子目录许可。AI 每个锁定包在最终产物中都须具有可定位的适用全文：保留本包的 LICENSE/LICENCE/README 文本或明确映射的共享许可副本，不仅校验 SPDX 字符串。
+
+
+- **7-Zip 25.00 Windows x64 命令行解压支持**：只用于安装器载荷压缩/释放，附带 `7z.exe`、`7z.dll`，不安装图形界面或系统关联。固定官方发行地址、原始归档和文件 SHA256 见 `build/dependencies.lock.json` 的 `installerDecoder`；保留完整上游许可与版权文本 `licenses/7ZIP-LICENSE.txt`（包括其单独声明的范围）。官方下载及对应来源入口：https://www.7-zip.org/download.html 。组件运行不依赖本机另装 7-Zip 或系统 tar。

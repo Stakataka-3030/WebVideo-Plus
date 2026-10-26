@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const source=fs.readFileSync(new URL('../browser/workload.js',import.meta.url),'utf8');
+const source=fs.readFileSync(new URL('../browser/audio.js',import.meta.url),'utf8')+'\n'+fs.readFileSync(new URL('../browser/workload.js',import.meta.url),'utf8');
 const plain=value=>JSON.parse(JSON.stringify(value));
 function sentence(commandRaw,content,args={}){
   return{command:commandRaw==='say'?0:1,commandRaw,content,args:Object.entries(args).map(([key,value])=>({key,value}))};

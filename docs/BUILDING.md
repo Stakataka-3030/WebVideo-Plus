@@ -1,10 +1,10 @@
 # 构建与发布
 
-当前发行分支版本 **1.3.4**，产品内部开发标识 **0.9.6**，安装器 Win32 版本 **1.3.4.0**，导出内核 **0.6.60**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
+当前发行分支版本 **1.3.5**，产品内部开发标识 **0.9.6**，安装器 Win32 版本 **1.3.5.0**，导出内核 **0.6.62**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`scripts/manifest.mjs`、`build-product.ps1`、`scripts/configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
-更新检查读取 GitHub 正式 Release 列表。发布 1.3.4 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"product":"terre","webgal":["4.6.6"]} -->` 一并放进 Release 正文，并保持自动推荐通道隔离（4.6.4 / MyGO 3.2.1 留在 1.1.10；1.2.1 留在 4.6.5；1.3.4 仅推荐给 4.6.6）；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
+更新检查读取 GitHub 正式 Release 列表。发布 1.3.5 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"product":"terre","webgal":["4.6.6"]} -->` 一并放进 Release 正文，并保持自动推荐通道隔离（4.6.4 / MyGO 3.2.1 留在 1.1.10；1.2.1 留在 4.6.5；1.3.5 仅推荐给 4.6.6）；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
 
 ## 初次准备（不需要旧安装器）
 
@@ -39,7 +39,7 @@ Pop-Location
 
 `-Offline` 只适用于构建输入准备，不等同于 `npm ci` 离线；首次恢复 AI npm 依赖仍需要网络或已有 npm 缓存。缺失或损坏的离线输入会明确报错，不会绕过校验。
 
-输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正式安装器为 `dist/WebVideo+-Setup-1.3.4.exe`，Win32 文件版本 `1.3.4.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
+输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正式安装器为 `dist/WebVideo+-Setup-1.3.5.exe`，Win32 文件版本 `1.3.5.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
 
 ### 旧 bootstrap 的显式迁移入口
 
@@ -68,7 +68,7 @@ Pop-Location
 - `scripts/verify-installer.ps1`：不执行安装器，直接检查 Win32 版本、嵌入 ZIP / manifest 哈希及逐文件完整性
 - `scripts/compare-gpu-scaling.ps1`：分析导出结果，不参与构建
 
-字体回归还会用 Edge/Chromium 检查中文、日文、数字、显式换行、排版边界及原字体对照，并用固定 FFmpeg 做 WebView2 实际导出和解码帧检查。CI 仅保存合成测试的 PNG/JSON/log，不上传字体、测试 MP4 或安装器。`ffmpegTest` 是 CI 专用依赖，不改变安装器的现有 FFmpeg 获取流程。
+字体回归还会用 Edge/Chromium 检查中文、日文、数字、显式换行、排版边界及原字体对照，并用固定 FFmpeg 做 WebView2 实际导出和解码帧检查。CI 仅保存合成测试的 PNG/JSON/log，不上传字体、测试 MP4 或安装器。`ffmpegTest` 沿用原固定输入键，现用于安装器内置工具和 CI；分发材料状态和正式构建门槛见 [FFmpeg 内置说明](FFMPEG-DISTRIBUTION.md)。
 
 Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复准备、回归检查、完整产品安装器编译和清单校验；不运行生成的安装器，也不发布 Release。修改依赖锁文件时应同时核对官方来源、许可、运行快照和完整 CI，不要只替换版本字符串。
 
@@ -100,7 +100,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 .\build-product.ps1 -Fast -InternalBuild
 ```
 
-`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.3.4` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
+`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.3.5` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
 
 需要重现某个旧内部标识时，可直接覆盖：
 
@@ -108,7 +108,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 .\build-product.ps1 -Fast -InternalVersion 0.5.7
 ```
 
-指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.3.4`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
+指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.3.5`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
 
 ## 安装恢复与存储目录
 
@@ -207,3 +207,23 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 `node scripts/verify-materials.mjs --source` 检查跟踪及未忽略的新源码材料；最终包与 EXE 还会检查注册媒体原字节、专有 Core/模型/用户缓存/未知二进制和归档、固定原生依赖，以及每个锁定 AI 包的适用许可全文。新增可分发媒体或许可来源必须更新 `build/material-policy.json` / `build/third-party-notices.json` 并提供来源和哈希；API SDK 的类型 `models/*.js` 不按游戏模型处理。
 
 最终 EXE 静态核验命令为 `node scripts/verify-installer-materials.mjs <installer.exe>`。它读取内嵌 ZIP，校验 CRC、MANIFEST 与材料/许可闭包，不运行安装器。许可证文本校验允许 Windows LF/CRLF 差异；媒体和固定二进制仍按原字节校验。现存许可、版权、来源和历史验收记录应保留，许可通过只证明分发清单完整，不替代第三方具体使用条款。
+
+
+### Terre 发布前实机验收
+
+两条维护线均须验证：安装及升级、原入口启动与关闭、基本编辑和预览、短片导出。用隔离目录和自建工程，不覆盖已有工程；确认窗口、lifecycle、服务及导出进程在结束后按归属清理。记录安装器哈希、源码提交、宿主文件指纹、引擎版本、日志与成片路径。
+
+新增音量和连接修复须运行 `node --test tests/audio-variable-volume.test.mjs tests/export-initial-connection.test.mjs`；并运行生命周期原生回归、创建页及共享素材预览回归。音频实测分别覆盖 BGM、音效和配音的变量值与静音值，不能仅以计划 JSON 正确代替真实混音。
+
+最新 WebGAL 对应的 Video+ 还须使用真实 Steam 安装的软件副本，完成安装和启动。记录 Steam AppID/build ID、宿主和引擎版本及验收证据。ZIP 版通过不能代替 Steam 验收；缺少安装、登录或其他真实条件时记录阻塞，不标为通过。旧 WebGAL 维护线不增加 Steam 验收。
+
+发布前须由准确最终提交的 Windows CI 通过，再发布唯一正式安装 EXE；重新下载公开资产，核对版本、大小、完整 SHA-256 与 Latest 通道。Steam 副本、第三方前端、工程、私人日志和内部验收证据不作为 Release 资产。
+
+
+内置工具回归：`tests/bundled-runtime.test.ps1 -FFmpegArchive <固定归档>`。正式构建要求 `build/ffmpeg-corresponding-source.json` 的材料核对状态为 `verified`；源码附件使用所记录的固定名称、长度与 SHA-256，并与安装器同次公开。发布结束前分别回读两个安装器与共享源码入口；不能把草稿附件视为公开可用。可选使用 `python scripts/verify-source-materials.py <源码材料ZIP>` 复核完整归档，不执行源码或新增产品运行时依赖。
+
+
+正常构建使用外层 ZIP 和两个 solid 7z 压缩组：组件组、FFmpeg/ffprobe 组。解压支持固定为 7-Zip 25.00 命令行、DLL 和完整许可证；官方归档及每文件 SHA256 由 `build/dependencies.lock.json` 固定。首次准备构建输入需要构建机已有 7z 命令来读取官方归档，随后压缩/验证使用固定版本；官方 7-Zip 安装程序不会被执行。安装和运行不依赖系统 tar 或另装 7-Zip。`-Fast` 保留原平铺 ZIP 开发路径。AI 载荷提前排除安装阶段本就跳过的 `.d.ts` 和 source map，保留运行代码、依赖元数据及许可文件。
+
+
+解压先检查组哈希、路径/条目范围及普通文件属性，再展开并逐文件核对原清单；通过后才发布缓存 ready。模块选择语义保持先完整释放再应用所选模块。取消只终止本次解压子进程，事务管理器的既有协作取消方式不变。运行 `node --test tests/grouped-payload.test.mjs` 与 `tests/grouped-installer.test.ps1 -InstallerPath <候选EXE> -EvidenceDirectory <隔离证据目录>`，覆盖真实解压、缓存、损坏拒绝、取消/重试和暂存清理。

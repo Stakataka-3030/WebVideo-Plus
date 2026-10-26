@@ -1,5 +1,7 @@
 # 发行说明
 
+- [1.3.5](RELEASE_NOTES_1.3.5.md)
+
 - [1.3.4 · WebGAL 4.6.6](RELEASE_NOTES_1.3.4.md)
 
 - [1.3.3 · WebGAL 4.6.6 维护版](RELEASE_NOTES_1.3.3.md)
