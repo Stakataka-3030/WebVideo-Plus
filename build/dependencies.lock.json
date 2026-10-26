@@ -35,7 +35,7 @@
     "ai-runtime/node.exe": "fdddbf4581e046b8102815d56208d6a248950bb554570b81519a8a5dacfee95d",
     "ai-runtime/LICENSE-Node.txt": "339c50294da6a84322dcbe7285b57b248123bd4d9e37a2f72d68d5abf2574783",
     "licenses/FFMPEG-GPL-3.0.txt": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
-    "licenses/FFMPEG-BUILD-README.txt": "dafe9ae2f069ba1536669746820fd8f21003142454ece4a208cd935ff0de5f08",
+    "licenses/FFMPEG-BUILD-README.txt": "047beca7ef8a738a795be775d959e30eee2b77b089e83cc7670be1530e5fd143",
     "bin/ffmpeg.exe": "513368c81583572ce1d09d5c7ff827feed1a63db352412a5001f4da3a1583d98",
     "bin/ffprobe.exe": "0fd8f3bae96cc707993bcd8c56c13f8cd73962d37dbcaac0dad4fe3a0ce1f68f",
     "licenses/7ZIP-LICENSE.txt": "3a184aa13dc8ad30734e28ff901b478ccbcb5b41be52427a5e7609c8fd9e5ddb",
@@ -86,6 +86,16 @@
       "7z.exe": "634d38c0c414178e2f35de5cc0fb29aa082eec227e630c4481e1af7694980ac9",
       "7z.dll": "1d3bd7cfcb033c61966c890953919be21561590b95b63f9226809e92d79afd2a",
       "License.txt": "3a184aa13dc8ad30734e28ff901b478ccbcb5b41be52427a5e7609c8fd9e5ddb"
+    },
+    "correspondingSource": {
+      "version": "25.00",
+      "file": "7z2500-src.7z",
+      "bytes": 1518060,
+      "sha256": "4ca381182186c7d0f6bfdbb2dc608adb9aedce908948013219875201d3e32a47",
+      "upstreamUrl": "https://github.com/ip7z/7zip/releases/download/25.00/7z2500-src.7z",
+      "downloadUrl": "https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/third-party-sources-ffmpeg-20260930-7zip-25.00/7z2500-src.7z",
+      "releaseUrl": "https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/third-party-sources-ffmpeg-20260930-7zip-25.00",
+      "scope": "Unmodified official 7-Zip 25.00 source archive, including CLI/DLL source, build makefiles and upstream license texts; separate from the FFmpeg source-materials ZIP."
     }
   }
 }

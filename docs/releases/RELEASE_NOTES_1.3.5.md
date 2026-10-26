@@ -7,4 +7,4 @@
 - 内置固定版本的 FFmpeg 和 ffprobe，安装器采用分组压缩。
 - 补充依赖许可与对应源码获取说明。
 
-配套 FFmpeg 对应源码与构建材料：[独立附件](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.5/BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip)。
+配套 FFmpeg 与 7-Zip 源码、构建材料：[独立发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/third-party-sources-ffmpeg-20260930-7zip-25.00)。

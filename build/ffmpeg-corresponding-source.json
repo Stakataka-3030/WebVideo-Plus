@@ -21,13 +21,14 @@
     "sourceRecords": 711
   },
   "distribution": {
-    "releaseTag": "v1.3.5",
+    "releaseTag": "third-party-sources-ffmpeg-20260930-7zip-25.00",
     "assetName": "BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip",
-    "downloadUrl": "https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.5/BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip",
+    "downloadUrl": "https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/third-party-sources-ffmpeg-20260930-7zip-25.00/BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip",
     "sharedBy": [
       "v1.1.12",
       "v1.3.5"
     ],
-    "publicationRequirement": "Publish this source asset with the installers; verify unauthenticated public access before completing publication."
+    "publicationRequirement": "Publish this source asset with the installers; verify unauthenticated public access before completing publication.",
+    "sourceReleaseUrl": "https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/third-party-sources-ffmpeg-20260930-7zip-25.00"
   }
 }
