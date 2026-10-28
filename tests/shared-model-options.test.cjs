@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
-const text=fs.readFileSync(path.join(__dirname,'../browser/shared-assets.js'),'utf8'),code=text.slice(text.indexOf('function WebVideoFormatFigureReference('));assert.ok(code.startsWith('function WebVideoFormatFigureReference('));
+const text=fs.readFileSync(path.join(__dirname,'../browser/shared-assets.js'),'utf8'),code=fs.readFileSync(path.join(__dirname,'../browser/resource-labels.js'),'utf8')+'\n'+text.slice(text.indexOf('function WebVideoFigureMetadataUrl('));assert.ok(code.startsWith('function WebVideoFormatFigureReference('));
 const results=[],tick=()=>new Promise(resolve=>setImmediate(resolve)),url=id=>'http://127.0.0.1:55089/webvideo-shared/'+('b'.repeat(32))+'/'+id+'/%E4%BA%BA%E7%89%A9/%E6%A8%A1%E5%9E%8B%20A.model3.json',a=url('a'.repeat(32)),b=url('c'.repeat(32)),c=url('d'.repeat(32));
 const modern=(motion='cry03',expression='saya_smile02')=>({FileReferences:{Motions:{[motion]:[]},Expressions:[{Name:expression}]}});
 function harness({ignoreAbort=false,nativeFormats}={}){

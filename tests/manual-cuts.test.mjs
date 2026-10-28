@@ -11,7 +11,7 @@ function fixture(){
  const context={console,queueMicrotask,crypto:webcrypto,TextEncoder,URL,AbortController,setTimeout,clearTimeout,localStorage:{getItem(){return null;}},useGameEditorContext:fn=>fn({currentTag:{name:'start.txt',path:'games/demo/game/scene/start.txt'}}),useEditorStore:{use:{subPage:()=> 'demo'}},reactExports:{Fragment:'fragment',useState(initial){const index=cursor++;if(initial===null&&connectionIndex===undefined)connectionIndex=index;if(!(index in states))states[index]=typeof initial==='function'?initial():initial;return [states[index],value=>{states[index]=typeof value==='function'?value(states[index]):value;}];},useRef(value){const index=cursor++;if(!(index in states))states[index]={current:value};return states[index];},useEffect(){}},jsxRuntimeExports:{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},WebVideoRuntime:{readGameSettings:async()=>({textSpeed:50,autoSpeed:50})},fetch:async(url,options)=>{requests.push({url,body:options.body&&JSON.parse(options.body)});const value=url.endsWith('/api/jobs')&&options.method==='GET'?[]:{id:'fixture-job'};return {ok:true,status:200,text:async()=>JSON.stringify(value),json:async()=>value};}};
  for(const name of ['Button','Dialog','DialogSurface','DialogBody','DialogTitle','DialogContent','DialogActions','__CODEX_TOOLTIP__','IconWithTextItemSmall','RightSmallUp'])context[name]=name;
  context.window={WebVideoPlus:{modules:['timelineSelector'],state:()=>({model}),validateSelection:s=>!!s&&s.path===model.path&&s.source===model.source&&s.revision===model.revision,requestSelection:async options=>{selectionRequests.push(options);return selected;}},WebVideoTools:{modules:[]}};
- vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('browser/service-errors.js',root),'utf8'),context);vm.runInContext(source,context);
+ vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('browser/service-errors.js',root),'utf8'),context);vm.runInContext(fs.readFileSync(new URL('browser/subtitle-export-component.js',root),'utf8'),context);vm.runInContext(source,context);
  const render=()=>{cursor=0;return context.CodexVideoExport();};
  return {context,states,requests,selectionRequests,model,connect:()=>{if(connectionIndex===undefined)render();states[connectionIndex]={baseUrl:'http://127.0.0.1:1234',token:'fixture'};},setSelection(value){selected=value;},render,parse:(text,fps)=>Array.from(context.webVideoManualCutFrames(text,fps))};
 }
@@ -86,7 +86,7 @@ test('native job and settings wiring includes statement sources in cache and dia
  assert.match(job,/new SemaphoreSlim\(effectiveWorkers\)/);assert.match(job,/effectiveWorkers=Math\.Min\(workers,ranges\.Length\)/);
  assert.match(job,/"manualCutStatements",J\.Get\(request,"manualCutStatements"\)/);
  const planner=read('src/Planner.cs');assert.ok(planner.indexOf('StatementCuts.Collect')<planner.indexOf('SceneChain.AttachTimeline'));
- assert.ok(planner.includes('if(ManualCuts.Enabled(settings)&&!LayerExport.IsAudio(request)&&!J.B(request,"analysisOnly"))'));
+ assert.ok(planner.includes('if(ManualCuts.Enabled(settings)&&!LayerExport.IsAudio(request)&&!DialogueSubtitles.Is(request)&&!J.B(request,"analysisOnly"))'));
  assert.match(planner,/J\.Get\(request,"manualCutStatements"\),parsed\)/,'Use final parsed index/time mapping');
  assert.match(read('src/QueueService.cs'),/StatementCuts\.ValidateSelections\(J\.Get\(d,"manualCutStatements"\)\)/);
  assert.match(read('src/QueueService.cs'),/settings=ManualCuts\.SavedPreferences\(s,settings,exportKind===?"audio"\)/);

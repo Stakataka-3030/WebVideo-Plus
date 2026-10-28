@@ -3,6 +3,8 @@ param(
  [Parameter(Mandatory=$true)][string]$MygoArchive,
  [Parameter(Mandatory=$true)][string]$PackageRoot,
  [string]$PreviousInstaller,
+ [ValidateSet("windows-zip","recorded-local")][string]$OfficialVariant="windows-zip",
+ [ValidateSet("fresh","upgrade-1.1.7")][string[]]$Scenarios=@("fresh","upgrade-1.1.7"),
  # Investigation fallback for the patch layer only; never counts as an installed release.
  [string]$PreviousPatchPackageRoot,
  [string]$OutputRoot=(Join-Path ([IO.Path]::GetTempPath()) 'webvideo-terre-preflight')
@@ -12,6 +14,7 @@ $PSNativeCommandUseErrorActionPreference=$false
 if($env:OS -ne 'Windows_NT'){throw 'Windows manager file transactions required.'}
 $repository=Split-Path -Parent $PSScriptRoot
 $pins=Get-Content -LiteralPath (Join-Path $repository 'build/frontend-compatibility-fixtures.json') -Raw | ConvertFrom-Json
+if($OfficialVariant -eq "recorded-local"){if(!$pins.recordedOfficial){throw "Recorded local fixture pin missing"};$pins.official=$pins.recordedOfficial}
 $PackageRoot=[IO.Path]::GetFullPath($PackageRoot)
 $OfficialTerreRoot=[IO.Path]::GetFullPath($OfficialTerreRoot)
 $MygoArchive=[IO.Path]::GetFullPath($MygoArchive)
@@ -40,7 +43,7 @@ $results=[Collections.Generic.List[object]]::new()
 $sourceHashes=@{}
 $globalRoot=Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'WebGALVideoExporter'
 $globalHashes=@{};foreach($name in @('last-install.json','instances.json')){$file=Join-Path $globalRoot $name;$globalHashes[$file]=Hash $file}
-$summary=[ordered]@{schemaVersion=1;run=$run;success=$false;scope='4.6.4 official and MyGO 3.2.1; no host/browser/service launch';cases=$results;limitations=@('Reduced host file fixtures, not installer GUI or running-editor acceptance.');inputs=@{}}
+$summary=[ordered]@{schemaVersion=1;run=$run;success=$false;scope='4.6.4 official and MyGO 3.2.1; no host/browser/service launch';cases=$results;limitations=@('Reduced host file fixtures, not installer GUI or running-editor acceptance.');inputs=@{officialVariant=$OfficialVariant}}
 try {
  Plain $MygoArchive
  Require ((Split-Path -Leaf $MygoArchive) -eq $pins.mygo.archiveFileName) 'Unexpected MyGO archive filename.'
@@ -71,7 +74,7 @@ try {
  $product=Get-Content -LiteralPath (Join-Path $PackageRoot 'product.json') -Raw | ConvertFrom-Json
  $version=Get-Content -LiteralPath (Join-Path $repository 'version.json') -Raw | ConvertFrom-Json
  Require ($product.version -eq $version.productVersion -and $product.terreVersion -eq $pins.hostVersion) 'Package does not match this source branch/version.'
- $summary.inputs=@{officialBundleSha256=$pins.official.files.PSObject.Properties[$pins.official.bundle].Value;mygoArchiveSha256=$archiveHash;mygoBundleSha256=$pins.mygo.files.PSObject.Properties[$pins.mygo.bundle].Value;productVersion=$product.version;managerSha256=(Hash $manager)}
+ $summary.inputs=@{officialVariant=$OfficialVariant;selectedScenarios=$Scenarios;officialBundleSha256=$pins.official.files.PSObject.Properties[$pins.official.bundle].Value;mygoArchiveSha256=$archiveHash;mygoBundleSha256=$pins.mygo.files.PSObject.Properties[$pins.mygo.bundle].Value;productVersion=$product.version;managerSha256=(Hash $manager)}
  $oldInstallPackage=$null
  if($PreviousInstaller){
   $PreviousInstaller=[IO.Path]::GetFullPath($PreviousInstaller);Plain $PreviousInstaller
@@ -133,8 +136,9 @@ for(const {name,data} of entries.values()){
   $results.Add($item);Write-Output ($name+': '+$item.status) | Out-Host
   return @{output=$output;success=($item.status -eq 'PASS');requested=@($value.requested)}
  }
- function Invoke-Owned([string]$exe,[string]$folder,[string]$operation,[string[]]$modules){
-  $arguments=@('install','--terre-dir',('"'+(Join-Path $folder 'host')+'"'),'--state-dir',('"'+(Join-Path $folder 'state')+'"'),'--install-cache-dir',('"'+(Join-Path $folder 'cache')+'"'),'--work-dir',('"'+(Join-Path $folder 'work')+'"'),'--games-root',('"'+(Join-Path $folder 'games')+'"'),'--output-dir',('"'+(Join-Path $folder 'output')+'"'),'--terre-url','http://localhost:32151','--no-recent','true','--delete-data','false','--delete-cache','false','--modules',($modules -join ','))
+ function Invoke-Owned([string]$exe,[string]$folder,[string]$operation,[string[]]$modules,[string]$verb='install'){
+  $arguments=@($verb,'--terre-dir',('"'+(Join-Path $folder 'host')+'"'),'--state-dir',('"'+(Join-Path $folder 'state')+'"'),'--install-cache-dir',('"'+(Join-Path $folder 'cache')+'"'),'--work-dir',('"'+(Join-Path $folder 'work')+'"'),'--games-root',('"'+(Join-Path $folder 'games')+'"'),'--output-dir',('"'+(Join-Path $folder 'output')+'"'),'--terre-url','http://localhost:32151','--no-recent','true','--delete-data','false','--delete-cache','false')
+  if($modules.Count -gt 0){$arguments+=@('--modules',($modules -join ','))}
   $watch=[Diagnostics.Stopwatch]::StartNew()
   $p=Start-Process -FilePath $exe -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $folder ($operation+'.log')) -RedirectStandardError (Join-Path $folder ($operation+'.error.log'))
   $null=$p.Handle
@@ -145,7 +149,7 @@ for(const {name,data} of entries.values()){
  foreach($profile in @(@{name='official';root=$OfficialTerreRoot;pin=$pins.official},@{name='mygo';root=$mygo;pin=$pins.mygo})){
   $inputFile=Join-Path $profile.root $profile.pin.bundle
   $seed=Patch-Case ($profile.name+'-1.1.7-control') $oldManager $PreviousPatchPackageRoot $inputFile 'off'
-  foreach($scenario in @('fresh','upgrade-1.1.7')){foreach($shared in @('on','off')){
+  foreach($scenario in $Scenarios){foreach($shared in @('on','off')){
    $name=$profile.name+'-'+$scenario+'-shared-'+$shared
    $previous=if($scenario -eq 'upgrade-1.1.7' -and $seed.success){$seed.output}else{''}
    if($scenario -eq 'upgrade-1.1.7' -and !$seed.success){$results.Add(@{layer='patch';name=$name;status='NOT_RUN';reason='1.1.7 seed patch failed'});continue}
@@ -196,11 +200,33 @@ for(const {name,data} of entries.values()){
     }
     $item.sharedToggles=$toggles
    }
+   if($item.status -eq 'PASS'){
+    $subtitleToggles=[Collections.Generic.List[object]]::new()
+    foreach($enabled in @($false,$true)){
+     $selection=@($patched.requested | Where-Object {$_ -ne 'subtitles'});if($enabled){$selection+=@('subtitles')}
+     $toggle=Invoke-Owned $manager $folder ('subtitles-'+$enabled.ToString()) $selection
+     if($toggle.exitCode -eq 0){
+      $record=Get-Content -LiteralPath (Join-Path $hostRoot 'webvideo-plus.json') -Raw | ConvertFrom-Json
+      $manifest=Get-Content -LiteralPath (Join-Path $folder 'state/install.json') -Raw | ConvertFrom-Json
+      $installedSource=Join-Path $hostRoot ('public/assets/'+$manifest.installedBundle)
+      & node (Join-Path $PSScriptRoot 'subtitle-frontend-wiring.test.cjs') $installedSource $(if($enabled){'on'}else{'off'}) 'on' | Out-Host
+      $toggle.selectionMatches=(($record.modules -contains 'subtitles') -eq $enabled) -and $LASTEXITCODE -eq 0
+     }
+     if($toggle.exitCode -ne 0 -or !$toggle.selectionMatches){$item.status='FAIL'}
+     $subtitleToggles.Add($toggle)
+    }
+    $item.subtitleToggles=$subtitleToggles
+    $removed=Invoke-Owned $manager $folder 'uninstall-current' @() 'uninstall';$item.uninstall=$removed
+    $item.originalFilesRestored=$removed.exitCode -eq 0 -and !(Test-Path (Join-Path $hostRoot 'webvideo-plus.json'))
+    foreach($relative in @('public/index.html',$profile.pin.bundle,'WebGAL_Terre.exe')){$item.originalFilesRestored=$item.originalFilesRestored -and ((Hash (Join-Path $hostRoot $relative)) -eq (Hash (Join-Path $profile.root $relative)))}
+    if(!$item.originalFilesRestored){$item.status='FAIL'}
+   }
    Require (([IO.File]::ReadAllText((Join-Path $folder 'games/keep.txt'))) -eq 'owned sentinel') 'Fixture project was changed.'
    $results.Add($item);Write-Output ($name+' manager transaction: '+$item.status)
   }}
  }
  $summary.success=@($results | Where-Object {$_.status -ne 'PASS'}).Count -eq 0
+ $summary.releaseGateComplete=$summary.success -and ($Scenarios -contains "fresh") -and ($Scenarios -contains "upgrade-1.1.7")
 }catch{$summary.error=$_.Exception.Message;$summary.success=$false}
 finally {
  foreach($file in $sourceHashes.Keys){if((Hash $file) -ne $sourceHashes[$file]){$summary.success=$false;$summary.sourceChanged=$file}}

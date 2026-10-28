@@ -26,7 +26,7 @@ test('existing selector cut-point purpose exposes wait/technical statements and 
  const selection=new f.context.WebVideoTimelineCore.Selection();selection.bind(model);const wait=model.statements.find(row=>row.command==='wait');
  let chosenSnapshot=null;const api={state:()=>({selection}),close:confirm=>{if(confirm)chosenSnapshot=selection.snapshot();}};
  const context={reactExports:{createElement:(type,props,...children)=>({type,props:{...props,children}}),useMemo:fn=>fn()},useWebVideoInlineSelection:()=>({selected:new Set([wait.id]),setSelected(){},list:{},move(){},stop(){},down(){},choose(){}})};
- vm.createContext(context);const host=read('browser/timeline-host.js'),from=host.indexOf('function WebVideoStorySelector('),to=host.indexOf('function WebVideoSelectionButton(',from);vm.runInContext(host.slice(from,to),context);
+ vm.createContext(context);vm.runInContext(read('browser/resource-labels.js'),context);const host=read('browser/timeline-host.js'),from=host.indexOf('function WebVideoStorySelector('),to=host.indexOf('function WebVideoSelectionButton(',from);vm.runInContext(host.slice(from,to),context);
  const tree=context.WebVideoStorySelector({api,model,mode:'set',dark:false,dialogRef:{},purpose:'cutPoints'});
  const options=nodes(tree).filter(node=>node.props.role==='option');assert.equal(options.length,3,'Every non-comment statement must be selectable');
  assert.ok(nodes(tree).some(node=>node.props['aria-label']==='选择切点语句'));

@@ -86,6 +86,14 @@ $null=Invoke-Owned 'install' 'install-shared-export' 'sharedAssets,exporter,comp
 $installed=Get-Content -LiteralPath (Join-Path $hostRoot 'webvideo-plus.json') -Raw | ConvertFrom-Json
 Require ($installed.internalVersion -eq $product.internalVersion -and 'sharedAssets' -in $installed.modules -and 'exportKernel' -in $installed.modules) 'Installed identity/dependencies mismatch.'
 $null=Invoke-Owned 'install' 'reinstall-shared-export' 'sharedAssets,exporter,compactGameTools';Check-Enabled $true
+foreach($enabled in @($true,$false)){
+ $modules='sharedAssets,exporter,compactGameTools';if($enabled){$modules+=',subtitles'}
+ $null=Invoke-Owned 'install' ('subtitles-'+$enabled.ToString()) $modules
+ $record=Get-Content -LiteralPath (Join-Path $hostRoot 'webvideo-plus.json') -Raw | ConvertFrom-Json
+ $installedManifest=Get-Content -LiteralPath (Join-Path $state 'install.json') -Raw | ConvertFrom-Json
+ & node (Join-Path $PSScriptRoot 'subtitle-frontend-wiring.test.cjs') (Join-Path $hostRoot ('public/assets/'+$installedManifest.installedBundle)) $(if($enabled){'on'}else{'off'}) 'on' | Out-Host
+ Require (($record.modules -contains 'subtitles') -eq $enabled -and $LASTEXITCODE -eq 0) 'SRT optional module selection did not reach the installed frontend.'
+}
 $project=Join-Path $games '中文 空格 项目';$scene=Join-Path $project 'game/scene/branch/start.txt';$config=Join-Path $project 'game/config.txt';$engineMarker=Join-Path $project '.webvideo-engine.json';Put $scene ':;';Put $config 'Game_name:事务测试;'
 Put $scene ('changeFigure:__shared/'+$libraryId+'/model.model3.json;')
 $null=Invoke-Owned 'install' 'disable-shared-retain-export-kernel' 'exporter,compactGameTools';Check-Enabled $false

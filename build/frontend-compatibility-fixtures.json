@@ -34,5 +34,16 @@
     "fileName": "WebVideo+-Setup-1.1.7.exe",
     "sha256": "84c3e29b2e5743a3b30f55b966e9f6a5fb71978b577bcdae8de7929708118db6",
     "url": "https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.1.7/WebVideo%2B-Setup-1.1.7.exe"
+  },
+  "recordedOfficial": {
+    "bundle": "public/assets/index-bf351481.js",
+    "metadata": "assets/templates/WebGAL_Template/webgal-engine.json",
+    "kind": "recorded-local-4.6.4-original-files",
+    "files": {
+      "public/index.html": "c5686f4e8a56170d433ddf3885db8274edf43ec061a70a9f36ed01a16be2e356",
+      "public/assets/index-bf351481.js": "3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133",
+      "WebGAL_Terre.exe": "306db98b017731a89cef26d0f0381359a21e6cc10b86e3a94876a8c9b317b772",
+      "assets/templates/WebGAL_Template/webgal-engine.json": "a49a40c80608be8a7ed3c97c1c64dcd507abed1e58c91bdd96766f8bcac82eed"
+    }
   }
 }

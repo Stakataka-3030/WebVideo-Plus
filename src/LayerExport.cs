@@ -3,7 +3,7 @@ namespace NativeVideo {
  public static class LayerExport {
   public const string TransparentBackground="__webvideo_transparent.png";
   static readonly byte[] TransparentPng=Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=");
-  public static string Kind(object request){string value=J.S(request,"exportKind","full");return new[]{"full","stage","dialog","audio"}.Contains(value)?value:"full";}
+  public static string Kind(object request){string value=J.S(request,"exportKind","full");return new[]{"full","stage","dialog","audio","subtitles"}.Contains(value)?value:"full";}
   public static bool IsStage(object request){return Kind(request)=="stage";}
   public static bool IsDialog(object request){return Kind(request)=="dialog";}
   public static bool IsAudio(object request){return Kind(request)=="audio";}
@@ -14,11 +14,11 @@ namespace NativeVideo {
   public static bool TransparentVideo(object request){return IsDialog(request)||SuppressBackground(request);}
   public static string TransparentFormat(object request){return J.S(request,"transparentFormat","mov")=="webm"?"webm":"mov";}
   public static string TransparentCodec(object request){return TransparentFormat(request)=="webm"?"vp9-alpha":"prores4444";}
-  public static string RequiredExtension(string kind,bool includeBackground,string transparentFormat="mov"){if(kind=="audio")return ".wav";if(kind=="dialog"||(kind=="stage"&&!includeBackground))return transparentFormat=="webm"?".webm":".mov";return ".mp4";}
+  public static string RequiredExtension(string kind,bool includeBackground,string transparentFormat="mov"){if(kind=="subtitles")return ".srt";if(kind=="audio")return ".wav";if(kind=="dialog"||(kind=="stage"&&!includeBackground))return transparentFormat=="webm"?".webm":".mov";return ".mp4";}
   public static string PartFile(object request){return TransparentVideo(request)?"video."+TransparentFormat(request):"video.mp4";}
   public static bool HasAlpha(object video,object request){if(TransparentFormat(request)=="webm"){var tags=J.Get(video,"tags");return J.S(tags,"ALPHA_MODE")=="1"||J.S(tags,"alpha_mode")=="1";}return J.S(video,"pix_fmt").StartsWith("yuva",StringComparison.OrdinalIgnoreCase);}
   static string[] TransparentEncoderArgs(object request){return TransparentFormat(request)=="webm"?new[]{"-c:v","libvpx-vp9","-pix_fmt","yuva420p","-crf","28","-b:v","0","-deadline","good","-cpu-used","4","-auto-alt-ref","0"}:new[]{"-c:v","prores_ks","-profile:v","4","-pix_fmt","yuva444p10le","-vendor","apl0"};}
-  public static string Label(object request){string kind=Kind(request);return kind=="stage"?"舞台":kind=="dialog"?"对话框":kind=="audio"?"WebGAL 音轨":"视频";}
+  public static string Label(object request){string kind=Kind(request);return kind=="subtitles"?"对白字幕":kind=="stage"?"舞台":kind=="dialog"?"对话框":kind=="audio"?"WebGAL 音轨":"视频";}
 
   static string RewriteChangeBg(string source){
    if(string.IsNullOrWhiteSpace(source))return source;int colon=source.IndexOf(':');if(colon<0)return source;int semi=source.LastIndexOf(';');if(semi<=colon)return source;int end=semi;

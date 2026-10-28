@@ -24,10 +24,14 @@ jobs:
       - name: Verify repository layout and browser regressions
         shell: pwsh
         run: |
+          node scripts/configure-installer.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Installer regression source generation failed' }
           $tests = @(Get-ChildItem -Path 'tests/*.test.mjs' -File | Sort-Object FullName | ForEach-Object { $_.FullName })
           if ($tests.Count -eq 0) { throw 'No shared Node regression files found' }
           & node --test --test-concurrency=2 @tests
           if ($LASTEXITCODE -ne 0) { throw "Node regression checks failed" }
+          node tests/shared-resource-labels.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Shared resource display checks failed' }
           node tests/shared-model-options.test.cjs
           if ($LASTEXITCODE -ne 0) { throw "Model metadata format and cancellation checks failed" }
           node tests/project-resources-ui.test.cjs
@@ -160,6 +164,8 @@ jobs:
               "- $Name`: $($record.status)" | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
             }
           }
+          Invoke-CiRegression 'dialogue-subtitles' './tests/dialogue-subtitles.test.ps1' @{ ScratchRoot=(Join-Path $evidence 'subtitles') }
+          Invoke-CiRegression 'manager-file-paths' './tests/manager-file-paths.test.ps1' @{ OutputRoot=(Join-Path $evidence 'manager-paths') }
           Invoke-CiRegression 'cubism-memory-defaults' './tests/cubism-memory-defaults.test.ps1' @{ OutputRoot=(Join-Path $evidence 'memory-defaults') }
           Invoke-CiRegression 'lifecycle-settings' './tests/lifecycle-settings.test.ps1' @{ EvidenceDirectory=(Join-Path $evidence 'settings') }
           Invoke-CiRegression 'authoring-private-files' './tests/authoring-private-files.test.ps1' @{ OutputRoot=(Join-Path $evidence 'authoring-private-files') }

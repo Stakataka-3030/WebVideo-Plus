@@ -173,6 +173,7 @@ namespace NativeVideo {
    return Directory.Exists(target)?Directory.GetFiles(target,"*",SearchOption.AllDirectories).Concat(Directory.GetDirectories(target,"*",SearchOption.AllDirectories)).Select(Files.Full).ToArray():new string[0];
   }
   static void RollbackMigration(string state,string source,string[] retained){
+   if(!Directory.Exists(source))return;
    var keep=new HashSet<string>(retained,StringComparer.OrdinalIgnoreCase);
    string prefix=Files.Full(source).TrimEnd('\\','/')+Path.DirectorySeparatorChar;
    foreach(string original in Directory.GetFiles(source,"*",SearchOption.AllDirectories)){

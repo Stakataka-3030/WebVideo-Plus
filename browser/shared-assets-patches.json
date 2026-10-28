@@ -78,5 +78,89 @@
     "scopeEnd": "function Bgm(",
     "regex": "(?<prefix>function ChangeFigure\\([\\s\\S]*?)jsxRuntimeExports\\.jsx\\(AssetPreview,\\{basePath:\"figure\",file:(?<reference>[A-Za-z_$][\\w$]*)\\.value\\}\\),jsxRuntimeExports\\.jsx\\(\"span\",\\{children:\\k<reference>\\.value\\}\\)",
     "replace": "${prefix}jsxRuntimeExports.jsx(AssetPreview,{basePath:\"figure\",file:${reference}.value}),jsxRuntimeExports.jsx(WebVideoFigureAddress,{value:${reference}.value})"
+  },
+  {
+    "scopeStart": "function ChangeBg(",
+    "scopeEnd": "function OptionCategory(",
+    "regex": "(?<prefix>function ChangeBg\\([\\s\\S]*?)jsxRuntimeExports\\.jsx\\(AssetPreview,\\{basePath:\"background\",file:(?<reference>[A-Za-z_$][\\w$]*)\\.value\\}\\),jsxRuntimeExports\\.jsx\\(\"span\",\\{children:\\k<reference>\\.value\\}\\)",
+    "replace": "${prefix}jsxRuntimeExports.jsx(AssetPreview,{basePath:\"background\",file:${reference}.value}),jsxRuntimeExports.jsx(WebVideoFigureAddress,{value:${reference}.value})"
+  },
+  {
+    "scopeStart": "function Bgm(",
+    "scopeEnd": "function PlayVideo(",
+    "regex": "children:\\[(?<reference>[A-Za-z_$][\\w$]*)\\.value\\+\"\\s{2}\",(?=jsxRuntimeExports\\.jsx\\(ChooseFile,)",
+    "replace": "children:[jsxRuntimeExports.jsx(WebVideoResourceAddress,{value:${reference}.value}),"
+  },
+  {
+    "scopeStart": "function PlayVideo(",
+    "scopeEnd": "function Unrecognized(",
+    "regex": "children:\\[(?<reference>[A-Za-z_$][\\w$]*)\\.value\\+\"\\s{2}\",(?=jsxRuntimeExports\\.jsx\\(ChooseFile,)",
+    "replace": "children:[jsxRuntimeExports.jsx(WebVideoResourceAddress,{value:${reference}.value}),"
+  },
+  {
+    "scopeStart": "function PlayEffect(",
+    "scopeEnd": "function SetTextbox(",
+    "regex": "children:\\[(?<reference>[A-Za-z_$][\\w$]*)\\.value\\+\"\\s{2}\",(?=jsxRuntimeExports\\.jsx\\(ChooseFile,)",
+    "replace": "children:[jsxRuntimeExports.jsx(WebVideoResourceAddress,{value:${reference}.value}),"
+  },
+  {
+    "scopeStart": "function Say(",
+    "scopeEnd": "function AssetPreview(",
+    "regex": "children:\\[(?<reference>[A-Za-z_$][\\w$]*)\\.value!==\"\"\\?`\\$\\{\\k<reference>\\.value\\}\\s{2}`:\"\",(?=jsxRuntimeExports\\.jsx\\(ChooseFile,)",
+    "replace": "children:[${reference}.value!==\"\"?jsxRuntimeExports.jsx(WebVideoResourceAddress,{value:${reference}.value}):null,"
+  },
+  {
+    "scopeStart": "function GameConfigEditorWithFileChoose(",
+    "scopeEnd": "function GameConfigEditorWithImageFileChoose(",
+    "regex": "children:\\[(?<reference>[A-Za-z_$][\\w$]*)\\.value,(?=jsxRuntimeExports\\.jsx\\(ChooseFile,)",
+    "replace": "children:[jsxRuntimeExports.jsx(WebVideoResourceText,{value:${reference}.value}),"
+  },
+  {
+    "scopeStart": "function Intro(",
+    "scopeEnd": "function End(",
+    "regex": "children:\\[(?<reference>[A-Za-z_$][\\w$]*)\\.value,(?<space>\"\\s\"),(?=jsxRuntimeExports\\.jsx\\(ChooseFile,)",
+    "replace": "children:[jsxRuntimeExports.jsx(WebVideoResourceText,{value:${reference}.value}),${space},"
+  },
+  {
+    "scopeStart": "function UnlockExtra(",
+    "scopeEnd": "function SetAnimation(",
+    "regex": "children:\\[(?<reference>[A-Za-z_$][\\w$]*)\\.value,(?<space>\"\\s\"),(?=jsxRuntimeExports\\.jsx\\(ChooseFile,)",
+    "replace": "children:[jsxRuntimeExports.jsx(WebVideoResourceText,{value:${reference}.value}),${space},"
+  },
+  {
+    "scopeStart": "function MiniAvatar(",
+    "scopeEnd": "function Comment(",
+    "regex": "children:\\[(?<reference>[A-Za-z_$][\\w$]*)\\.value\\+\"\\s{2}\",(?=jsxRuntimeExports\\.jsx\\(ChooseFile,)",
+    "replace": "children:[jsxRuntimeExports.jsx(WebVideoResourceAddress,{value:${reference}.value}),"
+  },
+  {
+    "scopeStart": "function ChangeFigure(",
+    "scopeEnd": "function Bgm(",
+    "regex": "(?<prefix>title:i18n\\._\\(\\{id:\"CJMpjt\"\\}\\),children:jsxRuntimeExports\\.jsxs\\(jsxRuntimeExports\\.Fragment,\\{children:\\[)(?<reference>[A-Za-z_$][\\w$]*)\\.value\\+\"\\s{2}\",",
+    "replace": "${prefix}jsxRuntimeExports.jsx(WebVideoResourceAddress,{value:${reference}.value}),"
+  },
+  {
+    "scopeStart": "function ChangeFigure(",
+    "scopeEnd": "function Bgm(",
+    "regex": "(?<prefix>title:i18n\\._\\(\\{id:\"9cawOO\"\\}\\),children:jsxRuntimeExports\\.jsxs\\(jsxRuntimeExports\\.Fragment,\\{children:\\[)(?<reference>[A-Za-z_$][\\w$]*)\\.value\\+\"\\s{2}\",",
+    "replace": "${prefix}jsxRuntimeExports.jsx(WebVideoResourceAddress,{value:${reference}.value}),"
+  },
+  {
+    "scopeStart": "function ChangeFigure(",
+    "scopeEnd": "function Bgm(",
+    "regex": "(?<prefix>title:i18n\\._\\(\\{id:\"zqVxgb\"\\}\\),children:jsxRuntimeExports\\.jsxs\\(jsxRuntimeExports\\.Fragment,\\{children:\\[)(?<reference>[A-Za-z_$][\\w$]*)\\.value\\+\"\\s{2}\",",
+    "replace": "${prefix}jsxRuntimeExports.jsx(WebVideoResourceAddress,{value:${reference}.value}),"
+  },
+  {
+    "scopeStart": "function ChangeFigure(",
+    "scopeEnd": "function Bgm(",
+    "regex": "(?<prefix>title:i18n\\._\\(\\{id:\"yNBfEJ\"\\}\\),children:jsxRuntimeExports\\.jsxs\\(jsxRuntimeExports\\.Fragment,\\{children:\\[)(?<reference>[A-Za-z_$][\\w$]*)\\.value\\+\"\\s{2}\",",
+    "replace": "${prefix}jsxRuntimeExports.jsx(WebVideoResourceAddress,{value:${reference}.value}),"
+  },
+  {
+    "scopeStart": "function ChangeFigure(",
+    "scopeEnd": "function Bgm(",
+    "regex": "(?<prefix>title:i18n\\._\\(\\{id:\"mlaDy3\"\\}\\),children:jsxRuntimeExports\\.jsxs\\(jsxRuntimeExports\\.Fragment,\\{children:\\[)(?<reference>[A-Za-z_$][\\w$]*)\\.value\\+\"\\s{2}\",",
+    "replace": "${prefix}jsxRuntimeExports.jsx(WebVideoResourceAddress,{value:${reference}.value}),"
   }
 ]

@@ -11,7 +11,7 @@ namespace NativeVideo {
   public static bool B(object value,string key,bool fallback=false){object x=Get(value,key);return x==null?fallback:x is bool?(bool)x:Convert.ToString(x)=="true";}
   public static List<object> A(object value){var e=value as IEnumerable;return value==null||value is string||value is IDictionary?new List<object>():e==null?new List<object>():e.Cast<object>().ToList();}
   public static Dictionary<string,object> O(params object[] values){var d=new Dictionary<string,object>();for(int i=0;i<values.Length;i+=2)d[(string)values[i]]=values[i+1];return d;}
-  public static object Read(string file){for(int attempt=0;;attempt++)try{using(var stream=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))using(var reader=new StreamReader(stream,Encoding.UTF8,true))return Parse(reader.ReadToEnd());}catch(IOException){if(attempt>=2)throw;Thread.Sleep(10);}}
+  public static object Read(string file){for(int attempt=0;;attempt++)try{using(var stream=new FileStream(Files.IoPath(file),FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))using(var reader=new StreamReader(stream,Encoding.UTF8,true))return Parse(reader.ReadToEnd());}catch(IOException){if(attempt>=2)throw;Thread.Sleep(10);}}
   public static object TryRead(string file){try{return Read(file);}catch{return null;}}
   public static void Write(string file,object value){Files.Atomic(file,Text(value));}
   public static string Num(double value){return value.ToString("0.###############",CultureInfo.InvariantCulture);}
@@ -29,7 +29,7 @@ namespace NativeVideo {
   public static string Full(string file){return Path.GetFullPath(file);}
   public static bool Within(string root,string target,bool allowRoot=false){root=Full(root).TrimEnd('\\','/');target=Full(target);return allowRoot&&target.Equals(root,StringComparison.OrdinalIgnoreCase)||target.StartsWith(root+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase);}
   public static string Under(string root,string relative){var p=Full(Path.Combine(root,relative.Replace('/',Path.DirectorySeparatorChar)));if(!Within(root,p))throw new IOException("路径超出指定目录");return p;}
-  public static void EnsureParent(string file){Directory.CreateDirectory(Path.GetDirectoryName(Full(file)));}
+  public static void EnsureParent(string file){Directory.CreateDirectory(IoPath(Path.GetDirectoryName(Full(file))));}
   public static bool LongPathsEnabled{get{bool legacy,blocked;return AppContext.TryGetSwitch("Switch.System.IO.UseLegacyPathHandling",out legacy)&&!legacy&&AppContext.TryGetSwitch("Switch.System.IO.BlockLongPaths",out blocked)&&!blocked;}}
   public static void CheckAtomicPath(string file){string full=Full(file);if(!LongPathsEnabled&&full.Length>=260||Path.GetFileName(full).Length>255)throw new PathTooLongException("文件路径过长："+full);}
   public static void Atomic(string file,string text){AtomicBytes(file,Utf8.GetBytes(text));}
@@ -39,21 +39,23 @@ namespace NativeVideo {
    EnsureParent(file);string temporary=null;
    for(int attempt=0;attempt<32;attempt++){
     string candidate=Path.Combine(parent,Guid.NewGuid().ToString("N").Substring(0,Math.Min(12,available)));FileStream stream;
-    try{stream=new FileStream(candidate,FileMode.CreateNew,FileAccess.Write,FileShare.None);}catch(IOException){if(!File.Exists(candidate))throw;continue;}
+    try{stream=new FileStream(IoPath(candidate),FileMode.CreateNew,FileAccess.Write,FileShare.None);}catch(IOException){if(!File.Exists(IoPath(candidate)))throw;continue;}
     temporary=candidate;
-    try{using(stream)stream.Write(bytes,0,bytes.Length);}catch{try{File.Delete(temporary);}catch{}throw;}
+    try{using(stream)stream.Write(bytes,0,bytes.Length);}catch{try{File.Delete(IoPath(temporary));}catch{}throw;}
     break;
    }
    if(temporary==null)throw new IOException("无法创建临时文件："+file);
-   try{for(int attempt=0;;attempt++)try{if(File.Exists(file))File.Replace(temporary,file,null);else File.Move(temporary,file);break;}catch(IOException){if(attempt>=20)throw;Thread.Sleep(25);}}
-   finally{if(File.Exists(temporary))File.Delete(temporary);}
+   try{for(int attempt=0;;attempt++)try{if(File.Exists(IoPath(file)))File.Replace(IoPath(temporary),IoPath(file),null);else File.Move(IoPath(temporary),IoPath(file));break;}catch(IOException){if(attempt>=20)throw;Thread.Sleep(25);}}
+   finally{if(File.Exists(IoPath(temporary)))File.Delete(IoPath(temporary));}
   }
-  public static void Append(string file,object value){EnsureParent(file);lock(App.LogLock)File.AppendAllText(file,J.Text(value)+"\n",Utf8);}
-  public static string Hash(string file){using(var s=File.OpenRead(file))using(var h=SHA256.Create())return BitConverter.ToString(h.ComputeHash(s)).Replace("-","").ToLowerInvariant();}
+  public static void Append(string file,object value){EnsureParent(file);lock(App.LogLock)File.AppendAllText(IoPath(file),J.Text(value)+"\n",Utf8);}
+  public static string Hash(string file){using(var s=File.OpenRead(IoPath(file)))using(var h=SHA256.Create())return BitConverter.ToString(h.ComputeHash(s)).Replace("-","").ToLowerInvariant();}
   public static string HashText(string text){using(var h=SHA256.Create())return BitConverter.ToString(h.ComputeHash(Utf8.GetBytes(text))).Replace("-","").ToLowerInvariant();}
-  public static void CopyFile(string source,string target){EnsureParent(target);if(File.Exists(target))File.Delete(target);File.Copy(source,target);}
-  public static void CopyTree(string source,string target,Action<string,long> copied=null){if(!Directory.Exists(source))return;if(Within(source,target,true))throw new IOException("副本目录必须位于源目录之外");Directory.CreateDirectory(target);foreach(var d in Directory.GetDirectories(source)){if((File.GetAttributes(d)&FileAttributes.ReparsePoint)!=0)throw new IOException("素材目录不能包含目录链接："+d);CopyTree(d,Path.Combine(target,Path.GetFileName(d)),copied);}foreach(var f in Directory.GetFiles(source)){CopyFile(f,Path.Combine(target,Path.GetFileName(f)));if(copied!=null)copied(f,new FileInfo(f).Length);}}
-  public static void DeleteTree(string allowedRoot,string target){target=Full(target);if(!Within(allowedRoot,target))throw new IOException("拒绝删除指定根目录以外的路径");if(Directory.Exists(target)){if((File.GetAttributes(target)&FileAttributes.ReparsePoint)!=0){Directory.Delete(target);return;}foreach(var d in Directory.GetDirectories(target))DeleteTree(allowedRoot,d);foreach(var f in Directory.GetFiles(target))File.Delete(f);Directory.Delete(target);}}
+  // Filesystem prefixes stay at the I/O boundary; ownership checks use logical paths.
+  internal static string IoPath(string file){if(!Path.IsPathRooted(file))file=Full(file);if(file.Length<248||file.StartsWith(@"\\?\",StringComparison.Ordinal))return file;string full=Full(file);return full.StartsWith(@"\\",StringComparison.Ordinal)?@"\\?\UNC\"+full.Substring(2):@"\\?\"+full;}
+  public static void CopyFile(string source,string target){EnsureParent(target);source=IoPath(source);target=IoPath(target);if(File.Exists(target))File.Delete(target);File.Copy(source,target);}
+  public static void CopyTree(string source,string target,Action<string,long> copied=null){if(!Directory.Exists(IoPath(source)))return;if(Within(source,target,true))throw new IOException("副本目录必须位于源目录之外");Directory.CreateDirectory(IoPath(target));foreach(var listed in Directory.GetDirectories(IoPath(source))){string d=Path.Combine(source,Path.GetFileName(listed));if((File.GetAttributes(IoPath(d))&FileAttributes.ReparsePoint)!=0)throw new IOException("素材目录不能包含目录链接："+d);CopyTree(d,Path.Combine(target,Path.GetFileName(d)),copied);}foreach(var listed in Directory.GetFiles(IoPath(source))){string f=Path.Combine(source,Path.GetFileName(listed));CopyFile(f,Path.Combine(target,Path.GetFileName(f)));if(copied!=null)copied(f,new FileInfo(IoPath(f)).Length);}}
+  public static void DeleteTree(string allowedRoot,string target){target=Full(target);if(!Within(allowedRoot,target))throw new IOException("拒绝删除指定根目录以外的路径");string io=IoPath(target);if(Directory.Exists(io)){if((File.GetAttributes(io)&FileAttributes.ReparsePoint)!=0){Directory.Delete(io);return;}foreach(var d in Directory.GetDirectories(io))DeleteTree(allowedRoot,Path.Combine(target,Path.GetFileName(d)));foreach(var f in Directory.GetFiles(io))File.Delete(IoPath(f));Directory.Delete(io);}}
  }
  public static class TerreUserData {
   public static string DefaultGamesRoot{get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".webgal_terre","games");}}
