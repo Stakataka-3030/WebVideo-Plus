@@ -13,7 +13,7 @@ function SourceClass([string]$name){
 $code=@'
 using System;using System.IO;using System.Linq;using System.Text;using System.Collections;using System.Collections.Generic;using System.Diagnostics;using System.Globalization;using System.Security.Cryptography;using System.Threading;using System.Threading.Tasks;using System.Web.Script.Serialization;
 namespace NativeVideo {
- public static class Files {public static void Atomic(string path,string text){throw new NotSupportedException();}}
+ public static class Files {public static string IoPath(string file){throw new NotSupportedException();}public static void Atomic(string path,string text){throw new NotSupportedException();}}
  public static class ManualCuts {public static bool Enabled(object settings){return false;}public static object Parse(string value,int fps){throw new NotSupportedException();}}
  public static class GpuEncoding {public static string NormalizeMode(string mode){return mode;}}
  public static class MemoryDefaultChecks {
