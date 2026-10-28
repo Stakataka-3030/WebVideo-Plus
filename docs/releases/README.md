@@ -1,5 +1,8 @@
 # 发行说明
 
+- [1.1.14 · Terre 4.6.4 / MyGO](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.14)
+- [1.3.7 · Terre 4.6.6](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.7)
+
 [返回项目首页](../../README.md) · [完整变更记录](../../CHANGELOG.md)
 
 发行说明保留各版本发布时的背景、版本号和验证范围；其中历史路径描述以当时的仓库为准。当前构建方法见[构建说明](../BUILDING.md)。
