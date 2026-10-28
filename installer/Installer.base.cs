@@ -92,9 +92,11 @@ public partial class SetupEngine {
  }
  public RuntimePlan Inspect(string payload){
   Report("正在检测原生运行环境…");var plan=new RuntimePlan{Payload=payload,Native=Path.Combine(payload,"WebGAL.Video.exe")};if(!File.Exists(plan.Native))throw new Exception("安装包缺少原生导出程序");
-  string ff=Path.Combine(Tools,FFDirectory,"bin"),legacy=Path.Combine(Tools,"ffmpeg-9.0.1-essentials_build","bin");
-  plan.FFmpeg=new[]{Path.Combine(ff,"ffmpeg.exe"),Path.Combine(legacy,"ffmpeg.exe")}.FirstOrDefault(f=>File.Exists(f)&&ValidFF(f))??FindProgram("ffmpeg.exe",ValidFF);plan.FFprobe=new[]{Path.Combine(ff,"ffprobe.exe"),Path.Combine(legacy,"ffprobe.exe")}.FirstOrDefault(f=>File.Exists(f)&&ValidFF(f))??FindProgram("ffprobe.exe",ValidFF);
-  plan.NeedFFmpeg=plan.FFmpeg==null||plan.FFprobe==null;string bundled=Path.Combine(payload,"bin");if(plan.NeedFFmpeg&&File.Exists(Path.Combine(bundled,"ffmpeg.exe"))&&File.Exists(Path.Combine(bundled,"ffprobe.exe")))plan.BundledFFmpegDir=bundled;string result=Probe(plan.Native,"check-runtime");plan.NeedWebView2=string.IsNullOrWhiteSpace(result)||!result.Contains("webview2");return plan;
+  string ff=Path.Combine(Tools,FFDirectory,"bin"),legacy=Path.Combine(Tools,"ffmpeg-9.0.1-essentials_build","bin"),bundled=Path.Combine(payload,"bin");
+  if(File.Exists(Path.Combine(ff,"ffmpeg.exe"))&&File.Exists(Path.Combine(ff,"ffprobe.exe"))&&ValidFF(Path.Combine(ff,"ffmpeg.exe"))&&ValidFF(Path.Combine(ff,"ffprobe.exe"))){plan.FFmpeg=Path.Combine(ff,"ffmpeg.exe");plan.FFprobe=Path.Combine(ff,"ffprobe.exe");}
+  else if(File.Exists(Path.Combine(bundled,"ffmpeg.exe"))&&File.Exists(Path.Combine(bundled,"ffprobe.exe")))plan.BundledFFmpegDir=bundled;
+  else{plan.FFmpeg=new[]{Path.Combine(legacy,"ffmpeg.exe")}.FirstOrDefault(f=>File.Exists(f)&&ValidFF(f))??FindProgram("ffmpeg.exe",ValidFF);plan.FFprobe=new[]{Path.Combine(legacy,"ffprobe.exe")}.FirstOrDefault(f=>File.Exists(f)&&ValidFF(f))??FindProgram("ffprobe.exe",ValidFF);}
+  plan.NeedFFmpeg=plan.FFmpeg==null||plan.FFprobe==null;string result=Probe(plan.Native,"check-runtime");plan.NeedWebView2=string.IsNullOrWhiteSpace(result)||!result.Contains("webview2");return plan;
  }
  public void Download(string[] urls,string hash,string destination){
   Directory.CreateDirectory(Path.GetDirectoryName(destination));if(File.Exists(destination)&&Hash(destination)==hash){Report("使用已校验的下载缓存",100);return;}

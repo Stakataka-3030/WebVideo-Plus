@@ -42,4 +42,5 @@ for(const entry of manifest.files){
 }
 function walk(directory){return fs.readdirSync(directory,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?walk(path.join(directory,entry.name)):[path.relative(pkg,path.join(directory,entry.name)).replaceAll('\\','/')]);}
 assert.deepEqual(walk(pkg).filter(file=>file!=='MANIFEST.json').sort(),[...inventory].sort(),'Unlisted or missing package files');
+assert.equal(fs.readFileSync(path.join(root,'package/WebVideoPlus.Manager.exe.config'),'utf8'),fs.readFileSync(path.join(root,'build/templates/WebGAL.Video.exe.config'),'utf8'),'Manager startup must carry the same early long-path runtime switches');
 console.log(`Full package verified: ${manifest.files.length} manifest entries, binaries and synchronized version metadata.`);

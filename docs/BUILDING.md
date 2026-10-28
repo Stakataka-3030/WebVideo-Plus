@@ -1,10 +1,10 @@
 # 构建与发布
 
-当前发行分支版本 **1.3.6**，产品内部开发标识 **0.9.6**，安装器 Win32 版本 **1.3.6.0**，导出内核 **0.6.62**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
+当前发行分支版本 **1.3.7**，产品内部开发标识 **0.9.6**，安装器 Win32 版本 **1.3.7.0**，导出内核 **0.6.63**。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`scripts/manifest.mjs`、`build-product.ps1`、`scripts/configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
-更新检查读取 GitHub 正式 Release 列表。发布 1.3.6 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"product":"terre","webgal":["4.6.6"]} -->` 一并放进 Release 正文，并保持自动推荐通道隔离（4.6.4 / MyGO 3.2.1 留在 1.1.13；1.2.1 留在 4.6.5；1.3.6 仅推荐给 4.6.6）；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
+更新检查读取 GitHub 正式 Release 列表。发布 1.3.7 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"product":"terre","webgal":["4.6.6"]} -->` 一并放进 Release 正文，并保持自动推荐通道隔离（4.6.4 / MyGO 3.2.1 留在 1.1.13；1.2.1 留在 4.6.5；1.3.7 仅推荐给 4.6.6）；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
 
 ## 初次准备（不需要旧安装器）
 
@@ -39,7 +39,7 @@ Pop-Location
 
 `-Offline` 只适用于构建输入准备，不等同于 `npm ci` 离线；首次恢复 AI npm 依赖仍需要网络或已有 npm 缓存。缺失或损坏的离线输入会明确报错，不会绕过校验。
 
-输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正式安装器为 `dist/WebVideo+-Setup-1.3.6.exe`，Win32 文件版本 `1.3.6.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
+输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正式安装器为 `dist/WebVideo+-Setup-1.3.7.exe`，Win32 文件版本 `1.3.7.0`，不依赖 `.exe.config` sidecar。`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
 
 ### 旧 bootstrap 的显式迁移入口
 
@@ -100,7 +100,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 .\build-product.ps1 -Fast -InternalBuild
 ```
 
-`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.3.6` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
+`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于正式 `1.3.7` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
 
 需要重现某个旧内部标识时，可直接覆盖：
 
@@ -108,7 +108,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 .\build-product.ps1 -Fast -InternalVersion 0.5.7
 ```
 
-指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.3.6`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
+指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；正式 `productVersion` 仍保持 `1.3.7`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。
 
 ## 安装恢复与存储目录
 
@@ -230,3 +230,12 @@ RGB benchmark 现在显式标记 full-range GBR、BT.709 primaries 与 sRGB tran
 
 
 安装器长路径回归：`tests/installer-long-path.test.ps1 -InstallerPath <候选EXE> -EvidenceDirectory <证据目录> -BaseRoot <可写的短临时目录>`。检查使用未声明 Win32 长路径 opt-in 的测试进程，不修改系统策略；实际载荷暂存路径固定覆盖 259、260、262、292 字符，以及缓存复用、取消后清理/重试和遗留目录归属。`EvidenceDirectory` 存放检查程序与结果，`BaseRoot` 用于构造固定长度的隔离缓存；CI 使用 `RUNNER_TEMP`。
+
+
+对白字幕候选另运行 `tests/dialogue-subtitles.test.ps1`、`tests/subtitle-integration.test.ps1`，分别检查原生最终计划到文件的通路及真实管理器生成前端的模块开关。`shared-resources-install.test.ps1 -SteamVariant` 仅接受 `build/steam-compatibility-fixture.json` 中逐文件固定的Steam 2978410/build 25807960输入，默认仍检查原Windows ZIP基线；矩阵包含字幕模块启用/停用。文件事务通过不能代替实际启动、界面与完整引擎验收。
+
+### 对白字幕与本次发布检查
+
+发布前先生成当前安装器源码，再运行 Node 回归；完整构建后执行 `tests/dialogue-subtitles.test.ps1 -ScratchRoot <本轮隔离目录>` 与 `tests/manager-file-paths.test.ps1`，并保留可选模块、真实前端补丁及安装升级检查。SRT 双入口须同受字幕模块控制，Anogo 导入仍由独立模块控制。GUI 人工验收与自动化记录分别保存，不能互相代替。
+
+媒体工具默认从随包配对文件或已释放缓存取得；已有明确外部路径配置继续保留。WebView2 检测与缺失安装照旧。第三方工具未变时复用现有独立源码发行页，不重复上传源码包。正式发布只分发 CI 受检安装 EXE，核对准确提交、标签、公开下载哈希及 Latest 通道。

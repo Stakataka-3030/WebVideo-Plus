@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "appId": "2978410",
+  "buildId": "25807960",
+  "hostVersion": "4.6.6",
+  "bundle": "public/assets/index-8509d5b7.js",
+  "files": {
+    "public/index.html": "7e37a9b46239db4368a2199ef9dfff29c87843a35d902afe3e1c4c3d54f65781",
+    "public/assets/index-8509d5b7.js": "a1d2b3e41c103c069838e70fb2408194b0cd18eb04e0e309a0684e8fb4f9bb2f",
+    "WebGAL Terre.exe": "52618664bb17f4c7820756baad39cbf9c7b68e9c9fffcc89995a452c52f543c3",
+    "assets/templates/WebGAL_Template/webgal-engine.json": "4dedd6bec079e6fb826c50a62e8fad5934ad53fdade267fd1203f164401b47c2"
+  }
+}

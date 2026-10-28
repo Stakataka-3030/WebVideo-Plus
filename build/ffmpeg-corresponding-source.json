@@ -28,7 +28,9 @@
       "v1.1.12",
       "v1.3.5",
       "v1.1.13",
-      "v1.3.6"
+      "v1.3.6",
+      "v1.1.14",
+      "v1.3.7"
     ],
     "publicationRequirement": "Publish this source asset with the installers; verify unauthenticated public access before completing publication.",
     "sourceReleaseUrl": "https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/third-party-sources-ffmpeg-20260930-7zip-25.00"

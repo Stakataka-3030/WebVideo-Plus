@@ -4,6 +4,7 @@ param(
  [string]$RepositoryRoot=(Split-Path -Parent $PSScriptRoot),
  [string]$PackageRoot,
  [string]$SourceArchive,
+ [switch]$SteamVariant,
  [string]$OutputRoot
 )
 # Full package CLI transactions on a newly owned copy. Never launches Terre,
@@ -22,6 +23,12 @@ $baselinePath=if($HostVersion -eq '4.6.4'){Join-Path $RepositoryRoot 'baseline/l
 $baseline=Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json
 $bundleRelative=if($HostVersion -eq '4.6.4'){'public/assets/'+$baseline.baseBundle}else{$baseline.bundle -replace '^release/',''}
 $bundleHash=$baseline.baseHash;$sourceKind='recorded-baseline';$archiveHash=$null
+if($SteamVariant){
+ Require ($HostVersion -eq '4.6.6' -and !$SourceArchive) 'Steam fixture is separate from the Windows ZIP fixture.'
+ $steam=Get-Content -LiteralPath (Join-Path $RepositoryRoot 'build/steam-compatibility-fixture.json') -Raw | ConvertFrom-Json
+ foreach($property in $steam.files.PSObject.Properties){Require ((Hash (Join-Path $TerreSource $property.Name)) -eq $property.Value) ('Pinned Steam input differs: '+$property.Name)}
+ $bundleRelative=$steam.bundle;$bundleHash=$steam.files.PSObject.Properties[$steam.bundle].Value;$sourceKind='steam-2978410-build-25807960'
+}
 if($SourceArchive){
  $archiveHash=Hash ([IO.Path]::GetFullPath($SourceArchive))
  if($HostVersion -eq '4.6.4'){
@@ -86,6 +93,14 @@ $null=Invoke-Owned 'install' 'install-shared-export' 'sharedAssets,exporter,comp
 $installed=Get-Content -LiteralPath (Join-Path $hostRoot 'webvideo-plus.json') -Raw | ConvertFrom-Json
 Require ($installed.internalVersion -eq $product.internalVersion -and 'sharedAssets' -in $installed.modules -and 'exportKernel' -in $installed.modules) 'Installed identity/dependencies mismatch.'
 $null=Invoke-Owned 'install' 'reinstall-shared-export' 'sharedAssets,exporter,compactGameTools';Check-Enabled $true
+foreach($enabled in @($true,$false)){
+ $modules='sharedAssets,exporter,compactGameTools';if($enabled){$modules+=',subtitles'}
+ $null=Invoke-Owned 'install' ('subtitles-'+$enabled.ToString()) $modules
+ $record=Get-Content -LiteralPath (Join-Path $hostRoot 'webvideo-plus.json') -Raw | ConvertFrom-Json
+ $installedManifest=Get-Content -LiteralPath (Join-Path $state 'install.json') -Raw | ConvertFrom-Json
+ & node (Join-Path $PSScriptRoot 'subtitle-frontend-wiring.test.cjs') (Join-Path $hostRoot ('public/assets/'+$installedManifest.installedBundle)) $(if($enabled){'on'}else{'off'}) 'on' | Out-Host
+ Require (($record.modules -contains 'subtitles') -eq $enabled -and $LASTEXITCODE -eq 0) 'SRT optional module selection did not reach the installed frontend.'
+}
 $project=Join-Path $games '中文 空格 项目';$scene=Join-Path $project 'game/scene/branch/start.txt';$config=Join-Path $project 'game/config.txt';$engineMarker=Join-Path $project '.webvideo-engine.json';Put $scene ':;';Put $config 'Game_name:事务测试;'
 Put $scene ('changeFigure:__shared/'+$libraryId+'/model.model3.json;')
 $null=Invoke-Owned 'install' 'disable-shared-retain-export-kernel' 'exporter,compactGameTools';Check-Enabled $false
