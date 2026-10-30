@@ -1,5 +1,10 @@
 # 发行说明
 
+当前维护版本：
+
+- [1.3.8 · Terre 4.6.6](RELEASE_NOTES_1.3.8.md)
+- [1.1.15 · Terre 4.6.4 / MyGO 3.2.1](RELEASE_NOTES_1.1.15.md)
+
 - [1.1.14 · Terre 4.6.4 / MyGO](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.14)
 - [1.3.7 · Terre 4.6.6](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.7)
 
