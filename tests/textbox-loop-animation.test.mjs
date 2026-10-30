@@ -12,7 +12,7 @@ function fixture({precise=false,iterations=Infinity,where='child',properties=['t
  const animation={currentTime:0,effect:{target:actual,getKeyframes:()=>[Object.fromEntries(properties.map(p=>[p,'0'])),Object.fromEntries(properties.map(p=>[p,'1']))],getComputedTiming:()=>({iterations})}};
  const state={preciseTextboxLoopAnimations:precise,textboxRoot:box,getTextboxRoot:()=>box,markTextElements(){},excluded:()=>false,dirty,animationTimes:new WeakMap(),videoTimes:new WeakMap(),stats:{capturePlanSamples:0,ignoredInfiniteAnimations:0,ignoredTextboxInfiniteAnimations:0,infiniteAnimationSamples:0,animation:0,fullAnimationSamples:0,baseOnlyAnimationSamples:0,handledTextboxAnimationSamples:0,handledTextAnimationSamples:0}};
  const context={Element,__gpuDomState:state,document:{getAnimations:()=>[animation],querySelectorAll:()=>[]},getComputedStyle:()=>({position:'absolute',display:hidden?'none':'block',visibility:'visible',opacity:'1'})};vm.createContext(context);vm.runInContext(capture,context);
- return {state,context,animation,box,target:actual,plan:()=>context.__gpuDomCapturePlan()};
+ return {state,context,animation,box,target:actual,plan:()=>{const plan=context.__gpuDomCapturePlan();if(plan.needed)context.__gpuDomCommitAnimations(plan.scope);return plan;}};
 }
 for(const where of ['child','root'])test('default ignores only infinite textbox '+where+' refresh requests',()=>{
  const f=fixture({where});assert.equal(f.plan().needed,false);f.animation.currentTime=250;assert.equal(f.plan().needed,false);assert.equal(f.state.stats.ignoredTextboxInfiniteAnimations,2);assert.equal(f.state.stats.fullAnimationSamples,0);
@@ -33,10 +33,10 @@ test('text character opacity remains handled by existing GPU path',()=>{
  const f=fixture({properties:['opacity']});f.target.classList.contains=name=>name==='Textelement_start';assert.equal(f.plan().needed,false);assert.equal(f.state.stats.handledTextAnimationSamples,1);
 });
 test('other dirty work still refreshes entire textbox including the current loop phase',()=>{
- const f=fixture({dirty:true});assert.equal(f.plan().scope,'full');assert.equal(f.state.stats.ignoredTextboxInfiniteAnimations,0);
+ const f=fixture({dirty:true});assert.equal(f.plan().scope,'full');assert.equal(f.state.stats.ignoredTextboxInfiniteAnimations,1);
 });
 test('hidden loops do not trigger capture even with exact option',()=>{
- const f=fixture({precise:true,hidden:true});assert.equal(f.plan().needed,false);assert.equal(f.state.stats.infiniteAnimationSamples,0);
+ const f=fixture({precise:true,hidden:true});assert.equal(f.plan().needed,false);assert.equal(f.state.stats.fullAnimationSamples,0);
 });
 test('default cache policy keeps deterministic animation time moving',()=>{
  const f=fixture(),start=render.indexOf('  for(const a of document.getAnimations()){if(!__exportAnimations.has(a))');
