@@ -1,16 +1,17 @@
 using System;using System.IO;using System.Linq;using System.Collections.Generic;using System.Diagnostics;using System.Threading;using System.Threading.Tasks;
 namespace NativeVideo {
  public sealed class RenderEtaEstimator {
-  readonly int total,fps;readonly Queue<KeyValuePair<double,int>> samples=new Queue<KeyValuePair<double,int>>();double firstProgress=-1,rate=0;
-  public RenderEtaEstimator(int total,int fps){this.total=Math.Max(1,total);this.fps=Math.Max(1,fps);}
+  readonly int total;readonly Queue<KeyValuePair<double,int>> samples=new Queue<KeyValuePair<double,int>>();double firstProgress=-1,rate=0;
+  public RenderEtaEstimator(int total,int fps){this.total=Math.Max(1,total);}
   public object Update(double elapsed,int frames){
    frames=Math.Max(0,Math.Min(total,frames));if(frames>=total)return 0d;if(frames<=0)return null;
    if(firstProgress<0){firstProgress=elapsed;samples.Clear();samples.Enqueue(new KeyValuePair<double,int>(elapsed,frames));return null;}
    if(samples.Count==0||elapsed-samples.Last().Key>=.75)samples.Enqueue(new KeyValuePair<double,int>(elapsed,frames));
    while(samples.Count>0&&elapsed-samples.Peek().Key>12)samples.Dequeue();
    if(elapsed-firstProgress<4||samples.Count<4)return null;
-   var first=samples.Peek();var last=samples.Last();double span=last.Key-first.Key;int delta=last.Value-first.Value,minFrames=Math.Max(fps*2,Math.Max(10,total/400));
-   if(span<4||delta<minFrames)return null;double instant=delta/span;if(instant<=.01)return null;
+   var first=samples.Peek();var last=samples.Last();double span=last.Key-first.Key;int delta=last.Value-first.Value;
+   // A time window remains meaningful even when fewer than two output seconds render.
+   if(span<4)return null;double instant=delta/span;if(instant<=0){rate=0;return null;}
    rate=rate<=0?instant:rate*.65+instant*.35;return Math.Max(0,(total-frames)/rate);
   }
   public double Rate{get{return rate;}}

@@ -164,6 +164,7 @@ jobs:
               "- $Name`: $($record.status)" | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
             }
           }
+          Invoke-CiRegression 'render-eta' './tests/render-eta.test.ps1' @{ Output=(Join-Path $evidence 'render-eta') }
           Invoke-CiRegression 'dialogue-subtitles' './tests/dialogue-subtitles.test.ps1' @{ ScratchRoot=(Join-Path $evidence 'subtitles') }
           Invoke-CiRegression 'manager-file-paths' './tests/manager-file-paths.test.ps1' @{ OutputRoot=(Join-Path $evidence 'manager-paths') }
           Invoke-CiRegression 'cubism-memory-defaults' './tests/cubism-memory-defaults.test.ps1' @{ OutputRoot=(Join-Path $evidence 'memory-defaults') }
