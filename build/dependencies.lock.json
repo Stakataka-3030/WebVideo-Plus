@@ -78,7 +78,7 @@
   "installerDecoder": {
     "version": "25.00",
     "file": "7z2500-x64.exe",
-    "url": "https://www.7-zip.org/a/7z2500-x64.exe",
+    "url": "https://github.com/ip7z/7zip/releases/download/25.00/7z2500-x64.exe",
     "sha256": "7b67375b2b303e05d2989f23e986126eda67435c71231fa4b0bdaeb7a619a0a6",
     "source": "https://www.7-zip.org/download.html",
     "provenance": "Locally retained Chocolatey 7zip.install 25.0.0 archive; legal/VERIFICATION.txt records the same official URL and SHA256. Installer is extracted, never executed.",
