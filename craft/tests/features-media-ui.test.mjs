@@ -37,6 +37,20 @@ function setup(overrides={}){
 async function chooseDisjoint(f){f.snap.source='A;\nB;\nC;';await f.change('故事范围','selection');await f.click('读取当前场景');await f.change('导出第 1 行',true);await f.change('导出第 3 行',true);await f.click('锁定导出片段');}
 async function until(predicate,label){const end=Date.now()+3000;while(Date.now()<end){const value=predicate();if(value)return value;await new Promise(resolve=>setTimeout(resolve,5));}throw Error('Timed out waiting for '+label);}
 
+test('plain dialogue SRT uses the native shared form and ignores hidden video settings',async()=>{
+ const f=setup();await f.change('分段切点','manual');f.field('手动切点（帧、秒或时间码）').value='invalid hidden cuts';f.field('并行数（1–32）').value='0';
+ await f.change('导出内容','subtitles');await f.change('包含说话人名称',true);
+ const hidden=node=>node&&(node.hidden||hidden(node.parentElement));
+ assert(hidden(f.field('分辨率')));assert(hidden(f.field('导出质量')));assert(hidden(f.field('分段切点')));assert(!hidden(f.field('包含说话人名称')));
+ await f.click('加入导出队列');assert.deepEqual(f.errors,[]);const request=f.calls.find(row=>row[0]==='export')[1];
+ assert.equal(request.exportKind,'subtitles');assert.equal(request.fileName,'video.srt');assert.equal(request.includeSpeaker,true);assert.equal(request.settings.workers,1);assert.equal(request.settings.segmentCutMode,'auto');assert.equal(request.settings.manualCutPoints,'');assert.equal(request.manualCutStatements,undefined);assert.equal(request.subtitle,undefined);assert.equal(request.useMusicTimeline,false);f.mounted.dispose();
+});
+
+test('SRT disjoint selections preserve source binding and use separate subtitle names',async()=>{
+ const f=setup();await f.change('导出内容','subtitles');await chooseDisjoint(f);await f.click('加入导出队列');const exports=f.calls.filter(row=>row[0]==='export').map(row=>row[1]);
+ assert.equal(exports.length,2);assert.equal(exports[0].fileName,'video-1.srt');assert.equal(exports[1].fileName,'video-2.srt');assert.equal(exports[0].range.sourceHash.length,64);assert.equal(exports[1].range.startLine,3);assert.equal(exports[0].includeSpeaker,false);f.mounted.dispose();
+});
+
 test('advanced native request carries manual cuts, selected statement hash, memory and PNG',async()=>{
  const f=setup({cryptoImpl:{subtle:{digest:async(...args)=>{await new Promise(resolve=>setTimeout(resolve,50));return webcrypto.subtle.digest(...args);}}}});await f.change('分段切点','manual');f.field('手动切点（帧、秒或时间码）').value='2s, 90';
  await f.change('Live2D Core 内存模式','manual');f.field('每进程 Live2D Core 初始内存（MiB）').value='128';await f.change('兼容截图格式','png');

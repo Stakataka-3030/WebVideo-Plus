@@ -148,8 +148,11 @@ export class KernelSession {
     if(this._previousSnapshotsPending){const recovered=await this.storage.recoverPrevious(queue);this._previousSnapshotsPending=Boolean(recovered.pending);}
     for(const [id,entry] of this.snapshotTasks){
       let task=entry.kind==='queue'?queue.find(row=>row.id===id):await this.request({endpoint:'/api/ai/novel/status',data:{id}});
-      // Failed/canceled queue records still support retry from their source.
-      // Keep its source across sessions until real completion or job deletion.
+      // New-policy failures have already archived source text and cleaned native work.
+      // Canceled and legacy failed jobs retain their existing continuation contract.
+      if(entry.kind==='queue'&&task?.state==='failed'&&task.cleanupComplete===true&&task.diagnosticArchive){
+        await this.storage.discard(entry.snapshotId);this.snapshotTasks.delete(id);continue;
+      }
       if(entry.kind==='queue'&&task&&['failed','canceled'].includes(task.state)){entry.retry=true;continue;}
       if(!task&&entry.retry){await this.storage.discard(entry.snapshotId);this.snapshotTasks.delete(id);continue;}
       if(task&&(entry.kind==='queue'?task.state==='completed'&&task.phase==='completed':['complete','failed','cancelled'].includes(task.state))){
@@ -163,6 +166,16 @@ export class KernelSession {
     return this._stopPromise=(async()=>{
       await this.starting?.catch(()=>{});
       await this._snapshotSweep?.catch(()=>{});
+      // Closing may happen before the periodic sweep sees a terminal native job.
+      // Read only this service's queue after in-flight operations have stopped.
+      if(this.discovery&&[...this.snapshotTasks.values()].some(entry=>entry.kind==='queue'))try{
+        const response=await fetch(this.discovery.baseUrl+'/api/jobs',{headers:{Authorization:'Bearer '+this.discovery.token},signal:AbortSignal.timeout(1000)});
+        const queue=response.ok?await response.json():null;
+        if(Array.isArray(queue)&&queue.length<=MAX_QUEUE_ROWS&&queue.every(task=>validId(task?.id))){
+          for(const [id,entry] of this.snapshotTasks){const task=queue.find(row=>row.id===id);if(entry.kind==='queue'&&task&&(task.state==='completed'&&task.phase==='completed'||task.state==='failed'&&task.cleanupComplete===true&&task.diagnosticArchive)){await this.storage.discard(entry.snapshotId);this.snapshotTasks.delete(id);}}
+        }
+      }catch{}
+
       if(this.discovery)await fetch(this.discovery.baseUrl+'/api/shutdown',{method:'POST',headers:{Authorization:'Bearer '+this.discovery.token,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(3000)}).catch(()=>{});
       await terminateService(this.child);this.discovery=null;
       this.cleanupWarnings=await this.storage?.close?.({preserveTasks:true});

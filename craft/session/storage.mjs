@@ -100,7 +100,7 @@ export class SessionStorage {
           if(s?.preserve){
             if(s.kind!=='queue'){storage.retainedSnapshots.push(s);continue;}
             const references=queue.filter(job=>job.id===s.taskId||typeof job.project==='string'&&path.resolve(job.project).toLowerCase()===path.resolve(s.site).toLowerCase());
-            if(references.some(job=>job.state!=='completed'||job.phase!=='completed')){storage.retainedSnapshots.push(s);retained.pending=true;continue;}
+            if(references.some(job=>!(job.state==='completed'&&job.phase==='completed')&&!(job.state==='failed'&&job.cleanupComplete===true&&job.diagnosticArchive))){storage.retainedSnapshots.push(s);retained.pending=true;continue;}
           }
           if(!s||!/^[a-f0-9-]{36}$/.test(s.id)||s.site!==path.join(root,'games',s.id)||!s.ready||!/^[a-f0-9]{64}$/.test(s.cleanupHash||'')){storage.retainedSnapshots.push(s);continue;}storage.snapshots.set(s.id,s);}
         if(storage.snapshots.size){await storage.close().then(warnings=>retained.push(...warnings));}

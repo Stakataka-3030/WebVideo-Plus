@@ -2,9 +2,9 @@ name: Native smoke build
 
 on:
   pull_request:
-    branches: [main, release/1.1.8-final-464, release/1.3.2-terre-466, release/craft-1.1.15c]
+    branches: [main, release/1.1.8-final-464, release/1.3.2-terre-466, release/craft-1.1.15c, adapt/craft-1.0.0]
   push:
-    branches: [release/craft-1.1.14c, release/craft-1.1.15c]
+    branches: [release/craft-1.1.14c, release/craft-1.1.15c, adapt/craft-1.0.0]
   workflow_dispatch:
 
 jobs:
@@ -125,6 +125,7 @@ jobs:
           Invoke-CiRegression 'lifecycle-settings' './tests/lifecycle-settings.test.ps1' @{ EvidenceDirectory=(Join-Path $evidence 'settings') }
           Invoke-CiRegression 'authoring-private-files' './tests/authoring-private-files.test.ps1' @{ OutputRoot=(Join-Path $evidence 'authoring-private-files') }
           # Terre Manager lifecycle-reliability is not part of the Craft implementation; Craft queue has its own native gate below.
+          Invoke-CiRegression 'export-diagnostics' './tests/export-diagnostics.test.ps1' @{ PackageRoot=$package; OutputRoot=(Join-Path $evidence 'export-diagnostics') }
           Invoke-CiRegression 'render-process-output' './tests/render-process-output.test.ps1' @{ RepositoryRoot=$PWD.Path; OutputRoot=(Join-Path $evidence 'process-output') }
           # Runtime fixture uses a local SDK substitute and a fixture key; it never calls a paid provider.
           Invoke-CiRegression 'runtime-persistence' './tests/runtime-persistence.test.ps1' @{ PackageRoot=$package; EvidenceRoot=(Join-Path $evidence 'persistence') }

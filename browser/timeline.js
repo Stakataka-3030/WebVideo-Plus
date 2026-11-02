@@ -94,6 +94,8 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
     return openForwardGroup;
   };
 
+  const captureDialogue=policy.captureDialogue?__subtitleCaptureGroup():null;
+
   // A timer queued during a non-blocking wait must not settle a later say.
   let autoGeneration=0;
   const cancelPendingAuto=()=>{
@@ -124,6 +126,7 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
     lastParams=Object.fromEntries(s.args.map(a=>[a.key,a.value]));
     lastLine=core.sceneManager.sceneData.currentSentenceId;
     events.push({index:lastLine,atMs:nowMs(),command:lastCommand,forwardGroup:currentForwardGroup(),...(['bgm','playEffect','say'].includes(lastCommand)?{audioVolume:lastParams.volume??100}:{})});
+    captureDialogue?.(events.at(-1),lastParams);
     if(manualTimer){clearTimeout(manualTimer);manualTimer=null;}
     if(hintTimer){clearTimeout(hintTimer);hintTimer=null;}
     const hintMs=singleLineHintDuration(s,lastParams);
@@ -240,5 +243,5 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
   yieldChannel.port1.close();
   yieldChannel.port2.close();
   if(!done)throw new Error('播放时序规划超时，场景可能含等待交互的指令');
-  return {events,elastic,controlEvents,performWindows,stageExitWindows,domWorkload,blockedPrematureAutoNext,visualNotendWaitFloors,durationMs:origin===null?0:finishedAt-origin,options:w.store.getState().userData.optionData};
+  return {...(policy.captureDialogue?{dialogueSchemaVersion:1}:{}),events,elastic,controlEvents,performWindows,stageExitWindows,domWorkload,blockedPrematureAutoNext,visualNotendWaitFloors,durationMs:origin===null?0:finishedAt-origin,options:w.store.getState().userData.optionData};
 };

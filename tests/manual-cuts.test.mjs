@@ -116,7 +116,7 @@ test('native job and settings wiring includes statement sources in cache and dia
  assert.match(job,/new SemaphoreSlim\(effectiveWorkers\)/);assert.match(job,/effectiveWorkers=Math\.Min\(workers,ranges\.Length\)/);
  assert.match(job,/"manualCutStatements",J\.Get\(request,"manualCutStatements"\)/);
  const planner=read('src/Planner.cs');assert.ok(planner.indexOf('StatementCuts.Collect')<planner.indexOf('SceneChain.AttachTimeline'));
- assert.ok(planner.includes('if(ManualCuts.Enabled(settings)&&!LayerExport.IsAudio(request)&&!J.B(request,"analysisOnly"))'));
+ assert.ok(planner.includes('if(ManualCuts.Enabled(settings)&&!LayerExport.IsAudio(request)&&!DialogueSubtitles.Is(request)&&!J.B(request,"analysisOnly"))'));
  assert.match(planner,/J\.Get\(request,"manualCutStatements"\),parsed\)/,'Use final parsed index/time mapping');
  assert.match(read('src/QueueService.cs'),/StatementCuts\.ValidateSelections\(J\.Get\(d,"manualCutStatements"\)\)/);
  assert.match(read('src/QueueService.cs'),/settings=ManualCuts\.SavedPreferences\(s,settings,exportKind===?"audio"\)/);

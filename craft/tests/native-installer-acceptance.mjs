@@ -7,7 +7,7 @@ for(const key of ['--package','--upgrade-package','--host-exe'])if(!options[key]
 if(process.platform!=='win32')throw Error('This acceptance script requires Windows; portable transaction tests are separate.');
 const oldRoot=options['--package'],currentRoot=options['--upgrade-package'],hostSource=options['--host-exe'];assertNoLinks(hostSource);
 const oldManifest=verifyPackage(oldRoot),currentManifest=verifyPackage(currentRoot),hostSha=fileHash(hostSource);
-const officialHostSha='3515c1329b3b033d1882329026a4c5d3cf9eb21cb50b5b0040d7882daf933d0d';assert.equal(hostSha,officialHostSha,'Require the verified official Craft beta.2 host');
+const officialHostSha='0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c';assert.equal(hostSha,officialHostSha,'Require the verified official Craft 1.0.0 host');
 for(const manifest of [oldManifest,currentManifest]){assert.ok(manifest.supportedHosts.some(x=>x.sha256===hostSha));assert.equal(manifest.updateObserverValidated,false);assert.equal(manifest.sameNameUpdateValidated,false);}
 assert.notEqual(oldManifest.manifestSha256,currentManifest.manifestSha256,'A real package upgrade requires different verified package manifests, not an identical reinstall');
 // Exercise the transaction module that is actually shipped in the current package.
@@ -22,12 +22,11 @@ const statePath=o=>path.join(o.adapterRoot,'config.json'),backup=o=>path.join(pa
 function record(name,body){const start=Date.now();const detail=body();report.cases.push({name,status:'passed',durationMs:Date.now()-start,...detail});console.log('PASS '+name);}
 let failure;
 try{
- record('external install, real upgrade, repeat, uninstall',()=>{
-  const o=fixture('external','external');const a=install({...o,packageRoot:oldRoot});assert.equal(a.changed,true);assert.equal(fileHash(o.craftExe),hostSha);assert.equal(fs.existsSync(backup(o)),false);assert.equal(fs.existsSync(hostRecordPath(o.craftExe)),false);
-  fs.mkdirSync(a.state.stateDir,{recursive:true});const marker=path.join(a.state.stateDir,'acceptance-user-data.txt');fs.writeFileSync(marker,'preserve owned test state');
-  const upgraded=install(o);assert.equal(upgraded.changed,true);assert.equal(upgraded.state.package.manifestSha256,currentManifest.manifestSha256);assert.equal(install(o).changed,false);assert.equal(fs.readFileSync(marker,'utf8'),'preserve owned test state');
-  const detached=uninstall(statePath(o));assert.equal(detached.state.status,'detached');assert.equal(fileHash(o.craftExe),hostSha);assert.equal(fs.readFileSync(marker,'utf8'),'preserve owned test state');assert.equal(uninstall(statePath(o)).changed,false);
-  return {home:o.home,hostSha256:fileHash(o.craftExe),statePreserved:true,oldInstallId:a.state.installId,newInstallId:upgraded.state.installId};
+ record('retired external install is refused without changing the official host',()=>{
+  const o=fixture('external','external');
+  assert.throws(()=>install({...o,packageRoot:oldRoot}),/external mode is retired/);
+  assert.equal(fileHash(o.craftExe),hostSha);assert.equal(fs.existsSync(backup(o)),false);assert.equal(fs.existsSync(hostRecordPath(o.craftExe)),false);
+  return {home:o.home,hostSha256:fileHash(o.craftExe),externalModeRefused:true};
  });
  record('same-name upgrade owns wrapper and restores exact original',()=>{
   const o=fixture('same-name');const a=install({...o,packageRoot:oldRoot});assert.equal(fileHash(backup(o)),hostSha);assert.equal(fileHash(o.craftExe),a.state.ownership.wrapperSha256);

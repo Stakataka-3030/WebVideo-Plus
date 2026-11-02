@@ -14,15 +14,15 @@ function fixture(){
 }
 test('native platform cards preserve Web/Desktop/Android identities and handlers',async()=>{
  const f=fixture(),n=f.openNative();let web=0;n.cards[0].addEventListener('click',()=>web++);
- assert.deepEqual(nodes(n.dialog).filter(n=>n.dataset.wvcExportKind).map(n=>n.dataset.wvcExportKind),['full','stage','dialog','audio']);
- f.helper.refresh();assert.equal(nodes(n.dialog).filter(n=>n.dataset.wvcExportKind).length,4);assert.equal(n.cards[2].disabled,true);
+ assert.deepEqual(nodes(n.dialog).filter(n=>n.dataset.wvcExportKind).map(n=>n.dataset.wvcExportKind),['full','stage','dialog','audio','subtitles']);
+ f.helper.refresh();assert.equal(nodes(n.dialog).filter(n=>n.dataset.wvcExportKind).length,5);assert.equal(n.cards[2].disabled,true);
  await n.cards[0].click();assert.equal(web,1);assert.equal(f.calls.length,0);assert.equal(n.cards[0].parentNode,n.selector);f.helper.dispose();
 });
 test('configure, back, native close and reopen share one form without stale hidden nodes',async()=>{
  const f=fixture(),n=f.openNative();const stage=nodes(n.dialog).find(n=>n.dataset.wvcExportKind==='stage');await stage.click();
  assert.deepEqual(f.calls,['stage']);assert.equal(n.steps.hidden,true);assert.equal(n.content.hidden,true);assert.equal(n.footer.hidden,true);assert.equal(n.header.hidden,false);assert.equal(n.close.hidden,false);assert.ok(n.dialog.contains(f.shared));
  await nodes(n.dialog).find(n=>n.textContent==='← 返回导出类型'&&n.tagName==='BUTTON').click();assert.equal(n.steps.hidden,false);assert.equal(n.content.hidden,false);assert.equal(f.shared.parentNode,f.dock);
- await stage.click();await n.close.click();assert.equal(f.shared.parentNode,f.dock);const again=f.openNative();assert.equal(nodes(again.dialog).filter(n=>n.dataset.wvcExportKind).length,4);assert.equal(again.steps.hidden,false);f.helper.dispose();
+ await stage.click();await n.close.click();assert.equal(f.shared.parentNode,f.dock);const again=f.openNative();assert.equal(nodes(again.dialog).filter(n=>n.dataset.wvcExportKind).length,5);assert.equal(again.steps.hidden,false);f.helper.dispose();
 });
 test('native next-step replacement removes extension without changing later export controls',()=>{
  const f=fixture(),n=f.openNative();n.selector.remove();f.helper.refresh();assert.equal(nodes(n.dialog).filter(n=>n.dataset.wvcExportKind).length,0);assert.equal(n.footer.hidden,false);f.helper.dispose();

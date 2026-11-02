@@ -6,6 +6,7 @@
     ['stage', '导出舞台', '背景、立绘与舞台效果 · 可选透明背景', 'M3 4h18v14H3zM7 22l5-4 5 4M7 9l3 3 3-4 4 5'],
     ['dialog', '导出对话框与 DOM', '对话框、角色名、文字与界面 · 透明视频', 'M3 4h18v13H8l-5 4V4M7 8h10M7 12h7'],
     ['audio', '仅导出音轨', 'WebGAL BGM、语音、音效与视频原声 · WAV', 'M9 18V5l12-2v13M9 18c0 2-2 3-4 3s-3-1-3-2 2-3 4-3 3 1 3 2M21 16c0 2-2 3-4 3s-3-1-3-2 2-3 4-3 3 1 3 2'],
+    ['subtitles', '导出对白字幕', '实际放映时序与纯文本对白 · SRT', 'M3 5h18v14H3zM6 9h4M14 9h4M6 13h4M14 13h4M6 16h12'],
   ];
   function mount({ bridge, mediaPanel }) {
     if (!mediaPanel?.attachExport) return { dispose() {}, refresh() {} };

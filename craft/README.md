@@ -2,18 +2,18 @@
 
 此目录是基于 `craft/mvp`（bee5888）继续开发的完整 Craft 编辑器适配。当前保留官方 Craft 自动检查更新，功能入口通过当前启动会话的 WebView2/CDP 注入。未改官方更新源、公钥和签名校验。
 
-[下载 1.2.0.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.0.0c/WebVideoCraft-Setup-1.2.0.0c.exe) · [正式版适配与验证](ADAPTATION-1.0.0.md) · [历史版本](../docs/LEGACY-VERSIONS.md)
+[下载 1.2.1.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.1.0c/WebVideoCraft-Setup-1.2.1.0c.exe) · [正式版适配与验证](ADAPTATION-1.0.0.md) · [历史版本](../docs/LEGACY-VERSIONS.md)
 
 ## 当前边界
 
-- 当前版本 `1.2.0c` 适配官方 Windows x64 Craft `1.0.0`，EXE SHA-256 `0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c`。
+- 当前版本 `1.2.1c` 适配官方 Windows x64 Craft `1.0.0`，EXE SHA-256 `0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c`。
 - 精确官方来源与接口核对见 [正式版适配记录](ADAPTATION-1.0.0.md)，不以相同版本字符串代替构建校验。
 - 引擎匹配范围仍为官方 WebGAL 4.6.4 / 4.6.5 / 4.6.6、MyGO 3.2.1（基础 WebGAL 4.6.4）。历史验收记录不自动作为本次构建的结果。
 - 仅使用原 `webgal-craft.exe` 入口：安装安全保存可校验原程序，并用包装器替换原 EXE。原快捷方式继续有效；不再提供单独的增强启动模式
 - 旧独立入口安装可事务迁移到原入口，保留安装身份、配置、日志及用户数据。旧增强快捷方式重定向到原入口。未知宿主哈希仍拒绝挂载
 - 完整功能状态见 [FEATURE-COVERAGE.md](FEATURE-COVERAGE.md)，云端单元测试与 Windows 实测分开记录
 - Craft 官方更新检查、下载源、公钥和签名校验保留。已实现保留官方密钥/签名验证的干净环境交接：确认后释放包装器和宿主，再由有界助手打开未经修改的官方安装器。运行策略 `officialAutoInstallEnabled` 已开放，三项历史验收记录仍为 false，真实注册安装的跨版本 NSIS 升级仍待验收。官方原生下载完成后直接提供安装确认，随后重新核验官方签名并请求正常关闭 Craft；新宿主不自动重新挂载增强功能。详情见 [官方更新与验收边界](update/README.md)
-- 原生编辑/撤销、重载注入、VFS、实际预览速度、音乐/字幕、提示计时及安装恢复的历史验收见 [FINAL-ACCEPTANCE.md](FINAL-ACCEPTANCE.md)，此前维护版的新增证据见 [1.1.15c](ACCEPTANCE-1.1.15c.md)；本次验证见[本版验收](ACCEPTANCE-1.2.0c.md)。
+- 原生编辑/撤销、重载注入、VFS、实际预览速度、音乐/字幕、提示计时及安装恢复的历史验收见 [FINAL-ACCEPTANCE.md](FINAL-ACCEPTANCE.md)，此前维护版的新增证据见 [1.1.15c](ACCEPTANCE-1.1.15c.md)；本次验证见[本版验收](ACCEPTANCE-1.2.1c.md)。
 
 ## 编辑与工程
 
@@ -23,9 +23,9 @@
 
 音乐时长来自实际探测，故事时间来自实际引擎运行。预览速度通过经过所属页面检查的独立 iframe/CDP session 读取。没有准确加载配置证据时，速度修改只影响本次预览，并明确说明；不会猜测 IndexedDB 存档键。
 
-## 当前版本 1.2.0.0c（Craft 1.0.0 正式版适配）
+## 当前版本 1.2.1.0c（Craft 1.0.0 正式版适配）
 
-Craft 产品版本为 1.2.0c，安装器为 1.2.0.0c，Win32 文件版本为 1.2.0.0；功能基线为 Terre 1.3.3，Craft 内核为 0.6.61（Terre 维护基线 0.6.59）。移植手动/语句切点、Cubism 内存、更新提醒、兼容 PNG、4.6.6、animation v2 和 1.3.3 资源解析修复，并保留 Craft 原生编辑、VFS、精确绑定与原 EXE 挂载。
+Craft 产品版本为 1.2.1c，安装器为 1.2.1.0c，Win32 文件版本为 1.2.1.0；功能基线为 Terre 1.3.9，Craft 内核为 0.6.65（Terre 维护基线 0.6.59）。移植手动/语句切点、Cubism 内存、更新提醒、兼容 PNG、4.6.6、animation v2 和 1.3.9 资源解析修复，并保留 Craft 原生编辑、VFS、精确绑定与原 EXE 挂载。
 
 本轮维护完善了制作标记持久化、批量编辑与 Anogo 文本/条件语句处理、音乐并发保存与恢复副本、迁移/卸载/备份恢复事务、队列与子进程超时、AI 批次检查点，以及按实际舞台/DOM 状态等待文本。Craft 另完善快照重试保留、队列终态清理、守护进程超时与安装恢复，范围见[本轮验收](ACCEPTANCE-1.1.15c.md)。
 
@@ -81,7 +81,7 @@ Windows 安装器界面回归（仅在授权的隔离测试目录中运行）：
 
 Windows 原生回归：`tests/font-render-preflight.test.ps1` 验证普通项目不会因未用的 Live2D SDK 被阻挡；`craft/tests/native-update-observer.ps1` 只编译、运行写入隔离标记文件的合成宿主/安装器，不升级 Craft。合成安装器通过也不代表官方 NSIS 升级已验证。
 
-适配器会话日志、导出快照和工作文件在适配目录的 `state/sessions/<sessionId>/`，内核用户配置位于独立的 `state/kernel/user-data/`。成功任务清理重型工作缓存，失败或取消任务保留必要快照和分片供重试；清理失败会提示保留位置。安装器解压缓存与导出工作缓存分别管理。不会自动导入旧 Terre 的用户配置、凭据或模型列表；AI 请求只由显式功能操作启动。
+适配器会话日志、导出快照和工作文件在适配目录的 `state/sessions/<sessionId>/`，内核用户配置位于独立的 `state/kernel/user-data/`。本次未发布维护修改对新任务采用终态清理：最终成功（含重试成功）清除本次诊断和两层临时快照；最终失败只保留必要文字日志、JSON、恢复脚本与源位置映射，归集完成后删除原 export_web 完整快照及重型工作缓存，归集不全明确标记 partial。失败后请重新导出，以建立重新校验的来源快照；不新增旧任务重试入口。取消沿用原有保留源快照及完成分片的继续约定；旧历史任务不追溯清理。任务历史和功能性分析结果、正式成品及原工程保留，清理失败会提示位置。安装器解压缓存与导出工作缓存分别管理。不会自动导入旧 Terre 的用户配置、凭据或模型列表；AI 请求只由显式功能操作启动。
 
 安装和卸载校验清单、文件哈希与归属。未知或已被官方更新替换的主程序不会被旧备份覆盖。未能证明安装完成时，不自动声明修复成功。
 

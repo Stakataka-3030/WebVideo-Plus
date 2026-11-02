@@ -30,7 +30,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   if(timing&&Number.isFinite(timing.lineTimes[i]))cursor=timing.lineTimes[i];
   const s=parsed.sentenceList[i];if(s.isLineBreakHolder)continue;
   const cmd=s.command===0?'say':s.commandRaw,params=Object.fromEntries(s.args.map(a=>[a.key,a.value])),range=statementRange(s,i),raw=statementSource(s,i),hintMs=singleLineHintDuration(cmd,params,s.content,raw),sourceEvent=sourceEventByIndex.get(i),plannedPerform=primaryPerform(i,cmd);
-  // The measurement observer receives the engine's variable-substituted arguments.
+  // Measurement observes the engine's variable-substituted audio arguments.
   if(sourceEvent&&Object.hasOwn(sourceEvent,'audioVolume'))params.volume=sourceEvent.audioVolume;
   else if(!timing&&!Number.isFinite(Number(params.volume??100)))params.volume=100;
   counts[cmd]=(counts[cmd]||0)+1;
@@ -266,5 +266,5 @@ globalThis.__finishNativeTimeline=({result,pre,settings,playlist,range})=>{
   if(synthetic)actualElastic.push({startMs:durationMs,endMs:target,line:lineTimes.length-1});
   durationMs=target;
  }
- return {schemaVersion:1,mode:settings.mode,durationSeconds:Math.ceil(durationMs*settings.fps/1000)/settings.fps,lineTimes,textSpeed:settings.textSpeed,autoSpeed:settings.autoSpeed,holdSeconds:settings.holdSeconds,playlist,playlistOffsetMs:rangeStartMs,range,controlEvents:result.controlEvents,sourceEvents,performWindows,stageExitWindows,elasticWindows:actualElastic,blockedPrematureAutoNext:Number(result.blockedPrematureAutoNext)||0,visualNotendWaitFloors:result.visualNotendWaitFloors||[]};
+ return {schemaVersion:1,...(result.dialogueSchemaVersion===1?{dialogueSchemaVersion:1}:{}),mode:settings.mode,durationSeconds:Math.ceil(durationMs*settings.fps/1000)/settings.fps,lineTimes,textSpeed:settings.textSpeed,autoSpeed:settings.autoSpeed,holdSeconds:settings.holdSeconds,playlist,playlistOffsetMs:rangeStartMs,range,controlEvents:result.controlEvents,sourceEvents,performWindows,stageExitWindows,elasticWindows:actualElastic,blockedPrematureAutoNext:Number(result.blockedPrematureAutoNext)||0,visualNotendWaitFloors:result.visualNotendWaitFloors||[]};
 };

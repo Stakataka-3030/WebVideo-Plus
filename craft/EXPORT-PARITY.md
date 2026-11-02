@@ -1,27 +1,21 @@
 # Craft export UI parity
 
-## Current candidate: 1.1.14c / Terre 1.3.1
+## Current maintenance: 1.2.1c / kernel 0.6.65
 
-The applicable shared implementation is pinned to Terre v1.3.1
-`d9b0df5bd0d33249ccf8ded4af612ec429268f02`. The Craft UI now exposes
-automatic/manual/BGM-fit timing, numeric and statement cuts, `;CutHere`,
-Live2D Core memory reservation, PNG/JPEG compatibility capture, GPU selection,
-transparent capture mode, strict/decorative cut controls and visual-tail policy.
-Fields follow the selected export/timing mode. Saved native settings can be read
-back without changing a project. Audio export does not inherit video cuts or BGM fitting.
+The native export dialog now provides five cards, including plain dialogue SRT.
+SRT supports speaker names and the existing story/range binding checks. It hides
+video-only controls and does not overwrite video preferences. Its owned partial
+output uses Craft's existing cancellation cleanup.
 
-Capabilities follow the actual project binding: exact 4.6.4, 4.6.5 and MyGO
-3.2.1/base4.6.4 remain supported; v2 animations are enabled only for exact 4.6.6.
-Inline v2 data and v2 temporary-animation overrides are gated. Runtime changes
-invalidate captured snapshots; the Craft host version never supplies an engine capability.
+Applicable Terre DOM animation caching, low-rate ETA and long-path I/O fixes are
+backported. Prefix restoration uses one in-flight query within the total deadline.
+Final success clears task diagnostics and work caches; final failure archives
+selected text/prefix maps and prunes heavy caches. A cleaned final failure must be
+queued again; canceled and legacy tasks keep their existing continuation contract.
 
-Cancellation releases the panel's pending queue operation immediately, including
-when the queue ID reply arrives late. The late ID is canceled individually.
-Native `canceling`/`cleanup` remains active until the owned process exits and
-cleanup reaches `phase=canceled, cleanupComplete=true`. Retry is blocked during
-that interval. Exact temporary-output leases preserve completed outputs and
-neighbor files; interrupted cancellation resumes cleanup on service restart.
-See [current native evidence and limits](ACCEPTANCE-1.1.14c.md).
+Capabilities continue to follow the exact project binding. Native platform nodes,
+Back/Close and strict VFS/runtime identity remain unchanged. See the
+[maintenance verification](../docs/EXPORT-MAINTENANCE-20261102.md) for actual scope.
 
 The following sections describe the original UI integration; their historical
 1.1.6/beta.2 baseline is not the current parity or host limit.

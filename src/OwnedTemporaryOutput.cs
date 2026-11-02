@@ -14,7 +14,7 @@ namespace NativeVideo {
    string output=Files.Full(J.S(request,"output")),folder=Path.GetDirectoryName(output);
    foreach(string leaseFile in Directory.GetFiles(record,"temporary-output-*.json")){
     var lease=J.Read(leaseFile);string nonce=J.S(lease,"nonce"),prefix=J.S(lease,"prefix"),extension=J.S(lease,"extension"),file=J.S(lease,"path");
-    if(J.N(lease,"schemaVersion")!=1||J.S(lease,"jobId")!=J.S(request,"id")||J.S(lease,"output")!=output||!Regex.IsMatch(nonce,@"^[a-f0-9]{32}$")||prefix!=".webvideo-"&&prefix!=".webvideo-subtitle-"||!Regex.IsMatch(extension,@"^\.(mp4|mov|webm|wav)$")||Path.GetFileName(leaseFile)!="temporary-output-"+nonce+".json"||Files.Full(file)!=Files.Full(Path.Combine(folder,prefix+nonce+".partial"+extension)))throw new IOException("临时输出归属不匹配，未删除");
+    if(J.N(lease,"schemaVersion")!=1||J.S(lease,"jobId")!=J.S(request,"id")||J.S(lease,"output")!=output||!Regex.IsMatch(nonce,@"^[a-f0-9]{32}$")||prefix!=".webvideo-"&&prefix!=".webvideo-subtitle-"||!Regex.IsMatch(extension,@"^\.(mp4|mov|webm|wav|srt)$")||Path.GetFileName(leaseFile)!="temporary-output-"+nonce+".json"||Files.Full(file)!=Files.Full(Path.Combine(folder,prefix+nonce+".partial"+extension)))throw new IOException("临时输出归属不匹配，未删除");
     if(File.Exists(file)){if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0)throw new IOException("临时输出包含链接，未删除");File.Delete(file);}File.Delete(leaseFile);
    }
   }

@@ -27,8 +27,9 @@
     // The same form is used by the editor dock and the native Export dialog.
     const exportCard = card('导出视频'); exportCard.className += ' wvc-export-form';
     const exportHeading = exportCard.children[0];
-    const exportKinds = [ ['full', '完整视频'], ['stage', '舞台'], ['dialog', '对话框与 DOM'], ['audio', '仅音轨'] ];
+    const exportKinds = [ ['full', '完整视频'], ['stage', '舞台'], ['dialog', '对话框与 DOM'], ['audio', '仅音轨'], ['subtitles', '对白字幕 SRT'] ];
     const kind = select(exportCard, '导出内容', exportKinds);
+    const speakerRow = row(exportCard), includeSpeaker = check(speakerRow, '包含说话人名称');
     const timingOptions = row(exportCard), timingMode = select(timingOptions, '放映计时', [['auto', '自动放映'], ['manual', '手动时长'], ['bgm', 'BGM 适配']]), bgmBaseMode = select(timingOptions, 'BGM 基础计时', [['auto', '自动放映'], ['manual', '手动时长']]);
     const holdSeconds = field(timingOptions, '手动等待秒数', '1', 'number'), manualTextSpeed = field(timingOptions, '手动文字速度', '50', 'number');
     const bgmFile = field(timingOptions, 'BGM 适配音乐（项目内路径）');
@@ -143,7 +144,7 @@
     const jobInfo = el('div', '', { className: 'wvc-export-jobs', role: 'status', 'aria-live': 'polite' });
     const exportActions = row(exportCard); let cancelRequested = false, queueProject = null, jobsRefreshing = false, queueSerial = 0;
     const exportStatus = el('p', '', { className: 'wvc-help', role: 'status' });
-    function extension() { return kind.value === 'audio' ? '.wav' : kind.value === 'dialog' || kind.value === 'stage' && !includeBackground.checked ? '.' + transparentFormat.value : '.mp4'; }
+    function extension() { return kind.value === 'subtitles' ? '.srt' : kind.value === 'audio' ? '.wav' : kind.value === 'dialog' || kind.value === 'stage' && !includeBackground.checked ? '.' + transparentFormat.value : '.mp4'; }
     function updateRange() {
       const chosen = scope.value === 'selection'; rangePicker.hidden = !chosen; pickerActions.hidden = !chosen;
       rangeInfo.textContent = chosen ? selection ? selection.ranges.map(r => `第 ${r.startLine}–${r.endLine} 行`).join('；') + '（不连续片段分别导出）' : '尚未锁定片段，请选择剧情语句后点击「锁定导出片段」' : ({ full: '从故事开头导出；当前打开的场景不限制起点。', fromScene: '从当前场景开始，继续导出后续剧情。', sceneOnly: '仅导出当前场景。' })[scope.value];
@@ -160,25 +161,25 @@
       musicAnchorRow.hidden = !subtitleOn.checked || anchorType.value !== 'music';
     }
     function updateExport({ rename = false } = {}) {
-      const full = kind.value === 'full', audio = kind.value === 'audio', transparent = kind.value === 'dialog' || kind.value === 'stage' && !includeBackground.checked;
-      exportHeading.textContent = ({ full: '导出视频', stage: '导出舞台', dialog: '导出对话框与 DOM', audio: '仅导出音轨' })[kind.value];
-      kindNote.textContent = ({ full: '完整舞台、对话框与声音，输出 MP4。', stage: '只导出舞台，不含对话框等 DOM；可独立保留背景和立绘。取消背景后输出带透明通道的视频。', dialog: '只导出实际渲染的对话框、角色名、富文本及其他 DOM UI，舞台透明。', audio: '导出 WebGAL 剧本中的 BGM、语音、音效和视频原声，输出 48 kHz WAV。' })[kind.value];
-      stageRow.hidden = kind.value !== 'stage'; transparentRow.hidden = !transparent;
+      const full = kind.value === 'full', audio = kind.value === 'audio', subtitles = kind.value === 'subtitles', transparent = kind.value === 'dialog' || kind.value === 'stage' && !includeBackground.checked;
+      exportHeading.textContent = ({ full: '导出视频', stage: '导出舞台', dialog: '导出对话框与 DOM', audio: '仅导出音轨', subtitles: '导出对白字幕 SRT' })[kind.value];
+      kindNote.textContent = ({ full: '完整舞台、对话框与声音，输出 MP4。', stage: '只导出舞台，不含对话框等 DOM；可独立保留背景和立绘。取消背景后输出带透明通道的视频。', dialog: '只导出实际渲染的对话框、角色名、富文本及其他 DOM UI，舞台透明。', audio: '导出 WebGAL 剧本中的 BGM、语音、音效和视频原声，输出 48 kHz WAV。', subtitles: '按实际放映时序生成纯文本对白字幕；保留换行，可选择包含说话人名称。' })[kind.value];
+      stageRow.hidden = kind.value !== 'stage'; transparentRow.hidden = !transparent; speakerRow.hidden = !subtitles;
       timingOptions.hidden = !full;
       bgmBaseMode.parentElement.hidden = timingMode.value !== 'bgm'; bgmFile.parentElement.hidden = timingMode.value !== 'bgm';
       const manualTiming = timingMode.value === 'manual' || timingMode.value === 'bgm' && bgmBaseMode.value === 'manual';
       holdSeconds.parentElement.hidden = !manualTiming; manualTextSpeed.parentElement.hidden = !manualTiming;
       timingHelp.textContent = full && timingMode.value === 'manual' ? '按指定文字速度和等待秒数安排对白；请先打开游戏预览。' : full && timingMode.value === 'bgm' ? '按所选项目内音乐的总长度调整成片节奏；超出可适配范围时会报告原因。' : '按 WebGAL 自动放映导出；开始时读取当前游戏预览的文字与自动播放速度，请先打开预览。';
-      advanced.hidden = audio; numericCuts.parentElement.hidden = cutMode.value !== 'manual';
+      advanced.hidden = audio || subtitles; numericCuts.parentElement.hidden = cutMode.value !== 'manual';
       memoryMiB.parentElement.hidden = memoryMode.value !== 'manual'; alphaCapture.parentElement.hidden = !transparent;
       captureFormat.parentElement.hidden = !full || quality.value !== 'traditional';
-      videoRow.hidden = audio; qualityRow.hidden = audio || transparent;
+      videoRow.hidden = audio || subtitles; qualityRow.hidden = audio || subtitles || transparent;
       for (const option of quality.children) if (option.value === 'traditional') option.disabled = !full;
       musicExportRow.hidden = !full; post.hidden = !full; replaceBgm.disabled = !useMusic.checked;
       if (!full && quality.value === 'traditional') quality.value = 'recommended';
       qualityNote.textContent = ({ recommended: '自动使用可用硬件编码器；兼顾画质、体积与速度。', quality: '降低压缩损失，文件会更大。', lossless: 'RGB 完全无损，文件可能很大；部分播放器不兼容。', traditional: '旧版兼容链路，导出速度较慢。' })[quality.value] + (resolution.value === '3840x2160' ? ' 4K 会使用更多显存、内存和处理时间；并行数请按设备情况调整。' : '');
       transparentNote.textContent = transparentFormat.value === 'webm' ? 'VP9 Alpha 文件较小；部分剪辑软件需要额外支持。' : 'ProRes 4444 保留透明通道，适合后期，文件体积较大。';
-      if (rename) fileName.value = (fileName.value.trim() || 'video').replace(/\.(?:mp4|mov|webm|wav)$/i, '') + extension();
+      if (rename) fileName.value = (fileName.value.trim() || 'video').replace(/\.(?:mp4|mov|webm|wav|srt)$/i, '') + extension();
       updateRange(); updateSubtitle();
     }
     async function buildSubtitle(snap) {
@@ -214,10 +215,10 @@
       if (selected && (selection.projectId != null && selection.projectId !== snap.projectId || selection.path !== snap.path || selection.revision !== snap.revision || selection.source !== snap.source)) throw Error('片段对应的剧本已变化，请重新锁定');
       const name = fileName.value.trim(), ext = extension();
       if (!name || /[\\/:*?"<>|\x00-\x1f]/.test(name) || !name.toLowerCase().endsWith(ext)) throw Error(`文件名需要以 ${ext} 结尾，且不能包含路径或非法字符`);
-      const full = kind.value === 'full', audio = kind.value === 'audio';
-      if (!audio && !['1280x720', '1920x1080', '2560x1440', '3840x2160'].includes(resolution.value)) throw Error('请选择受支持的分辨率');
-      const size = audio ? [1920, 1080] : resolution.value.split('x').map(Number);
-      const parallel = audio ? 1 : integer(workers, '并行数', 1, 32);
+      const full = kind.value === 'full', audio = kind.value === 'audio', subtitles = kind.value === 'subtitles', nonVideo = audio || subtitles;
+      if (!nonVideo && !['1280x720', '1920x1080', '2560x1440', '3840x2160'].includes(resolution.value)) throw Error('请选择受支持的分辨率');
+      const size = nonVideo ? [1920, 1080] : resolution.value.split('x').map(Number);
+      const parallel = nonVideo ? 1 : integer(workers, '并行数', 1, 32);
       const config = await bridge.service('/api/config');
       if (interrupted()) return;
       const fullMode = kind.value === 'full' ? timingMode.value : 'auto';
@@ -229,17 +230,17 @@
         const savedMemory = config.settings.cubismCoreInitialMemoryMiB;
         memoryMode.value = savedMemory === 0 ? 'default' : 'manual'; memoryMiB.value = String(savedMemory || 128); updateExport();
       }
-      const memory = memoryMode.value === 'default' ? 0 : integer(memoryMiB, 'Live2D Core 初始内存', 16, 1024);
-      const settings = { ...config.settings, ...speeds, width: size[0], height: size[1], fps: Number(fps.value), workers: parallel, gpuRawMode: !full && quality.value === 'traditional' ? 'recommended' : quality.value, mode: fullMode, bgmBaseMode: bgmBaseMode.value, holdSeconds: finite(holdSeconds, '手动等待秒数', 0, 60), segmentCutMode: kind.value === 'audio' ? 'auto' : cutMode.value, manualCutPoints: kind.value === 'audio' ? '' : numericCuts.value.trim(), cubismCoreInitialMemoryMiB: memory, compatibilityCaptureFormat: captureFormat.value };
+      const memory = subtitles ? config.settings.cubismCoreInitialMemoryMiB ?? 128 : memoryMode.value === 'default' ? 0 : integer(memoryMiB, 'Live2D Core 初始内存', 16, 1024);
+      const settings = { ...config.settings, ...speeds, width: size[0], height: size[1], fps: Number(fps.value), workers: parallel, gpuRawMode: !full && quality.value === 'traditional' ? 'recommended' : quality.value, mode: fullMode, bgmBaseMode: bgmBaseMode.value, holdSeconds: finite(holdSeconds, '手动等待秒数', 0, 60), segmentCutMode: nonVideo ? 'auto' : cutMode.value, manualCutPoints: nonVideo ? '' : numericCuts.value.trim(), cubismCoreInitialMemoryMiB: memory, compatibilityCaptureFormat: captureFormat.value };
       Object.assign(settings, {gpu:gpuChoice.value,gpuAdapterLuid:gpuDevice.value,preciseTextboxLoopAnimations:preciseLoops.checked,alphaCaptureMode:alphaCapture.value,gpuRawDom:gpuDom.checked,strictSegmentCuts:strictCuts.checked,allowDecorativePixiCuts:decorativeCuts.checked,notendVisualTail:notendTail.checked});
       const ranges = selected ? selection.ranges : [null]; let submitted = 0;
       if (queueProject !== snap.projectId) { exportJobs = []; queueProject = snap.projectId; }
       for (let index = 0; index < ranges.length; index++) {
         if (!await queueSnapshotCurrent(snap, interrupted)) break;
         const range = ranges[index];
-        const options = { scene: snap.sceneRelativePath, sourceText: snap.source, settings, storyScope: selected ? 'sceneOnly' : scope.value, exportKind: kind.value, includeBackground: kind.value !== 'stage' || includeBackground.checked, includeFigures: kind.value !== 'stage' || includeFigures.checked, transparentFormat: kind.value === 'dialog' || kind.value === 'stage' && !includeBackground.checked ? transparentFormat.value : 'mov', fileName: ranges.length > 1 ? name.slice(0, -ext.length) + `-${index + 1}` + ext : name, useMusicTimeline: full && useMusic.checked, replaceGameBgm: full && useMusic.checked && replaceBgm.checked };
+        const options = { scene: snap.sceneRelativePath, sourceText: snap.source, settings, storyScope: selected ? 'sceneOnly' : scope.value, exportKind: kind.value, includeSpeaker: subtitles && includeSpeaker.checked, includeBackground: kind.value !== 'stage' || includeBackground.checked, includeFigures: kind.value !== 'stage' || includeFigures.checked, transparentFormat: kind.value === 'dialog' || kind.value === 'stage' && !includeBackground.checked ? transparentFormat.value : 'mov', fileName: ranges.length > 1 ? name.slice(0, -ext.length) + `-${index + 1}` + ext : name, useMusicTimeline: full && useMusic.checked, replaceGameBgm: full && useMusic.checked && replaceBgm.checked };
         if (output.value.trim()) options.outputDir = output.value.trim(); if (subtitle) options.subtitle = subtitle;
-        if (kind.value !== 'audio' && cutMode.value === 'manual') options.manualCutStatements = [...statementCuts.values()];
+        if (!nonVideo && cutMode.value === 'manual') options.manualCutStatements = [...statementCuts.values()];
         if (fullMode === 'bgm') { options.bgmProjectFiles = bgmFile.value.split(/[\r\n]+/).map(value => value.trim()).filter(Boolean); if (!options.bgmProjectFiles.length) throw Error('请填写 BGM 适配音乐的项目内路径'); }
         if (range) options.range = { startLine: range.startLine, endLine: range.endLine, sourceHash: selection.sourceHash };
         const job = await bridge.exportVideo({ ...options, snapshot: snap }); if (!job?.id) throw Error('导出服务未返回任务 ID');

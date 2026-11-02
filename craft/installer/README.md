@@ -32,7 +32,7 @@ The installed host and canonical adapter records must agree on all executable pa
 
 `tests/craft-installer.test.mjs` uses real temporary filesystem transactions and inert executables, including fault injection, foreign changes, process leases, ownership and official-update preservation. `tests/craft-native-verifier.portable.ps1` compiles the actual C# verifier with a test-only serializer bridge. These tests do not execute Craft, validate WinForms interaction, or prove the same-name wrapper/native updater ordering. Those require Windows acceptance; real official NSIS requires an isolated registered Windows installation, not merely copied EXEs because /UPDATE can resolve the production registration.
 
-The Craft product/installer c suffix is adapter branding. Its current kernelVersion is 0.6.60, with the applicable Terre 1.3.3 maintenance line at 0.6.59; the package also records baseProductVersion/baseKernelVersion. A post-compile build receipt binds the native executable, C# inputs, embedded factory sources, reference DLLs and root version metadata. Packaging refuses a stale receipt instead of reusing a binary just because its version text matches.
+The Craft product/installer c suffix is adapter branding. Its current kernelVersion is 0.6.65, with applicable shared maintenance code recorded as Terre 1.3.9 / 0.6.65; the package also records baseProductVersion/baseKernelVersion. A post-compile build receipt binds the native executable, C# inputs, embedded factory sources, reference DLLs and root version metadata. Packaging refuses a stale receipt instead of reusing a binary just because its version text matches.
 
 ## Current exact engine profiles
 

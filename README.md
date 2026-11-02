@@ -2,9 +2,9 @@
 
 面向 **WebGAL Craft** 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 为实验性功能，需要自行配置 API Key。
 
-[下载 1.2.0.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.0.0c/WebVideoCraft-Setup-1.2.0.0c.exe) · [正式版适配](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
+[下载 1.2.1.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.1.0c/WebVideoCraft-Setup-1.2.1.0c.exe) · [正式版适配](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前分支：WebVideo+ Craft 1.2.0c（安装器 1.2.0.0c；混合导出内核 0.6.61，产品基线 1.3.3）。** Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。
+**当前分支：WebVideo+ Craft 1.2.1c（安装器 1.2.1.0c；混合导出内核 0.6.65，产品基线 1.3.9）。** Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。
 
 支持精确匹配的官方 Windows x64 **Craft 1.0.0 正式版**，工程引擎支持官方 WebGAL **4.6.4 / 4.6.5 / 4.6.6** 和 **MyGO 3.2.1**；自定义同版本包与未来版本需单独适配。Terre 安装请按[项目首页](https://github.com/Stakataka-3030/WebVideo-Plus#下载与版本选择)选择维护通道。
 
@@ -17,7 +17,7 @@
 - **剧情导航**：按连续执行和目标整理主次组件，显示说话人、表情动作及命名滤镜/预制效果，点击即可定位编辑器与预览。
 - **剧情选择与时间线工具**：辅助选择连续区间、整理剧情结构和导出范围。
 - **音乐配置**：直接添加或拖入音频，可增加并行播放器行，按文字/放映速度匹配故事时长。
-- **视频与音轨导出**：读取实际预览速度，导出完整视频、舞台、对话框/DOM 或 48 kHz WAV；支持全篇、由当前场景开始、仅当前场景及语句选区，任务与进度由本机服务管理。
+- **视频与音轨导出**：读取实际预览速度，导出完整视频、舞台、对话框/DOM、48 kHz WAV 或对白 SRT；支持全篇、由当前场景开始、仅当前场景及语句选区，任务与进度由本机服务管理。
 - **字幕后处理（可选模块）**：导出完成后封装 SRT/ASS/SSA 软字幕或通过 FFmpeg/libass 烧录；可按视频起点、WebGAL 时间线语句、后处理音乐或手动时间定位。字幕内容和样式交给 Subtitle Edit、Aegisub 等外部编辑器处理。
 - **导入 Anogo 故事**：接收粘贴文本及 JSON/YAML 文件，转换后追加故事；动作导入默认关闭，待核对项由作者检查。
 - **检查与标记 / 备份与恢复**：提供制作提醒、待核对标签、历史备份与确认回滚；编辑通过 Craft 原生文档事务提交，保留未保存状态与原生撤销。
@@ -73,7 +73,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于适配目录的 `state/kern
 ## 安装与管理
 
 1. 保存工程并正常关闭官方 Windows x64 Craft 1.0.0。
-2. 从[发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.0.0c)下载安装器 `WebVideoCraft-Setup-1.2.0.0c.exe`，按发行正文的 SHA-256 校验。
+2. 从[发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c)下载安装器 `WebVideoCraft-Setup-1.2.1.0c.exe`，按发行正文的 SHA-256 校验。
 3. 选择 Craft 目录、原程序或快捷方式，执行“安装增强组件”或“更新 / 重新检查”。旧独立入口安装会迁移到原 EXE 入口。
 4. 完成后使用原快捷方式，或点击“启动 Craft”。“修复组件”和“卸载挂载”的范围见 [Craft 安装说明](craft/README.md#安装更新与管理)。
 

@@ -1,10 +1,10 @@
 {
-  "productVersion": "1.2.0c",
-  "installerVersion": "1.2.0.0c",
-  "fileVersion": "1.2.0.0",
-  "kernelVersion": "0.6.61",
-  "baseProductVersion": "1.3.3",
-  "baseKernelVersion": "0.6.61",
+  "productVersion": "1.2.1c",
+  "installerVersion": "1.2.1.0c",
+  "fileVersion": "1.2.1.0",
+  "kernelVersion": "0.6.65",
+  "baseProductVersion": "1.3.9",
+  "baseKernelVersion": "0.6.65",
   "nodeVersion": "22.20.0",
   "nodeSha256": "fdddbf4581e046b8102815d56208d6a248950bb554570b81519a8a5dacfee95d",
   "supportedHosts": [

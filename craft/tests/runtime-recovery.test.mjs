@@ -90,6 +90,7 @@ test('real service transport releases completed snapshots and preserves cancel r
  async function snapshot(){const allocated=await f.storage.allocate({id:'p',path:project},[project],'4.6.5','open-webgal.webgal');fs.mkdirSync(path.join(allocated.site,'game','scene'),{recursive:true});fs.writeFileSync(path.join(allocated.site,'index.html'),'owned');fs.writeFileSync(path.join(allocated.site,'game','scene','start.txt'),'A:text;');await f.storage.ready(allocated.snapshotId);return allocated;}
  const id='00000000-0000-4000-8000-000000000001',s=await snapshot();await f.kernel.request({endpoint:'/api/jobs',data:{},snapshotId:s.snapshotId});f.control({jobs:[{id,state:'canceled',phase:'canceling'}]});await f.kernel.sweepSnapshots();assert(fs.existsSync(s.site));f.control({jobs:[{id,state:'canceled',phase:'canceled'}]});await f.kernel.sweepSnapshots();assert(fs.existsSync(s.site));f.control({jobs:[{id,state:'completed',phase:'cleanup'}]});await f.kernel.sweepSnapshots();assert(fs.existsSync(s.site));f.control({jobs:[{id,state:'completed',phase:'completed'}]});await f.kernel.sweepSnapshots();assert(!fs.existsSync(s.site));
  const removed=await snapshot();f.control({});await f.kernel.request({endpoint:'/api/jobs',data:{},snapshotId:removed.snapshotId});f.control({jobs:[{id,state:'failed'}]});await f.kernel.sweepSnapshots();assert(fs.existsSync(removed.site));f.control({jobs:[]});await f.kernel.sweepSnapshots();assert(!fs.existsSync(removed.site));
+ const textOnly=await snapshot();f.control({});await f.kernel.request({endpoint:'/api/jobs',data:{},snapshotId:textOnly.snapshotId});f.control({jobs:[{id,state:'failed',cleanupComplete:false,diagnosticArchive:{status:'partial'}}]});await f.kernel.sweepSnapshots();assert(fs.existsSync(textOnly.site),'failure waits for native text collection and cleanup');f.control({jobs:[{id,state:'failed',cleanupComplete:true,diagnosticArchive:{status:'partial',heavyCacheCleaned:true}}]});await f.kernel.sweepSnapshots();assert(!fs.existsSync(textOnly.site),'new-policy failed task keeps text records but releases full source snapshot');
  const rejected=await snapshot();f.control({reject:true});await assert.rejects(f.kernel.request({endpoint:'/api/jobs',data:{},snapshotId:rejected.snapshotId}),/controlled rejection/);assert(!fs.existsSync(rejected.site));
  const failed=await snapshot();f.control({loseResponse:true});await assert.rejects(f.kernel.request({endpoint:'/api/jobs',data:{},snapshotId:failed.snapshotId}));assert(fs.existsSync(failed.site));await f.kernel.stop();await assertGone([pids.service,pids.descendant]);assert(fs.existsSync(failed.site),'lost acceptance remains retryable across shutdown');assert.equal(f.storage.snapshots.size,1);
 });
@@ -137,7 +138,7 @@ test('real exclusive owner hardlink publication exit recovers its exact temporar
 });
 
 
-test('real cross-session failed and canceled retry sources survive close then release after authoritative job deletion/completion',async t=>{
+for(const terminal of [{state:'completed',phase:'completed'},{state:'failed',phase:'failed',cleanupComplete:true,diagnosticArchive:{status:'complete',heavyCacheCleaned:true}}])test('real cross-session retained sources release after '+terminal.state,async t=>{
  const dir=home(t),sessions=path.join(dir,'sessions'),session=path.join(sessions,crypto.randomUUID()),project=path.join(dir,'project');fs.mkdirSync(session,{recursive:true});fs.mkdirSync(project);fs.writeFileSync(path.join(project,'source'),'source');
  const module=new URL('../session/storage.mjs',import.meta.url).href;
  const script="import fs from 'node:fs';import path from 'node:path';const {SessionStorage}=await import(process.argv[1]);const storage=new SessionStorage(process.argv[2]),project=process.argv[3];for(let i=0;i<2;i++){const s=await storage.allocate({id:'project',path:project},[project]);fs.mkdirSync(path.join(s.site,'game','scene'),{recursive:true});fs.writeFileSync(path.join(s.site,'index.html'),'owned');fs.writeFileSync(path.join(s.site,'game','scene','start.txt'),'A:text;');await storage.ready(s.snapshotId);await storage.pinSnapshot(s.snapshotId,{kind:'queue',taskId:i?'00000000-0000-4000-8000-000000000002':'00000000-0000-4000-8000-000000000001'});}await storage.close({preserveTasks:true});process.exit(91);";
@@ -148,5 +149,13 @@ test('real cross-session failed and canceled retry sources survive close then re
  assert.equal(fs.readFileSync(path.join(a.site,'game','scene','start.txt'),'utf8'),'A:text;');assert.equal(fs.readFileSync(path.join(b.site,'game','scene','start.txt'),'utf8'),'A:text;');
  await SessionStorage.recoverSessions(sessions,{queue:[jobs[1]]});assert(!fs.existsSync(a.site)&&fs.existsSync(b.site));
  await SessionStorage.recoverSessions(sessions,{queue:[{id:'malformed',state:'failed'}]});assert(fs.existsSync(b.site));
- await SessionStorage.recoverSessions(sessions,{queue:[{id:b.taskId,project:b.site,state:'completed',phase:'completed'}]});assert(!fs.existsSync(b.site));assert.deepEqual(JSON.parse(fs.readFileSync(file)).snapshots,[]);
+ await SessionStorage.recoverSessions(sessions,{queue:[{id:b.taskId,project:b.site,...terminal}]});assert(!fs.existsSync(b.site));assert.deepEqual(JSON.parse(fs.readFileSync(file)).snapshots,[]);
+});
+
+
+test('closing immediately after native failure releases its full source snapshot',async t=>{
+ const f=await controlled(t);await f.kernel.start();const pids=await f.pids(),project=path.join(f.dir,'terminal-project');fs.mkdirSync(project);fs.writeFileSync(path.join(project,'source'),'source');
+ const snapshot=await f.storage.allocate({id:'p',path:project},[project],'4.6.5','open-webgal.webgal');fs.mkdirSync(path.join(snapshot.site,'game','scene'),{recursive:true});fs.writeFileSync(path.join(snapshot.site,'index.html'),'owned');fs.writeFileSync(path.join(snapshot.site,'game','scene','start.txt'),'A:text;');await f.storage.ready(snapshot.snapshotId);
+ await f.kernel.request({endpoint:'/api/jobs',data:{},snapshotId:snapshot.snapshotId});f.control({jobs:[{id:'00000000-0000-4000-8000-000000000001',state:'failed',cleanupComplete:true,diagnosticArchive:{status:'complete',heavyCacheCleaned:true}}]});
+ await f.kernel.stop();await assertGone([pids.service,pids.descendant]);assert(!fs.existsSync(snapshot.site),'normal close must not leave a terminal-failure full snapshot until the next launch');
 });
