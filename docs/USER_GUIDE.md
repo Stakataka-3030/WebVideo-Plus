@@ -2,9 +2,9 @@
 
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.8) · [1.3.8 发行说明](releases/RELEASE_NOTES_1.3.8.md) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.9) · [1.3.9 发行说明](releases/RELEASE_NOTES_1.3.9.md) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
 
-**当前发行分支源码：1.3.8（内部开发标识 0.9.7；安装器 Win32 版本 1.3.8.0，导出内核 0.6.64）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.8) 为准。
+**当前发行分支源码：1.3.9（内部开发标识 0.9.8；安装器 Win32 版本 1.3.9.0，导出内核 0.6.65）。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.9) 为准。
 
 当前适配基线为 **Terre / WebGAL 4.6.6**。4.6.5 最终稳定版使用 1.2.1，4.6.4 使用 1.1.10；按各版本发行说明选择安装包。
 
@@ -52,7 +52,7 @@
 
 导出工作缓存与任务历史已经分离。安装器高级设置允许分别选择 **WebVideo+ 数据目录、导出工作缓存目录、安装缓存目录**；默认位置仍可直接使用。数据目录保存设置、任务历史、日志和 WebVideo+ 用户库，切换目录时会先停止服务、复制并校验内容，成功后再切换；工作缓存和安装缓存则对后续任务/下载生效。
 
-分片视频、素材快照、混音 WAV 和 WebView2 profile 写入工作缓存目录；默认使用成片目录下的 `.webvideo-cache`。成功导出或时间分析完成后会自动删除重型工作缓存，失败或取消任务保留必要分片以便重试；WebView2 profile 在规划/渲染进程结束后立即清理。临时导入音乐在建任务时复制到任务缓存，服务会回收不再使用的上传副本。
+分片视频、素材快照、混音 WAV 和 WebView2 profile 写入工作缓存目录；默认使用成片目录下的 `.webvideo-cache`。本次维护后的新任务：最终成功（含重试成功）删除本次诊断日志、源文本副本和临时缓存；仅保留任务历史及功能性分析结果。最终失败先归集文字日志、JSON、恢复脚本与源位置映射，再删除帧图、音视频、模型和素材副本；归集不全会标记 partial，未复制的必要文字可留在已清除重文件的缓存目录。取消仍保留既有的源快照和完成分片供继续；WebView2 profile 在规划/渲染进程结束后清理。旧历史任务不会因升级被追溯删除。临时导入音乐在建任务时复制到任务缓存，服务会回收不再使用的上传副本。
 
 安装/更新仍保留严格校验；若 Terre 文件、启动程序或历史安装记录与预期不一致，安装器不会直接锁死，而会提供显式的 **强制修复**。强制操作先建立事务性临时回滚副本，成功后立即删除。用户可选择是否长期保留另一份 Terre 原始文件恢复备份；该长期备份默认开启并放在所选 WebVideo+ 数据目录内，也可关闭。
 
@@ -109,7 +109,7 @@ B:下一段从这条语句开始;
 
 旧数字切点仅保留 **CLI / API / 已排队任务兼容**：例如 `--segment-cut-mode manual --manual-cut-points "300,12.5s,00:20"`。兼容输入可与标记合并，仍使用旧的输出相对帧规则及范围校验。新导出面板不再提供数字编辑框，也不会隐式带入已保存的旧数字切点；有旧值时会明确提示。只用剧本标记的 CLI 可传 `--segment-cut-mode manual`，不需要 `--manual-cut-points`。原有 `--mode manual` 是对白等待模式，与切点模式无关。
 
-1.3.8 的改动见[发行说明](releases/RELEASE_NOTES_1.3.8.md)与[版本记录](../CHANGELOG.md)；此前版本见[发行说明索引](releases/README.md)。
+1.3.9 的改动见[发行说明](releases/RELEASE_NOTES_1.3.9.md)与[版本记录](../CHANGELOG.md)；此前版本见[发行说明索引](releases/README.md)。
 
 ## 两轮基础舞台
 
@@ -135,7 +135,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于所选 **WebVideo+ 数据�
 
 ## 安装与模块管理
 
-1. 从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.8) 下载最新的 `WebVideo+-Setup-*.exe`。
+1. 从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.9) 下载最新的 `WebVideo+-Setup-*.exe`。
 2. 运行安装器并选择已有 **Terre 4.6.4** 安装目录。
 3. 默认安装常用模块；在高级选项中可单独增删功能，并可选择 WebVideo+ 数据目录、导出工作缓存、安装缓存以及是否保留长期 Terre 恢复备份。灰选项目表示其他已选模块所需依赖。
 4. 完成后照常启动 Terre。

@@ -216,6 +216,7 @@ jobs:
           Invoke-CiRegression 'lifecycle-settings' './tests/lifecycle-settings.test.ps1' @{ EvidenceDirectory=(Join-Path $evidence 'settings') }
           Invoke-CiRegression 'authoring-private-files' './tests/authoring-private-files.test.ps1' @{ OutputRoot=(Join-Path $evidence 'authoring-private-files') }
           Invoke-CiRegression 'lifecycle-reliability' './tests/lifecycle-reliability.test.ps1' @{ EvidenceDirectory=(Join-Path $evidence 'lifecycle') }
+          Invoke-CiRegression 'export-diagnostics' './tests/export-diagnostics.test.ps1' @{ PackageRoot=$package; OutputRoot=(Join-Path $evidence 'export-diagnostics') }
           Invoke-CiRegression 'render-process-output' './tests/render-process-output.test.ps1' @{ RepositoryRoot=$PWD.Path; OutputRoot=(Join-Path $evidence 'process-output') }
           # Runtime fixture uses a local SDK substitute and a fixture key; it never calls a paid provider.
           Invoke-CiRegression 'runtime-persistence' './tests/runtime-persistence.test.ps1' @{ PackageRoot=$package; EvidenceRoot=(Join-Path $evidence 'persistence') }

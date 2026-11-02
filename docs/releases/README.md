@@ -1,5 +1,6 @@
 # 发行说明
 
+- [1.3.9](RELEASE_NOTES_1.3.9.md)
 - [1.3.8](RELEASE_NOTES_1.3.8.md)
 
 - [1.3.7](RELEASE_NOTES_1.3.7.md)
