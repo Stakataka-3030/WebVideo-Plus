@@ -22,7 +22,7 @@ namespace System.Web.Script.Serialization {
  }
 }
 namespace NativeVideo {
- public static class Files {public static string HashText(string value){return value;}public static string Under(string root,string file){return Path.Combine(root,file);}public static void CopyFile(string from,string to){throw new NotSupportedException();}public static void Atomic(string file,string value){throw new NotSupportedException();}}
+ public static class Files {public static string IoPath(string file){throw new NotSupportedException();}public static string HashText(string value){return value;}public static string Under(string root,string file){return Path.Combine(root,file);}public static void CopyFile(string from,string to){throw new NotSupportedException();}public static void Atomic(string file,string value){throw new NotSupportedException();}}
  public static class Commands {public static Task<double> Duration(string value){throw new NotSupportedException();}}
  public static class ProjectAssets {public static bool SingleLineHint(string command,object sentence,object args){return false;}}
  public static class GpuEncoding {public static string NormalizeMode(string mode){return mode;}}
