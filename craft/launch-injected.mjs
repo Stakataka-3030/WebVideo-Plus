@@ -3,8 +3,7 @@ import fs from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import {spawn,execFile} from 'node:child_process';
-import {promisify} from 'node:util';
+import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {buildBrowserPayload} from './session/browser-payload.mjs';
 import {SessionRpc,CdpConnection} from './session/rpc.mjs';
@@ -17,6 +16,7 @@ import {CleanUpdateCoordinator} from './update/clean-coordinator.mjs';
 import {CraftOwnUpdates} from './update/own-updates.mjs';
 import {CraftUpdatePreferences,suppressed} from './update/preferences.mjs';
 import {audioDuration} from './session/audio.mjs';
+import {verifySessionListener} from './session/listener.mjs';
 import {runHint} from './session/hint-operation.mjs';
 import {readState,verifyPackage} from './installer/transaction.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
@@ -91,8 +91,7 @@ try{
  }
  if(!target)throw Error('未找到唯一的 Craft 主页面');
  // Check the actual listener and owning process ancestry; a command-line flag alone is not evidence.
- const ps=`$rows=@(Get-NetTCPConnection -State Listen -LocalPort ${port} -ErrorAction Stop); if(!$rows.Count){throw 'no listener'}; foreach($r in $rows){if($r.LocalAddress -notin @('127.0.0.1','::1')){throw 'non-loopback listener'};$p=$r.OwningProcess;$ok=$false;for($i=0;$i -lt 20 -and $p -gt 0;$i++){if($p -eq ${app.pid}){$ok=$true;break};$w=Get-CimInstance Win32_Process -Filter ('ProcessId='+$p);if(!$w){break};$p=$w.ParentProcessId};if(!$ok){throw 'listener not owned by launched host'}};'verified'`;
- await promisify(execFile)('powershell.exe',['-NoProfile','-NonInteractive','-Command',ps],{timeout:15000,windowsHide:true});
+ await verifySessionListener(path.resolve(config.adapterRoot,manifest.wrapper),port,app.pid);
  const wsUrl=new URL(target.webSocketDebuggerUrl);if(wsUrl.hostname!=='127.0.0.1'&&wsUrl.hostname!=='localhost'||Number(wsUrl.port)!==port)throw Error('调试目标地址不匹配');
  const socket=new WebSocket(wsUrl);await new Promise((resolve,reject)=>{socket.addEventListener('open',resolve,{once:true});socket.addEventListener('error',reject,{once:true});});cdp=new CdpConnection(socket);
  let reinject;const contexts=new Map();cdp.on(m=>{if(m.sessionId)return;if(m.method==='Runtime.executionContextsCleared'){contexts.clear();rpc?.close();void abortUncommittedUpdate();}if(m.method==='Runtime.executionContextCreated'){contexts.set(m.params.context.id,m.params.context);if(reinject)void reinject(m.params.context).catch(e=>log({event:'reinjection-failed',error:e.message}));}if(m.method==='Runtime.executionContextDestroyed'){contexts.delete(m.params.executionContextId);if(rpc?.contextId===m.params.executionContextId){rpc.close();void abortUncommittedUpdate();}}});
@@ -148,7 +147,7 @@ try{
  if(updater.handoff()){await log({event:'official-update-handoff',automaticRemount:false});process.exitCode=75;}
 }catch(e){await log({event:'failed',error:e.message});launchStatus('failed','Craft 接入失败：'+e.message);console.error(e.message);process.exitCode=1;
  if(app.exitCode===null&&!spawnError){
-  const message='WebVideo+ 接入失败：'+e.message+'。请保存工作并关闭此 Craft 窗口，再检查适配版本。关闭前本机会话调试端口仍存在。';
+  const message='WebVideo+ 接入失败：'+e.message+'。请保存工作并关闭此 Craft 窗口，再查看启动日志。关闭前本机会话调试端口可能仍然存在。';
   const encoded=Buffer.from(message,'utf8').toString('base64');
   spawn('powershell.exe',['-NoProfile','-Command',`Add-Type -AssemblyName System.Windows.Forms;[System.Windows.Forms.MessageBox]::Show([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encoded}')),'WebVideo+ Craft')`],{windowsHide:true,stdio:'ignore'});
   await waitForApp();

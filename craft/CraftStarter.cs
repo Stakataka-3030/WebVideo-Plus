@@ -11,6 +11,8 @@ using System.Web.Script.Serialization;
 using System.Threading;
 using System.Security.Cryptography;
 using System.Text;
+using System.Runtime.InteropServices;
+using System.Net;
 [assembly: AssemblyVersion("1.2.2.0")]
 [assembly: AssemblyFileVersion("1.2.2.0")]
 [assembly: AssemblyInformationalVersion("1.2.2.0c")]
@@ -18,6 +20,8 @@ using System.Text;
 static class CraftStarter {
  static string Q(string s){return "\""+System.Text.RegularExpressions.Regex.Replace(System.Text.RegularExpressions.Regex.Replace(s,@"(\\*)""","$1$1\\\""),@"(\\+)$","$1$1")+"\"";}
  [STAThread] static int Main(string[] args){
+  // Read-only native query: never enter the GUI, installation or session path.
+  if(args.Length>0&&args[0]=="--verify-listener")return CraftListenerVerifier.Run(args);
   CraftManifestVerifier.ConfigurePaths();
   if(args.Contains("--auto-click"))try{return Run(args,(message,ready)=>{});}catch{return 1;}
   Application.EnableVisualStyles();
@@ -145,5 +149,96 @@ static class CraftStarter {
     return process.ExitCode;
    }
   }catch(Exception error){record(error.ToString());throw new IOException(error.Message+"\n"+log.Diagnostic,error);}finally{if(launchMutex!=null){launchMutex.ReleaseMutex();launchMutex.Dispose();}}
+ }
+}
+
+// Some Windows 26H2 builds return State=0 for live listening sockets through
+// CIM and all-connections IP Helper tables. Ask the OS for its listener-only
+// table instead; membership, not the unreliable State field, proves listening.
+internal static class CraftListenerVerifier {
+ internal const int ListenerTable=3; // TCP_TABLE_OWNER_PID_LISTENER
+ internal delegate uint TableQuery(IntPtr table,ref int size,bool order,int family,int tableClass,uint reserved);
+ [DllImport("iphlpapi.dll")]static extern uint GetExtendedTcpTable(IntPtr table,ref int size,bool order,int family,int tableClass,uint reserved);
+ [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]struct Entry {
+  public uint size,usage,pid;public UIntPtr heap;public uint module,threads,parent;public int priority;public uint flags;
+  [MarshalAs(UnmanagedType.ByValTStr,SizeConst=260)]public string name;
+ }
+ [DllImport("kernel32.dll",SetLastError=true)]static extern IntPtr CreateToolhelp32Snapshot(uint flags,uint pid);
+ [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)]static extern bool Process32FirstW(IntPtr snapshot,ref Entry entry);
+ [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)]static extern bool Process32NextW(IntPtr snapshot,ref Entry entry);
+ [DllImport("kernel32.dll")]static extern bool CloseHandle(IntPtr handle);
+ internal sealed class Listener {internal string Address;internal int Port,Pid;}
+ internal static byte[] ReadTable(int family,TableQuery query=null){
+  if(family!=2&&family!=23)throw new ArgumentException("Invalid address family");
+  query=query??GetExtendedTcpTable;int size=0;uint error=query(IntPtr.Zero,ref size,false,family,ListenerTable,0);
+  if(error!=122)throw new IOException("Cannot size native listener table: "+error);
+  for(int attempt=0;attempt<4;attempt++){
+   if(size<4||size>16*1024*1024)throw new IOException("Invalid native listener table size");
+   int capacity=size;IntPtr buffer=Marshal.AllocHGlobal(capacity);
+   try{
+    error=query(buffer,ref size,false,family,ListenerTable,0);
+    if(error==122)continue;
+    if(error!=0)throw new IOException("Cannot read native listener table: "+error);
+    if(size<4||size>capacity)throw new IOException("Incomplete native listener table");
+    var bytes=new byte[size];Marshal.Copy(buffer,bytes,0,size);return bytes;
+   }finally{Marshal.FreeHGlobal(buffer);}
+  }
+  throw new IOException("Native listener table kept changing");
+ }
+ internal static List<Listener> ParseTable(byte[] bytes,int family){
+  if(bytes==null||bytes.Length<4||(family!=2&&family!=23))throw new IOException("Invalid native listener table");
+  uint count=BitConverter.ToUInt32(bytes,0);int stride=family==2?24:56;
+  if(4L+(long)count*stride>bytes.Length)throw new IOException("Truncated native listener table");
+  var result=new List<Listener>();
+  for(int i=0;i<(int)count;i++){
+   int offset=4+i*stride,portOffset=offset+(family==2?8:20),pidOffset=offset+(family==2?20:52);
+   var address=new byte[family==2?4:16];Array.Copy(bytes,offset+(family==2?4:0),address,0,address.Length);
+   string text=family==2?new IPAddress(address).ToString():new IPAddress(address,BitConverter.ToUInt32(bytes,offset+16)).ToString();
+   uint pid=BitConverter.ToUInt32(bytes,pidOffset);if(pid>Int32.MaxValue)throw new IOException("Invalid listener process ID");
+   result.Add(new Listener{Address=text,Port=(bytes[portOffset]<<8)|bytes[portOffset+1],Pid=(int)pid});
+  }
+  return result;
+ }
+ internal static Dictionary<int,int> ReadParents(){
+  IntPtr snapshot=CreateToolhelp32Snapshot(2,0);if(snapshot==new IntPtr(-1))throw new IOException("Cannot enumerate listener process ancestry");
+  try{
+   var result=new Dictionary<int,int>();var entry=new Entry();entry.size=(uint)Marshal.SizeOf(typeof(Entry));
+   if(!Process32FirstW(snapshot,ref entry))throw new IOException("Cannot read listener process snapshot");
+   do{
+    if(entry.pid>Int32.MaxValue||entry.parent>Int32.MaxValue||result.ContainsKey((int)entry.pid))throw new IOException("Invalid listener process snapshot");
+    result.Add((int)entry.pid,(int)entry.parent);
+   }while(Process32NextW(snapshot,ref entry));
+   if(Marshal.GetLastWin32Error()!=18)throw new IOException("Incomplete listener process snapshot");
+   return result;
+  }finally{CloseHandle(snapshot);}
+ }
+ internal static int Validate(IList<Listener> rows,int port,int hostPid,Dictionary<int,int> parents){
+  if(port<1||port>65535||hostPid<=0||rows==null||parents==null)throw new IOException("Invalid listener verification scope");
+  var selected=rows.Where(r=>r.Port==port).ToArray();if(selected.Length==0)throw new IOException("No native listener on the session port");
+  if(selected.Any(r=>r.Address!="127.0.0.1"&&r.Address!="::1"))throw new IOException("Non-loopback session listener");
+  if(selected.Any(r=>r.Pid<=0)||selected.Select(r=>r.Pid).Distinct().Count()!=1||selected.Select(r=>r.Address).Distinct().Count()!=selected.Length)throw new IOException("Ambiguous session listener ownership");
+  int owner=selected[0].Pid,pid=owner;var seen=new HashSet<int>();
+  if(!parents.ContainsKey(hostPid))throw new IOException("Launched host is no longer present");
+  for(int depth=0;depth<20&&pid>0;depth++){
+   int parent;if(!seen.Add(pid)||!parents.TryGetValue(pid,out parent))break;
+   if(pid==hostPid)return owner;pid=parent;
+  }
+  throw new IOException("Listener is not owned by the launched host");
+ }
+ internal static object Verify(int port,int hostPid,Func<int,byte[]> table=null,Func<Dictionary<int,int>> processes=null){
+  if(port<1||port>65535||hostPid<=0)throw new IOException("Invalid listener verification scope");
+  table=table??(family=>ReadTable(family));processes=processes??ReadParents;
+  // Both families must succeed. A partial query cannot exclude a foreign or
+  // wildcard listener sharing the port in the other address family.
+  var rows=ParseTable(table(2),2);rows.AddRange(ParseTable(table(23),23));
+  int owner=Validate(rows,port,hostPid,processes());
+  return new{schemaVersion=1,verified=true,source="native-listener-table",port=port,hostPid=hostPid,ownerPid=owner,addresses=rows.Where(r=>r.Port==port).Select(r=>r.Address).ToArray()};
+ }
+ internal static int Run(string[] args){
+  try{
+   int port,hostPid;
+   if(args.Length!=3||!Int32.TryParse(args[1],System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out port)||!Int32.TryParse(args[2],System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out hostPid))throw new ArgumentException("Expected --verify-listener <port> <hostPid>");
+   Console.WriteLine(new JavaScriptSerializer().Serialize(Verify(port,hostPid)));Console.Out.Flush();return 0;
+  }catch(Exception error){Console.Error.WriteLine("Session listener verification failed: "+error.Message);return 1;}
  }
 }
