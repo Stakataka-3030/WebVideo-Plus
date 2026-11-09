@@ -16,8 +16,8 @@ function WebVideoDialogueSubtitles({game,target}){
   if(!open||picking.current)return;const token=++generation.current;setBusy(false);setReady(false);setMessage('正在读取导出设置…');setProblem(null);
   (async()=>{try{
    const conn=await WebVideoServiceErrors.readDiscovery((url,options)=>webVideoExportRequest(url,options,15000,requests.current));if(token!==generation.current)return;connection.current=conn;
-   const cfg=await call('/api/config');const speed=await WebVideoRuntime.readGameSettings(game);if(token!==generation.current)return;
-   settings.current={...cfg.settings,...speed,mode:'auto',bgmBaseMode:'auto',segmentCutMode:'auto',manualCutPoints:''};setDirectory(cfg.outputDir);setName((target?.name||'字幕.txt').replace(/\.txt$/i,'')+'.srt');setMessage('');setReady(true);
+   const cfg=await call('/api/config');if(token!==generation.current)return;const speed=WebVideoRuntime.peekGameSettings(game);
+   settings.current={...cfg.settings,...speed,mode:'auto',bgmBaseMode:'auto',segmentCutMode:'auto',manualCutPoints:''};setDirectory(cfg.outputDir);setName((target?.name||'字幕.txt').replace(/\.txt$/i,'')+'.srt');setMessage(speed?'':'预览已关闭或尚未就绪；开始导出字幕时将读取当前游戏的播放设置。');setReady(true);
   }catch(error){if(token===generation.current)fail(error);}})();
   return()=>{generation.current++;for(const c of requests.current)c.abort();};
  },[open,game]);
@@ -31,9 +31,11 @@ function WebVideoDialogueSubtitles({game,target}){
   if(inFlight.current||!ready)return;inFlight.current=true;setBusy(true);setProblem(null);const token=generation.current;
   try{
    if(!scene||!game)throw Error('请先打开场景文本。');
+   const speed=await WebVideoRuntime.readGameSettings(game);if(token!==generation.current)return;
+   const jobSettings={...settings.current,...speed,mode:'auto',bgmBaseMode:'auto'};
    const model=window.WebVideoPlus?.state().model;let sourceText=model?.path===base+scene?model.source:undefined,range;
    if(selection){if(!window.WebVideoPlus.validateSelection(selection))throw Error('选区已变化，请重新选择。');sourceText=selection.source;range={startLine:selection.ranges[0].startLine,endLine:selection.ranges[0].endLine,sourceHash:await webVideoExportHash(sourceText.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n'))};}
-   const request={project:game,scene,sourceText,range,storyScope:scope,runtimeStartup:WebVideoRuntime.peekRuntimeStartup?.(game)??null,exportKind:'subtitles',includeSpeaker,settings:settings.current,outputDir:directory,fileName:name};
+   const request={project:game,scene,sourceText,range,storyScope:scope,runtimeStartup:WebVideoRuntime.peekRuntimeStartup?.(game)??null,exportKind:'subtitles',includeSpeaker,settings:jobSettings,outputDir:directory,fileName:name};
    const signature=JSON.stringify(request);if(submission.current?.signature!==signature)submission.current={signature,id:crypto.randomUUID()};request.requestId=submission.current.id;
    let result;try{result=await call('/api/jobs',request);}catch(error){result=await call('/api/jobs/by-request/'+request.requestId).catch(()=>null);if(!result?.id)throw error;}
    if(token===generation.current){setJob({id:result.id,state:'queued'});setMessage('已加入字幕导出队列。');}submission.current=null;
