@@ -65,6 +65,24 @@ jobs:
           node scripts/verify-build-inputs.mjs
           if ($LASTEXITCODE -ne 0) { throw "Prepared input verification failed" }
 
+      - name: Verify requested-expression and automatic-save contracts on exact engines
+        shell: pwsh
+        run: |
+          . ./scripts/build-common.ps1
+          $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
+          Expand-CheckedBuildArchive .build/downloads/WebGAL-4.6.4-web.zip .build/webgal-4.6.4
+          foreach ($version in @('4.6.5','4.6.6')) {
+            $input = if ($version -eq '4.6.5') { $lock.webgal465Test } else { $lock.webgal466Test }
+            $archive = Get-PinnedBuildInput $input (Join-Path $PWD '.build/downloads')
+            Expand-CheckedBuildArchive $archive (Join-Path $PWD ('.build/webgal-' + $version))
+          }
+          ./tests/live2d-expression-native.ps1 -EngineRoots @('.build/webgal-4.6.4','.build/webgal-4.6.5','.build/webgal-4.6.6') -SupportPackage package
+          if ($LASTEXITCODE -ne 0) { throw 'Exact engine expression lifecycle contracts failed' }
+          foreach ($version in @('4.6.4','4.6.5','4.6.6')) {
+            ./tests/autosave-planning-native.ps1 -EngineRoot ('.build/webgal-' + $version) -SupportPackage package -OutputRoot ('.build/ci-native-tests/autosave/contract-' + $version) -ContractOnly
+            if ($LASTEXITCODE -ne 0) { throw "Native autosave contract failed: $version" }
+          }
+
       - name: Restore locked AI dependencies without lifecycle scripts
         shell: pwsh
         working-directory: ai-runtime
