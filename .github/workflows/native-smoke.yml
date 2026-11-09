@@ -72,8 +72,8 @@ jobs:
           $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
           Expand-CheckedBuildArchive .build/downloads/WebGAL-4.6.4-web.zip .build/webgal-4.6.4
           foreach ($version in @('4.6.5','4.6.6')) {
-            $input = if ($version -eq '4.6.5') { $lock.webgal465Test } else { $lock.webgal466Test }
-            $archive = Get-PinnedBuildInput $input (Join-Path $PWD '.build/downloads')
+            $engineInput = if ($version -eq '4.6.5') { $lock.webgal465Test } else { $lock.webgal466Test }
+            $archive = Get-PinnedBuildInput $engineInput (Join-Path $PWD '.build/downloads')
             Expand-CheckedBuildArchive $archive (Join-Path $PWD ('.build/webgal-' + $version))
           }
           ./tests/live2d-expression-native.ps1 -EngineRoots @('.build/webgal-4.6.4','.build/webgal-4.6.5','.build/webgal-4.6.6') -SupportPackage package
