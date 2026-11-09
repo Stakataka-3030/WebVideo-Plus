@@ -71,12 +71,12 @@ async function waitUntil(description, probe, timeout = 90000) {
   while (Date.now() < until) { const value = await probe(); if (value) return value; await delay(250); }
   throw Error('Timed out: ' + description);
 }
-async function powershell(script) {
+export async function powershell(script) {
   const encoded = Buffer.from("$ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue';" + script, 'utf16le').toString('base64');
   const result = await diagnosticExecute('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], 20000);
   return result.stdout.trim() ? JSON.parse(result.stdout.replace(/^\uFEFF/, '')) : null;
 }
-async function diagnosticExecute(file, args, timeoutMs) {
+export async function diagnosticExecute(file, args, timeoutMs) {
   const started = Date.now(), signal = AbortSignal.timeout(timeoutMs);
   try { return await execute(file, args, {windowsHide: true, signal, maxBuffer: 8 * 1024 * 1024}); }
   catch (error) {
@@ -85,18 +85,24 @@ async function diagnosticExecute(file, args, timeoutMs) {
     throw failure;
   }
 }
-async function processes() {
-  const result = await powershell(`@(Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,ExecutablePath,@{n="Started";e={if($_.CreationDate){$_.CreationDate.ToUniversalTime().ToString("${PROCESS_TIME_FORMAT}")}else{""}}}) | ConvertTo-Json -Compress`);
+export async function processes(includeCommandLine = false) {
+  const result = await powershell(`@(Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,ExecutablePath,${includeCommandLine ? 'CommandLine,' : ''}@{n="Started";e={if($_.CreationDate){$_.CreationDate.ToUniversalTime().ToString("${PROCESS_TIME_FORMAT}")}else{""}}}) | ConvertTo-Json -Compress`);
   return Array.isArray(result) ? result : result ? [result] : [];
 }
-function descendants(rows, rootPid) {
-  const ids = new Set([rootPid]);
-  for (let i = 0; i < rows.length; i++) for (const row of rows) if (ids.has(row.ParentProcessId)) ids.add(row.ProcessId);
+export function descendants(rows, rootPid) {
+  const ids = new Set([rootPid]), byPid = new Map(rows.map(row => [row.ProcessId, row]));
+  const validTime = value => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(value || '');
+  // A Windows parent PID can survive the parent and then be reused. A child
+  // predating the currently observed parent cannot belong to that process.
+  for (let i = 0; i < rows.length; i++) for (const row of rows) {
+    const parent = byPid.get(row.ParentProcessId);
+    if (ids.has(row.ParentProcessId) && parent && validTime(row.Started) && validTime(parent.Started) && row.Started >= parent.Started) ids.add(row.ProcessId);
+  }
   return rows.filter(row => ids.has(row.ProcessId));
 }
-async function actOnOwnedProcess(row, action) {
+export async function actOnOwnedProcess(row, action) {
   assert.ok(['close', 'kill'].includes(action));
-  const payload = Buffer.from(JSON.stringify(row)).toString('base64');
+  const payload = Buffer.from(JSON.stringify({ProcessId: row.ProcessId, Started: row.Started, ExecutablePath: row.ExecutablePath})).toString('base64');
   return powershell(`$r=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${payload}'))|ConvertFrom-Json;try{$p=[Diagnostics.Process]::GetProcessById([int]$r.ProcessId)}catch{return};try{$null=$p.Handle;if($p.StartTime.ToUniversalTime().ToString("${PROCESS_TIME_FORMAT}")-ne$r.Started -or $p.MainModule.FileName-ne$r.ExecutablePath){throw 'Process identity changed; refusing cleanup'};` +
     (action === 'close' ? '$p.CloseMainWindow()|ConvertTo-Json' : '$p.Kill();$p.WaitForExit(10000)|ConvertTo-Json') + '}finally{$p.Dispose()}');
 }
