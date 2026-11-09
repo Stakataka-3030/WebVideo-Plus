@@ -50,6 +50,8 @@ jobs:
           if ($tests.Count -eq 0) { throw "No Craft/shared regression files found" }
           & node --test --test-concurrency=2 @tests
           if ($LASTEXITCODE -ne 0) { throw "Craft/shared Node regression checks failed" }
+          pwsh -NoLogo -NoProfile -File ./tests/scene-only-tail.test.ps1 -Fixtures .build/scene-only-tail-fixtures.json
+          if ($LASTEXITCODE -ne 0) { throw "Scene-only tail production checks failed" }
 
       - name: Verify composed Craft feature preflight
         shell: pwsh
@@ -82,6 +84,9 @@ jobs:
             ./tests/autosave-planning-native.ps1 -EngineRoot ('.build/webgal-' + $version) -SupportPackage package -OutputRoot ('.build/ci-native-tests/autosave/contract-' + $version) -ContractOnly
             if ($LASTEXITCODE -ne 0) { throw "Native autosave contract failed: $version" }
           }
+
+          node tests/scene-only-tail-runtime-contract.mjs .build/webgal-4.6.6 .build/scene-only-tail-fixtures.json
+          if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.6 scene-only tail forwarding/preload oracle failed" }
 
       - name: Restore locked AI dependencies without lifecycle scripts
         shell: pwsh
@@ -257,6 +262,19 @@ jobs:
             "Native readiness/capture fault: **$($state.status)**; WebView2 $($state.runtimeVersion); readiness PASS=$(@($state.readiness | Where-Object status -eq 'PASS').Count), NA=$(@($state.readiness | Where-Object status -eq 'NA').Count)." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           }
 
+      - name: Compare scene-only tail planning with the full-story native crop
+        shell: pwsh
+        run: |
+          $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
+          $version = (Get-Content craft/version.json -Raw | ConvertFrom-Json).installerVersion
+          $package = Join-Path $PWD ('dist/WebVideoCraft-Setup-' + $version)
+          $media = Join-Path $env:RUNNER_TEMP ('webvideo-craft-ci-tools/ffmpeg/ffmpeg-' + $lock.ffmpegTest.version + '-essentials_build/bin')
+          $engines = @(@{name='webgal-464';root=(Join-Path $package 'runtime/web')}, @{name='webgal-465';root=(Join-Path $PWD '.build/webgal-4.6.5')}, @{name='webgal-466';root=(Join-Path $PWD '.build/webgal-4.6.6')})
+          foreach ($engine in $engines) {
+            ./tests/scene-only-tail-native.ps1 -EngineRoot $engine.root -PackageRoot $package -MediaToolDirectory $media -OutputRoot (Join-Path $PWD ('.build/ci-native-tests/scene-tail/' + $engine.name))
+            if ($LASTEXITCODE -ne 0) { throw "Hosted native scene-only tail parity failed: $($engine.name)" }
+          }
+
       - name: Preserve production regression evidence including failures and NA
         if: always()
         uses: actions/upload-artifact@v4
@@ -269,6 +287,8 @@ jobs:
             .build/ci-native-tests/**/*.log
             .build/ci-native-tests/**/*.png
             .build/ci-native-tests/**/*.jpg
+            .build/ci-native-tests/scene-tail/**/*-psnr.txt
+            .build/ci-native-tests/scene-tail/**/*error.txt
 
       - name: Preserve the verified Craft test installer
         uses: actions/upload-artifact@v4
