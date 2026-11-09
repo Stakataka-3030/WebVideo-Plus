@@ -131,30 +131,6 @@ jobs:
           node scripts/verify-installer-materials.mjs "dist/WebVideoCraft-Setup-$version.exe"
           if ($LASTEXITCODE -ne 0) { throw "Complete Craft installer verification failed" }
 
-      - name: Verify real Craft host startup and normal-close lifecycle on disposable CI
-        timeout-minutes: 8
-        shell: pwsh
-        env:
-          WEBVIDEO_CRAFT_HOST_SMOKE: '1'
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $version = (Get-Content craft/version.json -Raw | ConvertFrom-Json).installerVersion
-          $package = Join-Path $PWD ('dist/WebVideoCraft-Setup-' + $version)
-          $evidence = Join-Path $PWD '.build/ci-native-tests/craft-host'
-          $prepared = Join-Path $evidence 'prepared-inputs.json'
-          ./craft/tests/prepare-ci-host.ps1 -PackageRoot $package -OutputRecord $prepared
-          $inputs = Get-Content -LiteralPath $prepared -Raw | ConvertFrom-Json
-          try {
-            node craft/tests/ci-host-smoke.mjs $package $inputs.hostSource $evidence
-            if ($LASTEXITCODE -ne 0) { throw 'Real Craft host startup/close gate failed' }
-          } finally {
-            $result = Join-Path $evidence 'host-smoke.json'
-            if (Test-Path -LiteralPath $result) {
-              $state = Get-Content -LiteralPath $result -Raw | ConvertFrom-Json
-              "Real Craft host: **$($state.status)**; editor/preview/export: NOT_RUN (separate coverage, never implied by startup)." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
-            }
-          }
-
       - name: Run production settings, persistence and process regressions against the complete build
         shell: powershell
         run: |
@@ -279,6 +255,46 @@ jobs:
           foreach ($engine in $engines) {
             ./tests/scene-only-tail-native.ps1 -EngineRoot $engine.root -PackageRoot $package -MediaToolDirectory $media -OutputRoot (Join-Path $PWD ('.build/ci-native-tests/scene-tail/' + $engine.name))
             if ($LASTEXITCODE -ne 0) { throw "Hosted native scene-only tail parity failed: $($engine.name)" }
+          }
+
+      - name: Record host-unaccepted candidate identity after independent gates
+        shell: pwsh
+        run: |
+          node craft/tests/write-host-unaccepted-candidate.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Host-unaccepted candidate identity failed' }
+
+      - name: Preserve host-unaccepted candidate for isolated CLI acceptance only
+        uses: actions/upload-artifact@v4
+        with:
+          name: webvideo-craft-host-unaccepted-candidate
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            dist/WebVideoCraft-Setup-*.exe
+            .build/ci-native-tests/craft-host-unaccepted/candidate.json
+
+      - name: Verify real Craft host startup and normal-close lifecycle on disposable CI
+        timeout-minutes: 8
+        shell: pwsh
+        env:
+          WEBVIDEO_CRAFT_HOST_SMOKE: '1'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content craft/version.json -Raw | ConvertFrom-Json).installerVersion
+          $package = Join-Path $PWD ('dist/WebVideoCraft-Setup-' + $version)
+          $evidence = Join-Path $PWD '.build/ci-native-tests/craft-host'
+          $prepared = Join-Path $evidence 'prepared-inputs.json'
+          ./craft/tests/prepare-ci-host.ps1 -PackageRoot $package -OutputRecord $prepared
+          $inputs = Get-Content -LiteralPath $prepared -Raw | ConvertFrom-Json
+          try {
+            node craft/tests/ci-host-smoke.mjs $package $inputs.hostSource $evidence
+            if ($LASTEXITCODE -ne 0) { throw 'Real Craft host startup/close gate failed' }
+          } finally {
+            $result = Join-Path $evidence 'host-smoke.json'
+            if (Test-Path -LiteralPath $result) {
+              $state = Get-Content -LiteralPath $result -Raw | ConvertFrom-Json
+              "Real Craft host: **$($state.status)**; editor/preview/export: NOT_RUN (separate coverage, never implied by startup)." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+            }
           }
 
       - name: Preserve production regression evidence including failures and NA
