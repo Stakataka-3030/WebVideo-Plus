@@ -191,3 +191,17 @@ No workflow currently pins a complete MyGO fixture; MyGO native coverage is
 not run or implied by these checks. The script's allowed MyGO hash remains
 an available gate contract, not evidence of a passed run. All native results
 remain pending until the corresponding GitHub-hosted Windows run succeeds.
+
+### Formal installer byte identity on Craft
+
+Before the native scene-tail loop, a read-only helper reads the current
+`dist/WebVideoCraft-Setup-<installerVersion>.exe` with the existing static
+embedded-ZIP reader. Its unique manifest must exactly match the complete
+PackageRoot manifest's raw bytes. The existing Craft `verifyPackage` then
+checks every current file without mutable-file exemptions, and the helper
+also rechecks the current EXE members against that manifest. No installer
+entry point, host or decoder is executed by this check.
+
+The gate requires PASS and records installer, manifest and kernel SHA-256
+in `scene-tail/package-identity.json`. A mismatched or modified file prevents
+the native loop from starting. Existing host and graphical checks are unchanged.

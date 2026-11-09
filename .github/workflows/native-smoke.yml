@@ -268,6 +268,12 @@ jobs:
           $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
           $version = (Get-Content craft/version.json -Raw | ConvertFrom-Json).installerVersion
           $package = Join-Path $PWD ('dist/WebVideoCraft-Setup-' + $version)
+          $installer = $package + '.exe'
+          $identity = Join-Path $PWD '.build/ci-native-tests/scene-tail/package-identity.json'
+          node tests/verify-scene-tail-craft-package.mjs $installer $package $identity
+          if ($LASTEXITCODE -ne 0) { throw 'Craft installer/package identity verification failed' }
+          $payload = Get-Content -LiteralPath $identity -Raw | ConvertFrom-Json
+          if ($payload.status -ne 'PASS') { throw 'Craft scene-tail package identity is not verified' }
           $media = Join-Path $env:RUNNER_TEMP ('webvideo-craft-ci-tools/ffmpeg/ffmpeg-' + $lock.ffmpegTest.version + '-essentials_build/bin')
           $engines = @(@{name='webgal-464';root=(Join-Path $package 'runtime/web')}, @{name='webgal-465';root=(Join-Path $PWD '.build/webgal-4.6.5')}, @{name='webgal-466';root=(Join-Path $PWD '.build/webgal-4.6.6')})
           foreach ($engine in $engines) {
