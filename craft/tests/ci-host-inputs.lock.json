@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "purpose": "CI-only unchanged official Craft host smoke; never run either upstream installer",
+  "host": {
+    "version": "1.0.0",
+    "file": "webgal-craft-v1.0.0-windows-64-bit-setup.exe",
+    "url": "https://github.com/A-kirami/webgal-craft/releases/download/v1.0.0/webgal-craft-v1.0.0-windows-64-bit-setup.exe",
+    "bytes": 14377704,
+    "sha256": "e80d10a9ce05a5a9aab886f69df05d528af036c65a4d0838a4f293527ae70f26",
+    "source": "https://github.com/A-kirami/webgal-craft/releases/tag/v1.0.0",
+    "extractedFile": "webgal-craft.exe",
+    "extractedBytes": 19568128,
+    "extractedSha256": "0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c"
+  },
+  "extractor": {
+    "version": "25.00",
+    "file": "7z2500-x64.exe",
+    "url": "https://github.com/ip7z/7zip/releases/download/25.00/7z2500-x64.exe",
+    "bytes": 1641049,
+    "sha256": "7b67375b2b303e05d2989f23e986126eda67435c71231fa4b0bdaeb7a619a0a6",
+    "source": "https://www.7-zip.org/download.html",
+    "files": {
+      "7z.exe": "634d38c0c414178e2f35de5cc0fb29aa082eec227e630c4481e1af7694980ac9",
+      "7z.dll": "1d3bd7cfcb033c61966c890953919be21561590b95b63f9226809e92d79afd2a",
+      "License.txt": "3a184aa13dc8ad30734e28ff901b478ccbcb5b41be52427a5e7609c8fd9e5ddb"
+    }
+  }
+}

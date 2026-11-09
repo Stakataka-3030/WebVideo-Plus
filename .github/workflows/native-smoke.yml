@@ -114,6 +114,30 @@ jobs:
           node scripts/verify-installer-materials.mjs "dist/WebVideoCraft-Setup-$version.exe"
           if ($LASTEXITCODE -ne 0) { throw "Complete Craft installer verification failed" }
 
+      - name: Verify real Craft host startup and normal-close lifecycle on disposable CI
+        timeout-minutes: 8
+        shell: pwsh
+        env:
+          WEBVIDEO_CRAFT_HOST_SMOKE: '1'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content craft/version.json -Raw | ConvertFrom-Json).installerVersion
+          $package = Join-Path $PWD ('dist/WebVideoCraft-Setup-' + $version)
+          $evidence = Join-Path $PWD '.build/ci-native-tests/craft-host'
+          $prepared = Join-Path $evidence 'prepared-inputs.json'
+          ./craft/tests/prepare-ci-host.ps1 -PackageRoot $package -OutputRecord $prepared
+          $inputs = Get-Content -LiteralPath $prepared -Raw | ConvertFrom-Json
+          try {
+            node craft/tests/ci-host-smoke.mjs $package $inputs.hostSource $evidence
+            if ($LASTEXITCODE -ne 0) { throw 'Real Craft host startup/close gate failed' }
+          } finally {
+            $result = Join-Path $evidence 'host-smoke.json'
+            if (Test-Path -LiteralPath $result) {
+              $state = Get-Content -LiteralPath $result -Raw | ConvertFrom-Json
+              "Real Craft host: **$($state.status)**; editor/preview/export: NOT_RUN (separate coverage, never implied by startup)." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+            }
+          }
+
       - name: Run production settings, persistence and process regressions against the complete build
         shell: powershell
         run: |
