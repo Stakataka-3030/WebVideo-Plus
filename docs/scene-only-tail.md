@@ -170,3 +170,23 @@ For 4.6.4, use the prepared `package/runtime/web` root. For Craft, run separatel
 for each runtime that release supports, using its existing pinned runtime
 locations. The 4.6.6 workflow's oracle step must not be substituted for these
 version-specific native runs, and a new allowed profile is not a passed run.
+
+## Candidate CI coverage
+
+The 4.6.4 line runs the native gate against its prepared
+`package/runtime/web` and complete `package`. It has no locked complete
+4.6.5/4.6.6 fixture, so it does not run or claim their gates. Its portable C#
+harness reuses the existing `resource-url.portable-json.cs` serializer.
+
+The 4.6.6 and Craft lines already pin complete 4.6.5 and 4.6.6 fixtures. Each
+now runs native scene-tail parity separately for prepared 4.6.4 and those two
+versions, with evidence grouped by version. Only their exact 4.6.6 fixture
+is used by the separate Node forwarding/preload/comment/EOF oracle. Craft
+passes its complete `dist/WebVideoCraft-Setup-<installerVersion>` package
+and its existing GyanD CI media directory. Terre uses its existing BtbN
+`ffmpegTest.archiveRoot` directory. No media source or lock is changed.
+
+No workflow currently pins a complete MyGO fixture; MyGO native coverage is
+not run or implied by these checks. The script's allowed MyGO hash remains
+an available gate contract, not evidence of a passed run. All native results
+remain pending until the corresponding GitHub-hosted Windows run succeeds.

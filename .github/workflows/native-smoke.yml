@@ -319,8 +319,11 @@ jobs:
         run: |
           $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
           $media = Join-Path $PWD ('.build/ffmpeg-test/' + $lock.ffmpegTest.archiveRoot + '/bin')
-          .\tests\scene-only-tail-native.ps1 -EngineRoot .build/webgal-4.6.6 -PackageRoot package -MediaToolDirectory $media
-          if ($LASTEXITCODE -ne 0) { throw 'Hosted native scene-only tail parity failed' }
+          $engines = @(@{name='webgal-464';root=(Join-Path $PWD 'package/runtime/web')}, @{name='webgal-465';root=(Join-Path $PWD '.build/webgal-4.6.5')}, @{name='webgal-466';root=(Join-Path $PWD '.build/webgal-4.6.6')})
+          foreach ($engine in $engines) {
+            ./tests/scene-only-tail-native.ps1 -EngineRoot $engine.root -PackageRoot package -MediaToolDirectory $media -OutputRoot (Join-Path $PWD ('.build/ci-native-tests/scene-tail/' + $engine.name))
+            if ($LASTEXITCODE -ne 0) { throw "Hosted native scene-only tail parity failed: $($engine.name)" }
+          }
 
       - name: Preserve production regression evidence including failures and NA
         if: always()

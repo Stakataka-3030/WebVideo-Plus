@@ -147,7 +147,7 @@ test('real npm ci offline consumes verified cache with unchanged mirror lock and
 
 test('CI keeps npm ci flags and recovery is restricted to step-local cache settings', async () => {
   const workflow = await fs.readFile(new URL('../.github/workflows/native-smoke.yml', import.meta.url), 'utf8');
-  const step = workflow.split('- name: Restore locked AI dependencies without lifecycle scripts')[1].split('\n      - name:')[0];
+  const step = workflow.split('- name: Restore locked optional AI dependencies')[1].split('\n      - name:')[0];
   assert.equal((step.match(/npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund/g) || []).length, 2);
   assert.match(step, /npm_config_cache: \$\{\{ runner.temp \}\}\/webvideo-ai-npm-cache/);
   assert.match(step, /if \(\$LASTEXITCODE -ne 0\).*\{/s);
