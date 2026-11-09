@@ -33,9 +33,13 @@ test('known orphan identities survive snapshots and never adopt a reused PID', (
 test('browser flags report only matching booleans, role and counts, never values', () => {
   const value = debugSwitchSummary('"C:\\runtime\\msedgewebview2.exe" --remote-debugging-port=50307 --remote-debugging-address=127.0.0.1 --user-data-dir="D:\\private profile" --token=private-secret', 50307, 'D:\\private profile');
   assert.equal(value.portMatches, true); assert.equal(value.addressIsLoopback, true); assert.equal(value.profileMatches, true); assert.equal(value.role, 'browser');
+  assert.equal(value.profileWithinExpected, true);
+  const nested = debugSwitchSummary('--user-data-dir="D:\\private profile\\EBWebView"', 50307, 'D:\\private profile');
+  assert.equal(nested.profileMatches, false); assert.equal(nested.profileWithinExpected, true);
   assert.doesNotMatch(JSON.stringify(value), /50307|127\.0|private|token|runtime/);
   const duplicate = debugSwitchSummary('--remote-debugging-port=50307 --remote-debugging-port=8 --user-data-dir=elsewhere --type=renderer', 50307, 'D:\\expected');
   assert.equal(duplicate.portMatches, false); assert.equal(duplicate.profileMatches, false); assert.equal(duplicate.role, 'renderer');
+  assert.equal(duplicate.profileWithinExpected, false);
   assert.equal(debugSwitchSummary('--type=private-role --remote-debugging-port=secret', 4, 'profile').role, 'other');
 });
 test('native output never retains text, WebSocket tokens or paths', () => {

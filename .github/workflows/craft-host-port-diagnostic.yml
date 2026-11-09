@@ -22,6 +22,11 @@ jobs:
           ./craft/tests/prepare-ci-host-port-diagnostic.ps1 -OutputRecord $record
           node craft/tests/ci-host-port-diagnostic.mjs $record $evidence
           if ($LASTEXITCODE -ne 0) { throw 'Host port diagnostic blocked; this is not an acceptance result' }
+          $medium = Join-Path $PWD '.build/ci-native-tests/craft-port-medium'
+          New-Item -ItemType Directory -Path $medium -Force | Out-Null
+          $inputs = Get-Content -LiteralPath $record -Raw | ConvertFrom-Json
+          & $inputs.restrictedRunner (Get-Command node.exe).Source (Join-Path $PWD 'craft/tests/ci-host-port-diagnostic.mjs') $record $medium
+          if ($LASTEXITCODE -ne 0) { throw 'Restricted CI child blocked; do not change permissions or security policy' }
       - name: Preserve only allowlisted diagnostic JSON
         if: always()
         uses: actions/upload-artifact@v4
@@ -29,4 +34,6 @@ jobs:
           name: craft-host-port-diagnostic
           retention-days: 7
           if-no-files-found: error
-          path: .build/ci-native-tests/craft-port/*.json
+          path: |
+            .build/ci-native-tests/craft-port/*.json
+            .build/ci-native-tests/craft-port-medium/*.json

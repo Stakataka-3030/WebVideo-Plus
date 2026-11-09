@@ -26,10 +26,12 @@ export function debugSwitchSummary(commandLine, port, profile) {
   const addresses = [...source.matchAll(/(?:^|\s)--remote-debugging-address=(?:"([^"]*)"|(\S+))/g)].map(x => x[1] || x[2]);
   const profiles = [...source.matchAll(/(?:^|\s)--user-data-dir=(?:"([^"]*)"|(\S+))/g)].map(x => x[1] || x[2]);
   const role = /(?:^|\s)--type=(?:"([^"]*)"|(\S+))/.exec(source);
+  const profileRelative = profiles.length === 1 ? path.win32.relative(path.win32.resolve(profile), path.win32.resolve(profiles[0])) : null;
   return {debugPortSwitchPresent: /(?:^|\s)--remote-debugging-port(?:=|\s|$)/.test(source),
     numericPortCount: ports.length, portMatches: ports.length === 1 && ports[0] === port,
     addressSwitchPresent: addresses.length > 0, addressIsLoopback: addresses.length === 1 && ['127.0.0.1', '::1'].includes(addresses[0]),
     profileSwitchPresent: profiles.length > 0, profileMatches: profiles.length === 1 && path.win32.resolve(profiles[0]).toLowerCase() === path.win32.resolve(profile).toLowerCase(),
+    profileWithinExpected: profileRelative !== null && profileRelative !== '..' && !profileRelative.startsWith('..\\') && !path.win32.isAbsolute(profileRelative),
     role: !role ? 'browser' : ['renderer', 'utility', 'gpu-process', 'crashpad-handler'].includes(role[1] || role[2]) ? role[1] || role[2] : 'other'};
 }
 export function stderrSummary(text) {
@@ -42,6 +44,10 @@ export function fixtureEnvironment(root, variant, port, inherited = process.env)
     WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-address=127.0.0.1 --remote-debugging-port=${port}`};
   if (variant === 'fixture-env') for (const name of ['APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP']) env[name] = path.join(root, name.toLowerCase());
   return env;
+}
+export function requireMedium(token) {
+  assert.equal(token?.elevated, false, 'Restricted CI process must not be elevated');
+  assert.equal(token?.integrityRid, 8192, 'Restricted CI process must have medium integrity');
 }
 async function freePort() {
   return new Promise((resolve, reject) => { const server = net.createServer(); server.once('error', reject); server.listen(0, '127.0.0.1', () => { const port = server.address().port; server.close(() => resolve(port)); }); });
@@ -65,6 +71,10 @@ export async function runPortDiagnostic(inputFile, evidenceRoot) {
   fs.mkdirSync(evidenceRoot, {recursive: true});
   const save = () => fs.writeFileSync(path.join(evidenceRoot, 'host-port-diagnostic.json'), JSON.stringify(report, null, 2) + '\n');
   try {
+    if (process.env.WEBVIDEO_CRAFT_EXPECT_MEDIUM === '1') {
+      requireMedium(report.parentToken);
+      report.mediumObserverVerified = true;
+    }
     for (const variant of ['fixture-env', 'profile-only']) {
       const root = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP, 'webvideo-port-' + variant + '-'));
       // Match the production launcher's unchanged original-file basename.
@@ -85,7 +95,10 @@ export async function runPortDiagnostic(inputFile, evidenceRoot) {
           if (spawnError) throw spawnError;
           const rows = await processes(true), live = rows.find(row => row.ProcessId === child.pid && row.ExecutablePath?.toLowerCase() === host.toLowerCase());
           if (live) {
-            if (anchor) assert.ok(same(anchor, live), 'Host identity changed'); else { anchor = live; record.hostToken = await tokenOf(input.tokenHelper, live); }
+            if (anchor) assert.ok(same(anchor, live), 'Host identity changed'); else {
+              anchor = live; record.hostToken = await tokenOf(input.tokenHelper, live);
+              if (report.mediumObserverVerified) requireMedium(record.hostToken);
+            }
             owned = retainOwned(owned, rows, anchor);
           }
           const sample = {at: new Date().toISOString(), ownerVerified: false, endpointAttempted: false}; record.samples.push(sample);

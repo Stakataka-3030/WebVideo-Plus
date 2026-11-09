@@ -25,11 +25,13 @@ if($LASTEXITCODE-ne0){throw 'Static host extraction failed'}
 $hostExe=Join-Path $hostDirectory $lock.host.extractedFile
 if((Get-Item $hostExe).Length-ne$lock.host.extractedBytes -or (Get-FileHash $hostExe -Algorithm SHA256).Hash.ToLowerInvariant()-ne$lock.host.extractedSha256){throw 'Official host identity mismatch'}
 $csc=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
-$verifier=Join-Path $root 'ListenerVerifier.exe';$token=Join-Path $root 'ReadOnlyToken.exe'
+$verifier=Join-Path $root 'ListenerVerifier.exe';$token=Join-Path $root 'ReadOnlyToken.exe';$restricted=Join-Path $root 'RestrictedCiRunner.exe'
 & $csc /nologo /platform:x64 /target:winexe ('/out:'+$verifier) /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll (Join-Path $repo 'craft/CraftStarter.cs') (Join-Path $repo 'craft/installer/ManifestVerifier.cs')
 if($LASTEXITCODE-ne0){throw 'Current production listener verifier compilation failed'}
 & $csc /nologo /platform:x64 /target:exe ('/out:'+$token) /r:System.Web.Extensions.dll (Join-Path $PSScriptRoot 'CiHostToken.cs')
 if($LASTEXITCODE-ne0){throw 'Read-only token helper compilation failed'}
+& $csc /nologo /platform:x64 /target:exe ('/out:'+$restricted) /r:System.Web.Extensions.dll (Join-Path $PSScriptRoot 'CiRestrictedRunner.cs')
+if($LASTEXITCODE-ne0){throw 'Restricted CI child helper compilation failed'}
 $policies=@()
 foreach($hive in @('HKLM','HKCU')){
  $rootKey=if($hive-eq'HKLM'){[Microsoft.Win32.Registry]::LocalMachine}else{[Microsoft.Win32.Registry]::CurrentUser}
@@ -46,4 +48,4 @@ foreach($hive in @('HKLM','HKCU')){
  }
 }
 New-Item -ItemType Directory -Path (Split-Path -Parent $OutputRecord) -Force|Out-Null
-@{schemaVersion=1;diagnosticOnly=$true;hostSource=$hostExe;hostSha256=$lock.host.extractedSha256;verifier=$verifier;tokenHelper=$token;policies=$policies;officialInstallerExecuted=$false;hostExecuted=$false}|ConvertTo-Json -Depth 5|Set-Content -LiteralPath $OutputRecord -Encoding UTF8
+@{schemaVersion=1;diagnosticOnly=$true;hostSource=$hostExe;hostSha256=$lock.host.extractedSha256;verifier=$verifier;tokenHelper=$token;restrictedRunner=$restricted;policies=$policies;officialInstallerExecuted=$false;hostExecuted=$false}|ConvertTo-Json -Depth 5|Set-Content -LiteralPath $OutputRecord -Encoding UTF8
