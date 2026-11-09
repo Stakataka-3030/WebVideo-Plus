@@ -17,7 +17,7 @@ function WebVideoDialogueSubtitles({game,target}){
   (async()=>{try{
    const conn=await WebVideoServiceErrors.readDiscovery((url,options)=>webVideoExportRequest(url,options,15000,requests.current));if(token!==generation.current)return;connection.current=conn;
    const cfg=await call('/api/config');if(token!==generation.current)return;const speed=WebVideoRuntime.peekGameSettings(game);
-   settings.current={...cfg.settings,...speed,mode:'auto',bgmBaseMode:'auto',segmentCutMode:'auto',manualCutPoints:''};setDirectory(cfg.outputDir);setName((target?.name||'字幕.txt').replace(/\.txt$/i,'')+'.srt');setMessage(speed?'':'预览已关闭或尚未就绪；开始导出字幕时将读取当前游戏的播放设置。');setReady(true);
+   settings.current={...cfg.settings,...speed,mode:'auto',bgmBaseMode:'auto',segmentCutMode:'auto',manualCutPoints:''};setDirectory(cfg.outputDir);setName((target?.name||'字幕.txt').replace(/\.txt$/i,'')+'.srt');setMessage(speed?'':'预览已关闭或尚未就绪；开始导出字幕时将打开预览并读取当前游戏的播放设置。');setReady(true);
   }catch(error){if(token===generation.current)fail(error);}})();
   return()=>{generation.current++;for(const c of requests.current)c.abort();};
  },[open,game]);
