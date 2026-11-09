@@ -258,3 +258,48 @@ test('operation failure keeps native detail available without placing a stack in
  assert(detail);assert.equal(detail.parent.hidden,false);assert.match(detail.textContent,/full detail/);
  assert(f.messages.some(m=>m.includes('展开技术详情')));f.mounted.dispose();
 });
+
+// Craft's native selector moves the existing form; configuring an export must
+// not query the engine, start a preview, or manufacture automatic timing values.
+for (const exportKind of ['full', 'stage', 'dialog', 'audio', 'subtitles']) {
+ test(`Craft ${exportKind} configuration stays passive with no preview`, async () => {
+  let reads = 0;
+  const f = setup({readSpeeds: async () => { reads++; throw Error('请先打开 Craft 当前项目的游戏预览'); }});
+  f.setCaps({service:true,exportVideo:true,snapshot:true,previewSettings:false});
+  const host = new Element('native-config'); f.container.append(host);
+  for (let i = 0; i < 2; i++) {
+   const detach = f.mounted.attachExport(host, exportKind);
+   await flush();
+   assert.equal(f.field('导出内容').value, exportKind);
+   assert.equal(reads, 0);
+   assert.deepEqual(f.calls, [], 'opening/reopening must not call config, export or native services');
+   assert.ok(f.nodes().some(n => n.textContent.includes('开始时读取当前游戏预览')));
+   detach();
+  }
+  f.mounted.dispose();
+ });
+ test(`Craft ${exportKind} automatic export uses actual preview speeds only on submission`, async () => {
+  let reads = 0;
+  const f = setup({readSpeeds:async () => { reads++; return {textSpeed:37,autoSpeed:61}; }});
+  const host = new Element('native-config'); f.container.append(host);
+  f.mounted.attachExport(host,exportKind);
+  assert.equal(reads,0);
+  await f.click('加入导出队列');
+  assert.deepEqual(f.errors,[]);
+  const request = f.calls.find(c => c[0] === 'export')?.[1];
+  assert.ok(request); assert.equal(request.exportKind,exportKind);
+  assert.equal(reads,1);
+  assert.equal(request.settings.textSpeed,37); assert.equal(request.settings.autoSpeed,61);
+  f.mounted.dispose();
+ });
+ test(`Craft ${exportKind} disappearing preview cannot fall back to default speeds`, async () => {
+  const f = setup({readSpeeds:async () => { throw Error('请先打开 Craft 当前项目的游戏预览'); }});
+  const host = new Element('native-config'); f.container.append(host);
+  f.mounted.attachExport(host,exportKind);
+  await f.click('加入导出队列');
+  assert.ok(f.errors.some(e => e.includes('请先打开')));
+  assert.equal(f.calls.filter(c => c[0] === 'export').length,0);
+  assert.equal(f.mounted.busy(),false);
+  f.mounted.dispose();
+ });
+}

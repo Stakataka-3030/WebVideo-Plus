@@ -122,3 +122,12 @@ for(const [name,change] of [
  await assert.rejects(pending);assert.equal(calls.includes('native export'),false);
  assert.deepEqual(calls.filter(call=>call[0]==='snapshot.discard'),[['snapshot.discard',{snapshotId:'owned'}]]);
 });
+
+test('reading speeds without a preview neither opens the host preview nor invents defaults',async()=>{
+ const f=fixture(),calls=[];
+ f.stores.previewSession={currentGameServeUrl:'',openPreview(){calls.push('openPreview');}};
+ const bridge=createBridge({getStores:()=>f.stores,rpc:async(...args)=>calls.push(args),invoke:async(...args)=>calls.push(args)});
+ assert.equal(bridge.capabilities().previewSettings,false);
+ await assert.rejects(bridge.readPreviewSettings(),/请先打开 Craft 当前项目的游戏预览/);
+ assert.deepEqual(calls,[]);assert.equal(f.preview,undefined);
+});
