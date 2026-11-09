@@ -1,18 +1,24 @@
 # Craft 1.2.2c 验证范围
 
-安装器 1.2.2.0c，Win32 文件版本 1.2.2.0，导出内核 0.6.66，产品基线 1.3.10。本文件记录已完成的核心回归；是否正式发布及最终发行包验收记录见[发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases)。
+安装器 1.2.2.0c，Win32 文件版本 1.2.2.0，导出内核 0.6.66，产品基线 1.3.10。开发阶段、旧候选与最终包结果分别归档，最终提交的发行验收见[发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases)。
 
-官方宿主仍严格限定 Windows x64 Craft 1.0.0，EXE SHA-256 为 `0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c`。本轮不扩大宿主或工程引擎的精确允许列表。
+官方宿主仍严格限定 Windows x64 Craft 1.0.0，EXE SHA-256 为 `0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c`，不扩大精确允许列表。
 
-## 已完成的核心回归
+## 开发阶段证据
 
-- 四种已知实际表情插件各通过 18 项生命周期、缓存与错误处理合约，时钟等待通过 9 项回归。4.6.5 使用按官方 manifest 逐文件 SHA 校验的引擎壳，仅验证合约，不能等同于完整宿主运行。
-- 共享核心在 WebGAL 4.6.6 的 550 行工程完成完整预演，耗时 1460.7 秒，runtimeParity=true；未改动语句，未回退引擎。这不是 Craft 安装器、完整视频编码或所有工程的验收。
-- 两轮独立审查发现的失败缓存重选与原生重试边界已修复并补充回归。
-- 原理、作用范围与回归入口见[Live2D 表情安全说明](../docs/LIVE2D-EXPRESSION-SAFETY.md)。导出副本的自动快速存档优化及独立验证见[预演自动存档性能修复](../docs/AUTOSAVE-PLANNING.md)。
+- Live2D 表情开发阶段完成四种已知插件各 18 项合约与 9 项时钟回归。4.6.5 壳按官方 manifest 逐文件 SHA 校验，仅为合约，不等同完整宿主运行。
+- 五类导出配置本来被动，本次增加 16 项实际生产入口回归。VM / DOM / 模拟桥接不等同真实 Craft 窗口和宿主验收，见[配置读取契约](PREVIEW-CONFIG-CONTRACT.md)。
+- 监听修复使用原生 listener-only 表，保留 loopback、唯一 owner、祖先和原页面校验，不放宽权限；后台监听回归不证明增强界面接入、编辑或导出已通过，见[监听说明](LISTENER-VERIFICATION.md)。
+- sceneOnly 独立实现阶段通过 C# 97 项及三线源码 overlay 检查、Node 99 项、官方 4.6.6 纯函数 oracle 和 1600 项 Bounds 对照，并经过独立审核；这些是源码与逻辑验证，不能代替移植后最终提交的原生验证。原理和保守回退见[sceneOnly 尾部边界](../docs/scene-only-tail.md)。
 
-## 最终发行包单独记录
+## 旧候选证据
 
-最终发行包验收记录见[发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases)，包括准确源码提交的完整 CI、正式构建、材料与安装器完整性、隔离原入口安装升级、重复安装、实际宿主启动、编辑预览、短片导出、退出清理、卸载恢复，以及公开 EXE 的版本、字节数、SHA-256 和 Craft stable 更新推荐。本页不把核心回归或历史版本测试计作这些发行检查通过。
+旧候选 [5f0de0de](https://github.com/Stakataka-3030/WebVideo-Plus/commit/5f0de0de20b0c89fd964eb43bbe1b4488e61705e)（[run 42624766204](https://github.com/Stakataka-3030/WebVideo-Plus/actions/runs/42624766204)）曾完成 550 行完整预演（1460.7 秒、runtimeParity=true）及 15 秒 / 450 帧静音渲染，未改动语句、未回退引擎。这些是合入本轮新增功能前的历史候选结果，不是最新最终包验收，也不代表完整长片音视频或其他宿主通过。
 
-官方 Craft 跨版本 NSIS 注册升级、历史模型问题及其他未覆盖功能，继续保留各自原有验收边界。原始工程、素材及私人调查日志不作为公开证据或 Release 资产。
+此前 Craft 的 73 项 CLI 断言及旧候选 CI / EXE 记录继续保留其原提交和产物归属，不能当作新增功能合入后的最终包结果。Terre 两线的 184 项旧 CLI 断言也不证明 Craft 宿主验收。
+
+## 最终发行包的独立验收
+
+真实 Craft 接入仍需证明唯一主页面、增强注入、实际编辑预览、短片导出和关闭清理。最终提交的 Windows CI、正式构建、安装升级 / 重复安装 / 修复 / 卸载恢复、版本与材料完整性、公开 EXE 大小 / SHA-256、重下载和 Craft stable 更新推荐分别记录。
+
+sceneOnly 的真实像素、PCM、并发 renderer gate 尚无本轮最终远端通过记录；自动 anchor 策略、Live2D SDK 像素与实测显存降低未验证。完整约 24 分钟含音视频导出和 Craft 官方 NSIS 跨版本注册升级不列为通过。原始工程、素材、SDK 与私人调查日志不作为公开证据或 Release 资产。

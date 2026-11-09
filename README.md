@@ -2,9 +2,9 @@
 
 面向 **WebGAL Craft** 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 为实验性功能，需要自行配置 API Key。
 
-[下载 1.2.1.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.1.0c/WebVideoCraft-Setup-1.2.1.0c.exe) · [正式版适配](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
+[本版 1.2.2.0c 安装包与验收](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c) · [正式版适配](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前分支候选：WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c；混合导出内核 0.6.66，产品基线 1.3.10）。** 核心回归已完成；最终提交 CI 与隔离宿主验收单独记录，见[本次发行说明](craft/RELEASE-1.2.2c.md)和[本轮验收状态](craft/ACCEPTANCE-1.2.2c.md)。上方暂保留已公开的 1.2.1.0c 下载入口；Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。
+**本发行线：WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c；混合导出内核 0.6.66，产品基线 1.3.10）。** 本版安装包、校验值与最终验收见[对应发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c)；发布页公开前无法下载安装包，本页链接不表示资产已上线。改动与验证范围见[发行说明](craft/RELEASE-1.2.2c.md)和[验证范围](craft/ACCEPTANCE-1.2.2c.md)。此前 [1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) 单列为历史版本。
 
 支持精确匹配的官方 Windows x64 **Craft 1.0.0 正式版**，工程引擎支持官方 WebGAL **4.6.4 / 4.6.5 / 4.6.6** 和 **MyGO 3.2.1**；自定义同版本包与未来版本需单独适配。Terre 安装请按[项目首页](https://github.com/Stakataka-3030/WebVideo-Plus#下载与版本选择)选择维护通道。
 
@@ -73,7 +73,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于适配目录的 `state/kern
 ## 安装与管理
 
 1. 保存工程并正常关闭官方 Windows x64 Craft 1.0.0。
-2. 从[发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c)下载安装器 `WebVideoCraft-Setup-1.2.1.0c.exe`，按发行正文的 SHA-256 校验。
+2. 在[本版发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c)公开后下载安装器 `WebVideoCraft-Setup-1.2.2.0c.exe`，按发行正文的 SHA-256 校验。
 3. 选择 Craft 目录、原程序或快捷方式，执行“安装增强组件”或“更新 / 重新检查”。旧独立入口安装会迁移到原 EXE 入口。
 4. 完成后使用原快捷方式，或点击“启动 Craft”。“修复组件”和“卸载挂载”的范围见 [Craft 安装说明](craft/README.md#安装更新与管理)。
 
@@ -81,7 +81,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于适配目录的 `state/kern
 
 ### 本版维护修复
 
-本次候选已合入已请求 Live2D 表情的异步加载与模型销毁时序保护、关键资源等待，以及导出预演自动存档优化。自动存档优化只作用于导出任务副本，正常游戏自动存档和手动存档保留。具体范围见[1.2.2c 发行说明](craft/RELEASE-1.2.2c.md)，本次核心回归与最终发行包验收分开记录，历史验收不自动计入本轮。
+本次范围包含 Live2D 表情安全、导出副本自动存档优化、保守 sceneOnly 裁尾和 Craft 监听兼容修复；配置弹窗保持原有被动行为，新增实际入口回归。正常游戏自动存档和手动存档保留。范围、保守回退和证据归属见[1.2.2c 发行说明](craft/RELEASE-1.2.2c.md)，旧候选和源码回归不能代替最终包宿主验收。
 
 此前维护完善了迁移、卸载、备份恢复和失败回滚的目录归属与事务处理；制作标记可保存，音乐配置增加并发校验与恢复副本，批量编辑及 Anogo 文本/条件语句处理也已修正。队列请求、子进程收尾和捕获等待加入有界处理，AI 批次保存本地检查点；对白等待按实际舞台/DOM 输出和文本状态判断。具体范围见对应发行说明。Craft 另完善了快照重试保留、队列终态清理、守护进程超时和安装恢复；[此前维护验收边界](craft/ACCEPTANCE-1.1.15c.md)保留了具体覆盖。
 

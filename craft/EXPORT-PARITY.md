@@ -1,13 +1,15 @@
 # Craft export UI parity
 
-## Current candidate: 1.2.2c / kernel 0.6.66
+## Release line: 1.2.2c / kernel 0.6.66
 
-This candidate includes the requested Live2D expression lifecycle
-protection, critical resource waits, and game autosave suppression in export
-snapshots. Normal game autosaves and manual saves retain their existing behavior.
-Core regressions are complete. Final-commit CI and isolated host/export
-acceptance are recorded separately; see the
-[release notes](RELEASE-1.2.2c.md) and [current acceptance status](ACCEPTANCE-1.2.2c.md).
+The current scope includes Live2D expression safety, export-snapshot autosave
+suppression, conservative scene-only tail limiting, and the listener compatibility
+fix. The five Craft configuration entry points were already passive; 16 added
+entry-point regressions protect that behavior rather than claim a Terre UI fix.
+Source-level checks and old-candidate evidence are separate from final-package
+host acceptance. See the [release notes](RELEASE-1.2.2c.md),
+[preview contract](PREVIEW-CONFIG-CONTRACT.md), and
+[current acceptance scope](ACCEPTANCE-1.2.2c.md).
 The exact host and project-engine allowlists remain unchanged.
 
 ## Previous maintenance: 1.2.1c / kernel 0.6.65

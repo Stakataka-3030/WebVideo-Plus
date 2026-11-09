@@ -2,11 +2,13 @@
 
 ## Craft 1.2.2c
 
-安装器 1.2.2.0c，导出内核 0.6.66，产品基线 1.3.10。已完成核心回归，验证范围与最终发行包记录入口见[发行说明](craft/RELEASE-1.2.2c.md)。
+安装器 1.2.2.0c，导出内核 0.6.66，产品基线 1.3.10。开发阶段回归、旧候选证据与最终发行包验收分开记录，详见[发行说明](craft/RELEASE-1.2.2c.md)。
 
-- 修复部分 Windows 26H2 环境把实际监听状态枚举报为 0 时，Craft 接入被旧监听校验拒绝的问题。改用原生 listener-only 表，并保留双栈 loopback、唯一进程归属及宿主祖先校验；旧 1.2.1.0c 代码也受影响，与 Live2D 无关。详见[监听校验说明](craft/LISTENER-VERIFICATION.md)。
-- 补齐已请求 Live2D 表情跨 await / destroy 的生命周期保护和关键资源等待；只等待当前请求，真实 20 秒超时明确报错，保留失败缓存重选与原生重试语义。详见[安全说明](docs/LIVE2D-EXPRESSION-SAFETY.md)。
-- 导出任务副本跳过游戏自动快速存档，减少预演中回溯记录复制和存储写入；正常游戏自动存档和手动存档保留。详见[预演自动存档性能修复](docs/AUTOSAVE-PLANNING.md)。
+- 补齐导出副本中的 Live2D 表情生命周期保护、当前请求等待和真实 20 秒超时，保留失败缓存重选与原生重试。详见[安全说明](docs/LIVE2D-EXPRESSION-SAFETY.md)。
+- 导出副本跳过游戏自动快速存档，正常游戏与手动存档保留。详见[自动存档修复](docs/AUTOSAVE-PLANNING.md)。
+- Craft 五类导出配置入口保持原有被动读取，新增 16 项实际入口回归，不将 Terre 特有问题写成 Craft UI 修复。详见[配置读取契约](craft/PREVIEW-CONFIG-CONTRACT.md)。
+- sceneOnly 在保留前文和目标语句的基础上裁去后文，以合成注释边界结束 planning；保持原恢复、预热、锚点和取整，保守回退条件及 HTML prefetch / 尾部音频限制见[说明](docs/scene-only-tail.md)。
+- 修复部分 Windows 环境中 TCP 监听状态枚举异常导致 Craft 接入被旧检查误拒的问题，改用原生 listener-only 表，并保留 loopback、唯一拥有进程和宿主祖先校验，不放宽权限。这是旧版本同样存在的监听兼容问题，不归因于本次 Live2D 修复。详见[监听校验说明](craft/LISTENER-VERIFICATION.md)。
 - 感谢 [NijiharaTsubasa](https://github.com/NijiharaTsubasa) 提供 planning 阶段自动存档性能热点的反馈及禁用后加速的验证线索。
 
 ## Craft 1.2.1c

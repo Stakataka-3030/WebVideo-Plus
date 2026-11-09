@@ -1,12 +1,12 @@
 # WebVideo+ 使用指南
 
-本分支正在准备 WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c，内核 0.6.66），本次修复已完成核心回归，最终发行包验收记录见对应发布页。请先阅读 [Craft 说明](../craft/README.md)与[本次发行说明](../craft/RELEASE-1.2.2c.md)；下文是保留的基础 Terre 用户指南，不代表 Craft 的界面或安装步骤。
+本发行线为 WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c，内核 0.6.66）。本版安装包、校验值与最终验收见[对应发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c)，发布页公开前无法下载安装包。请先阅读 [Craft 说明](../craft/README.md)与[发行说明](../craft/RELEASE-1.2.2c.md)；下文保留基础 Terre 历史资料，不代表 Craft 的界面或安装步骤。
 
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
+[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
 
-**以下 Terre 说明保留自 1.1.4（内部开发标识 0.8.8；安装器 Win32 版本 1.1.4.0，导出内核 0.6.48），不代表本分支当前源码版本。** 最新正式安装器、校验值和发布说明以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 为准。
+**以下 Terre 说明保留自 1.1.4（内部开发标识 0.8.8；安装器 Win32 版本 1.1.4.0，导出内核 0.6.48），不代表本分支当前源码版本。** Craft 本版安装包与最终验收以[本版发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c)为准，不使用全仓库 Latest。
 
 本历史指南的适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
 
@@ -52,6 +52,12 @@
 
 表情生命周期保护仅应用于导出任务副本。导出只等待当前已请求的表情，不等待全量预取完成、不固定 sleep；当前加载失败或真实等待超过 20 秒会明确报错。模型销毁与请求替换会释放过时等待，失败缓存再次被选中时仍须报告，同时保留原生重试能力。原工程、编辑器预览与正常游戏不改，适用引擎和回归边界见[Live2D 表情安全说明](LIVE2D-EXPRESSION-SAFETY.md)。
 
+### 导出配置与仅本场景
+
+Craft 五类导出配置入口保持原有被动读取；实际设置在提交时读取，缺少预览时明确提示，不用默认速度冒充实时值。源码回归边界见[配置读取契约](../craft/PREVIEW-CONFIG-CONTRACT.md)。
+
+“仅本场景”（sceneOnly）在满足条件时保留全部前文与目标场景，用合成注释标记在目标边界结束 planning，不执行 end 清场；在资源扫描、快照复制和媒体准备前裁去后文，第二次导航的实际预演与 GPU lookahead 不再接收被省略的后文。前文恢复、预热和锚点架构保持不变。 仅自动 / 手动计时、没有行范围选择且具备可裁尾边界时应用。analysisOnly、range、BGM-fit、非空自定义 musicTimeline、手动语句切点引用省略后文，以及非 sceneOnly 等情况沿用旧路径；末场景保持原样。首次全文静态解析仍可能产生 HTML prefetch，不能据此承诺后文网络请求为零或实测显存降低。保持旧整数毫秒与帧取整，旧完整计划在不足一帧的尾部可能引入的后文声音不保证完全相同。 具体边界见[说明](scene-only-tail.md)。
+
 本分支保留的历史版本见[版本记录](../CHANGELOG.md)；正式安装器和完整发行记录以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases) 为准。
 
 ## 两轮基础舞台
@@ -78,7 +84,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于所选 **WebVideo+ 数据�
 
 ## 安装与模块管理
 
-1. 从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/latest) 下载最新的 `WebVideo+-Setup-*.exe`。
+1. 从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c) 下载最新的 `WebVideo+-Setup-*.exe`。
 2. 运行安装器并选择已有 **Terre 4.6.4** 安装目录。
 3. 默认安装常用模块；在高级选项中可单独增删功能，并可选择 WebVideo+ 数据目录、导出工作缓存、安装缓存以及是否保留长期 Terre 恢复备份。灰选项目表示其他已选模块所需依赖。
 4. 完成后照常启动 Terre。

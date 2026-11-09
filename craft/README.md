@@ -2,11 +2,11 @@
 
 此目录是基于 `craft/mvp`（bee5888）继续开发的完整 Craft 编辑器适配。当前保留官方 Craft 自动检查更新，功能入口通过当前启动会话的 WebView2/CDP 注入。未改官方更新源、公钥和签名校验。
 
-[下载 1.2.1.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.1.0c/WebVideoCraft-Setup-1.2.1.0c.exe) · [正式版适配与验证](ADAPTATION-1.0.0.md) · [历史版本](../docs/LEGACY-VERSIONS.md)
+[本版 1.2.2.0c 安装包与验收](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c) · [正式版适配与验证](ADAPTATION-1.0.0.md) · [历史版本](../docs/LEGACY-VERSIONS.md)
 
 ## 当前边界
 
-- 当前候选版本 `1.2.2c` 适配官方 Windows x64 Craft `1.0.0`，EXE SHA-256 `0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c`。本轮尚未发布，上方保留已公开的 1.2.1.0c 下载入口。
+- 本发行线 `1.2.2c` 适配官方 Windows x64 Craft `1.0.0`，EXE SHA-256 `0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c`。本版资产与最终验收见上方发布页；发布页公开前无法下载，不表示已上线。此前 [1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) 保留为历史记录。
 - 精确官方来源与接口核对见 [正式版适配记录](ADAPTATION-1.0.0.md)，不以相同版本字符串代替构建校验。
 - 引擎匹配范围仍为官方 WebGAL 4.6.4 / 4.6.5 / 4.6.6、MyGO 3.2.1（基础 WebGAL 4.6.4）。历史验收记录不自动作为本次构建的结果。
 - 仅使用原 `webgal-craft.exe` 入口：安装安全保存可校验原程序，并用包装器替换原 EXE。原快捷方式继续有效；不再提供单独的增强启动模式
@@ -23,9 +23,9 @@
 
 音乐时长来自实际探测，故事时间来自实际引擎运行。预览速度通过经过所属页面检查的独立 iframe/CDP session 读取。没有准确加载配置证据时，速度修改只影响本次预览，并明确说明；不会猜测 IndexedDB 存档键。
 
-## 当前候选 1.2.2.0c（Craft 1.0.0 正式版适配）
+## 本发行线 1.2.2.0c（Craft 1.0.0 正式版适配）
 
-Craft 产品版本为 1.2.2c，安装器为 1.2.2.0c，Win32 文件版本为 1.2.2.0；功能基线为 Terre 1.3.10，Craft 内核为 0.6.66。本次已同步已请求 Live2D 表情的异步加载与模型销毁时序保护、关键资源等待，以及导出预演自动存档优化。自动存档优化只作用于导出任务副本，正常游戏自动存档和手动存档保留；核心回归已完成，最终提交 CI 与隔离宿主验收单独记录，详见[发行说明](RELEASE-1.2.2c.md)。
+Craft 产品版本为 1.2.2c，安装器为 1.2.2.0c，Win32 文件版本为 1.2.2.0；功能基线为 Terre 1.3.10，内核为 0.6.66。本次汇总 Live2D 表情安全、导出副本自动存档优化、保守 sceneOnly 裁尾和监听兼容修复。配置入口保留原有被动读取，新增回归保护。开发阶段、旧候选与最终包验收分开，详见[发行说明](RELEASE-1.2.2c.md)。
 
 此前已移植手动/语句切点、Cubism 内存、更新提醒、兼容 PNG、4.6.6、animation v2 和 1.3.9 资源解析修复，并保留 Craft 原生编辑、VFS、精确绑定与原 EXE 挂载。
 
