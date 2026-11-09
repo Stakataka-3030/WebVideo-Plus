@@ -21,4 +21,4 @@
 
 真实 Craft 接入仍需证明唯一主页面、增强注入、实际编辑预览、短片导出和关闭清理。最终提交的 Windows CI、正式构建、安装升级 / 重复安装 / 修复 / 卸载恢复、版本与材料完整性、公开 EXE 大小 / SHA-256、重下载和 Craft stable 更新推荐分别记录。
 
-sceneOnly 的真实像素、PCM、并发 renderer gate 尚无本轮最终远端通过记录；自动 anchor 策略、Live2D SDK 像素与实测显存降低未验证。完整约 24 分钟含音视频导出和 Craft 官方 NSIS 跨版本注册升级不列为通过。原始工程、素材、SDK 与私人调查日志不作为公开证据或 Release 资产。
+sceneOnly 的真实像素、PCM、并发 renderer gate 按引擎分别记录在对应发行页的最终提交验收中，不以源码或旧候选结果替代；自动 anchor 策略、Live2D SDK 像素与实测显存降低未验证。完整约 24 分钟含音视频导出和 Craft 官方 NSIS 跨版本注册升级不列为通过。原始工程、素材、SDK 与私人调查日志不作为公开证据或 Release 资产。
