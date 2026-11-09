@@ -56,13 +56,14 @@ test('video reopening disclosure is independent of engine notices and manual tog
  assert.match(source,/role:'note',children:'打开此面板只读取已有预览；加入导出队列或重新读取设置会打开预览/);
  assert.match(source,/if\(!e.target.checked\)readSpeed\(undefined,null,\{passive:true\}\)/);
  assert.match(sub,/开始导出字幕会打开预览/);
+ assert.ok(source.indexOf("role:'note',children:'打开此面板只读取已有预览")<source.indexOf("children:'高级设置'"),'Preview disclosure must remain outside collapsed advanced settings');
 });
 test('subtitle read failure cannot enqueue using configured defaults',async()=>{
  const f=fixture();vm.runInContext(subEffect,f.box);await flush();f.box.WebVideoRuntime.readGameSettings=async()=>{throw Error('preview unavailable');};vm.runInContext(subStart+';globalThis.startExport=start;',f.box);await f.box.startExport();assert.equal(f.submitted,undefined);assert.match(f.box.error.message,/preview unavailable/);
 });
 
 test('video lifecycle cleanup invalidates awaited reads on close, switch, or unmount',()=>{
- const f=fixture();vm.runInContext(lifecycle,f.box);assert.equal(f.box.speedGeneration.current,0);f.close();assert.equal(f.box.speedGeneration.current,2);
+ let cleanup;const box={opened:true,game:'demo',exportKind:'full',speedGeneration:{current:0},R:{useEffect(fn){cleanup=fn();}}};vm.runInNewContext(lifecycle,box);assert.equal(box.speedGeneration.current,0);cleanup();assert.equal(box.speedGeneration.current,1);
 });
 test('subtitle open with an existing preview reads its actual speed without opening it again',async()=>{
  const f=fixture(true);vm.runInContext(subEffect,f.box);await flush();assert.equal(f.opens,0);assert.equal(f.box.settings.current.textSpeed,17);assert.equal(f.box.settings.current.autoSpeed,29);f.close();
