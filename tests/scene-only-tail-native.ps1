@@ -8,6 +8,7 @@ param(
 # This gate intentionally cannot run on a developer's desktop. It invokes the
 # actual plan/render commands only on a GitHub-hosted Windows runner.
 $ErrorActionPreference='Stop'
+try {
 if($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $env:OS -ne 'Windows_NT') { throw 'Scene-tail graphical gate requires GitHub-hosted Windows. Do not run locally.' }
 $PackageRoot=[IO.Path]::GetFullPath($PackageRoot);$EngineRoot=[IO.Path]::GetFullPath($EngineRoot)
 $run=Join-Path ([IO.Path]::GetFullPath($OutputRoot)) ([Guid]::NewGuid().ToString('N'))
@@ -30,14 +31,10 @@ $utf8=New-Object Text.UTF8Encoding($false)
 function Write-Text($file,$text){New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($file)) -Force|Out-Null;[IO.File]::WriteAllText($file,$text,$utf8)}
 function Write-Json($file,$data){Write-Text $file (ConvertTo-Json -InputObject $data -Depth 64)}
 function Q($value){return '"'+$value+'"'}
-function Start-Owned($command,[string[]]$arguments,$name){
- $p=Start-Process -FilePath $command -ArgumentList $arguments -PassThru -WindowStyle Hidden -WorkingDirectory $run -RedirectStandardOutput (Join-Path $run "$name.log") -RedirectStandardError (Join-Path $run "$name-error.log")
- $null=$p.Handle;return $p
-}
-function Wait-Owned($p,$name){
- try{if(-not $p.WaitForExit(240000)){& taskkill /PID $p.Id /T /F|Out-Null;throw "$name timed out"};$p.WaitForExit();if($null -eq $p.ExitCode -or $p.ExitCode -ne 0){throw "$name failed: exit=$($p.ExitCode); evidence=$run"}}finally{$p.Dispose()}
-}
-function Invoke-Checked($command,[string[]]$arguments,$name){$p=Start-Owned $command $arguments $name;Wait-Owned $p $name}
+. (Join-Path $PSScriptRoot 'scene-tail-owned-process.ps1')
+function Start-Owned($command,[string[]]$arguments,$name){return Start-SceneTailOwnedProcess $command $arguments $name $run}
+function Wait-Owned($owned,$name){Wait-SceneTailOwnedProcess $owned}
+function Invoke-Checked($command,[string[]]$arguments,$name){Invoke-SceneTailCheckedProcess $command $arguments $name $run}
 Add-Type -AssemblyName System.Drawing
 $project=Join-Path $run 'project';New-Item -ItemType Directory -Path $project|Out-Null
 Copy-Item -LiteralPath (Join-Path $EngineRoot 'assets') -Destination $project -Recurse
@@ -104,17 +101,19 @@ foreach($case in @(@{name='transition';fps=30;mode='manual'},@{name='fractional-
   @{name='parallel-a';source=$short;start=$short.start;end=$cut},
   @{name='parallel-b';source=$short;start=$cut;end=$short.end}
  )
- $pending=@()
+ $pending=@();$renderProcesses=@();$renderFailure=$null
  try{
   foreach($render in $renders){
    $part=Join-Path $render.source.job $render.name;New-Item -ItemType Directory -Path $part|Out-Null
    $request=$render.source.request.Clone();$request.partDir=$part;$request.startFrame=$render.start;$request.endFrame=$render.end;$request.firstSimulationFrame=0
    $file=Join-Path $part 'request.json';Write-Json $file $request;$render.part=$part
    $p=Start-Owned $exe @('render','--request',(Q $file),'--error-log',(Q (Join-Path $part 'error.txt'))) "$name-$($render.name)"
+   $renderProcesses+= $p
    if($render.name -like 'parallel-*'){$pending+=@{process=$p;name=$render.name}}else{Wait-Owned $p $render.name}
   }
   foreach($item in $pending){Wait-Owned $item.process $item.name}
- }finally{foreach($item in $pending){try{if(-not $item.process.HasExited){& taskkill /PID $item.process.Id /T /F|Out-Null}}catch{}}}
+ }catch{$renderFailure=$_}
+ Complete-SceneTailOwnedProcesses $renderProcesses $renderFailure
  $baseline=Join-Path $renders[0].part 'video.mp4';$comparisons=@()
  foreach($render in $renders|Select-Object -Skip 1){
   $offset=$render.start-$short.start;$length=$render.end-$render.start;$stats="$name-$($render.name)-psnr.txt"
@@ -149,3 +148,9 @@ foreach($case in @(@{name='transition';fps=30;mode='manual'},@{name='fractional-
 }catch{Write-Json (Join-Path $run 'summary.json') @{packageRoot=$PackageRoot;kernelSha256=$kernelSha256;status='FAIL';passed=$false;cases=$summaries;error=$_.Exception.Message};throw}
 Write-Json (Join-Path $run 'summary.json') @{packageRoot=$PackageRoot;kernelSha256=$kernelSha256;status='PASS';passed=$true;cases=$summaries;engine=$profile;engineSha256=(Get-FileHash $entry).Hash;note='Synthetic root-replay image/transition/audio parity; no automatic-anchor, GPU-memory or Live2D SDK pixel assertion.'}
 Write-Output "PASS hosted native scene-tail parity; evidence=$run"
+# Only the fully successful assertion/cleanup path publishes a zero exit code.
+exit 0
+}catch{
+ Write-Error -ErrorRecord $_ -ErrorAction Continue
+ exit 1
+}
