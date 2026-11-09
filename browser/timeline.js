@@ -136,7 +136,9 @@ globalThis.__createNativeTimeline=async({script,policy})=>{
       if(!item){hintError='单行提示未能显示唯一选项';return;}
       item.click();
     },hintMs);
-    if(lastCommand==='end')finish();
+    // A synthetic comment ends a limited plan without executing native end,
+    // which would clear the stage/perform windows and load the title screen.
+    if(lastCommand==='end'||lastLine===policy.sceneOnlyEndLine)finish();
   };
 
   const ended=()=>core.sceneManager.sceneData.currentSentenceId>=core.sceneManager.sceneData.currentScene.sentenceList.length;

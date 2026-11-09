@@ -43,7 +43,7 @@ const prefix=[
 ];
 const tail=[['changeBg','unrelated.png',{},2000],['bgm','none',{enter:500},3000],['playVideo','tail.mp4',{},3000]];
 test('workload retains predecessor state, voice and target transition while dropping suffix events/media',()=>{
- const limited=workload([...prefix,['end','',{},2000]],2),full=workload([...prefix,...tail],5);
+ const limited=workload([...prefix,['comment','WebVideo+ scene-only boundary',{},2000]],2),full=workload([...prefix,...tail],5);
  assert.deepEqual(limited.plan.events,full.plan.events.filter(event=>event.sourceIndex<prefix.length));
  assert.ok(limited.plan.events.some(event=>event.script.includes('history.png')));
  assert.ok(limited.plan.events.some(event=>event.script.includes('hero.model3.json')));
@@ -60,9 +60,21 @@ test('workload retains predecessor state, voice and target transition while drop
 });
 test('notend wait and visual tail helpers still see all target tail statements',()=>{
  const context={};vm.createContext(context);vm.runInContext(read('browser/timeline.js'),context);
- const sentences=[{command:0,args:[{key:'next',value:true},{key:'notend',value:true}]},{command:1,commandRaw:'comment',args:[]},{command:1,commandRaw:'wait',args:[]},{command:1,commandRaw:'end',args:[]}];
+ const sentences=[{command:0,args:[{key:'next',value:true},{key:'notend',value:true}]},{command:1,commandRaw:'comment',args:[]},{command:1,commandRaw:'wait',args:[]},{command:1,commandRaw:'comment',args:[]}];
  assert.equal(context.__exportFindChainedWaitIndex(sentences,0),2);
  assert.equal(context.__exportNotendVisualDuration(500,200),600);
+});
+test('native observer stops at the comment fence without creating a stage-reset command',()=>{
+ const source=read('browser/timeline.js'),begin=source.indexOf('globalThis.__nativeObserve=s=>{'),end=source.indexOf('  const ended=',begin);
+ assert.ok(begin>=0&&end>begin);
+ for(const [line,command,fence,expected]of [[4,'comment',4,1],[3,'comment',4,0],[4,'comment',null,0],[4,'end',null,1]]){
+  const context={policy:{sceneOnlyEndLine:fence},core:{sceneManager:{sceneData:{currentSentenceId:line}}},performance:{now:()=>100},cancelPendingAuto(){},origin:0,lastCommand:'',lastParams:{},lastLine:0,events:[],nowMs:()=>100,currentForwardGroup:()=>1,captureDialogue:null,manualTimer:null,hintTimer:null,singleLineHintDuration:()=>0,finished:0};
+  context.finish=()=>context.finished++;
+  vm.createContext(context);vm.runInContext(source.slice(begin,end),context);
+  context.__nativeObserve({command:1,commandRaw:command,args:[]});assert.equal(context.finished,expected);
+ }
+ assert.match(read('src/Planner.cs'),/"sceneOnlyEndLine",J.Get\(J.Get\(chain,"planningTail"\),"boundaryLine"\)/);
+ assert.match(read('src/SceneChain.cs'),/WebVideo\+ scene-only boundary/);
 });
 test('custom future music can change the entire mix, so the scope gate retains its full timeline',()=>{
  const context={};vm.createContext(context);vm.runInContext(read('browser/audio.js'),context);

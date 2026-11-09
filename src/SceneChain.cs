@@ -92,11 +92,11 @@ namespace NativeVideo {
    int end=first;while(end<origins.Count&&J.S(origins[end],"scene").Equals(scene,StringComparison.OrdinalIgnoreCase))end++;
    if(end==origins.Count||origins.Skip(end).Any(o=>J.S(o,"scene").Equals(scene,StringComparison.OrdinalIgnoreCase)))throw new IOException("单场景规划的目标区间不唯一");
    // Preserve even the target's zero-time trailing comments/flattened transfer.
-   // An explicit end is observed at the same forward boundary as the next
-   // scene's first statement, without waiting for an extra natural-EOF advance.
-   // It has no media and is never emitted as a render event by the workload.
+   // The observer stops at this asset-free comment at the same forward
+   // boundary as the next scene's first statement. Do not use an actual end:
+   // it resets the stage and artificially terminates active perform windows.
    var result=new Dictionary<string,object>(J.D(chain));
-   result["script"]=string.Join("\n",lines.Take(end).Concat(new[]{"end:;"}));
+   result["script"]=string.Join("\n",lines.Take(end).Concat(new[]{"; WebVideo+ scene-only boundary"}));
    // Preserve a valid source location for existing statement-cut validation;
    // synthetic=true distinguishes this marker from the omitted source command.
    var boundaryOrigin=new Dictionary<string,object>(J.D(origins[end]));boundaryOrigin["synthetic"]=true;
@@ -110,7 +110,7 @@ namespace NativeVideo {
   public static void AlignPlanningTailDuration(object result,object chain){
    var limit=J.Get(chain,"planningTail");if(limit==null)return;
    int boundary=(int)J.N(limit,"boundaryLine",-1);
-   var marker=J.A(J.Get(result,"events")).FirstOrDefault(e=>J.N(e,"index",-1)==boundary&&J.S(e,"command")=="end");
+   var marker=J.A(J.Get(result,"events")).FirstOrDefault(e=>J.N(e,"index",-1)==boundary&&J.S(e,"command")=="comment");
    if(marker==null)throw new IOException("单场景规划未到达预期结束边界");
    double at=J.N(marker,"atMs",double.NaN);if(double.IsNaN(at)||double.IsInfinity(at)||at<0)throw new IOException("单场景规划结束时间无效");
    // finishNativeTimeline rounds source-event times to whole milliseconds.

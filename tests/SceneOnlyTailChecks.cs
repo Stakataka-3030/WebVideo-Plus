@@ -39,7 +39,7 @@ namespace NativeVideo {
    Put("game/scene/start.txt",before);Put("game/scene/middle.txt",selected);Put("game/scene/after.txt",after);Put("game/background/before.png","synthetic scanner image");
    object chain=Build("middle.txt");string original=J.Text(chain);object limited=Limit(chain);string script=J.S(limited,"script");int end=(int)J.N(J.Get(limited,"planningTail"),"boundaryLine");
    Check(J.Text(chain)==original,"Limiting mutated the full graph");
-   Check(script==string.Join("\n",J.S(chain,"script").Split('\n').Take(end))+"\nend:;","Prefix bytes or end boundary changed");
+   Check(script==string.Join("\n",J.S(chain,"script").Split('\n').Take(end))+"\n; WebVideo+ scene-only boundary","Prefix bytes or end boundary changed");
    Check(end==before.Split('\n').Length+selected.Split('\n').Length,"Wrong target boundary");
    Check(J.A(J.Get(limited,"scenes")).Count==2&&J.N(J.Get(limited,"planningTail"),"omittedScenes")==1,"Wrong scene metadata");
    Check(J.Text(J.A(J.Get(chain,"originMap")).Take(end))==J.Text(J.A(J.Get(limited,"originMap")).Take(end)),"Previous/target line identity changed");
@@ -78,7 +78,7 @@ namespace NativeVideo {
    var times=Enumerable.Range(0,end+1).Select(i=>(object)(i<4?0:i<end?1010:2037)).ToArray();
    var timing=J.O("durationSeconds",Math.Ceiling(2037*30d/1000)/30,"lineTimes",times);
    var cuts=StatementCuts.Collect(script,Parse(script),timing,limited,null);
-   Check(J.A(J.Get(cuts,"candidates")).All(c=>J.S(c,"targetScene")!="after.txt"),"Synthetic end became a statement cut");
+   Check(J.A(J.Get(cuts,"candidates")).All(c=>J.S(c,"targetScene")!="after.txt"),"Synthetic boundary became a statement cut");
    SceneChain.AttachTimeline(timing,limited,"middle.txt");var story=J.Get(timing,"storyTimeline");
    Check(J.N(story,"currentStartSeconds")==1.01&&J.N(story,"currentEndSeconds")==2.037,"Raw source boundary lost to frame rounding");
    var bounds=VideoWorkflow.Bounds(timing,null,30,"sceneOnly");Check(J.N(bounds,"startFrame")==31&&J.N(bounds,"endFrame")==62,"Scene output frame bounds changed");
@@ -86,7 +86,7 @@ namespace NativeVideo {
    Check(J.Text(VideoWorkflow.Bounds(legacyTiming,null,30,"sceneOnly"))==J.Text(bounds),"Limited bounds differ from full-story crop");
    var invalidTiming=J.O("durationSeconds",3,"lineTimes",times.Take(end).ToArray());Reject(()=>SceneChain.AttachTimeline(invalidTiming,limited,"middle.txt"),"Missing sentinel event silently accepted");
    foreach(int fps in new[]{24,30,60,120})foreach(double raw in new[]{61*1000d/fps,1016.4,1016.5,2037d}){
-    var result=J.O("durationMs",raw,"events",new object[]{J.O("index",end,"atMs",raw,"command","end")});SceneChain.AlignPlanningTailDuration(result,limited);
+    var result=J.O("durationMs",raw,"events",new object[]{J.O("index",end,"atMs",raw,"command","comment")});SceneChain.AlignPlanningTailDuration(result,limited);
     double rounded=Math.Floor(raw+.5);Check(J.N(result,"durationMs")==Math.Max(raw,rounded),"Duration padding must match JS Math.round without retiming");
     var roundedTimes=Enumerable.Repeat((object)0,end).Concat(new object[]{rounded}).ToArray();
     var shortTiming=J.O("durationSeconds",Math.Ceiling(J.N(result,"durationMs")*fps/1000)/fps,"lineTimes",roundedTimes);
@@ -95,8 +95,8 @@ namespace NativeVideo {
     Check(J.Text(VideoWorkflow.Bounds(shortTiming,null,fps,"sceneOnly"))==J.Text(VideoWorkflow.Bounds(fullTiming,null,fps,"sceneOnly")),"Fractional-frame boundary lost a frame at "+fps+" fps / "+raw+" ms");
    }
    var untouchedResult=J.O("durationMs",1016.5);SceneChain.AlignPlanningTailDuration(untouchedResult,chain);Check(J.N(untouchedResult,"durationMs")==1016.5,"Full-story result was padded");
-   var zeroResult=J.O("durationMs",0,"events",new object[]{J.O("index",end,"atMs",0,"command","end")});SceneChain.AlignPlanningTailDuration(zeroResult,limited);Check(J.N(zeroResult,"durationMs")==0,"Zero-time scene gained an artificial hold");
-   Reject(()=>SceneChain.AlignPlanningTailDuration(J.O("durationMs",1000,"events",new object[0]),limited),"Missing end marker silently padded");
+   var zeroResult=J.O("durationMs",0,"events",new object[]{J.O("index",end,"atMs",0,"command","comment")});SceneChain.AlignPlanningTailDuration(zeroResult,limited);Check(J.N(zeroResult,"durationMs")==0,"Zero-time scene gained an artificial hold");
+   Reject(()=>SceneChain.AlignPlanningTailDuration(J.O("durationMs",1000,"events",new object[0]),limited),"Missing boundary marker silently padded");
    var zeroTimes=Enumerable.Repeat((object)1000,end+1).ToArray();var emptyTiming=J.O("durationSeconds",1,"lineTimes",zeroTimes);SceneChain.AttachTimeline(emptyTiming,limited,"middle.txt");
    Reject(()=>VideoWorkflow.Bounds(emptyTiming,null,30,"sceneOnly"),"Zero-duration selected scene must not invent a hold");
    foreach(int workers in new[]{1,2,4,8}){
