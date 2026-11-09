@@ -24,7 +24,7 @@
 | --- | --- |
 | 表情安全 | 开发阶段完成已知插件的生命周期 / 缓存 / 错误合约及 9 项时钟回归；4.6.5 的逐文件 SHA 校验壳仅用于合约，不等同完整运行 |
 | sceneOnly 逻辑 | sceneOnly 独立实现阶段通过 C# 97 项及三线源码 overlay 检查、Node 99 项、官方 4.6.6 纯函数 oracle 和 1600 项 Bounds 对照，并经过独立审核；这些是源码与逻辑验证，不能代替移植后最终提交的原生验证。 |
-| sceneOnly 原生画面与声音 | 真实像素、PCM 和并发 renderer gate 尚无本轮最终远端通过记录；自动 anchor 策略、专有 Live2D SDK 像素及实测显存降低未验证 |
+| sceneOnly 原生画面与声音 | 真实像素、PCM 和并发 renderer gate 按引擎分别记录在对应发行页的最终提交验收中，不以源码或旧候选结果替代；自动 anchor 策略、专有 Live2D SDK 像素及实测显存降低未验证 |
 | 配置弹窗 | 五类弹窗的读取、告知和异步失效范围如上；最终包实际入口验收单独记录 |
 | 旧候选实测 | 旧候选 [5f0de0de](https://github.com/Stakataka-3030/WebVideo-Plus/commit/5f0de0de20b0c89fd964eb43bbe1b4488e61705e)（[run 42624766204](https://github.com/Stakataka-3030/WebVideo-Plus/actions/runs/42624766204)）曾完成 550 行完整预演（1460.7 秒、runtimeParity=true）及 15 秒 / 450 帧静音渲染，未改动语句、未回退引擎。这些是合入本轮新增功能前的历史候选结果，不是最新最终包验收，也不代表完整长片音视频或其他宿主通过。 |
 | 旧候选 CLI | 两条 Terre 共 184 项、Craft 73 项 CLI 断言属于此前候选；不计作本轮最终包的安装、升级或恢复通过 |
