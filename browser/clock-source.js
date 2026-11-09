@@ -114,6 +114,12 @@ var ClockController = class {
       return;
     let firstException;
     while (true) {
+      // A single runFor can execute many story timers (including model exit).
+      // Freeze between callbacks until the requested expression is applied,
+      // including requests from the final callback before advancing to `to`.
+      // The barrier uses real timers and never calls runFor itself.
+      if (globalThis.__exportHasPendingExpressions?.())
+        await globalThis.__exportWaitForExpressions();
       const result = await this._callFirstTimer(to);
       if (!result.timerFound)
         break;

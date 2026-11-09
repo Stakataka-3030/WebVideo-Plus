@@ -25,7 +25,8 @@ public static class EngineAdapterDualProfileChecks {
  static string Shell(string version,string name){
   string root=NewDirectory(name),source=Sources[version];
   foreach(string file in new[]{"index.html","webgal-engine.json",Bundles[version],"assets/index-Dch1g2w9.css"})Files.CopyFile(Path.Combine(source,file),Path.Combine(root,file));
-  if(version=="4.6.5")Files.CopyFile(Path.Combine(source,"assets/index.es-0XzJiDJZ.js"),Path.Combine(root,"assets/index.es-0XzJiDJZ.js"));
+  string plugin="assets/"+(version=="4.6.4"?"index.es-erQsk_Nn.js":version=="4.6.5"?"index.es-0XzJiDJZ.js":"index.es-DlwKruus.js");
+  Files.CopyFile(Path.Combine(source,plugin),Path.Combine(root,plugin));
   Files.Atomic(Path.Combine(root,"assets/custom-font.woff2"),"synthetic-copy-control-font");
   Files.Atomic(Path.Combine(root,"assets/custom-theme.css"),"@font-face{font-family:Fixture;src:url(custom-font.woff2)}:root{--fixture:preserve}");
   Files.Atomic(Path.Combine(root,"icons/custom.svg"),"<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
@@ -74,7 +75,7 @@ public static class EngineAdapterDualProfileChecks {
     Check(version+" Prepare preserves custom shell assets without mutating source",()=>{
      var before=Inventory(project);var a=EngineAdapter.Select(Request(project,version));string output=NewDirectory("prepared-"+version);a.Prepare(output);Unchanged(project,before);
      foreach(string file in new[]{"index.html","webgal-engine.json","assets/index-Dch1g2w9.css","assets/custom-theme.css","assets/custom-font.woff2","icons/custom.svg","lib/custom-support.js"})Assert(Files.Hash(Path.Combine(project,file))==Files.Hash(Path.Combine(output,file)),"Lost source bytes: "+file);
-     if(version=="4.6.5")Assert(Files.Hash(Path.Combine(output,"assets/index.es-0XzJiDJZ.js"))=="e62170797a6556ae286a42fa9efa8d0cea234a7f20f8b108992148588f6dd670","Cubism2 texture upload backport bytes changed");
+     if(version=="4.6.5"){string plugin=File.ReadAllText(Path.Combine(output,"assets/index.es-0XzJiDJZ.js"));Assert(plugin.Contains("class __WebvideoCubism2Image")&&plugin.Contains("s.internalModel.textureFlipY?__webvideoCubism2Texture(texture):texture"),"Cubism2 texture backport lost while adding expression safety");Assert(plugin.Contains("__webvideoExpressionGeneration"),"Expression lifecycle patch missing");}
      Assert(!File.Exists(Path.Combine(output,"game/scene/not-part-of-runtime.txt")),"Runtime shell copied unrelated scene");Probes(File.ReadAllText(Path.Combine(output,Bundles[version])),version);
      var identity=J.Read(Path.Combine(output,"export-engine.json"));Assert(J.S(identity,"version")==version&&J.S(identity,"sourceKind")=="project-runtime"&&J.B(identity,"runtimeParity")&&J.S(identity,"sourceHash")==Hashes[version],"Snapshot identity changed");
     });

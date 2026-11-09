@@ -79,6 +79,8 @@ jobs:
           Expand-CheckedBuildArchive $archive466 (Join-Path $PWD '.build/webgal-4.6.6')
           pwsh -NoLogo -NoProfile -File .\tests\engine-adapter-dual-profile.test.ps1 -Webgal464Root .build/webgal-4.6.4 -Webgal465Root .build/webgal-4.6.5 -Webgal466Root .build/webgal-4.6.6 -Portable
           if ($LASTEXITCODE -ne 0) { throw "Versioned engine profile production checks failed" }
+          .\tests\live2d-expression-native.ps1 -EngineRoots @('.build/webgal-4.6.4','.build/webgal-4.6.5','.build/webgal-4.6.6') -SupportPackage package
+          if ($LASTEXITCODE -ne 0) { throw "Live2D expression lifecycle/cache/barrier contracts failed" }
           node tests/cubism2-texture-upload-backport.mjs .build/webgal-4.6.5
           if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.5 Cubism2 texture backport failed" }
           pwsh -NoLogo -NoProfile -File .\tests\font-render-preflight.portable.ps1
