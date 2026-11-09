@@ -5,7 +5,7 @@
 
 ## 本次修复
 
-- 修复导出副本中已请求 Live2D 表情跨 await / destroy 的生命周期问题。只等待当前请求的表情，不全量预取、不固定 sleep；真实等待超过 20 秒明确报错。失败缓存再次被请求时不会漏报，同时保留原生加载器的重试能力。详见[Live2D 表情安全说明](../docs/LIVE2D-EXPRESSION-SAFETY.md)。
+- 修复导出副本中已请求 Live2D 表情跨 await / destroy 的生命周期问题。只等待当前请求的表情，不等待全量预取完成、不固定 sleep；真实等待超过 20 秒明确报错。失败缓存再次被请求时不会漏报，同时保留原生加载器的重试能力。详见[Live2D 表情安全说明](../docs/LIVE2D-EXPRESSION-SAFETY.md)。
 - 导出任务副本跳过游戏自动快速存档，减少加速预演反复复制回溯记录和排队写入存储的开销。正常游戏的自动存档与手动存档保持原有行为，不改写源工程。详见[预演自动存档性能修复](../docs/AUTOSAVE-PLANNING.md)。
 
 感谢 [NijiharaTsubasa](https://github.com/NijiharaTsubasa) 提供 planning 阶段自动存档性能热点的反馈及禁用后加速的验证线索。
