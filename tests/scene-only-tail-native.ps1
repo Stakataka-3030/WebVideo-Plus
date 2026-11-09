@@ -13,6 +13,7 @@ $PackageRoot=[IO.Path]::GetFullPath($PackageRoot);$EngineRoot=[IO.Path]::GetFull
 $run=Join-Path ([IO.Path]::GetFullPath($OutputRoot)) ([Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $run -Force|Out-Null
 $exe=Join-Path $PackageRoot 'WebGAL.Video.exe'
+$kernelSha256=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
 $profiles=@{
  'd9efa39b4eabdb3a54c3d209ca5db6cb04d1cc60fdef3acdcd2532712a8a6d10'=@{engine='webgal';version='4.6.4'};
  '356f7184c80af8da4dd782e25c5b3fb89f55f1e8b9e9e18be6f50035763dc6b6'=@{engine='webgal';version='4.6.5'};
@@ -56,7 +57,7 @@ New-Item -ItemType Directory -Path (Join-Path $project 'game/bgm') -Force|Out-Nu
 Invoke-Checked $ffmpeg @('-v','error','-y','-f','lavfi','-i','sine=frequency=437:sample_rate=48000:duration=8','-c:a','pcm_s16le',(Q (Join-Path $project 'game/bgm/history.wav'))) 'make-audio'
 Write-Text (Join-Path $project 'game/scene/after.txt') "changeBg:tail.png -duration=0 -next;`nwait:1200;`nbgm:none;`nwait:200;"
 $summaries=@()
-Write-Json (Join-Path $run 'summary.json') @{status='RUNNING';passed=$false;cases=$summaries}
+Write-Json (Join-Path $run 'summary.json') @{packageRoot=$PackageRoot;kernelSha256=$kernelSha256;status='RUNNING';passed=$false;cases=$summaries}
 try {
 foreach($case in @(@{name='transition';fps=30;mode='manual'},@{name='fractional-61';fps=60;mode='auto'})){
  $name=$case.name;$fps=[int]$case.fps
@@ -143,8 +144,8 @@ foreach($case in @(@{name='transition';fps=30;mode='manual'},@{name='fractional-
  $pcmFull=Join-Path $full.job 'selected.s16';$pcmShort=Join-Path $short.job 'selected.s16'
  if((Get-Item $pcmShort).Length -ne ($b-$a)*2 -or (Get-FileHash $pcmFull).Hash -ne (Get-FileHash $pcmShort).Hash){throw 'Inherited BGM selected PCM differs or is incomplete'}
  $summaries+=@{name=$name;fps=$fps;mode=$case.mode;startFrame=$short.start;endFrame=$short.end;sceneEndSeconds=$short.timing.storyTimeline.currentEndSeconds;pixelComparisons=$comparisons;pcmEqual=$true;tailSnapshotAbsent=$true}
- Write-Json (Join-Path $run 'summary.json') @{status='RUNNING';passed=$false;cases=$summaries;engineSha256=(Get-FileHash $entry).Hash}
+ Write-Json (Join-Path $run 'summary.json') @{packageRoot=$PackageRoot;kernelSha256=$kernelSha256;status='RUNNING';passed=$false;cases=$summaries;engineSha256=(Get-FileHash $entry).Hash}
 }
-}catch{Write-Json (Join-Path $run 'summary.json') @{status='FAIL';passed=$false;cases=$summaries;error=$_.Exception.Message};throw}
-Write-Json (Join-Path $run 'summary.json') @{status='PASS';passed=$true;cases=$summaries;engine=$profile;engineSha256=(Get-FileHash $entry).Hash;note='Synthetic root-replay image/transition/audio parity; no automatic-anchor, GPU-memory or Live2D SDK pixel assertion.'}
+}catch{Write-Json (Join-Path $run 'summary.json') @{packageRoot=$PackageRoot;kernelSha256=$kernelSha256;status='FAIL';passed=$false;cases=$summaries;error=$_.Exception.Message};throw}
+Write-Json (Join-Path $run 'summary.json') @{packageRoot=$PackageRoot;kernelSha256=$kernelSha256;status='PASS';passed=$true;cases=$summaries;engine=$profile;engineSha256=(Get-FileHash $entry).Hash;note='Synthetic root-replay image/transition/audio parity; no automatic-anchor, GPU-memory or Live2D SDK pixel assertion.'}
 Write-Output "PASS hosted native scene-tail parity; evidence=$run"

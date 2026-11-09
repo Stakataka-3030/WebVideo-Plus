@@ -173,9 +173,10 @@ version-specific native runs, and a new allowed profile is not a passed run.
 
 ## Candidate CI coverage
 
-The 4.6.4 line runs the native gate against its prepared
-`package/runtime/web` and complete `package`. It has no locked complete
-4.6.5/4.6.6 fixture, so it does not run or claim their gates. Its portable C#
+The 4.6.4 line runs the native gate against the prepared `runtime/web`
+inside its complete package, statically extracted from the retained normal
+compressed installer. It has no locked complete 4.6.5/4.6.6 fixture, so it
+does not run or claim their gates. Its portable C#
 harness reuses the existing `resource-url.portable-json.cs` serializer.
 
 The 4.6.6 and Craft lines already pin complete 4.6.5 and 4.6.6 fixtures. Each
@@ -190,3 +191,16 @@ No workflow currently pins a complete MyGO fixture; MyGO native coverage is
 not run or implied by these checks. The script's allowed MyGO hash remains
 an available gate contract, not evidence of a passed run. All native results
 remain pending until the corresponding GitHub-hosted Windows run succeeds.
+
+### Formal installer byte identity on Terre
+
+The normal compressed installer is retained in `.build/ci-installer` before
+the existing `-Fast` repeat build. Fast rebuilds both the package and the
+same-named distribution installer, so its later package is not assumed to
+match the retained formal installer. The scene-tail step statically extracts
+that retained grouped EXE into a fresh CI fixture using the existing pinned
+decoder, verifies every payload file against the embedded manifest, and
+checks source-material admission before passing the extracted package to
+the native gate. It records installer, manifest and kernel SHA-256 plus the
+verified file count in `scene-tail/package-identity.json`. The installer
+entry point is never executed. All other repeat-build checks remain in place.

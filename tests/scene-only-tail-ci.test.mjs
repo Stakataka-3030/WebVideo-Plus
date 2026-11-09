@@ -44,6 +44,7 @@ test('native scene-tail guard precedes mutation or host execution and keeps root
  assert.match(gate,/RUNNER_ENVIRONMENT -ne 'github-hosted'/);
  assert.match(gate,/OS -ne 'Windows_NT'/);
  assert.match(gate,/firstSimulationFrame=0/);
+ assert.match(gate,/packageRoot=\$PackageRoot;kernelSha256=\$kernelSha256;status='PASS'/);
  assert.match(gate,/no automatic-anchor, GPU-memory or Live2D SDK pixel assertion/);
  const reconstructed=JSON.parse(read('build/runtime-patches.json')).files.find(file=>/assets\/index-[^/]+\.js$/.test(file.path));
  assert.ok(gate.includes(reconstructed.outputSha256),'Prepared 4.6.4 bytes need their exact recognized identity');

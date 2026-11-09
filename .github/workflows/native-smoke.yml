@@ -317,11 +317,19 @@ jobs:
       - name: Compare scene-only tail planning with the full-story native crop
         shell: pwsh
         run: |
+          $version = (Get-Content version.json -Raw | ConvertFrom-Json).productVersion
+          $installer = Join-Path $PWD ('.build/ci-installer/WebVideo+-Setup-' + $version + '.exe')
+          $identity = Join-Path $PWD '.build/ci-native-tests/scene-tail/package-identity.json'
+          node tests/prepare-scene-tail-package.mjs $installer .build/ci-native-fixtures/scene-tail-formal $identity
+          if ($LASTEXITCODE -ne 0) { throw 'Retained formal installer payload verification failed' }
+          $payload = Get-Content -LiteralPath $identity -Raw | ConvertFrom-Json
+          if ($payload.status -ne 'PASS') { throw 'Formal scene-tail payload identity is not verified' }
+          $package = $payload.packageRoot
           $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
           $media = Join-Path $PWD ('.build/ffmpeg-test/' + $lock.ffmpegTest.archiveRoot + '/bin')
-          $engines = @(@{name='webgal-464';root=(Join-Path $PWD 'package/runtime/web')}, @{name='webgal-465';root=(Join-Path $PWD '.build/webgal-4.6.5')}, @{name='webgal-466';root=(Join-Path $PWD '.build/webgal-4.6.6')})
+          $engines = @(@{name='webgal-464';root=(Join-Path $package 'runtime/web')}, @{name='webgal-465';root=(Join-Path $PWD '.build/webgal-4.6.5')}, @{name='webgal-466';root=(Join-Path $PWD '.build/webgal-4.6.6')})
           foreach ($engine in $engines) {
-            ./tests/scene-only-tail-native.ps1 -EngineRoot $engine.root -PackageRoot package -MediaToolDirectory $media -OutputRoot (Join-Path $PWD ('.build/ci-native-tests/scene-tail/' + $engine.name))
+            ./tests/scene-only-tail-native.ps1 -EngineRoot $engine.root -PackageRoot $package -MediaToolDirectory $media -OutputRoot (Join-Path $PWD ('.build/ci-native-tests/scene-tail/' + $engine.name))
             if ($LASTEXITCODE -ne 0) { throw "Hosted native scene-only tail parity failed: $($engine.name)" }
           }
 
