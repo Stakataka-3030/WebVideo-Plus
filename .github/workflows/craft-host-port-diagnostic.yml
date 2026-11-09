@@ -16,12 +16,16 @@ jobs:
         shell: pwsh
         env:
           WEBVIDEO_CRAFT_HOST_SMOKE: '1'
+          # Investigate 0xC0000142 without retrying the known-failed child launch.
+          WEBVIDEO_CRAFT_ACCESS_DIAGNOSTIC_ONLY: '1'
         run: |
           $evidence = Join-Path $PWD '.build/ci-native-tests/craft-port'
           $record = Join-Path $evidence 'prepared-inputs.json'
           ./craft/tests/prepare-ci-host-port-diagnostic.ps1 -OutputRecord $record
-          node craft/tests/ci-host-port-diagnostic.mjs $record $evidence
-          if ($LASTEXITCODE -ne 0) { throw 'Host port diagnostic blocked; this is not an acceptance result' }
+          if ($env:WEBVIDEO_CRAFT_ACCESS_DIAGNOSTIC_ONLY -ne '1') {
+            node craft/tests/ci-host-port-diagnostic.mjs $record $evidence
+            if ($LASTEXITCODE -ne 0) { throw 'Host port diagnostic blocked; this is not an acceptance result' }
+          }
           $medium = Join-Path $PWD '.build/ci-native-tests/craft-port-medium'
           New-Item -ItemType Directory -Path $medium -Force | Out-Null
           $inputs = Get-Content -LiteralPath $record -Raw | ConvertFrom-Json

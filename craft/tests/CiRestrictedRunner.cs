@@ -53,6 +53,11 @@ static class CiRestrictedRunner {
    for(int i=0;i<count;i++){var group=(SidAndAttributes)Marshal.PtrToStructure(IntPtr.Add(data,offset+i*stride),typeof(SidAndAttributes));if(new SecurityIdentifier(group.Sid).IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid)&&(group.Attributes&4)!=0&&(group.Attributes&16)==0)return true;}return false;
   }finally{Marshal.FreeHGlobal(data);}
  }
+ static string[] EnabledLogonGroups(IntPtr token){
+  var data=Info(token,2);try{int count=Marshal.ReadInt32(data);if(count<0||count>2048)throw new IOException("Invalid token group count");int offset=Marshal.OffsetOf(typeof(TokenGroupsHeader),"First").ToInt32(),stride=Marshal.SizeOf(typeof(SidAndAttributes));var result=new List<string>();
+   for(int i=0;i<count;i++){var group=(SidAndAttributes)Marshal.PtrToStructure(IntPtr.Add(data,offset+i*stride),typeof(SidAndAttributes));if((group.Attributes&0xc0000000)==0xc0000000&&(group.Attributes&4)!=0&&(group.Attributes&16)==0)result.Add(new SecurityIdentifier(group.Sid).Value);}return result.OrderBy(x=>x,StringComparer.Ordinal).ToArray();
+  }finally{Marshal.FreeHGlobal(data);}
+ }
  static void AssertReduced(IntPtr token,SecurityIdentifier expected,Luid notify){if(!User(token).Equals(expected)||Integrity(token)!=8192||Scalar(token,20)!=0||Administrator(token)||Privileges(token).Any(p=>!Equal(p.Luid,notify)))throw new IOException("Reduced token did not meet same-user non-admin medium-integrity contract");}
  internal static string Quote(string value){var result=new StringBuilder("\"");int slashes=0;foreach(char ch in value){if(ch=='\\'){slashes++;continue;}if(ch=='\"'){result.Append('\\',slashes*2+1).Append(ch);slashes=0;continue;}result.Append('\\',slashes).Append(ch);slashes=0;}return result.Append('\\',slashes*2).Append('"').ToString();}
  static string Within(string root,string value){string target=Path.GetFullPath(value),boundary=Path.GetFullPath(root).TrimEnd('\\')+'\\';if(!target.StartsWith(boundary,StringComparison.OrdinalIgnoreCase))throw new IOException("Path escaped CI boundary");return target;}
@@ -82,6 +87,12 @@ static class CiRestrictedRunner {
    stage="lower-token-integrity";Require(SetTokenInformation(reduced,25,ref label,Marshal.SizeOf(typeof(SidAndAttributes))+mediumSid.BinaryLength),stage);
    report["reducedIntegrityRid"]=Integrity(reduced);report["reducedElevated"]=Scalar(reduced,20)!=0;report["sameUser"]=User(reduced).Equals(user);report["administratorEnabled"]=Administrator(reduced);report["remainingPrivilegeCount"]=Privileges(reduced).Count;report["unexpectedPrivilegeCount"]=Privileges(reduced).Count(p=>!Equal(p.Luid,notify));
    AssertReduced(reduced,user,notify);
+   var sourceLogons=EnabledLogonGroups(source);var reducedLogons=EnabledLogonGroups(reduced);
+   report["sourceEnabledLogonGroupCount"]=sourceLogons.Length;report["reducedEnabledLogonGroupCount"]=reducedLogons.Length;report["sameEnabledLogonGroups"]=sourceLogons.SequenceEqual(reducedLogons);
+   report["sameSession"]=Scalar(source,12)==Scalar(reduced,12);report["sourceMatchesProcessSession"]=Scalar(source,12)==Process.GetCurrentProcess().SessionId;
+   report["createNoWindow"]=true;report["createSuspended"]=true;report["inheritHandles"]=false;report["desktopRouting"]="inherit-existing";
+   stage="read-current-object-access";report["currentObjectAccess"]=CiHostAccess.Summary(source,reduced);
+   if(Environment.GetEnvironmentVariable("WEBVIDEO_CRAFT_ACCESS_DIAGNOSTIC_ONLY")=="1"){report["status"]="ACCESS_DIAGNOSTIC_COMPLETED";report["childCreated"]=false;return 0;}
    stage="owned-job";job=CreateJobObject(IntPtr.Zero,null);Require(job!=IntPtr.Zero,stage);var limits=new JobLimits();limits.Basic.Flags=0x2000;
    Require(SetInformationJobObject(job,9,ref limits,(uint)Marshal.SizeOf(typeof(JobLimits))),"SetInformationJobObject");
    var variables=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);foreach(DictionaryEntry entry in Environment.GetEnvironmentVariables())variables[(string)entry.Key]=(string)entry.Value;
@@ -95,7 +106,7 @@ static class CiRestrictedRunner {
    stage="resume-verified-child";Require(ResumeThread(child.Thread)!=0xffffffff,stage);
    report["status"]="RUNNING";NoLinks(Path.Combine(evidence,"restricted-launch.json"));File.WriteAllText(Path.Combine(evidence,"restricted-launch.json"),new JavaScriptSerializer().Serialize(report));
    stage="wait-child";uint wait=WaitForSingleObject(child.Process,180000);if(wait!=0)throw new IOException(wait==258?"Owned CI child timed out":"Owned CI child wait failed");
-   uint code;Require(GetExitCodeProcess(child.Process,out code),"read-child-exit");childFinished=true;report["childExitCode"]=code;report["status"]=code==0?"COMPLETED":"CHILD_FAILED";
+   uint code;Require(GetExitCodeProcess(child.Process,out code),"read-child-exit");childFinished=true;report["childExitCode"]=code;report["childExitHex"]="0x"+code.ToString("X8");report["dllInitializationFailed"]=code==0xc0000142;report["status"]=code==0?"COMPLETED":"CHILD_FAILED";
    return code==0?0:1;
   }catch(Exception error){report["status"]="BLOCKED";report["stage"]=stage;report["errorType"]=error.GetType().Name;var native=error as Win32Exception;if(native!=null)report["win32Code"]=native.NativeErrorCode;Console.Error.WriteLine("Restricted CI child blocked at "+stage+" ("+error.GetType().Name+")");return 1;}
   finally{

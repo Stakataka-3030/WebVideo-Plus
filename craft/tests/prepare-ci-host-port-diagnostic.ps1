@@ -30,7 +30,7 @@ $verifier=Join-Path $root 'ListenerVerifier.exe';$token=Join-Path $root 'ReadOnl
 if($LASTEXITCODE-ne0){throw 'Current production listener verifier compilation failed'}
 & $csc /nologo /platform:x64 /target:exe ('/out:'+$token) /r:System.Web.Extensions.dll (Join-Path $PSScriptRoot 'CiHostToken.cs')
 if($LASTEXITCODE-ne0){throw 'Read-only token helper compilation failed'}
-& $csc /nologo /platform:x64 /target:exe ('/out:'+$restricted) /r:System.Web.Extensions.dll (Join-Path $PSScriptRoot 'CiRestrictedRunner.cs')
+& $csc /nologo /platform:x64 /target:exe ('/out:'+$restricted) /r:System.Web.Extensions.dll (Join-Path $PSScriptRoot 'CiRestrictedRunner.cs') (Join-Path $PSScriptRoot 'CiHostAccess.cs')
 if($LASTEXITCODE-ne0){throw 'Restricted CI child helper compilation failed'}
 $policies=@()
 foreach($hive in @('HKLM','HKCU')){
