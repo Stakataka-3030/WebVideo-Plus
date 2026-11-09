@@ -10,6 +10,8 @@ namespace NativeVideo {
  // defaults, split chunks and CSS stay identical to the game being exported.
  public sealed class EngineAdapter {
   public const string MygoHash = "0407b5a6326ebaa1608d16541b79b4ccc54a0432947ae7d3a6a855606a68866e";
+  const string MygoExpressionPlugin="assets/index.es-Zih9sQ-u.js";
+  const string MygoExpressionPluginHash="c4c5e37616ba7e3aa30dccae74e6349c4f1a8fce62154478fd205a324c69b3dc";
   const string BundledWebgalBundle = "assets/index-R1tKotR6.js";
   public readonly string Id, Version, Source, Bundle, SourceKind, FallbackReason;
   readonly bool externalWebgal, strictMygoHash;
@@ -59,6 +61,10 @@ namespace NativeVideo {
     var adapter=new EngineAdapter("mygo",string.IsNullOrWhiteSpace(detectedVersion)?"project":detectedVersion,root,RelativeBundle(root,main),"mygo-project-runtime",false,strict,null,strict?hash:null,strict);
     // Nonstrict legacy derivatives retain structural compatibility. Strict Craft
     // additionally requires the exact descriptor and canonical bytes above.
+    // The expression fix also needs the known plugin. Reject it here so a
+    // nonstrict derivative keeps its existing visible canonical fallback,
+    // rather than selecting it successfully and failing only during Prepare.
+    if(!SupportedMygoExpressionPlugin(root))throw new IOException("MyGO Live2D 表情插件缺失或字节不匹配");
     adapter.Patch(File.ReadAllText(main));
     return adapter;
    } catch(Exception e) {
@@ -134,6 +140,10 @@ namespace NativeVideo {
    }
    return string.IsNullOrWhiteSpace(declared)?null:declared;
   }
+  static bool SupportedMygoExpressionPlugin(string root) {
+   string plugin=Path.Combine(root,MygoExpressionPlugin);
+   return File.Exists(plugin)&&Files.Hash(plugin)==MygoExpressionPluginHash;
+  }
   public static bool SupportedMygo(string root) {
    try {
     var descriptor=Path.Combine(root,"webgal-engine.json");
@@ -141,7 +151,7 @@ namespace NativeVideo {
     var metadata=J.Read(descriptor);
     if(J.S(metadata,"id")!="webgal-mygo.mygo"||J.S(metadata,"version")!="3.2.1"||J.S(metadata,"webgalVersion")!="4.6.4")return false;
     string bundle=MainBundle(root);
-    return bundle!=null&&File.Exists(bundle)&&new FileInfo(bundle).Length<8*1024*1024&&Files.Hash(bundle)==MygoHash;
+    return bundle!=null&&File.Exists(bundle)&&new FileInfo(bundle).Length<8*1024*1024&&Files.Hash(bundle)==MygoHash&&SupportedMygoExpressionPlugin(root);
    } catch { return false; }
   }
   public static string[] MygoSearchRoots(string gamesRoot=null,string terreDir=null,string configRoot=null) {
@@ -292,7 +302,7 @@ namespace NativeVideo {
   // (4.6.5 has already received the separately checked texture backport).
   void PrepareExpressionLifecycle(string root) {
    string name=IsMygo?"index.es-Zih9sQ-u.js":Version=="4.6.6"?"index.es-DlwKruus.js":Version=="4.6.5"?"index.es-0XzJiDJZ.js":"index.es-erQsk_Nn.js";
-   string expected=IsMygo?"c4c5e37616ba7e3aa30dccae74e6349c4f1a8fce62154478fd205a324c69b3dc":Version=="4.6.6"?"1ad45bac171ff15a79b52e20c727d6201dc1f1bc228d10d01cdd4d6cfc3d3e08":Version=="4.6.5"?Cubism2TexturePlugin465Patched:"46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505";
+   string expected=IsMygo?MygoExpressionPluginHash:Version=="4.6.6"?"1ad45bac171ff15a79b52e20c727d6201dc1f1bc228d10d01cdd4d6cfc3d3e08":Version=="4.6.5"?Cubism2TexturePlugin465Patched:"46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505";
    string file=Path.Combine(root,"assets",name);
    if(!File.Exists(file)||Files.Hash(file)!=expected)throw new IOException("Live2D 表情插件缺失或字节不匹配："+name);
    string text=File.ReadAllText(file);

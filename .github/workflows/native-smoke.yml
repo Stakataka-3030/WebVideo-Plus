@@ -81,6 +81,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Versioned engine profile production checks failed" }
           .\tests\live2d-expression-native.ps1 -EngineRoots @('.build/webgal-4.6.4','.build/webgal-4.6.5','.build/webgal-4.6.6') -SupportPackage package
           if ($LASTEXITCODE -ne 0) { throw "Live2D expression lifecycle/cache/barrier contracts failed" }
+          foreach ($version in @('4.6.4','4.6.5','4.6.6')) {
+            .\tests\autosave-planning-native.ps1 -EngineRoot ('.build/webgal-' + $version) -SupportPackage package -OutputRoot ('.build/ci-native-tests/autosave/contract-' + $version) -ContractOnly
+            if ($LASTEXITCODE -ne 0) { throw "Native autosave contract failed: $version" }
+          }
           node tests/cubism2-texture-upload-backport.mjs .build/webgal-4.6.5
           if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.5 Cubism2 texture backport failed" }
           pwsh -NoLogo -NoProfile -File .\tests\font-render-preflight.portable.ps1
@@ -230,7 +234,7 @@ jobs:
           $package = Join-Path $PWD 'package'
           $evidence = Join-Path $PWD '.build/ci-native-tests/graphics'
           New-Item -ItemType Directory -Path $evidence -Force | Out-Null
-          $state = [pscustomobject]@{ status='RUNNING'; reason=''; runtimeVersion=''; package=$package; engines=@(); captureFault='NOT_RUN'; readiness=@() }
+          $state = [pscustomobject]@{ status='RUNNING'; reason=''; runtimeVersion=''; package=$package; engines=@(); captureFault='NOT_RUN'; readiness=@(); autosave='NOT_RUN' }
           function Save-GraphicsState {
             $state | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $evidence 'graphics-results.json') -Encoding utf8
           }
@@ -249,7 +253,7 @@ jobs:
             else { throw }
           }
           if ($unavailable.Count) {
-            $state.status = 'NA'; $state.reason = $unavailable -join '; '; Save-GraphicsState
+            $state.status = 'NA'; $state.autosave = 'NA'; $state.reason = $unavailable -join '; '; Save-GraphicsState
             "Native readiness/capture fault: **NA** - $($state.reason). No graphical assertion was counted as passed." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
             throw "NA: graphical release gates require an available desktop and WebView2 Runtime: $($state.reason)"
           }
@@ -264,6 +268,10 @@ jobs:
           Copy-Item -LiteralPath $package -Destination (Join-Path $fixture 'package') -Recurse
           Save-GraphicsState
           try {
+            $state.autosave = 'RUNNING'; Save-GraphicsState
+            & './tests/autosave-planning-native.ps1' -EngineRoot (Join-Path $PWD '.build/webgal-4.6.6') -SupportPackage $package -OutputRoot (Join-Path $PWD '.build/ci-native-tests/autosave/planning-466') -Lines 550 -Repeats 2 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'autosave-planning-466.log')
+            if ($LASTEXITCODE -ne 0) { throw 'Native 550-line autosave A/B regression failed' }
+            $state.autosave = 'PASS'; Save-GraphicsState
             & './tests/render-capture-fault-native.ps1' -RepositoryRoot $fixture -OutputRoot (Join-Path $evidence 'capture-fault') 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'capture-fault.log')
             if ($LASTEXITCODE -ne 0) { throw 'Native capture fault regression failed' }
             $state.captureFault = 'PASS'; Save-GraphicsState
@@ -282,6 +290,7 @@ jobs:
           } catch {
             $state.status = 'FAIL'; $state.reason = $_.Exception.Message
             if ($check -and $check.status -eq 'RUNNING') { $check.status = 'FAIL' }
+            if ($state.autosave -eq 'RUNNING') { $state.autosave = 'FAIL' }
             throw
           }
           finally {
