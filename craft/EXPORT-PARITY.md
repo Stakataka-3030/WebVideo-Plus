@@ -2,11 +2,12 @@
 
 ## Current candidate: 1.2.2c / kernel 0.6.66
 
-This candidate is intended to carry the requested Live2D expression lifecycle
+This candidate includes the requested Live2D expression lifecycle
 protection, critical resource waits, and game autosave suppression in export
 snapshots. Normal game autosaves and manual saves retain their existing behavior.
-Combined CI and isolated host/export acceptance remain pending; see the
-[release draft](RELEASE-1.2.2c.md) and [current acceptance status](ACCEPTANCE-1.2.2c.md).
+Core regressions are complete. Final-commit CI and isolated host/export
+acceptance are recorded separately; see the
+[release notes](RELEASE-1.2.2c.md) and [current acceptance status](ACCEPTANCE-1.2.2c.md).
 The exact host and project-engine allowlists remain unchanged.
 
 ## Previous maintenance: 1.2.1c / kernel 0.6.65

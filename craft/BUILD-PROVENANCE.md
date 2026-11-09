@@ -3,10 +3,11 @@
 - Current candidate: product 1.2.2c / installer 1.2.2.0c / kernel 0.6.66,
   based on released Craft `craft-v1.2.1.0c`
   (`8bbe987d938974cb78649e36cc02f5d88ff238e7`). Shared base metadata is
-  Terre 1.3.10 / kernel 0.6.66. This candidate is intended to integrate the
+  Terre 1.3.10 / kernel 0.6.66. This candidate integrates the
   Live2D expression lifecycle/resource-wait fix and the export autosave fix
   from `4abdf5e8fb5963bfa80b487620a4f86513c556a0`.
-  Final source identity, combined CI and isolated host acceptance remain pending;
+  Core regressions are complete. Final source identity, CI and isolated host
+  acceptance are recorded separately on the release page;
   see [the current acceptance status](ACCEPTANCE-1.2.2c.md).
   Host fingerprints, official update authority and historical validation gates
   are unchanged.

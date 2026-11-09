@@ -1,6 +1,6 @@
 # WebVideo+ 使用指南
 
-本分支正在准备 WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c，内核 0.6.66），合并后的完整 CI 与隔离宿主验收尚待完成。请先阅读 [Craft 说明](../craft/README.md)与[本次发行草案](../craft/RELEASE-1.2.2c.md)；下文是保留的基础 Terre 用户指南，不代表 Craft 的界面或安装步骤。
+本分支正在准备 WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c，内核 0.6.66），本次修复已完成核心回归，最终发行包验收记录见对应发布页。请先阅读 [Craft 说明](../craft/README.md)与[本次发行说明](../craft/RELEASE-1.2.2c.md)；下文是保留的基础 Terre 用户指南，不代表 Craft 的界面或安装步骤。
 
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
 
@@ -45,6 +45,12 @@
 点击“卸载 WebVideo+”会弹出清理选项：默认勾选“删除 WebVideo+ 缓存和临时文件”，默认不勾“删除 WebVideo+ 配置和用户数据”。后者包括设置、任务历史、日志、自动备份、项目内 WebVideo+ 成片音乐配置、滤镜/角色映射/预制效果/AI 配置和长期恢复备份。两项都勾选可完整清理 WebVideo+ 产生的数据；**已导出的 MP4 与 WebGAL 游戏工程本身不会删除**。安装状态不一致时同样可以显式选择强制拆卸。
 
 并行数支持 1–32，但更多进程不一定更快。Planner 会按剧情安全点和 DOM workload 估算分配分片，且分片数不会超过有效 worker 数，避免额外 WebView2 冷启动。**1080p 是常规推荐档，1440p 适合需要更高输出分辨率的场景；4K 每帧像素量约为 1080p 的 4 倍，建议 2–4 worker。若原始背景、立绘或 Live2D 贴图本身不是 4K，通常不会获得更多真实细节。**
+
+时长分析和导出使用独立任务副本。副本禁用游戏自动存档，避免加速预演按游戏时间每秒复制当前状态与回溯记录、排队写入浏览器存储。原工程、编辑器预览和玩家正常游戏中的存档行为保持原样；导出器自己的任务快照、切段恢复与重试机制继续使用。原因、实测和复验步骤见[预演自动存档性能修复](AUTOSAVE-PLANNING.md)。
+
+### 导出中的 Live2D 表情
+
+表情生命周期保护仅应用于导出任务副本。导出只等待当前已请求的表情，不全量预取、不固定 sleep；当前加载失败或真实等待超过 20 秒会明确报错。模型销毁与请求替换会释放过时等待，失败缓存再次被选中时仍须报告，同时保留原生重试能力。原工程、编辑器预览与正常游戏不改，适用引擎和回归边界见[Live2D 表情安全说明](LIVE2D-EXPRESSION-SAFETY.md)。
 
 本分支保留的历史版本见[版本记录](../CHANGELOG.md)；正式安装器和完整发行记录以 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases) 为准。
 
@@ -155,7 +161,3 @@ React、Fluent UI、IconPark、TanStack Virtual、Zustand、Monaco Editor、Pixi
 感谢 [NijiharaTsubasa](https://github.com/NijiharaTsubasa)（WebGAL LoveLive 专版作者）定位 planning 阶段的自动存档性能热点，并提供禁用自动存档后加速的验证线索。
 
 Live2D 模型、角色图像、背景、音乐、配音等素材权利仍归各自权利人，本安装包不因此取得或转授这些素材的权利。更完整的第三方来源与许可说明见 [NOTICE.md](../NOTICE.md)、[LICENSES.md](../LICENSES.md) 和 [licenses/THIRD-PARTY.md](../licenses/THIRD-PARTY.md)。
-
-### 预演自动存档
-
-时长分析和导出使用独立任务副本。副本禁用游戏自动存档，避免加速预演按游戏时间每秒复制当前状态与回溯记录、排队写入浏览器存储。原工程、编辑器预览和玩家正常游戏中的存档行为保持原样；导出器自己的任务快照、切段恢复与重试机制继续使用。原因、实测和复验步骤见[预演自动存档性能修复](AUTOSAVE-PLANNING.md)。

@@ -4,7 +4,7 @@
 
 [下载 1.2.1.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.1.0c/WebVideoCraft-Setup-1.2.1.0c.exe) · [正式版适配](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前分支候选：WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c；混合导出内核 0.6.66，产品基线 1.3.10）。** 合并后的完整 CI 与隔离宿主验收尚待完成，见[本次发行草案](craft/RELEASE-1.2.2c.md)和[本轮验收状态](craft/ACCEPTANCE-1.2.2c.md)。上方暂保留已公开的 1.2.1.0c 下载入口；Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。
+**当前分支候选：WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c；混合导出内核 0.6.66，产品基线 1.3.10）。** 核心回归已完成；最终提交 CI 与隔离宿主验收单独记录，见[本次发行说明](craft/RELEASE-1.2.2c.md)和[本轮验收状态](craft/ACCEPTANCE-1.2.2c.md)。上方暂保留已公开的 1.2.1.0c 下载入口；Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。
 
 支持精确匹配的官方 Windows x64 **Craft 1.0.0 正式版**，工程引擎支持官方 WebGAL **4.6.4 / 4.6.5 / 4.6.6** 和 **MyGO 3.2.1**；自定义同版本包与未来版本需单独适配。Terre 安装请按[项目首页](https://github.com/Stakataka-3030/WebVideo-Plus#下载与版本选择)选择维护通道。
 
@@ -81,7 +81,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于适配目录的 `state/kern
 
 ### 本版维护修复
 
-本次候选拟合入已请求 Live2D 表情的异步加载与模型销毁时序保护、关键资源等待，以及导出预演自动存档优化。自动存档优化只作用于导出任务副本，正常游戏自动存档和手动存档保留。具体范围见[1.2.2c 发行草案](craft/RELEASE-1.2.2c.md)，不将独立修复或历史验收结果视为本轮通过。
+本次候选已合入已请求 Live2D 表情的异步加载与模型销毁时序保护、关键资源等待，以及导出预演自动存档优化。自动存档优化只作用于导出任务副本，正常游戏自动存档和手动存档保留。具体范围见[1.2.2c 发行说明](craft/RELEASE-1.2.2c.md)，本次核心回归与最终发行包验收分开记录，历史验收不自动计入本轮。
 
 此前维护完善了迁移、卸载、备份恢复和失败回滚的目录归属与事务处理；制作标记可保存，音乐配置增加并发校验与恢复副本，批量编辑及 Anogo 文本/条件语句处理也已修正。队列请求、子进程收尾和捕获等待加入有界处理，AI 批次保存本地检查点；对白等待按实际舞台/DOM 输出和文本状态判断。具体范围见对应发行说明。Craft 另完善了快照重试保留、队列终态清理、守护进程超时和安装恢复；[此前维护验收边界](craft/ACCEPTANCE-1.1.15c.md)保留了具体覆盖。
 
