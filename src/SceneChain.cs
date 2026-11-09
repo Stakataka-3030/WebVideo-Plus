@@ -68,17 +68,71 @@ namespace NativeVideo {
    string rootSource=VideoWorkflow.CanonicalSource(File.ReadAllText(Files.Under(snapshotRoot,root)));var chain=J.D(await Expand(root,rootSource,snapshotRoot,parse));if(!J.A(J.Get(chain,"scenes")).Any(x=>J.S(x,"scene").Equals(currentScene,StringComparison.OrdinalIgnoreCase))){global=false;reason=reason==""?"current-scene-not-reachable":reason;root=currentScene;rootSource=VideoWorkflow.CanonicalSource(File.ReadAllText(Files.Under(snapshotRoot,root)));chain=J.D(await Expand(root,rootSource,snapshotRoot,parse));}
    string graphSignature=string.Join("\n",names.Select(name=>name+":"+J.S(metadata[name],"hash")+"->"+J.S(metadata[name],"nextScene")));chain["dependencyHash"]=Files.HashText(graphSignature);chain["rootScene"]=root;chain["currentScene"]=currentScene;chain["global"]=global;chain["reason"]=reason;chain["graphScenes"]=metadata.Values.ToArray();return chain;
   }
+  // Keep graph discovery and all predecessor state intact. Limit the executable
+  // source BEFORE scanning/snapshotting: stopping the timing loop alone is too
+  // late for the engine's look-ahead asset preloader (also used by workers).
+  public static object LimitPlanningTail(object chain,object request,object settings){
+   if(J.S(request,"storyScope","full")!="sceneOnly"||J.Get(request,"range")!=null||J.B(request,"analysisOnly")||J.S(settings,"mode")=="bgm")return chain;
+   // A future custom music track can enable the mixer's global limiter even
+   // before that track starts. Keep the existing complete mix in this case.
+   if(J.A(J.Get(J.Get(request,"musicTimeline"),"tracks")).Count>0)return chain;
+   // BGM stretching depends on the full story's elastic windows. Optimizing it
+   // would change preceding timestamps, so leave that mode on its original path.
+   string scene=NormalizeScene(J.S(request,"scene","start.txt"));if(scene==null)return chain;
+   var scenes=J.A(J.Get(chain,"scenes"));int selected=scenes.FindIndex(s=>J.S(s,"scene").Equals(scene,StringComparison.OrdinalIgnoreCase));
+   if(selected<0||selected==scenes.Count-1)return chain;
+   // Existing queued/API statement cuts may name a later scene; the original
+   // collector validates those and the range resolver ignores them. Preserve
+   // that contract instead of turning an outside-range cut into a missing scene.
+   var omitted=new HashSet<string>(scenes.Skip(selected+1).Select(s=>J.S(s,"scene")),StringComparer.OrdinalIgnoreCase);
+   if(J.A(J.Get(request,"manualCutStatements")).Any(s=>omitted.Contains(NormalizeScene(J.S(s,"scene"))??J.S(s,"scene"))))return chain;
+   var lines=J.S(chain,"script").Split('\n');var origins=J.A(J.Get(chain,"originMap"));
+   if(lines.Length!=origins.Count)throw new IOException("单场景规划的剧本行映射不完整");
+   int first=origins.FindIndex(o=>J.S(o,"scene").Equals(scene,StringComparison.OrdinalIgnoreCase));if(first<0)throw new IOException("单场景规划缺少目标场景行映射");
+   int end=first;while(end<origins.Count&&J.S(origins[end],"scene").Equals(scene,StringComparison.OrdinalIgnoreCase))end++;
+   if(end==origins.Count||origins.Skip(end).Any(o=>J.S(o,"scene").Equals(scene,StringComparison.OrdinalIgnoreCase)))throw new IOException("单场景规划的目标区间不唯一");
+   // Preserve even the target's zero-time trailing comments/flattened transfer.
+   // An explicit end is observed at the same forward boundary as the next
+   // scene's first statement, without waiting for an extra natural-EOF advance.
+   // It has no media and is never emitted as a render event by the workload.
+   var result=new Dictionary<string,object>(J.D(chain));
+   result["script"]=string.Join("\n",lines.Take(end).Concat(new[]{"end:;"}));
+   // Preserve a valid source location for existing statement-cut validation;
+   // synthetic=true distinguishes this marker from the omitted source command.
+   var boundaryOrigin=new Dictionary<string,object>(J.D(origins[end]));boundaryOrigin["synthetic"]=true;
+   result["originMap"]=origins.Take(end).Concat(new[]{(object)boundaryOrigin}).ToArray();
+   result["scenes"]=scenes.Take(selected+1).ToArray();
+   var kept=new HashSet<string>(scenes.Take(selected+1).Select(s=>J.S(s,"scene")),StringComparer.OrdinalIgnoreCase);
+   result["flattened"]=J.A(J.Get(chain,"flattened")).Where(f=>kept.Contains(J.S(f,"from"))).ToArray();
+   result["planningTail"]=J.O("schemaVersion",1,"scope","sceneOnly","scene",scene,"boundaryLine",end,"omittedScenes",scenes.Count-selected-1);
+   return result;
+  }
+  public static void AlignPlanningTailDuration(object result,object chain){
+   var limit=J.Get(chain,"planningTail");if(limit==null)return;
+   int boundary=(int)J.N(limit,"boundaryLine",-1);
+   var marker=J.A(J.Get(result,"events")).FirstOrDefault(e=>J.N(e,"index",-1)==boundary&&J.S(e,"command")=="end");
+   if(marker==null)throw new IOException("单场景规划未到达预期结束边界");
+   double at=J.N(marker,"atMs",double.NaN);if(double.IsNaN(at)||double.IsInfinity(at)||at<0)throw new IOException("单场景规划结束时间无效");
+   // finishNativeTimeline rounds source-event times to whole milliseconds.
+   // Keep the full-story crop's ceil(round(boundaryMs) * fps) endpoint even
+   // when the raw boundary falls exactly on a fractional-ms frame boundary.
+   // This only pads output duration; no extra statement or simulation runs.
+   J.D(result)["durationMs"]=Math.Max(J.N(result,"durationMs"),Math.Floor(at+.5));
+  }
   static double? Number(object value){if(value==null)return null;double n;return double.TryParse(Convert.ToString(value,System.Globalization.CultureInfo.InvariantCulture),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out n)?(double?)n:null;}
   public static void AttachTimeline(object timing,object chain,string currentScene){
    var lineTimes=J.A(J.Get(timing,"lineTimes"));var origins=J.A(J.Get(chain,"originMap"));var sceneMeta=J.A(J.Get(chain,"scenes"));var rows=new Dictionary<string,object[]>(StringComparer.OrdinalIgnoreCase);
    foreach(var scene in sceneMeta)rows[J.S(scene,"scene")]=new object[Math.Max(0,(int)J.N(scene,"lines"))];
    int count=Math.Min(lineTimes.Count,origins.Count);for(int i=0;i<count;i++){var origin=origins[i];object[] target;if(!rows.TryGetValue(J.S(origin,"scene"),out target))continue;int line=(int)J.N(origin,"line")-1;if(line>=0&&line<target.Length)target[line]=lineTimes[i];}
-   double duration=J.N(timing,"durationSeconds"),durationMs=duration*1000;var starts=new double[sceneMeta.Count];for(int i=0;i<starts.Length;i++)starts[i]=double.NaN;
+   double duration=J.N(timing,"durationSeconds"),durationMs=duration*1000,sceneEnd=duration;var limit=J.Get(chain,"planningTail");
+   if(limit!=null){int boundary=(int)J.N(limit,"boundaryLine",-1);var at=boundary>=0&&boundary<lineTimes.Count?Number(lineTimes[boundary]):null;if(!at.HasValue||double.IsNaN(at.Value)||double.IsInfinity(at.Value)||at.Value<0||at.Value>durationMs+.001)throw new IOException("单场景规划未到达预期结束边界");sceneEnd=at.Value/1000;}
+   var starts=new double[sceneMeta.Count];for(int i=0;i<starts.Length;i++)starts[i]=double.NaN;
    for(int i=0;i<sceneMeta.Count;i++){var name=J.S(sceneMeta[i],"scene");object[] target=rows[name];foreach(var value in target){var n=Number(value);if(n.HasValue){starts[i]=n.Value/1000;break;}}}
-   for(int i=starts.Length-1;i>=0;i--)if(double.IsNaN(starts[i]))starts[i]=i+1<starts.Length?starts[i+1]:duration;if(starts.Length>0)starts[0]=0;
+   for(int i=starts.Length-1;i>=0;i--)if(double.IsNaN(starts[i]))starts[i]=i+1<starts.Length?starts[i+1]:sceneEnd;if(starts.Length>0)starts[0]=0;
    var sceneResults=new List<object>();double currentStart=0,currentEnd=duration;object[] currentLines=new object[0];
-   for(int i=0;i<sceneMeta.Count;i++){string name=J.S(sceneMeta[i],"scene");double start=Math.Max(0,starts[i]),end=i+1<sceneMeta.Count?Math.Max(start,starts[i+1]):duration;object[] local=rows[name];sceneResults.Add(J.O("scene",name,"hash",J.S(sceneMeta[i],"hash"),"fingerprint",J.S(sceneMeta[i],"fingerprint"),"startSeconds",start,"endSeconds",end,"durationSeconds",Math.Max(0,end-start),"lineTimes",local));if(name.Equals(currentScene,StringComparison.OrdinalIgnoreCase)){currentStart=start;currentEnd=end;currentLines=local;}}
+   for(int i=0;i<sceneMeta.Count;i++){string name=J.S(sceneMeta[i],"scene");double start=Math.Max(0,starts[i]),end=i+1<sceneMeta.Count?Math.Max(start,starts[i+1]):sceneEnd;object[] local=rows[name];sceneResults.Add(J.O("scene",name,"hash",J.S(sceneMeta[i],"hash"),"fingerprint",J.S(sceneMeta[i],"fingerprint"),"startSeconds",start,"endSeconds",end,"durationSeconds",Math.Max(0,end-start),"lineTimes",local));if(name.Equals(currentScene,StringComparison.OrdinalIgnoreCase)){currentStart=start;currentEnd=end;currentLines=local;}}
    var story=J.O("schemaVersion",1,"rootScene",J.S(chain,"rootScene",J.S(chain,"entryScene")),"currentScene",currentScene,"global",J.B(chain,"global",true),"reason",J.S(chain,"reason"),"dependencyHash",J.S(chain,"dependencyHash"),"durationSeconds",duration,"currentStartSeconds",currentStart,"currentEndSeconds",currentEnd,"scenes",sceneResults.ToArray());
+   if(limit!=null)story["planningTail"]=limit;
    J.D(timing)["storyTimeline"]=story;J.D(timing)["sceneChain"]=J.O("dependencyHash",J.S(chain,"dependencyHash"),"scenes",J.Get(chain,"scenes"),"flattened",J.Get(chain,"flattened"));J.D(timing)["lineTimes"]=currentLines;
   }
   public static void AnnotateReport(object report,object chain){
