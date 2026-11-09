@@ -20,7 +20,7 @@ namespace NativeVideo {
   EngineAdapter(string id, string version, string source, string bundle, string sourceKind, bool external=false, bool strictMygo=false, string fallbackReason=null, string expectedSourceHash=null, bool requireDescriptor=false) {
    Id=id; Version=version; Source=source; Bundle=bundle; SourceKind=sourceKind; externalWebgal=external; strictMygoHash=strictMygo; FallbackReason=fallbackReason; sourceHash=expectedSourceHash; strictDescriptor=requireDescriptor;
   }
-  public object Describe() { string hash=Files.Hash(Path.Combine(Source,Bundle)); if(sourceHash!=null&&hash!=sourceHash)throw new IOException("引擎源文件在选择后发生变化，请重新导出"); return J.O("id",Id,"version",Version,"bundle",Bundle,"sourceHash",hash,"canonicalMygo",IsMygo&&hash==MygoHash,"sourceKind",SourceKind,"runtimeParity",RuntimeParity,"fallbackReason",FallbackReason,"adapterVersion",7); }
+  public object Describe() { string hash=Files.Hash(Path.Combine(Source,Bundle)); if(sourceHash!=null&&hash!=sourceHash)throw new IOException("引擎源文件在选择后发生变化，请重新导出"); return J.O("id",Id,"version",Version,"bundle",Bundle,"sourceHash",hash,"canonicalMygo",IsMygo&&hash==MygoHash,"sourceKind",SourceKind,"runtimeParity",RuntimeParity,"fallbackReason",FallbackReason,"adapterVersion",8); }
 
   static string MainBundle(string root) {
    string html=Path.Combine(root,"index.html");
@@ -261,6 +261,7 @@ namespace NativeVideo {
    }
    string text=File.ReadAllText(file);
    if(!IsMygo&&Version=="4.6.5")PrepareCubism2TexturePreload(root);
+   PrepareExpressionLifecycle(root);
    Files.Atomic(file,Patch(text));
    // SnapshotServer serves raw files only; removing stale compressed copies also
    // prevents later tooling from mistaking them for the patched main bundle.
@@ -282,6 +283,34 @@ namespace NativeVideo {
    text=ReplaceOnce(text,"function qe(",Cubism2TextureBridge465+"function qe(");
    text=ReplaceOnce(text,@"e.textures=yield Promise.all(i),e.emit(""textureLoaded"",e.textures)",@"e.textures=(yield Promise.all(i)).map(texture=>s.internalModel.textureFlipY?__webvideoCubism2Texture(texture):texture),e.emit(""textureLoaded"",e.textures)");
    if(Files.HashText(text)!=Cubism2TexturePlugin465Patched)throw new IOException("WebGAL 4.6.5 Cubism2 纹理预加载补丁摘要不匹配");
+   Files.Atomic(file,text);
+   foreach(string extension in new[]{".gz",".br"})if(File.Exists(file+extension))File.Delete(file+extension);
+  }
+  // The same ExpressionManager/factory contract is used by these four pinned
+  // plugins. Patch only the copied plugin, after validating its exact bytes
+  // (4.6.5 has already received the separately checked texture backport).
+  void PrepareExpressionLifecycle(string root) {
+   string name=IsMygo?"index.es-Zih9sQ-u.js":Version=="4.6.6"?"index.es-DlwKruus.js":Version=="4.6.5"?"index.es-0XzJiDJZ.js":"index.es-erQsk_Nn.js";
+   string expected=IsMygo?"c4c5e37616ba7e3aa30dccae74e6349c4f1a8fce62154478fd205a324c69b3dc":Version=="4.6.6"?"1ad45bac171ff15a79b52e20c727d6201dc1f1bc228d10d01cdd4d6cfc3d3e08":Version=="4.6.5"?Cubism2TexturePlugin465Patched:"46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505";
+   string file=Path.Combine(root,"assets",name);
+   if(!File.Exists(file)||Files.Hash(file)!=expected)throw new IOException("Live2D 表情插件缺失或字节不匹配："+name);
+   string text=File.ReadAllText(file);
+   text=ReplaceOnce(text,"loadExpression(t){return I(this,null,function*(){if(!this.definitions[t])","loadExpression(t){return I(this,null,function*(){if(this.destroyed)return;if(!this.definitions[t])");
+   text=ReplaceOnce(text,"const e=yield this._loadExpression(t);return this.expressions[t]=e,e","let e;try{e=yield this._loadExpression(t)}catch(error){if(this.destroyed)return;throw error}if(this.destroyed)return;return this.expressions[t]=e,e");
+   text=ReplaceOnce(text,"setRandomExpression(){return I(this,null,function*(){if(this.definitions.length)","setRandomExpression(){return I(this,null,function*(){if(this.destroyed)return!1;if(this.definitions.length)");
+   // A request generation also handles A -> B -> A and returning to the current
+   // expression while an older, different expression is still loading.
+   text=ReplaceOnce(text,@"setExpression(t){return I(this,null,function*(){if(typeof t!=""number""&&(t=this.getExpressionIndex(t)),!(t>-1&&t<this.definitions.length)||t===this.expressions.indexOf(this.currentExpression))return!1;this.reserveExpressionIndex=t;const e=yield this.loadExpression(t);return!e||this.reserveExpressionIndex!==t?!1:(this.reserveExpressionIndex=-1,this.currentExpression=e,this._setExpression(e),!0)})}",
+    @"setExpression(t){return I(this,null,function*(){if(this.destroyed)return!1;if(typeof t!=""number""&&(t=this.getExpressionIndex(t)),!(t>-1&&t<this.definitions.length))return!1;const request=(this.__webvideoExpressionGeneration||0)+1;this.__webvideoExpressionGeneration=request;this.__webvideoExpressionIndex=t;if(t===this.expressions.indexOf(this.currentExpression)){this.reserveExpressionIndex=-1;return!1}this.reserveExpressionIndex=t;let e;try{e=yield this.loadExpression(t)}catch(error){if(this.destroyed)return!1;throw error}return this.destroyed||request!==this.__webvideoExpressionGeneration||!e||this.reserveExpressionIndex!==t?!1:(this.reserveExpressionIndex=-1,this.currentExpression=e,this._setExpression(e),!0)})}");
+   // Cached loader promises can resolve successfully after destroy, without an
+   // XHR abort. Do not create SDK expressions or emit a false success then.
+   text=ReplaceOnce(text,@"static loadExpression(s,t){var e;const i=r=>s.emit(""expressionLoadError"",t,r);",@"static loadExpression(s,t){if(s.destroyed)return Promise.resolve(void 0);var e;const i=r=>{if(!s.destroyed){globalThis.__exportExpressionFailed?.(s,t,r);s.emit(""expressionLoadError"",t,r)}};");
+   text=ReplaceOnce(text,@"const l=L.expressionTasksMap.get(s);l&&delete l[t];const h=s.createExpression(o,r);return s.emit(""expressionLoaded"",t,h),h",@"const l=L.expressionTasksMap.get(s);l&&delete l[t];if(s.destroyed)return;const h=s.createExpression(o,r);if(s.destroyed)return;return s.emit(""expressionLoaded"",t,h),h");
+   text=ReplaceOnce(text,".catch(o=>{C.warn(s.tag,`Failed to load expression:",".catch(o=>{if(s.destroyed)return;C.warn(s.tag,`Failed to load expression:");
+   text=ReplaceOnce(text,"catch(r){C.warn(s.tag,`Failed to load expression at", "catch(r){if(s.destroyed)return Promise.resolve(void 0);C.warn(s.tag,`Failed to load expression at");
+   string manager=!IsMygo&&Version=="4.6.6"?"Vt":"Ot";
+   if(!text.Contains(manager+" as ExpressionManager"))throw new IOException("Live2D 表情导出接口不匹配");
+   text+="\n;const __webvideoSetExpression="+manager+".prototype.setExpression;"+manager+".prototype.setExpression=function(index){const start=()=>__webvideoSetExpression.call(this,index);return globalThis.__exportTrackExpression?globalThis.__exportTrackExpression(this,index,start):start()};\n";
    Files.Atomic(file,text);
    foreach(string extension in new[]{".gz",".br"})if(File.Exists(file+extension))File.Delete(file+extension);
   }

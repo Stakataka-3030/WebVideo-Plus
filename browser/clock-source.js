@@ -114,6 +114,9 @@ var ClockController = class {
       return;
     let firstException;
     while (true) {
+      // Keep requested expressions ready before the next virtual story callback.
+      if (globalThis.__exportHasPendingExpressions?.())
+        await globalThis.__exportWaitForExpressions();
       const result = await this._callFirstTimer(to);
       if (!result.timerFound)
         break;
