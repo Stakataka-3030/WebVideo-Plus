@@ -6,6 +6,8 @@
 
 ## 下载与版本选择
 
+本分支正在准备 **1.3.10**（安装器 1.3.10.0，导出内核 0.6.66），拟合入 Live2D 表情加载与销毁时序保护、关键资源等待，以及导出预演自动存档优化。合并后的完整 CI、隔离安装与导出验收尚待完成，详见[本次发行草案](docs/releases/RELEASE_NOTES_1.3.10.md)。下表暂保留已公开的正式版本，待发布验证后更新下载入口。
+
 当前维护的正式版本：
 
 | 使用环境 | 推荐版本（导出内核） | Windows 安装器 | 发行说明与校验 |
@@ -24,7 +26,7 @@ GitHub 全局 **Latest 当前指向 1.3.9**，请按上表的宿主和引擎选�
 
 ### Terre / MyGO
 
-本轮修复前置场景恢复等待，并调整成功/失败时的诊断和工作缓存清理。已有纯文本 SRT 对白导出、共享路径显示、工具菜单及安装页功能继续保留。字幕可选择是否包含说话人；媒体工具默认使用随包版本，已有手动配置继续保留。MyGO 3.2.1 的 JSONL / WMDL 模型读取保持兼容。
+已发布维护版修复前置场景恢复等待，并调整成功/失败时的诊断和工作缓存清理。本次候选另处理已请求 Live2D 表情的异步加载与模型销毁时序，并在导出任务副本中跳过游戏自动快速存档；正常游戏自动存档和手动存档保持原有行为。已有纯文本 SRT 对白导出、共享路径显示、工具菜单及安装页功能继续保留。字幕可选择是否包含说话人；媒体工具默认使用随包版本，已有手动配置继续保留。MyGO 3.2.1 的 JSONL / WMDL 模型读取保持兼容。
 
 1. 保存工程并关闭 Terre，确认已有安装使用 WebGAL 4.6.4 / MyGO 3.2.1，还是 WebGAL 4.6.6。
 2. 按上表下载对应的 `WebVideo+-Setup-*.exe`，运行并选择 Terre 安装目录。
@@ -99,14 +101,14 @@ Terre 的工作缓存默认位于成片目录下的 `.webvideo-cache`；Craft �
 
 ## 文档与开发
 
-当前维护版：[发行说明](docs/releases/RELEASE_NOTES_1.3.9.md)。
+当前源码候选：[1.3.10 发行草案](docs/releases/RELEASE_NOTES_1.3.10.md)。已发布维护版：[1.3.9 发行说明](docs/releases/RELEASE_NOTES_1.3.9.md)。
 
 - Terre 使用指南：[1.1.16](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.16/docs/USER_GUIDE.md) / [1.3.9](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.9/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.9/docs/USER_GUIDE.md#按语句指定导出切点)
 - Craft：[安装与管理](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.1.0c/craft/README.md)、[功能范围](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.1.0c/craft/FEATURE-COVERAGE.md)、[导出说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.1.0c/craft/EXPORT-PARITY.md)和[本版验收](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.1.0c/craft/ACCEPTANCE-1.2.1c.md)
 - 构建与发布：Terre [1.1.16](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.16/docs/BUILDING.md) / [1.3.9](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.9/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
 - 当前分支的 [1.1.4 发行说明](docs/releases/RELEASE_NOTES_1.1.4.md)、[历史发行说明索引](docs/releases/README.md)、[变更记录](CHANGELOG.md)与[仓库结构](docs/REPOSITORY.md)
 
-当前维护分支源码版本为 **1.3.9**（内部标识 **0.9.8**、安装器 Win32 版本 **1.3.9.0**、导出内核 **0.6.65**），以 [`version.json`](version.json) 为准。版本标签中的文档保留部分开发、候选和历史测试记录；是否正式发布、当前更新策略及验证边界请以上表的发行页为准。
+当前维护分支源码版本为 **1.3.10**（内部标识 **0.9.8**、安装器 Win32 版本 **1.3.10.0**、导出内核 **0.6.66**），以 [`version.json`](version.json) 为准。本次为待验证的发布候选；版本标签中的文档保留部分开发、候选和历史测试记录，是否正式发布、当前更新策略及验证边界请以上表的发行页为准。
 
 从源码构建不需要先下载旧版安装器；第三方输入按官方来源及 SHA-256 锁定，支持缓存和离线重新准备。Terre 的常用构建入口是 `prepare-build.ps1`、`build.ps1`、`build-product.ps1`，Craft 另用 `craft/build-craft-package.ps1`。请先检出对应发布标签，再按该标签的构建说明操作；根 `version.json` 与 Craft 的 `craft/version.json` 分别记录相应版本。
 
@@ -119,3 +121,5 @@ WebVideo+ 原创源代码、构建脚本和原创数据采用 **[MPL-2.0](LICENS
 仓库包含混合来源材料，根许可证不会覆盖第三方原有条款；Anogo 默认动作词表继续采用 AGPL-3.0，js-yaml 采用 MIT，其他材料以[许可范围映射](LICENSES.md)、[来源说明](NOTICE.md)和[第三方许可](licenses/THIRD-PARTY.md)为准。
 
 感谢 WebGAL / Terre / Craft、FFmpeg、WebView2、DeepSeek Harness、pi-ai、Anogo、webgal-skill 及社区贡献者，特别感谢北风的猫5306 提供的工作流与演出资料。[完整引用与致谢](docs/USER_GUIDE.md#开源项目引用与致谢)保留了来源和用途说明。角色、Live2D、音乐等素材的权利仍归各自权利人。
+
+感谢 [NijiharaTsubasa](https://github.com/NijiharaTsubasa) 提供 planning 阶段自动存档性能热点的反馈及禁用后加速的验证线索。
