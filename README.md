@@ -4,7 +4,7 @@
 
 [下载 1.2.1.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.1.0c/WebVideoCraft-Setup-1.2.1.0c.exe) · [正式版适配](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前分支：WebVideo+ Craft 1.2.1c（安装器 1.2.1.0c；混合导出内核 0.6.65，产品基线 1.3.9）。** Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。
+**当前分支候选：WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c；混合导出内核 0.6.66，产品基线 1.3.10）。** 合并后的完整 CI 与隔离宿主验收尚待完成，见[本次发行草案](craft/RELEASE-1.2.2c.md)和[本轮验收状态](craft/ACCEPTANCE-1.2.2c.md)。上方暂保留已公开的 1.2.1.0c 下载入口；Craft 功能、构建和验收边界见 [Craft 说明](craft/README.md)。
 
 支持精确匹配的官方 Windows x64 **Craft 1.0.0 正式版**，工程引擎支持官方 WebGAL **4.6.4 / 4.6.5 / 4.6.6** 和 **MyGO 3.2.1**；自定义同版本包与未来版本需单独适配。Terre 安装请按[项目首页](https://github.com/Stakataka-3030/WebVideo-Plus#下载与版本选择)选择维护通道。
 
@@ -81,6 +81,8 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于适配目录的 `state/kern
 
 ### 本版维护修复
 
+本次候选拟合入已请求 Live2D 表情的异步加载与模型销毁时序保护、关键资源等待，以及导出预演自动存档优化。自动存档优化只作用于导出任务副本，正常游戏自动存档和手动存档保留。具体范围见[1.2.2c 发行草案](craft/RELEASE-1.2.2c.md)，不将独立修复或历史验收结果视为本轮通过。
+
 此前维护完善了迁移、卸载、备份恢复和失败回滚的目录归属与事务处理；制作标记可保存，音乐配置增加并发校验与恢复副本，批量编辑及 Anogo 文本/条件语句处理也已修正。队列请求、子进程收尾和捕获等待加入有界处理，AI 批次保存本地检查点；对白等待按实际舞台/DOM 输出和文本状态判断。具体范围见对应发行说明。Craft 另完善了快照重试保留、队列终态清理、守护进程超时和安装恢复；[此前维护验收边界](craft/ACCEPTANCE-1.1.15c.md)保留了具体覆盖。
 
 ## 数据与基线
@@ -144,6 +146,8 @@ React、Fluent UI、IconPark、TanStack Virtual、Zustand、Monaco Editor、Pixi
 特别感谢 **北风的猫5306**。作为最初参考的 WebGAL 助手提示词作者，其资料提供了角色与素材使用说明、脚本编写思路和高级演出特效参考。默认滤镜与预制效果中有一部分由这些公开资料整理、分类并做兼容性修正而来；原作者贡献不会因为本项目的界面封装而被改写。相关入口见 [webgal-skill 的 references](https://github.com/xxSak1xx/webgal-skill/tree/main/references) 及其[原始致谢说明](https://github.com/xxSak1xx/webgal-skill#声明)。
 
 也感谢提供滤镜资料、表格、基础角色映射，以及持续进行标准 Terre、MyGO 分发版和 Steam 版兼容性测试并逐项反馈问题的贡献者。
+
+感谢 [NijiharaTsubasa](https://github.com/NijiharaTsubasa) 提供 planning 阶段自动存档性能热点的反馈及禁用后加速的验证线索。
 
 Live2D 模型、角色图像、背景、音乐、配音等素材权利仍归各自权利人，本安装包不因此取得或转授这些素材的权利。更完整的第三方来源与许可说明见 [NOTICE.md](NOTICE.md)、[LICENSES.md](LICENSES.md) 和 [licenses/THIRD-PARTY.md](licenses/THIRD-PARTY.md)。
 

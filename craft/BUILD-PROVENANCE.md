@@ -1,6 +1,17 @@
 # Development source provenance
 
-- Current formal-host adaptation: `adapt/craft-1.0.0`, product 1.2.1c /
+- Current candidate: product 1.2.2c / installer 1.2.2.0c / kernel 0.6.66,
+  based on released Craft `craft-v1.2.1.0c`
+  (`8bbe987d938974cb78649e36cc02f5d88ff238e7`). Shared base metadata is
+  Terre 1.3.10 / kernel 0.6.66. This candidate is intended to integrate the
+  Live2D expression lifecycle/resource-wait fix and the export autosave fix
+  from `4abdf5e8fb5963bfa80b487620a4f86513c556a0`.
+  Final source identity, combined CI and isolated host acceptance remain pending;
+  see [the current acceptance status](ACCEPTANCE-1.2.2c.md).
+  Host fingerprints, official update authority and historical validation gates
+  are unchanged.
+
+- Released formal-host baseline: `adapt/craft-1.0.0`, product 1.2.1c /
   installer 1.2.1.0c / kernel 0.6.65, including RC1 final maintenance
   `craft-v1.1.17.0c` (`e9316088048a3b0cf0ef220bc2a0a93ff66c0f44`). The current installer accepts only
   official Windows Craft 1.0.0, source tag commit
@@ -10,9 +21,9 @@
   pinned Pinia 4.0.3 and Vue 3.5.43 guard test. The formal-host release uses `craft-v1.2.1.0c`;
   historical records below keep their original validation scope.
 
-- This maintenance update backports applicable Terre 1.3.8 fixes and dialogue SRT, then shares the 0.6.65 prefix-wait and text-only failure diagnostics changes. Base metadata advances to 1.3.9/0.6.65; host-specific Craft contracts remain independent. See [maintenance verification](../docs/EXPORT-MAINTENANCE-20261102.md).
+- The 1.2.1c maintenance update backports applicable Terre 1.3.8 fixes and dialogue SRT, then shares the 0.6.65 prefix-wait and text-only failure diagnostics changes. Base metadata advances to 1.3.9/0.6.65; host-specific Craft contracts remain independent. See [maintenance verification](../docs/EXPORT-MAINTENANCE-20261102.md).
 
-- Current local candidate: Craft 1.1.14c / installer 1.1.14.0c, branch
+- Historical local candidate: Craft 1.1.14c / installer 1.1.14.0c, branch
   `adapt/craft-1.1.14c-terre-1.3.1`, starting from released Craft commit
   `a6927487459e2c914c6f49904093ffdc83ecd266`. Applicable shared src/browser
   changes are pinned to Terre v1.3.1 `d9b0df5bd0d33249ccf8ded4af612ec429268f02`
