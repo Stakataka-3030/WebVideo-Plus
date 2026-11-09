@@ -217,9 +217,13 @@ React、Fluent UI、IconPark、TanStack Virtual、Zustand、Monaco Editor、Pixi
 
 也感谢提供滤镜资料、表格、基础角色映射，以及持续进行标准 Terre、MyGO 分发版和 Steam 版兼容性测试并逐项反馈问题的贡献者。
 
+感谢 [NijiharaTsubasa](https://github.com/NijiharaTsubasa)（WebGAL LoveLive 专版作者）定位 planning 阶段的自动存档性能热点，并提供禁用自动存档后加速的验证线索。
+
 Live2D 模型、角色图像、背景、音乐、配音等素材权利仍归各自权利人，本安装包不因此取得或转授这些素材的权利。更完整的第三方来源与许可说明见 [NOTICE.md](../NOTICE.md)、[LICENSES.md](../LICENSES.md) 和 [licenses/THIRD-PARTY.md](../licenses/THIRD-PARTY.md)。
 
 
 ### 切段恢复与预演耗时
 
 在尚未结束的动画或有后续动作变更的模型中间切段时，导出器按需要从场景起点预演，保留原生驱动时钟、模型保存姿态与物理状态。手动切点和输出帧数保持不变；自动切段仍会根据预演成本调整实际并行数。复杂场景可能比只恢复表面状态更耗时。
+
+时长分析和导出使用独立任务副本。副本禁用游戏自动存档，避免加速预演按游戏时间每秒复制当前状态与回溯记录、排队写入浏览器存储。原工程、编辑器预览和玩家正常游戏中的存档行为保持原样；导出器自己的任务快照、切段恢复与重试机制继续使用。原因、实测和复验步骤见[预演自动存档性能修复](AUTOSAVE-PLANNING.md)。
