@@ -1,12 +1,12 @@
 # 版本记录
 
-## 1.3.10（待验证，未发布）
+## 1.3.10
 
-安装器 1.3.10.0，导出内核 0.6.66。本次合并后的完整 CI 与隔离宿主验收尚待完成，详见[发行草案](docs/releases/RELEASE_NOTES_1.3.10.md)。
+安装器 1.3.10.0，导出内核 0.6.66。已完成核心回归，验证范围与最终发行包记录入口见[发行说明](docs/releases/RELEASE_NOTES_1.3.10.md)。
 
-- 拟合入已请求 Live2D 表情的异步加载与模型销毁时序保护，并补齐关键资源等待。
-- 导出任务副本跳过游戏自动快速存档，减少预演中回溯记录复制和存储写入；正常游戏自动存档和手动存档保留。
-- 感谢 [NijiharaTsubasa](https://github.com/NijiharaTsubasa)（WebGAL LoveLive 专版作者）定位自动存档热点并提供禁用后加速的验证线索。
+- 补齐已请求 Live2D 表情跨 await / destroy 的生命周期保护和关键资源等待；只等待当前请求，真实 20 秒超时明确报错，保留失败缓存重选与原生重试语义。详见[安全说明](docs/LIVE2D-EXPRESSION-SAFETY.md)。
+- 导出任务副本跳过游戏自动快速存档，减少预演中回溯记录复制和存储写入；正常游戏自动存档和手动存档保留。详见[预演自动存档性能修复](docs/AUTOSAVE-PLANNING.md)。
+- 感谢 [NijiharaTsubasa](https://github.com/NijiharaTsubasa) 提供 planning 阶段自动存档性能热点的反馈及禁用后加速的验证线索。
 
 ## 1.3.9
 

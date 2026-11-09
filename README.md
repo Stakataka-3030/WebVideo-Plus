@@ -6,7 +6,7 @@
 
 ## 下载与版本选择
 
-本分支正在准备 **1.3.10**（安装器 1.3.10.0，导出内核 0.6.66），拟合入 Live2D 表情加载与销毁时序保护、关键资源等待，以及导出预演自动存档优化。合并后的完整 CI、隔离安装与导出验收尚待完成，详见[本次发行草案](docs/releases/RELEASE_NOTES_1.3.10.md)。下表暂保留已公开的正式版本，待发布验证后更新下载入口。
+本分支正在准备 **1.3.10**（安装器 1.3.10.0，导出内核 0.6.66），已合入 Live2D 表情加载与销毁时序保护、关键资源等待，以及导出预演自动存档优化。核心回归已完成；最终提交 CI、隔离安装与导出验收单独记录，详见[本次发行说明](docs/releases/RELEASE_NOTES_1.3.10.md)。下表暂保留已公开的正式版本，待发布验证后更新下载入口。
 
 当前维护的正式版本：
 
@@ -101,14 +101,14 @@ Terre 的工作缓存默认位于成片目录下的 `.webvideo-cache`；Craft �
 
 ## 文档与开发
 
-当前源码候选：[1.3.10 发行草案](docs/releases/RELEASE_NOTES_1.3.10.md)。已发布维护版：[1.3.9 发行说明](docs/releases/RELEASE_NOTES_1.3.9.md)。
+当前源码候选：[1.3.10 发行说明](docs/releases/RELEASE_NOTES_1.3.10.md)。已发布维护版：[1.3.9 发行说明](docs/releases/RELEASE_NOTES_1.3.9.md)。
 
 - Terre 使用指南：[1.1.16](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.16/docs/USER_GUIDE.md) / [1.3.9](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.9/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.9/docs/USER_GUIDE.md#按语句指定导出切点)
 - Craft：[安装与管理](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.1.0c/craft/README.md)、[功能范围](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.1.0c/craft/FEATURE-COVERAGE.md)、[导出说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.1.0c/craft/EXPORT-PARITY.md)和[本版验收](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.1.0c/craft/ACCEPTANCE-1.2.1c.md)
 - 构建与发布：Terre [1.1.16](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.16/docs/BUILDING.md) / [1.3.9](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.9/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
 - 当前分支的 [1.1.4 发行说明](docs/releases/RELEASE_NOTES_1.1.4.md)、[历史发行说明索引](docs/releases/README.md)、[变更记录](CHANGELOG.md)与[仓库结构](docs/REPOSITORY.md)
 
-当前维护分支源码版本为 **1.3.10**（内部标识 **0.9.8**、安装器 Win32 版本 **1.3.10.0**、导出内核 **0.6.66**），以 [`version.json`](version.json) 为准。本次为待验证的发布候选；版本标签中的文档保留部分开发、候选和历史测试记录，是否正式发布、当前更新策略及验证边界请以上表的发行页为准。
+当前维护分支源码版本为 **1.3.10**（内部标识 **0.9.8**、安装器 Win32 版本 **1.3.10.0**、导出内核 **0.6.66**），以 [`version.json`](version.json) 为准。本次为完成核心回归的发布候选；版本标签中的文档保留部分开发、候选和历史测试记录，是否正式发布、当前更新策略及验证边界请以上表的发行页为准。
 
 从源码构建不需要先下载旧版安装器；第三方输入按官方来源及 SHA-256 锁定，支持缓存和离线重新准备。Terre 的常用构建入口是 `prepare-build.ps1`、`build.ps1`、`build-product.ps1`，Craft 另用 `craft/build-craft-package.ps1`。请先检出对应发布标签，再按该标签的构建说明操作；根 `version.json` 与 Craft 的 `craft/version.json` 分别记录相应版本。
 
