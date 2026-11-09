@@ -306,8 +306,11 @@ namespace NativeVideo {
    string file=Path.Combine(root,"assets",name);
    if(!File.Exists(file)||Files.Hash(file)!=expected)throw new IOException("Live2D 表情插件缺失或字节不匹配："+name);
    string text=File.ReadAllText(file);
+   // A factory prefetch can cache an already handled failure. Remember it per
+   // manager/index without failing unrelated export work; if setExpression
+   // later requests that entry, surface it to the current-request barrier.
    text=ReplaceOnce(text,"loadExpression(t){return I(this,null,function*(){if(!this.definitions[t])","loadExpression(t){return I(this,null,function*(){if(this.destroyed)return;if(!this.definitions[t])");
-   text=ReplaceOnce(text,"const e=yield this._loadExpression(t);return this.expressions[t]=e,e","let e;try{e=yield this._loadExpression(t)}catch(error){if(this.destroyed)return;throw error}if(this.destroyed)return;return this.expressions[t]=e,e");
+   text=ReplaceOnce(text,"const e=yield this._loadExpression(t);return this.expressions[t]=e,e","if(this.__webvideoExpressionErrors?.has(t)){globalThis.__exportExpressionFailed?.(this,t,this.__webvideoExpressionErrors.get(t));return}let e;try{e=yield this._loadExpression(t)}catch(error){if(this.destroyed)return;throw error}if(this.destroyed)return;return this.expressions[t]=e,e");
    text=ReplaceOnce(text,"setRandomExpression(){return I(this,null,function*(){if(this.definitions.length)","setRandomExpression(){return I(this,null,function*(){if(this.destroyed)return!1;if(this.definitions.length)");
    // A request generation also handles A -> B -> A and returning to the current
    // expression while an older, different expression is still loading.
@@ -315,8 +318,8 @@ namespace NativeVideo {
     @"setExpression(t){return I(this,null,function*(){if(this.destroyed)return!1;if(typeof t!=""number""&&(t=this.getExpressionIndex(t)),!(t>-1&&t<this.definitions.length))return!1;const request=(this.__webvideoExpressionGeneration||0)+1;this.__webvideoExpressionGeneration=request;this.__webvideoExpressionIndex=t;if(t===this.expressions.indexOf(this.currentExpression)){this.reserveExpressionIndex=-1;return!1}this.reserveExpressionIndex=t;let e;try{e=yield this.loadExpression(t)}catch(error){if(this.destroyed)return!1;throw error}return this.destroyed||request!==this.__webvideoExpressionGeneration||!e||this.reserveExpressionIndex!==t?!1:(this.reserveExpressionIndex=-1,this.currentExpression=e,this._setExpression(e),!0)})}");
    // Cached loader promises can resolve successfully after destroy, without an
    // XHR abort. Do not create SDK expressions or emit a false success then.
-   text=ReplaceOnce(text,@"static loadExpression(s,t){var e;const i=r=>s.emit(""expressionLoadError"",t,r);",@"static loadExpression(s,t){if(s.destroyed)return Promise.resolve(void 0);var e;const i=r=>{if(!s.destroyed){globalThis.__exportExpressionFailed?.(s,t,r);s.emit(""expressionLoadError"",t,r)}};");
-   text=ReplaceOnce(text,@"const l=L.expressionTasksMap.get(s);l&&delete l[t];const h=s.createExpression(o,r);return s.emit(""expressionLoaded"",t,h),h",@"const l=L.expressionTasksMap.get(s);l&&delete l[t];if(s.destroyed)return;const h=s.createExpression(o,r);if(s.destroyed)return;return s.emit(""expressionLoaded"",t,h),h");
+   text=ReplaceOnce(text,@"static loadExpression(s,t){var e;const i=r=>s.emit(""expressionLoadError"",t,r);",@"static loadExpression(s,t){if(s.destroyed)return Promise.resolve(void 0);var e;const i=r=>{if(!s.destroyed){(s.__webvideoExpressionErrors??=new Map).set(t,r);globalThis.__exportExpressionFailed?.(s,t,r);s.emit(""expressionLoadError"",t,r)}};");
+   text=ReplaceOnce(text,@"const l=L.expressionTasksMap.get(s);l&&delete l[t];const h=s.createExpression(o,r);return s.emit(""expressionLoaded"",t,h),h",@"const l=L.expressionTasksMap.get(s);l&&delete l[t];if(s.destroyed)return;const h=s.createExpression(o,r);if(s.destroyed)return;s.__webvideoExpressionErrors?.delete(t);return s.emit(""expressionLoaded"",t,h),h");
    text=ReplaceOnce(text,".catch(o=>{C.warn(s.tag,`Failed to load expression:",".catch(o=>{if(s.destroyed)return;C.warn(s.tag,`Failed to load expression:");
    text=ReplaceOnce(text,"catch(r){C.warn(s.tag,`Failed to load expression at", "catch(r){if(s.destroyed)return Promise.resolve(void 0);C.warn(s.tag,`Failed to load expression at");
    string manager=!IsMygo&&Version=="4.6.6"?"Vt":"Ot";
