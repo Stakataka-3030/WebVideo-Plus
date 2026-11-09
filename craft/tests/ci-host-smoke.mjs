@@ -9,6 +9,7 @@ import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
 import {verifyPackage, assertNoLinks, fileHash} from '../installer/transaction.mjs';
 import {CdpConnection} from '../session/rpc.mjs';
+import {safeText, processFailure, failureSummary, targetSummary, lifecycleSummary, nativeLogSummary} from './ci-host-diagnostics.mjs';
 
 const execute = promisify(execFile);
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -71,9 +72,18 @@ async function waitUntil(description, probe, timeout = 90000) {
   throw Error('Timed out: ' + description);
 }
 async function powershell(script) {
-  const encoded = Buffer.from("$ErrorActionPreference='Stop';" + script, 'utf16le').toString('base64');
-  const result = await execute('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], {windowsHide: true, timeout: 20000, maxBuffer: 8 * 1024 * 1024});
+  const encoded = Buffer.from("$ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue';" + script, 'utf16le').toString('base64');
+  const result = await diagnosticExecute('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], 20000);
   return result.stdout.trim() ? JSON.parse(result.stdout.replace(/^\uFEFF/, '')) : null;
+}
+async function diagnosticExecute(file, args, timeoutMs) {
+  const started = Date.now(), signal = AbortSignal.timeout(timeoutMs);
+  try { return await execute(file, args, {windowsHide: true, signal, maxBuffer: 8 * 1024 * 1024}); }
+  catch (error) {
+    const failure = new Error('Diagnostic subprocess failed; see structured process failure');
+    failure.processFailure = processFailure(error, {timedOut: signal.aborted && signal.reason?.name === 'TimeoutError', elapsedMs: Date.now() - started, timeoutMs});
+    throw failure;
+  }
 }
 async function processes() {
   const result = await powershell(`@(Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,ExecutablePath,@{n="Started";e={if($_.CreationDate){$_.CreationDate.ToUniversalTime().ToString("${PROCESS_TIME_FORMAT}")}else{""}}}) | ConvertTo-Json -Compress`);
@@ -109,9 +119,72 @@ export async function runHostSmoke({packageRoot, hostSource, evidenceRoot}) {
   fs.mkdirSync(path.dirname(host)); fs.copyFileSync(hostSource, host);
   const report = {schemaVersion: 1, status: 'RUNNING', hostSha256: OFFICIAL_HOST_SHA256, manifestSha256: manifest.manifestSha256,
     packageVersion: manifest.version, startedAt: new Date().toISOString(), scope: 'Real host startup, verified injection and normal-close lifecycle only',
-    editor: 'NOT_RUN', preview: 'NOT_RUN', export: 'NOT_RUN', officialNsis: 'NOT_RUN', checks: [], cleanup: []};
+    editor: 'NOT_RUN', preview: 'NOT_RUN', export: 'NOT_RUN', officialNsis: 'NOT_RUN', checks: [], cleanup: [],
+    diagnostics: {targetSamples: [], hostStates: [], collectionErrors: [], limits: {targetSamples: 18, targetRowsPerSample: 32, nativeLogBytes: 65536}, nativeStdoutStderrCaptured: false}};
   let wrapper, wrapperExit, lease, cdp, owned = [], failure;
+  let nextTargetSampleAt = 0;
+  const nativeLog = path.join(process.env.LOCALAPPDATA, 'com.akirami.webgalcraft/logs/WebGAL Craft.log');
+  const nativeLogBefore = fs.existsSync(nativeLog) ? fs.statSync(nativeLog).size : 0;
+  const state = path.join(adapter, 'state'), leaseFile = path.join(state, 'session.json');
+  const sessionLogPath = () => lease ? childPath(state, path.join(state, 'sessions', lease.sessionId, 'session.log')) : null;
+  const prepared = path.join(evidenceRoot, 'prepared-inputs.json');
+  if (fs.existsSync(prepared)) report.diagnostics.preparedWebView2Version = safeText(readJson(prepared).webView2Version, 80);
   const record = (name, value = true) => { assert.ok(value, name); report.checks.push({name, passed: true}); };
+  async function sampleTargets(phase, force = false) {
+    if (!lease || report.diagnostics.targetSamples.length >= 18 || !force && Date.now() < nextTargetSampleAt) return;
+    nextTargetSampleAt = Date.now() + 2000;
+    const started = events(sessionLogPath()).find(event => event.event === 'host-started');
+    if (!started) return;
+    assert.equal(started.hostPid, lease.hostPid); assert.ok(Number.isInteger(started.port) && started.port > 0 && started.port <= 65535);
+    const sample = {at: new Date().toISOString(), phase, port: started.port, hostPid: lease.hostPid, owner: {verified: false}, endpointAttempted: false};
+    report.diagnostics.targetSamples.push(sample);
+    try {
+      // Diagnostic GETs are allowed only after the same strict native ownership
+      // verification. This never supplies a target or extends production waits.
+      const verified = await diagnosticExecute(path.join(packageRoot, manifest.wrapper), ['--verify-listener', String(started.port), String(lease.hostPid)], 5000);
+      const owner = JSON.parse(verified.stdout); validateListener(owner, started.port, lease.hostPid);
+      sample.owner = {verified: true, source: owner.source, ownerPid: owner.ownerPid, addresses: owner.addresses};
+      sample.endpointAttempted = true;
+      const response = await fetch(`http://127.0.0.1:${started.port}/json/list`, {signal: AbortSignal.timeout(1500), redirect: 'error'});
+      sample.httpStatus = response.status;
+      if (!response.ok) { sample.endpointError = 'non-success HTTP response'; return; }
+      const text = await response.text(); if (Buffer.byteLength(text) > 131072) throw Error('Target response exceeded diagnostic bound');
+      let targets; try { targets = JSON.parse(text); } catch { throw Error('Target endpoint returned invalid JSON'); }
+      sample.result = targetSummary(targets);
+      if (!report.diagnostics.browserVersion) {
+        const version = await fetch(`http://127.0.0.1:${started.port}/json/version`, {signal: AbortSignal.timeout(1500), redirect: 'error'});
+        if (version.ok) {
+          const raw = await version.text(); if (Buffer.byteLength(raw) > 32768) throw Error('Version response exceeded diagnostic bound');
+          let value; try { value = JSON.parse(raw); } catch { throw Error('Version endpoint returned invalid JSON'); }
+          report.diagnostics.browserVersion = {
+            browser: /^[A-Za-z][A-Za-z0-9 -]{0,30}\/[0-9][0-9A-Za-z.+_-]{0,50}$/.test(value.Browser) ? value.Browser : '<unrecognized-version-format>',
+            protocol: /^\d{1,3}\.\d{1,3}$/.test(value['Protocol-Version']) ? value['Protocol-Version'] : '<unrecognized-version-format>'};
+        }
+      }
+    } catch (error) { sample.failure = failureSummary(error); }
+  }
+  async function captureFailureContext(phase) {
+    if (lease) {
+      report.diagnostics.lifecycle = lifecycleSummary(events(sessionLogPath()));
+      report.diagnostics.launcherStages = readLines(path.join(state, 'logs/launcher.log')).flatMap(line => {
+        const at = line.indexOf('WEBVIDEO_CRAFT_STATUS '); if (at < 0) return [];
+        try { const event = JSON.parse(line.slice(at + 22)); return [{at: safeText(event.at, 40), stage: safeText(event.stage, 30)}]; } catch { return []; }
+      }).slice(-16);
+      await sampleTargets(phase, true);
+    }
+    if (wrapper) {
+      const rows = await processes(), tree = descendants(rows, wrapper.pid);
+      report.diagnostics.hostStates.push({at: new Date().toISOString(), phase, wrapperExit: wrapperExit || null,
+        processes: tree.map(row => ({pid: row.ProcessId, parentPid: row.ParentProcessId, name: safeText(row.Name, 60), started: row.Started,
+          ...(row.ProcessId === lease?.hostPid ? {expectedHostPath: row.ExecutablePath?.toLowerCase() === original.toLowerCase()} : {})}))});
+    }
+    if (!fs.existsSync(nativeLog)) { report.diagnostics.nativeLog = {available: false}; return; }
+    assertNoLinks(nativeLog); const size = fs.statSync(nativeLog).size;
+    if (size < nativeLogBefore) { report.diagnostics.nativeLog = {available: true, rotatedOrTruncated: true, rawLinesRetained: false}; return; }
+    const offset = Math.max(nativeLogBefore, size - 65536), buffer = Buffer.alloc(size - offset), fd = fs.openSync(nativeLog, 'r');
+    try { fs.readSync(fd, buffer, 0, buffer.length, offset); } finally { fs.closeSync(fd); }
+    report.diagnostics.nativeLog = {available: true, appendedBytes: size - nativeLogBefore, truncated: offset > nativeLogBefore, ...nativeLogSummary(buffer.toString('utf8'))};
+  }
   async function manager(action) {
     const args = [path.join(packageRoot, 'craft/installer/manage.mjs'), action, ...(action === 'uninstall' ? ['--state', path.join(adapter, 'config.json')] : ['--package', packageRoot, '--dest', adapter, '--craft', host, '--mode', 'same-name', '--host-version', '1.0.0'])];
     const result = await execute(path.join(packageRoot, manifest.node), args, {windowsHide: true, timeout: 180000, maxBuffer: 8 * 1024 * 1024});
@@ -129,7 +202,6 @@ export async function runHostSmoke({packageRoot, hostSource, evidenceRoot}) {
     wrapper = spawn(host, ['--isolated-test', '--profile', env.WEBVIEW2_USER_DATA_FOLDER], {cwd: path.dirname(host), env, windowsHide: true, stdio: 'ignore'});
     let spawnError; wrapper.once('error', error => { spawnError = error; });
     wrapper.once('exit', (code, signal) => { wrapperExit = {code, signal}; });
-    const state = path.join(adapter, 'state'), leaseFile = path.join(state, 'session.json');
     lease = await waitUntil('owned host session', () => {
       if (spawnError) throw spawnError; if (wrapperExit) throw Error('Original-name entry exited before a session was created');
       if (!fs.existsSync(leaseFile)) return null;
@@ -141,8 +213,9 @@ export async function runHostSmoke({packageRoot, hostSource, evidenceRoot}) {
     assert.ok(owned.some(p => p.ProcessId === lease.coordinatorPid && p.ParentProcessId === wrapper.pid));
     const sessionLog = childPath(state, path.join(state, 'sessions', lease.sessionId, 'session.log'));
     const launcherLog = path.join(state, 'logs/launcher.log');
-    const injected = await waitUntil('real enhanced interface injection', () => {
+    const injected = await waitUntil('real enhanced interface injection', async () => {
       if (wrapperExit) throw Error('Original-name entry exited before injection');
+      await sampleTargets('waiting');
       const entries = events(sessionLog), failed = entries.find(e => e.event === 'failed');
       if (failed) throw Error('Craft injection failed: ' + failed.error);
       const ready = readLines(launcherLog).some(line => { const at = line.indexOf('WEBVIDEO_CRAFT_STATUS '); if (at < 0) return false; return JSON.parse(line.slice(at + 22)).stage === 'ready'; });
@@ -180,7 +253,11 @@ export async function runHostSmoke({packageRoot, hostSource, evidenceRoot}) {
     record('Input package unchanged', verifyPackage(packageRoot).manifestSha256 === manifest.manifestSha256);
     record('Official input unchanged', fileHash(hostSource) === OFFICIAL_HOST_SHA256);
     report.status = 'PASS';
-  } catch (error) { failure = error; report.status = 'FAIL'; report.error = error.message; }
+  } catch (error) {
+    report.status = 'FAIL'; report.error = error.processFailure ? 'Diagnostic subprocess failed' : safeText(error.message);
+    report.failure = failureSummary(error); failure = new Error(report.error);
+    try { await captureFailureContext('before-cleanup'); } catch (contextError) { report.diagnostics.collectionErrors.push(failureSummary(contextError)); }
+  }
   finally {
     cdp?.close();
     if (wrapper && report.status !== 'PASS') {
@@ -197,10 +274,13 @@ export async function runHostSmoke({packageRoot, hostSource, evidenceRoot}) {
         }
         for (const row of [...owned].reverse()) {
           if (!rows.some(p => p.ProcessId === row.ProcessId && p.Started === row.Started)) continue;
-          try { report.cleanup.push({pid: row.ProcessId, killed: await actOnOwnedProcess(row, 'kill')}); }
-          catch (error) { report.cleanup.push({pid: row.ProcessId, error: error.message}); }
+          try { report.cleanup.push({pid: row.ProcessId, name: safeText(row.Name, 60), killed: await actOnOwnedProcess(row, 'kill')}); }
+          catch (error) { report.cleanup.push({pid: row.ProcessId, name: safeText(row.Name, 60), failure: failureSummary(error)}); }
         }
-      } catch (error) { report.cleanup.push({error: error.message}); }
+        const remaining = await processes();
+        report.diagnostics.remainingOwnedProcesses = owned.filter(row => remaining.some(p => p.ProcessId === row.ProcessId && p.Started === row.Started))
+          .map(row => ({pid: row.ProcessId, name: safeText(row.Name, 60)}));
+      } catch (error) { report.cleanup.push({failure: failureSummary(error)}); }
     }
     // Do not upload a profile, full native/global logs, environment, projects, or
     // arbitrary runner files. This allowlisted report contains only CI test data.
