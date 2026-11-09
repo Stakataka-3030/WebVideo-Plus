@@ -50,6 +50,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Resource URL boundary checks failed" }
           pwsh -NoLogo -NoProfile -File .\tests\manual-cuts.test.ps1
           if ($LASTEXITCODE -ne 0) { throw "Manual cut production checks failed" }
+          pwsh -NoLogo -NoProfile -File .\tests\scene-only-tail.test.ps1 -Fixtures .build/scene-only-tail-fixtures.json
+          if ($LASTEXITCODE -ne 0) { throw "Scene-only tail production checks failed" }
           pwsh -NoLogo -NoProfile -File .\tests\terre-host-patch.test.ps1
           if ($LASTEXITCODE -ne 0) { throw "Dual host patch production checks failed" }
 
@@ -98,6 +100,8 @@ jobs:
           $env:WEBGAL466_ROOT = Join-Path $PWD '.build/webgal-4.6.6'
           node --test tests/animation-v2-native.test.mjs tests/resource-url-native466.test.mjs
           if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.6 native animation v2 oracle failed" }
+          node tests/scene-only-tail-runtime-contract.mjs .build/webgal-4.6.6 .build/scene-only-tail-fixtures.json
+          if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.6 scene-only tail forwarding/preload oracle failed" }
           node tests/live2d-runtime-466-contract.mjs .build/webgal-4.6.6
           if ($LASTEXITCODE -ne 0) { throw "WebGAL4.6.6 texture/reservation contract failed" }
           node tests/figure-diff-runtime-contract.mjs .build/webgal-4.6.6/assets/index-Dcp3ZA1M.js
@@ -298,6 +302,14 @@ jobs:
             "Native readiness/capture fault: **$($state.status)**; WebView2 $($state.runtimeVersion); readiness PASS=$(@($state.readiness | Where-Object status -eq 'PASS').Count), NA=$(@($state.readiness | Where-Object status -eq 'NA').Count)." | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           }
 
+      - name: Compare scene-only tail planning with the full-story native crop
+        shell: pwsh
+        run: |
+          $lock = Get-Content build/dependencies.lock.json -Raw | ConvertFrom-Json
+          $media = Join-Path $PWD ('.build/ffmpeg-test/' + $lock.ffmpegTest.archiveRoot + '/bin')
+          .\tests\scene-only-tail-native.ps1 -EngineRoot .build/webgal-4.6.6 -PackageRoot package -MediaToolDirectory $media
+          if ($LASTEXITCODE -ne 0) { throw 'Hosted native scene-only tail parity failed' }
+
       - name: Preserve production regression evidence including failures and NA
         if: always()
         uses: actions/upload-artifact@v4
@@ -310,6 +322,8 @@ jobs:
             .build/ci-native-tests/**/*.log
             .build/ci-native-tests/**/*.png
             .build/ci-native-tests/**/*.jpg
+            .build/ci-native-tests/scene-tail/**/*-psnr.txt
+            .build/ci-native-tests/scene-tail/**/*error.txt
 
       - name: Record the validated installer source and checksums
         shell: pwsh
