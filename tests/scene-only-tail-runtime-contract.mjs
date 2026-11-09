@@ -32,7 +32,7 @@ const end=fixture.limited.planningTail.boundaryLine;
 for(const blocking of [false,true]){
  const full=oracle(parse(fixture.full.script),{blocking}),limited=oracle(parse(fixture.limited.script),{blocking});
  assert.deepEqual(limited.events.slice(0,-1),full.events.filter(event=>event.index<end));
- assert.equal(limited.events.at(-1).command,'end');
+ assert.equal(limited.events.at(-1).command,'comment');
  assert.equal(limited.events.at(-1).at,full.events.find(event=>event.index===end).at,'Exact forwarding boundary changed');
  assert.ok(full.texture.flat().includes('missing-tail.png'),'Control did not cross scene boundary during lookahead');
  assert.ok(!limited.texture.flat().includes('missing-tail.png'),'Tail texture reached native preload');
@@ -47,7 +47,22 @@ assert.equal(all.texture[0].length,21);assert.equal(all.general[0].length,21);as
 for(const suffix of [[],[{command:'wait',content:'0',args:[],sentenceAssets:[],subScene:[]}],[{command:'comment',content:'',args:[{key:'next',value:true}],sentenceAssets:[],subScene:[]}]]){
  const prefix=[{command:'changeBg',content:'inherited',args:[{key:'next',value:true}],sentenceAssets:[],subScene:[]},...suffix];
  const full=oracle([...prefix,{command:'changeBg',content:'tail',args:[],sentenceAssets:[],subScene:[]}]);
- const limited=oracle([...prefix,{command:'end',content:'',args:[],sentenceAssets:[],subScene:[]}]);
+ const limited=oracle([...prefix,{command:'comment',content:'',args:[],sentenceAssets:[],subScene:[]}]);
  assert.equal(limited.events.at(-1).at,full.events.at(-1).at,'Zero-time/empty target boundary changed');
 }
-console.log('PASS exact official 4.6.6 forward boundary and lookahead contracts (Node only)');
+// Run the real comment handler, perform arrangement, forwarding and empty-stack
+// EOF together. The only cO change is the observer hook used by EngineAdapter.
+// A plain end would destroy these active performs; the comment must not.
+{
+ const counts={finish:0,eof:0,stops:0,restores:0};
+ const sentence={command:1,commandRaw:'comment',content:'WebVideo+ scene-only boundary',args:[{key:'next',value:true}]};
+ const data={currentSentenceId:0,currentScene:{sceneName:'fixture',sentenceList:[sentence]}},sceneStack=[];
+ const pc={performList:[{performName:'animation',isHoldOn:true},{performName:'figure',isHoldOn:false}],pendingPerformList:[],hasPendingBlockingStateCalculationPerform:()=>false,stopStartedPerform:()=>counts.stops++,clearPerformTimeout:()=>counts.stops++};
+ const context={R:{sceneManager:{sceneData:data,sceneStack,lockSceneWrite:false,popFrame(){counts.eof++;return sceneStack.pop();}},gameplay:{performController:pc},readHistoryManager:{checkIsRead(){}},backlogManager:{saveCurrentStateToBacklog(){}}},q:{getCalculationStageState:()=>({})},Pe:{getState:()=>({userData:{globalGameVar:{}}})},Qe:{say:0,jumpLabel:2},Ns:'none',z_e:{},At:structuredClone,wPe:1000,s8(){},Iy:value=>value,je:()=>null,Vt:(s,key)=>s.args.find(a=>a.key===key)?.value,X:{debug(){},warn(){},error:message=>{throw Error(message);}},Q5:()=>counts.restores++,DEe:()=>counts.restores++,__nativeObserve:()=>counts.finish++};
+ vm.createContext(context);
+ vm.runInContext(block('function mr(','var Vn=')+'const '+block('Nwe=e=>',',Dwe=')+';const b8={1:{scriptFunction:Nwe}};const '+block('t8=(e="")=>',',jAe=')+';const '+block('cO=e=>',';function SPe(').replace('cO=e=>{','cO=e=>{globalThis.__nativeObserve?.(e);')+';R.gameplay.performController.arrangeNewPerform=({'+block('arrangeNewPerform(t,r,n=!0){','commitPendingPerforms(){')+'}).arrangeNewPerform;const '+block('vm=(e=0,t={})',',w8=')+';vm();',context);
+ assert.deepEqual(counts,{finish:1,eof:1,stops:0,restores:0});
+ assert.equal(pc.performList.length,2,'Boundary comment removed an active perform');
+ assert.equal(data.currentSentenceId,1);
+}
+console.log('PASS exact official 4.6.6 forward, lookahead and comment/perform/EOF contracts (Node only)');
