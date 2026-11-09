@@ -165,9 +165,21 @@ jobs:
       - name: Restore locked optional AI dependencies
         shell: pwsh
         working-directory: ai-runtime
+        env:
+          npm_config_cache: ${{ runner.temp }}/webvideo-ai-npm-cache
+          npm_config_prefer_offline: 'true'
         run: |
-          npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
-          if ($LASTEXITCODE -ne 0) { throw "Locked AI dependency restore failed" }
+          $PSNativeCommandUseErrorActionPreference = $false
+          $lockHash = (Get-FileHash -LiteralPath package-lock.json -Algorithm SHA256).Hash
+          $failureLog = Join-Path $env:RUNNER_TEMP 'webvideo-ai-npm-first-attempt.log'
+          npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund 2>&1 | Tee-Object -FilePath $failureLog
+          if ($LASTEXITCODE -ne 0) {
+            node ../scripts/seed-ci-npm-cache.mjs package-lock.json $failureLog
+            if ($LASTEXITCODE -ne 0) { throw 'Locked AI mirror recovery failed; lock and integrity are never relaxed' }
+            npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+          }
+          if ($LASTEXITCODE -ne 0) { throw "Locked AI restore failed" }
+          if ((Get-FileHash -LiteralPath package-lock.json -Algorithm SHA256).Hash -ne $lockHash) { throw 'AI lock changed during restore' }
 
       - name: Build the complete product and installer from current source
         shell: powershell
