@@ -307,9 +307,11 @@ namespace NativeVideo {
    string text=File.ReadAllText(file);
    // A factory prefetch can cache an already handled failure. Remember it per
    // manager/index without failing unrelated export work; if setExpression
-   // later requests that entry, surface it to the current-request barrier.
+   // later requests that entry and still receives no expression, surface it
+   // to the current-request barrier. Always try the native loader first: SDK
+   // parse/setup failures remove their cache task and can be retried normally.
    text=ReplaceOnce(text,"loadExpression(t){return I(this,null,function*(){if(!this.definitions[t])","loadExpression(t){return I(this,null,function*(){if(this.destroyed)return;if(!this.definitions[t])");
-   text=ReplaceOnce(text,"const e=yield this._loadExpression(t);return this.expressions[t]=e,e","if(this.__webvideoExpressionErrors?.has(t)){globalThis.__exportExpressionFailed?.(this,t,this.__webvideoExpressionErrors.get(t));return}let e;try{e=yield this._loadExpression(t)}catch(error){if(this.destroyed)return;throw error}if(this.destroyed)return;return this.expressions[t]=e,e");
+   text=ReplaceOnce(text,"const e=yield this._loadExpression(t);return this.expressions[t]=e,e","let e;try{e=yield this._loadExpression(t)}catch(error){if(this.destroyed)return;throw error}if(this.destroyed)return;if(!e&&this.__webvideoExpressionErrors?.has(t))globalThis.__exportExpressionFailed?.(this,t,this.__webvideoExpressionErrors.get(t));return this.expressions[t]=e,e");
    text=ReplaceOnce(text,"setRandomExpression(){return I(this,null,function*(){if(this.definitions.length)","setRandomExpression(){return I(this,null,function*(){if(this.destroyed)return!1;if(this.definitions.length)");
    // A request generation also handles A -> B -> A and returning to the current
    // expression while an older, different expression is still loading.

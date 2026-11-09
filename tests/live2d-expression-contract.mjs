@@ -91,6 +91,15 @@ await check('reselecting a previously failed superseded expression surfaces its 
  const f=fixture(),a=f.m.setExpression('a'),b=f.m.setExpression('b');f.requests[0].reject(Error('stale a failure'));assert.equal(await a,false);f.requests[1].resolve({});assert.equal(await b,true);await f.ctx.__exportWaitForStageAssets();
  assert.equal(await f.m.setExpression('a'),false);assert.equal(f.requests.length,2);assert.equal(f.m.currentExpression.name,'b');await assert.rejects(f.ctx.__exportWaitForStageAssets(),/stale a failure/);
 });
+await check('optional SDK/parser failure remains retryable, with and without tracking',async()=>{
+ for(const tracked of [true,false]){const f=fixture({tracked}),parse=f.m.createExpression;f.m.createExpression=()=>{throw Error('transient SDK parsing failure');};const optional=f.ctx.Factory.loadExpression(f.m,2);f.requests[0].resolve({});await optional;if(tracked)await f.ctx.__exportWaitForStageAssets();
+  f.m.createExpression=parse;const requested=f.m.setExpression('c');assert.equal(f.requests.length,2);f.requests[1].resolve({});assert.equal(await requested,true);assert.deepEqual(f.applied.map(x=>x.name),['c']);assert.equal(f.m.__webvideoExpressionErrors.has(2),false);if(tracked)await f.ctx.__exportWaitForStageAssets();
+ }
+});
+await check('optional synchronous factory failure remains retryable',async()=>{
+ const f=fixture(),getFile=f.m.getExpressionFile;f.m.getExpressionFile=()=>{throw Error('transient setup failure');};await f.ctx.Factory.loadExpression(f.m,2);assert.equal(f.requests.length,0);await f.ctx.__exportWaitForStageAssets();f.m.getExpressionFile=getFile;
+ const requested=f.m.setExpression('c');assert.equal(f.requests.length,1);f.requests[0].resolve({});assert.equal(await requested,true);assert.equal(f.m.__webvideoExpressionErrors.has(2),false);await f.ctx.__exportWaitForStageAssets();
+});
 await check('lifecycle protection also works without the export tracker',async()=>{
  const f=fixture({tracked:false}),p=f.m.setExpression(2);f.m.destroy();f.requests[0].resolve({});assert.equal(await p,false);assert.equal(f.events.length,0);
 });
