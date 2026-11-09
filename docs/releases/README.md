@@ -1,6 +1,6 @@
 # 发行说明
 
-- [1.3.10 · 核心回归与发行记录](RELEASE_NOTES_1.3.10.md)
+- [1.3.10 · 改动与验证范围](RELEASE_NOTES_1.3.10.md)
 - [1.3.9](RELEASE_NOTES_1.3.9.md)
 - [1.3.8](RELEASE_NOTES_1.3.8.md)
 
