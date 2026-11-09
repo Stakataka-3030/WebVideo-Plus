@@ -1,5 +1,5 @@
 // No local token creation/adjustment or process-as-user launch. Only compile,
-// pure argument/guard checks, static contracts and plain JS assertions run here.
+// argument/guard checks, query-only membership, static contracts and JS assertions.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -24,6 +24,8 @@ test('restricted runner never mutates source token, accounts, persistent ACLs or
   assert.match(source, /Integrity\(token\)!=8192\|\|Scalar\(token,20\)!=0\|\|Administrator\(token\)/);
   assert.match(source, /!User\(token\).Equals\(expected\)/);
   assert.match(source, /Privileges\(token\).Any\(p=>!Equal\(p.Luid,notify\)\)/);
+  assert.match(source, /Info\(token,2\)/); assert.match(source, /group.Attributes&4/); assert.match(source, /group.Attributes&16/);
+  assert.doesNotMatch(source, /new WindowsPrincipal|new WindowsIdentity/);
 });
 test('child is suspended and token verified before owned job assignment and resume', () => {
   const created = source.indexOf('Require(CreateProcessAsUser('), checked = source.indexOf('AssertReduced(actual,user,notify)'), assigned = source.indexOf('Require(AssignProcessToJobObject('), resumed = source.indexOf('Require(ResumeThread(');
@@ -52,11 +54,11 @@ test('diagnostic workflow compares high and reduced tokens without modifying rel
   const probe = fs.readFileSync(new URL('./ci-host-port-diagnostic.mjs', import.meta.url), 'utf8');
   assert.match(probe, /requireMedium\(report.parentToken\)/); assert.match(probe, /requireMedium\(record.hostToken\)/);
 });
-test('native helper compiles; pure quoting/guard harness never calls its launch entry', {skip: process.platform !== 'win32', timeout: 20000}, () => {
+test('native helper compiles; quote/guard and QUERY-only membership harness never calls its launch entry', {skip: process.platform !== 'win32', timeout: 20000}, () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'webvideo-restricted-compile-'));
   const compiler = path.join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319/csc.exe');
   const harness = path.join(directory, 'PureChecks.cs'), exe = path.join(directory, 'PureChecks.exe');
-  fs.writeFileSync(harness, `using System; using System.IO; using System.Web.Script.Serialization; static class PureChecks { static int Main() { Console.WriteLine(new JavaScriptSerializer().Serialize(new[]{CiRestrictedRunner.Quote("plain"),CiRestrictedRunner.Quote(@"C:\\a b\\"),CiRestrictedRunner.Quote("a\\\"b")})); try { CiRestrictedRunner.Guard(); Console.WriteLine("guard-accepted"); } catch(IOException) { Console.WriteLine("guard-rejected"); } return 0; } }`);
+  fs.writeFileSync(harness, `using System; using System.IO; using System.Diagnostics; using System.Runtime.InteropServices; using System.Security.Principal; using System.Web.Script.Serialization; static class PureChecks { [DllImport("advapi32.dll")] static extern bool OpenProcessToken(IntPtr process,uint access,out IntPtr token); [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle); static int Main() { Console.WriteLine(new JavaScriptSerializer().Serialize(new[]{CiRestrictedRunner.Quote("plain"),CiRestrictedRunner.Quote(@"C:\\a b\\"),CiRestrictedRunner.Quote("a\\\"b")})); try { CiRestrictedRunner.Guard(); Console.WriteLine("guard-accepted"); } catch(IOException) { Console.WriteLine("guard-rejected"); } IntPtr query; if(!OpenProcessToken(Process.GetCurrentProcess().Handle,8,out query))return 2; try { bool actual=CiRestrictedRunner.Administrator(query); using(var identity=WindowsIdentity.GetCurrent()){bool expected=new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator); if(actual!=expected)return 3;} Console.WriteLine("query-only-membership-verified"); } finally {CloseHandle(query);} return 0; } }`);
   const common = ['/nologo', '/platform:x64', '/r:System.Web.Extensions.dll', sourceFile];
   const standalone = spawnSync(compiler, ['/target:exe', '/out:' + path.join(directory, 'RestrictedCiRunner.exe'), ...common], {encoding: 'utf8', windowsHide: true, timeout: 10000});
   assert.equal(standalone.status, 0, standalone.stdout + standalone.stderr); // compiled only; never launched locally
@@ -67,4 +69,5 @@ test('native helper compiles; pure quoting/guard harness never calls its launch 
   const lines = checked.stdout.trim().split(/\r?\n/);
   assert.deepEqual(JSON.parse(lines[0]), ['"plain"', '"C:\\a b\\\\"', '"a\\"b"']);
   assert.equal(lines[1], 'guard-rejected');
+  assert.equal(lines[2], 'query-only-membership-verified');
 });

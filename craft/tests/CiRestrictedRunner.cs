@@ -14,6 +14,7 @@ using System.Web.Script.Serialization;
 
 static class CiRestrictedRunner {
  [StructLayout(LayoutKind.Sequential)]struct SidAndAttributes {public IntPtr Sid;public uint Attributes;}
+ [StructLayout(LayoutKind.Sequential)]struct TokenGroupsHeader {public uint Count;public SidAndAttributes First;}
  [StructLayout(LayoutKind.Sequential)]struct Luid {public uint Low;public int High;}
  [StructLayout(LayoutKind.Sequential)]struct LuidAndAttributes {public Luid Luid;public uint Attributes;}
  [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]struct Startup {public int Size;public string Reserved,Desktop,Title;public int X,Y,XSize,YSize,XChars,YChars,Fill;public uint Flags;public short Show,Reserved2;public IntPtr ReservedBytes,Input,Output,Error;}
@@ -45,7 +46,13 @@ static class CiRestrictedRunner {
  static List<LuidAndAttributes> Privileges(IntPtr token){var data=Info(token,3);try{int count=Marshal.ReadInt32(data);if(count<0||count>512)throw new IOException("Invalid privilege count");var result=new List<LuidAndAttributes>();for(int i=0;i<count;i++)result.Add((LuidAndAttributes)Marshal.PtrToStructure(IntPtr.Add(data,4+i*12),typeof(LuidAndAttributes)));return result;}finally{Marshal.FreeHGlobal(data);}}
  static bool Equal(Luid a,Luid b){return a.Low==b.Low&&a.High==b.High;}
  static IntPtr Sid(SecurityIdentifier value){var bytes=new byte[value.BinaryLength];value.GetBinaryForm(bytes,0);var pointer=Marshal.AllocHGlobal(bytes.Length);Marshal.Copy(bytes,0,pointer,bytes.Length);return pointer;}
- static bool Administrator(IntPtr token){using(var identity=new WindowsIdentity(token))return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);}
+ internal static bool Administrator(IntPtr token){
+  // TokenGroups needs QUERY only. WindowsPrincipal may duplicate a primary
+  // token for membership checks, which the suspended-child QUERY handle cannot do.
+  var data=Info(token,2);try{int count=Marshal.ReadInt32(data);if(count<0||count>2048)throw new IOException("Invalid token group count");int offset=Marshal.OffsetOf(typeof(TokenGroupsHeader),"First").ToInt32(),stride=Marshal.SizeOf(typeof(SidAndAttributes));
+   for(int i=0;i<count;i++){var group=(SidAndAttributes)Marshal.PtrToStructure(IntPtr.Add(data,offset+i*stride),typeof(SidAndAttributes));if(new SecurityIdentifier(group.Sid).IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid)&&(group.Attributes&4)!=0&&(group.Attributes&16)==0)return true;}return false;
+  }finally{Marshal.FreeHGlobal(data);}
+ }
  static void AssertReduced(IntPtr token,SecurityIdentifier expected,Luid notify){if(!User(token).Equals(expected)||Integrity(token)!=8192||Scalar(token,20)!=0||Administrator(token)||Privileges(token).Any(p=>!Equal(p.Luid,notify)))throw new IOException("Reduced token did not meet same-user non-admin medium-integrity contract");}
  internal static string Quote(string value){var result=new StringBuilder("\"");int slashes=0;foreach(char ch in value){if(ch=='\\'){slashes++;continue;}if(ch=='\"'){result.Append('\\',slashes*2+1).Append(ch);slashes=0;continue;}result.Append('\\',slashes).Append(ch);slashes=0;}return result.Append('\\',slashes*2).Append('"').ToString();}
  static string Within(string root,string value){string target=Path.GetFullPath(value),boundary=Path.GetFullPath(root).TrimEnd('\\')+'\\';if(!target.StartsWith(boundary,StringComparison.OrdinalIgnoreCase))throw new IOException("Path escaped CI boundary");return target;}
