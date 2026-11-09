@@ -35,6 +35,7 @@ function WebVideoDialogueSubtitles({game,target}){
    const jobSettings={...settings.current,...speed,mode:'auto',bgmBaseMode:'auto'};
    const model=window.WebVideoPlus?.state().model;let sourceText=model?.path===base+scene?model.source:undefined,range;
    if(selection){if(!window.WebVideoPlus.validateSelection(selection))throw Error('选区已变化，请重新选择。');sourceText=selection.source;range={startLine:selection.ranges[0].startLine,endLine:selection.ranges[0].endLine,sourceHash:await webVideoExportHash(sourceText.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n'))};}
+   if(token!==generation.current)return;
    const request={project:game,scene,sourceText,range,storyScope:scope,runtimeStartup:WebVideoRuntime.peekRuntimeStartup?.(game)??null,exportKind:'subtitles',includeSpeaker,settings:jobSettings,outputDir:directory,fileName:name};
    const signature=JSON.stringify(request);if(submission.current?.signature!==signature)submission.current={signature,id:crypto.randomUUID()};request.requestId=submission.current.id;
    let result;try{result=await call('/api/jobs',request);}catch(error){result=await call('/api/jobs/by-request/'+request.requestId).catch(()=>null);if(!result?.id)throw error;}
@@ -53,6 +54,7 @@ function WebVideoDialogueSubtitles({game,target}){
    window.WebVideoPlus?.modules.includes('timelineSelector')?button('选择剧情范围',pickRange,!ready||busy||running):null,
    field('保存文件夹',h('div',{style:{display:'flex',gap:8}},h('input',{style:inputStyle,value:directory,disabled:busy||running,onChange:e=>setDirectory(e.target.value)}),button('选择…',chooseFolder,!ready||busy||running))),
    field('文件名',h('input',{style:inputStyle,value:name,disabled:busy||running,onChange:e=>setName(e.target.value)})),
+   h('p',{style:{margin:0,fontSize:13}},'打开此面板只读取已有预览；开始导出字幕会打开预览，读取当前游戏的实际播放速度。未读取到时不会使用默认速度导出。'),
    h('p',{'aria-live':'polite',style:{margin:0,fontSize:13}},message),problem?h('details',null,h('summary',null,'技术详情'),h('pre',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},problem.technical)):null),
   h(DialogActions,null,button('关闭',close),running?button('取消任务',async()=>{try{await call('/api/jobs/'+job.id+'/cancel',{});}catch(error){fail(error);}}):null,job?.state==='completed'?button('打开文件夹',()=>call('/api/jobs/'+job.id+'/folder',{}).catch(fail)):button(busy?'正在加入…':'导出字幕',start,!ready||busy||running,'primary')))));
 }
