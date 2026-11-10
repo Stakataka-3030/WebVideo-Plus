@@ -15,11 +15,23 @@ const WebVideoProject=((terreApi)=>{
  function projectPath(rel,at=scope){if(!at)throw Error('请先打开项目');return at.root+'/'+C.safePath(rel);}
  const musicPath=at=>projectPath('video-project.json',at);
  const metadataPath=at=>projectPath('.webvideo-plus/authoring.json',at);
+ async function readDirectory(path,at){
+  const listing=(await terreApi.assetsControllerReadAssets(path)).data;
+  if(scope!==at)throw Error('项目已切换，请重新打开工具');
+  if(!Array.isArray(listing?.dirInfo)||listing.dirInfo.some(item=>!item||typeof item.name!=='string'||typeof item.isDir!=='boolean'))throw Error('项目目录读取响应无效');
+  return listing.dirInfo;
+ }
+ function directoryEntry(listing,name){const entry=listing.find(item=>item.name===name);if(entry&&!entry.isDir)throw Error('制作配置路径不是目录：'+name);return entry;}
  async function saveMetadata(value,at=scope){
   if(metadataError)throw Error(metadataError);
   const file=metadataPath(at),current=await read(file,null);if(scope!==at)throw Error('项目已切换，未保存制作标记');
   if(current!==metadataText)throw Error('制作配置已被其他窗口修改，请重新打开项目');
-  if(current===null){try{await terreApi.assetsControllerReadAssets(at.root+'/.webvideo-plus');}catch(error){if(error?.status!==404&&error?.response?.status!==404)throw error;await post('createNewFolder',{source:at.root,name:'.webvideo-plus'});}}
+  if(current===null){
+   // Terre reports missing directories as 500, so establish absence from the existing project root.
+   const directory=directoryEntry(await readDirectory(at.root,at),'.webvideo-plus');
+   if(!directory)await post('createNewFolder',{source:at.root,name:'.webvideo-plus'});
+   if(scope!==at)throw Error('项目已切换，未保存制作标记');
+  }
   const text=JSON.stringify(C.metadata(value),null,2);await write(file,text,{create:true});if(scope===at)metadataText=text;
  }
 
@@ -72,9 +84,10 @@ const WebVideoProject=((terreApi)=>{
    });
   },
   async listBackups(){
-   const at=scope;if(!at)return [];const directory=projectPath('.webvideo-plus/backups',at);let listing;
-   try{listing=(await terreApi.assetsControllerReadAssets(directory)).data;}catch(e){if(e?.status===404||e?.response?.status===404)return [];throw e;}
-   const files=(Array.isArray(listing?.dirInfo)?listing.dirInfo:[]).filter(item=>typeof item.name==='string'&&item.name.endsWith('.json')&&!/[\\/]/.test(item.name)),entries=[];
+   const at=scope;if(!at)return [];const directory=projectPath('.webvideo-plus/backups',at);
+   if(!directoryEntry(await readDirectory(at.root,at),'.webvideo-plus'))return [];
+   if(!directoryEntry(await readDirectory(at.root+'/.webvideo-plus',at),'backups'))return [];
+   const files=(await readDirectory(directory,at)).filter(item=>!item.isDir&&item.name.endsWith('.json')&&!/[\\/]/.test(item.name)),entries=[];
    for(let offset=0;offset<files.length;offset+=4){const batch=await Promise.all(files.slice(offset,offset+4).map(async info=>{const file=directory+'/'+info.name;try{const data=await json(file,null);if(!data||typeof data.before!=='string'||typeof data.path!=='string')throw Error('备份格式不完整');const scenePrefix=at.root+'/game/scene/';if(data.kind==='storySet'?data.path!==at.root+'/game/scene':data.kind==='music'?data.path!==musicPath(at):!data.path.startsWith(scenePrefix))throw Error('备份目标不属于当前项目');C.safePath(data.path.slice(at.root.length+1));return {id:data.id||info.name,file,path:data.path,kind:data.kind||'scene',label:data.label||'历史备份',createdAt:data.createdAt||'',scene:data.kind==='storySet'?'全部故事（'+(Number(data.fileCount)||0)+' 个 TXT）':data.kind==='music'?'音乐时间线':data.path.slice(scenePrefix.length)};}catch(error){return {id:info.name,file,label:info.name,createdAt:'',error:error.message};}}));entries.push(...batch);}
    if(scope!==at)throw Error('项目已切换，请重新打开恢复面板');return entries.sort((a,b)=>(Date.parse(b.createdAt)||0)-(Date.parse(a.createdAt)||0)||a.file.localeCompare(b.file));
   },
