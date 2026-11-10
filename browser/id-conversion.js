@@ -7,6 +7,8 @@
   const {figureModel,figureDiffRejected}=root.WebVideoTimelineCore;
   const table=new Map(Object.entries(mapping.nameToId||{}).map(([name,id])=>[fold(name),str(id)])),knownIds=new Map([...table.values()].map(id=>[fold(id),id]));
   if(!table.size)throw Error('角色映射表为空。');
+  const dialogueIds=new Map();
+  for(const row of mapping.rows||[])for(const alias of String(row.names||'').split(';')){const name=fold(alias);if(!name)continue;if(!dialogueIds.has(name))dialogueIds.set(name,new Set());dialogueIds.get(name).add(str(row.id));}
   const inside=()=>true;
   const aliases=[...table].map(([name,id])=>({name:name.replace(/[\s\u3000]+/g,' '),id})),pathCache=new Map(),warnings=[],patches=[],stats={figures:0,dialogues:0,effects:0,exitRows:0,skipped:0};
   const warn=(row,message)=>{if(inside(row)){warnings.push('第 '+row.startLine+' 行：'+message);stats.skipped++;}};
@@ -52,7 +54,9 @@
    if(row.command==='say'){
     if(!inside(row)||!item.speaker)continue;const hasId=own(a,'figureId')&&a.figureId!==false&&a.figureId!=='';
     if(hasId&&!options.overwrite)continue;if(!item.sayActor){warn(row,'说话人名字没有匹配到角色，保持原样。');continue;}
-    const matches=[...stage.values()].filter(v=>fold(v.actor)===fold(item.sayActor)),hasPosition=positions.some(p=>a[p]===true),preferred=hasPosition?matches.filter(v=>v.pos===pos):matches,candidates=(preferred.length?preferred:matches).sort((a,b)=>b.order-a.order);let id=item.sayActor;
+    const directIds=dialogueIds.get(fold(item.speaker));if(options.ignorePresence&&directIds?.size>1){warn(row,'说话人名字对应多个角色，请指定对话关联的立绘。');continue;}
+    const speakerIds=new Set([...(directIds||[item.sayActor])].map(fold));
+    const matches=[...stage.values()].filter(v=>speakerIds.has(fold(v.actor))),hasPosition=positions.some(p=>a[p]===true),preferred=hasPosition?matches.filter(v=>v.pos===pos):matches,candidates=(preferred.length?preferred:matches).sort((a,b)=>b.order-a.order);let id=item.sayActor;
     if(!options.ignorePresence){if(!candidates.length){warn(row,'角色不在场，对话保持原样。');continue;}if(candidates.length>1){warn(row,'有多套在场立绘匹配该角色，请指定对话关联的立绘。');continue;}const present=candidates[0];if(!present.custom){warn(row,'在场立绘路径未能匹配角色 ID，对话保持原样。');continue;}id=present.id;}
     const args={figureId:id,id:true};for(const p of positions)args[p]=false;write(row,[args]);stats.dialogues++;continue;
    }

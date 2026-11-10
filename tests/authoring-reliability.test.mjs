@@ -81,3 +81,17 @@ for(const version of versions){
   const source='changeFigure:old.png -id=hero -left -eyesOpen=old-eye.png;\nchangeFigureDiff:new.png -id=hero -mouthOpen=new-mouth.png;\nAlice:hello -id -figureId=hero;',m=t.model(source),scan=t.ctx.E(m,{parse:t.ctx.nativeParse,write:t.ctx.WebVideoProject.writer}),item=scan.rows[0];assert.equal(item.template.content,'new.png');assert.equal(item.template.args.mouthOpen,'new-mouth.png');assert.equal(item.template.args.eyesOpen,undefined);assert.ok(!item.template.source.includes('old-eye'));const plan=t.ctx.EP(m,scan,new Set([item.row.id]),{write:t.ctx.WebVideoProject.writer,parse:t.ctx.nativeParse});assert.ok(plan.after.includes('changeFigure:new.png'));
  }finally{t.close();}});
 }
+
+for(const version of versions)test(version+' shared speaker aliases use a unique onstage figure and never guess',()=>{const t=terre(version);try{
+ const mapping={rows:[{names:'Alice;Shared',id:'alice'},{names:'Bob;Shared',id:'bob'}],nameToId:{alice:'alice',bob:'bob',shared:'bob'}},before=JSON.stringify(mapping);
+ const plan=(source,options={})=>t.ctx.WebVideoIdConversion.plan(t.model(source),{overwrite:false,ignorePresence:false,...options},mapping,{parse:t.ctx.nativeParse,write:t.ctx.WebVideoProject.writer});
+ const first='changeFigure:alice.png -left -id=first;',second='changeFigure:bob.png -right -id=second;';
+ const target=p=>t.parse(p.after).at(-1).args.find(x=>x.key==='figureId')?.value;
+ assert.equal(target(plan(first+'\nShared:hello;')),'first');
+ assert.equal(target(plan(second+'\nShared:hello;')),'second');
+ const ambiguous=plan(first+'\n'+second+'\nShared:hello;');assert.equal(target(ambiguous),undefined);assert.ok(ambiguous.warnings.length);
+ assert.equal(target(plan(first+'\n'+second+'\nShared:hello -left;')),'first');
+ const ignored=plan(first+'\nShared:hello;',{ignorePresence:true});assert.equal(target(ignored),undefined);assert.ok(ignored.warnings.some(x=>x.includes('多个角色')));
+ assert.equal(target(plan(first+'\n'+second+'\nShared:hello -id -figureId=second;')),'second');
+ assert.equal(JSON.stringify(mapping),before,'user mapping is not modified');
+}finally{t.close();}});
