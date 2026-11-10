@@ -162,6 +162,12 @@ jobs:
           .\tests\font-render-native.ps1
           .\tests\figure-diff-native.ps1 -RuntimeRoot .build/webgal-4.6.5
 
+      - name: Observe synthetic planning navigation without replacing the native gate
+        if: always()
+        timeout-minutes: 12
+        shell: pwsh
+        run: .\tests\observe-figure-navigation.ps1 -Repeats 10
+
       - name: Restore locked optional AI dependencies
         shell: pwsh
         working-directory: ai-runtime
@@ -416,3 +422,15 @@ jobs:
             .build/font-render/native/*/*.png
             .build/font-render/native/*/*.json
             .build/font-render/native/*/*.log
+
+      - name: Preserve bounded synthetic navigation observation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-navigation-observation-not-release
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            .build/navigation-observation/build-manifest.json
+            .build/navigation-observation/result.json
+            .build/navigation-observation/planning-*.jsonl
