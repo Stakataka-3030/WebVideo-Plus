@@ -1,6 +1,6 @@
 # WebVideo+
 
-当前版本为未发布候选；公开下载与更新通道仍以实际 Release 为准。
+当前版本 1.3.11 已于 2026-11-10 发布：[v1.3.11](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11)。
 
 面向 **WebGAL Terre 与 WebGAL Craft** 的视觉小说视频制作辅助工具：批量编辑、剧情导航、音乐配置、备份与检查、Anogo 故事导入，以及本机视频导出。Terre 与 Craft 使用各自的安装器，请先按宿主和引擎版本选择下载。
 
@@ -8,29 +8,29 @@
 
 ## 下载与版本选择
 
-本发行线 **1.3.11**（安装器 1.3.11.0，导出内核 0.6.67，内部标识 0.8.17）合并此前未发布 1.3.10 的表情安全、自动存档、弹窗与 sceneOnly 改动，并加入通用 ID、循环音频、首次保存及高级便携安装修复；不含 LoveLive 引擎。改动范围见[发行说明](docs/releases/RELEASE_NOTES_1.3.11.md)，已完成的 CI、实际安装包与验证边界见[候选验收](docs/verification/common-port-466-20261110.md)。下表链接为拟用的发布入口，公开前不表示资产已上线。
+本发行线 **1.3.11**（安装器 1.3.11.0，导出内核 0.6.67，内部标识 0.8.17）合并此前未发布 1.3.10 的表情安全、自动存档、弹窗与 sceneOnly 改动，并加入通用 ID、循环音频、首次保存及高级便携安装修复；不含 LoveLive 引擎。改动范围见[发行说明](docs/releases/RELEASE_NOTES_1.3.11.md)，已完成的 CI、实际安装包与验证边界见[发布前验收记录](docs/verification/common-port-466-20261110.md)。下表三个版本均已于 2026-11-10 发布。
 
-本轮未发布候选，按宿主和引擎选择；实际下载以对应发布页公开的资产为准：
+按宿主和引擎选择已发布版本：
 
-| 使用环境 | 候选版本（导出内核） | Windows 安装器 | 发行说明与校验 |
+| 使用环境 | 发布版本（导出内核） | Windows 安装器 | 发行说明与校验 |
 | --- | --- | --- | --- |
 | Terre / WebGAL **4.6.4**、**MyGO 3.2.1**，或本线支持的 **LoveLive** | **1.1.17**（0.6.66，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.17.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) | [v1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) |
 | Terre / WebGAL **4.6.6** | **1.3.11**（0.6.67） | [WebVideo+-Setup-1.3.11.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11) | [v1.3.11](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11) |
 | 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.3c**（安装器 1.2.3.0c，内核 0.6.67） | [WebVideoCraft-Setup-1.2.3.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c) | [craft-v1.2.3.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c) |
 
-请按上表的产品和引擎发行页下载，不把 GitHub 全局 Latest 当作所有产品的下载入口；Craft 使用独立 stable 通道。安装器的实际字节数、SHA-256、兼容范围和最终验收以对应发布页为准。可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对下载文件。
+请按上表的产品和引擎发行页下载，不把 GitHub 全局 Latest 当作所有产品的下载入口；Craft 使用独立 stable 通道。安装器字节数与 SHA-256（digest）见 GitHub 发行资产，兼容范围与完整说明入口见对应发布页。可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对下载文件。
 
-当前已公开稳定版：[Terre 1.1.16](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.16)、[Terre 1.3.9](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.9)、[Craft 1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c)；新候选公开前仍可从这些发行页下载。
+此前的 Terre 1.1.16、Terre 1.3.9 和 Craft 1.2.1c 保留为历史版本。
 
 已 EOL 的 Terre 4.6.5、Craft RC1 / beta.2 的下载与兼容范围收纳于[历史版本说明](docs/LEGACY-VERSIONS.md)。
 
-已公开发布版请检出对应标签；未发布候选的精确来源见各线验收记录，不要用 `main` 或其他维护线代替。
+复现发布版请检出对应标签，不要用 `main` 或其他维护线代替。
 
 ## 安装与开始使用
 
 ### Terre / MyGO / LoveLive
 
-已发布维护版修复前置场景恢复等待，并调整成功/失败时的诊断和工作缓存清理。本次候选另处理已请求 Live2D 表情的异步加载与模型销毁时序，并在导出任务副本中跳过游戏自动快速存档；正常游戏自动存档和手动存档保持原有行为。已有纯文本 SRT 对白导出、共享路径显示、工具菜单及安装页功能继续保留。字幕可选择是否包含说话人；媒体工具默认使用随包版本，已有手动配置继续保留。MyGO 3.2.1 的 JSONL / WMDL 模型读取保持兼容。
+已发布维护版修复前置场景恢复等待，并调整成功/失败时的诊断和工作缓存清理。本版另处理已请求 Live2D 表情的异步加载与模型销毁时序，并在导出任务副本中跳过游戏自动快速存档；正常游戏自动存档和手动存档保持原有行为。已有纯文本 SRT 对白导出、共享路径显示、工具菜单及安装页功能继续保留。字幕可选择是否包含说话人；媒体工具默认使用随包版本，已有手动配置继续保留。MyGO 3.2.1 的 JSONL / WMDL 模型读取保持兼容。
 
 1. 保存工程并关闭 Terre，确认已有安装使用 WebGAL 4.6.4 / MyGO 3.2.1，还是 WebGAL 4.6.6。
 2. 按上表下载对应的 `WebVideo+-Setup-*.exe`，运行并选择 Terre 安装目录。
