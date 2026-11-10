@@ -491,3 +491,37 @@ test('automatic-exit selector excludes existing image differences and model diff
   const rows=F.selectionRows(s,'exits');assert.deepEqual(Array.from(rows,r=>r.eligible),[true,false,true,true,false,false]);
   assert.match(rows[1].reason,/不是入场/);assert.match(rows[4].reason,/跳过/);
 });
+
+test('ID completion refuses multiple present identities unless position uniquely selects one', () => {
+  const figures = 'changeFigure:alice.png -id=first -left;\nchangeFigure:alice2.png -id=second -right;\n';
+  const ambiguous = F.idCompletion(snap(figures + 'Alice:hi;'), {}, chars);
+  assert.equal(rows(ambiguous.after).at(-1).args.figureId, undefined);
+  assert.ok(ambiguous.warnings.some(w => w.includes('多套在场')));
+  const chosen = F.idCompletion(snap(figures + 'Alice:hi -left;'), {}, chars);
+  assert.equal(rows(chosen.after).at(-1).args.figureId, 'first');
+});
+test('ID completion preserves explicit dialogue identity and does not collapse repeated default actors', () => {
+  const source = 'changeFigure:alice.png -left;\nchangeFigure:alice2.png -right;\nAlice:hi -figureId=manual -id;';
+  const result = F.idCompletion(snap(source), {}, chars), after = rows(result.after);
+  assert.equal(after[0].args.id, 'alice');
+  assert.equal(after[1].args.id, undefined);
+  assert.equal(after[2].args.figureId, 'manual');
+  assert.ok(result.warnings.some(w => w.includes('单独 ID')));
+});
+test('shared dialogue aliases remain ambiguous even when presence is ignored', () => {
+  const mapping = {nameToId:{alice:'alice',bob:'bob',shared:'alice'},rows:[{id:'alice',names:'alice;shared'},{id:'bob',names:'bob;shared'}]};
+  for (const ignorePresence of [false,true]) {
+    const source = 'changeFigure:alice.png -id=a -left;\nchangeFigure:bob.png -id=b -right;\nShared:hi;';
+    const result = F.idCompletion(snap(source), {ignorePresence}, mapping);
+    assert.equal(result.after, source);
+    assert.ok(result.warnings.some(w => /多个角色|多套在场/.test(w)));
+  }
+});
+
+test('forward effects keep the default slot when a second actor cannot receive the shared ID', () => {
+  const source = 'changeFigure:alice.png -left;\nsetTransform:{"alpha":0.5} -target=fig-right -next;\nchangeFigure:alice.png -right;';
+  const result = F.idCompletion(snap(source), {}, chars), after = rows(result.after);
+  assert.equal(after[0].args.id, 'alice');
+  assert.equal(after[1].args.target, 'fig-right');
+  assert.equal(after[2].args.id, undefined);
+});

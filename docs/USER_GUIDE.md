@@ -1,5 +1,9 @@
 # WebVideo+ 使用指南
 
+本地未发布开发候选：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。未推送或发布，未验收新安装器。
+
+以下发布说明及验收记录仅为此前基线。
+
 本发行线为 WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c，内核 0.6.66）。本版安装包、校验值与最终验收见[对应发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c)，发布页公开前无法下载安装包。请先阅读 [Craft 说明](../craft/README.md)与[发行说明](../craft/RELEASE-1.2.2c.md)；下文保留基础 Terre 历史资料，不代表 Craft 的界面或安装步骤。
 
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。

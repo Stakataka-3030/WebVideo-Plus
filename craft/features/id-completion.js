@@ -29,6 +29,15 @@
       ),
       knownIds = new Map([...table.values()].map((id) => [fold(id), id]));
     if (!table.size) throw Error("角色映射表为空。");
+    const dialogueIds = new Map();
+    for (const row of mapping.rows || []) {
+      for (const alias of String(row.names || '').split(';')) {
+        const name = fold(alias);
+        if (!name) continue;
+        if (!dialogueIds.has(name)) dialogueIds.set(name, new Set());
+        dialogueIds.get(name).add(str(row.id));
+      }
+    }
     const inside = () => true;
     const aliases = [...table].map(([name, id]) => ({
         name: name.replace(/[\s\u3000]+/g, " "),
@@ -140,7 +149,8 @@
       }
       return inside(item.row) &&
         item.actor &&
-        (!item.hasExisting || options.overwrite)
+        (!item.hasExisting || options.overwrite) &&
+        !(!item.hasExisting && stage.has(item.actor) && stage.get(item.actor).pos !== item.pos)
         ? item.actor
         : item.existing || "fig-" + item.pos;
     };
@@ -227,6 +237,8 @@
               custom = true;
               write(row, [{ id: output }]);
             }
+          } else if (actor && stage.has(actor) && stage.get(actor).pos !== pos && !existing) {
+            warn(row, "同一角色已使用默认 ID 登场，请为这套立绘指定单独 ID。");
           } else if (actor) {
             output = actor;
             custom = true;
@@ -272,8 +284,14 @@
           warn(row, "说话人名字没有匹配到角色，保持原样。");
           continue;
         }
+        const directIds = dialogueIds.get(fold(item.speaker));
+        if (options.ignorePresence && directIds?.size > 1) {
+          warn(row, "说话人名字对应多个角色，请指定对话关联的立绘。");
+          continue;
+        }
+        const speakerIds = new Set([...(directIds || [item.sayActor])].map(fold));
         const matches = [...stage.values()].filter(
-            (v) => fold(v.actor) === fold(item.sayActor),
+            (v) => speakerIds.has(fold(v.actor)),
           ),
           hasPosition = positions.some((p) => a[p] === true),
           preferred = hasPosition
@@ -286,6 +304,10 @@
         if (!options.ignorePresence) {
           if (!candidates.length) {
             warn(row, "角色不在场，对话保持原样。");
+            continue;
+          }
+          if (candidates.length > 1) {
+            warn(row, "有多套在场立绘匹配该角色，请指定对话关联的立绘。");
             continue;
           }
           const present = candidates[0];

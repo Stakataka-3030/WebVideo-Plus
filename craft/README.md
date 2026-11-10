@@ -1,5 +1,10 @@
 # WebVideo+ Craft 正式版适配
 
+本地未发布开发候选：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。未推送或发布，未验收新安装器。
+
+以下 1.2.2c 的发布页与宿主验收均为历史基线，不代表当前候选已完成正式验收。
+
+
 此目录是基于 `craft/mvp`（bee5888）继续开发的完整 Craft 编辑器适配。当前保留官方 Craft 自动检查更新，功能入口通过当前启动会话的 WebView2/CDP 注入。未改官方更新源、公钥和签名校验。
 
 [本版 1.2.2.0c 安装包与验收](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c) · [正式版适配与验证](ADAPTATION-1.0.0.md) · [历史版本](../docs/LEGACY-VERSIONS.md)

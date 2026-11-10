@@ -52,3 +52,10 @@ for(const version of versions){
   const source='changeFigure:old.png -id=hero -left -eyesOpen=old-eye.png;\nchangeFigureDiff:new.png -id=hero -mouthOpen=new-mouth.png;\nAlice:hello -id -figureId=hero;',m=t.model(source),scan=t.ctx.E(m,{parse:t.ctx.nativeParse,write:t.ctx.WebVideoProject.writer}),item=scan.rows[0];assert.equal(item.template.content,'new.png');assert.equal(item.template.args.mouthOpen,'new-mouth.png');assert.equal(item.template.args.eyesOpen,undefined);assert.ok(!item.template.source.includes('old-eye'));const plan=t.ctx.EP(m,scan,new Set([item.row.id]),{write:t.ctx.WebVideoProject.writer,parse:t.ctx.nativeParse});assert.ok(plan.after.includes('changeFigure:new.png'));
  }finally{t.close();}});
 }
+
+for(const version of versions)test(version+' ID lookahead preserves duplicate actor default slot',()=>{const t=terre(version);try{
+ const source='changeFigure:alice.png -left;\nsetTransform:{"alpha":0.5} -target=fig-right -next;\nchangeFigure:alice.png -right;';
+ const plan=t.ctx.WebVideoIdConversion.plan(t.model(source),{}, {nameToId:{alice:'alice'}},{parse:t.ctx.WebVideoProject.parse,write:t.ctx.WebVideoProject.writer});
+ const rows=t.parse(plan.after),args=row=>Object.fromEntries(row.args.map(arg=>[arg.key,arg.value]));
+ assert.equal(args(rows[0]).id,'alice');assert.equal(args(rows[1]).target,'fig-right');assert.equal(args(rows[2]).id,undefined);
+}finally{t.close();}});
