@@ -1,13 +1,13 @@
 # WebVideo+
 
-发布候选：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。尚未发布，已完成精确本地候选的真实宿主验收；最终提交 CI 与正式包身份另记。范围、哈希和未验边界见 [1.2.3c 候选记录](craft/RELEASE-1.2.3c.md)。
+当前版本：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。已于 2026-11-10 发布：[craft-v1.2.3.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c)。发布前验收记录见 [1.2.3c 说明](craft/RELEASE-1.2.3c.md)。
 
 
 面向 **WebGAL Craft** 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 为实验性功能，需要自行配置 API Key。
 
-[1.2.3c 候选改动与验收](craft/RELEASE-1.2.3c.md) · [正式版适配](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
+[1.2.3c 发行说明与发布前验收](craft/RELEASE-1.2.3c.md) · [正式版适配](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前发行候选：WebVideo+ Craft 1.2.3c（安装器 1.2.3.0c；混合导出内核 0.6.67，产品基线 1.3.10）。** 合并此前未发布的 1.2.2c 改动与本轮通用优化。候选记录不表示资产已上线；精确本机验收与 CI 覆盖分别见[发行说明](craft/RELEASE-1.2.3c.md)。此前 [1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) 单列为历史版本。
+**当前发行版：WebVideo+ Craft 1.2.3c（安装器 1.2.3.0c；混合导出内核 0.6.67，产品基线 1.3.10）。** 合并此前未发布的 1.2.2c 改动与本轮通用优化。精确本机验收与 CI 覆盖分别见[发行说明](craft/RELEASE-1.2.3c.md)。此前 [1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) 单列为历史版本。
 
 支持精确匹配的官方 Windows x64 **Craft 1.0.0 正式版**，工程引擎支持官方 WebGAL **4.6.4 / 4.6.5 / 4.6.6** 和 **MyGO 3.2.1**；自定义同版本包与未来版本需单独适配。Terre 安装请按[项目首页](https://github.com/Stakataka-3030/WebVideo-Plus#下载与版本选择)选择维护通道。
 
@@ -76,7 +76,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于适配目录的 `state/kern
 ## 安装与管理
 
 1. 保存工程并正常关闭官方 Windows x64 Craft 1.0.0。
-2. 在[本版发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c)公开后下载安装器 `WebVideoCraft-Setup-1.2.2.0c.exe`，按发行正文的 SHA-256 校验。
+2. 在[本版发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c)下载安装器 `WebVideoCraft-Setup-1.2.3.0c.exe`，按 GitHub 发行资产的 SHA-256（digest）校验。
 3. 选择 Craft 目录、原程序或快捷方式，执行“安装增强组件”或“更新 / 重新检查”。旧独立入口安装会迁移到原 EXE 入口。
 4. 完成后使用原快捷方式，或点击“启动 Craft”。“修复组件”和“卸载挂载”的范围见 [Craft 安装说明](craft/README.md#安装更新与管理)。
 

@@ -276,7 +276,7 @@ the exact Craft tag and product compatibility marker in the release body, then
 compare GitHub's EXE digest and size before any publication gate. 1.1.13c accepts
 EXE-only releases and still verifies optional legacy descriptors when present.
 Earlier clients require the descriptor and cannot discover a future EXE-only
-release; upgrade them manually using the EXE. This release line uses installer [1.2.2.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c); its public release page is the authority for the downloadable EXE, SHA-256 and final acceptance. Before that page is public, the source version does not imply download availability. Previous [1.2.1.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) remains a historical reference. Clients at 1.1.12c or earlier require a manual installer download for EXE-only releases. The following validation matrix retains its original publication-gate scope.
+release; upgrade them manually using the EXE. This release line uses installer [1.2.3.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c); its public release page provides the downloadable EXE and asset SHA-256 digest. Craft 1.2.3c was published on 2026-11-10. Previous [1.2.1.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) remains a historical reference. Clients at 1.1.12c or earlier require a manual installer download for EXE-only releases. The following validation matrix retains its original pre-release scope; pending wording below describes that historical checklist.
 
 ### Required isolated Windows / release validation matrix
 

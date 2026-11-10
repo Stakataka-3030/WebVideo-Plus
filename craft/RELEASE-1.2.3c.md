@@ -1,6 +1,10 @@
-# Craft 1.2.3c 发布候选
+# Craft 1.2.3c
 
-状态：未发布，等待最终提交 CI 与正式包身份记录。产品 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10 与内部开发标识 0.9.8 不变。本次合并此前未发布的 1.2.2c 改动与本轮通用移植。2026-11-10 已完成下文所列精确本地候选的真实宿主验收；该结果不代表另一份 CI 构建或正式发布包同字节通过。
+状态：已于 2026-11-10 发布：[craft-v1.2.3.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c)。产品 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10 与内部开发标识 0.9.8 不变。本次合并此前未发布的 1.2.2c 改动与本轮通用移植。2026-11-10 已完成下文所列精确本地候选的真实宿主验收；该结果不代表另一份 CI 构建或正式发布包同字节通过。
+
+## 正式包验证
+
+[正式包 QA CI](https://github.com/Stakataka-3030/WebVideo-Plus/actions/runs/42786249680) 通过。同一稳定安装器已在普通权限、短路径下完成真实 Craft 宿主、短片导出与恢复核验；远端编辑器宿主仍为 NOT_RUN。下方候选验收保留为发布前历史记录。
 
 ## 合并此前未发布的 1.2.2c 改动
 
@@ -57,7 +61,7 @@
 
 感谢 [NijiharaTsubasa](https://github.com/NijiharaTsubasa) 的 LoveLive 适配及性能排障贡献，尤其是 planning 阶段自动存档热点的反馈和禁用后加速的验证线索。本轮从 PR #34 相关工作中筛选适用于当前产品的通用音频、后台静音和编辑安全改进，按 Craft 原生事务与 VFS 结构移植；未移植 LoveLive 引擎、GLTF 或便携安装功能。既有上游与第三方署名保持不变。
 
-## 2026-11-10 本机精确候选宿主验收
+## 2026-11-10 发布前本机精确候选宿主验收
 
 本次在普通权限下使用官方 Craft 1.0.0，记录只对应以下本地候选，不对应后续重新构建的 CI 或正式安装器：
 
@@ -73,8 +77,8 @@
 原始证据仅在验收工作树的忽略目录保留，不作为公开下载链接：
 `.build/craft-background-20261110/artifact-identity.json`、`.build/craft-local-20261110/FINAL-LOCAL-RESULTS.json`、`.build/craft-local-20261110/export-result.json`、`.build/craft-reload-20261110/reload-result.json`、`.build/craft-reload-20261110/session-final.log`、`.build/craft-reload-20261110/cleanup-result.json`。本段为这些精确证据的可追溯摘要；不覆盖官方 NSIS 跨版本注册升级、安装器 GUI 或完整长片音视频。
 
-## 当前 CI 与正式发布边界
+## CI 覆盖与保留边界
 
 远端启动官方 Craft/编辑器宿主、CDP 注入及正常关闭 gate 已移除，独立 host-port diagnostic 的自动与手动 workflow 入口也已删除；诊断源码和历史失败记录保留，不继续进行该环境实验。其余构建、完整包校验、逻辑/运行状态、原生 WebView 导出/readiness/capture、scene-tail、像素和音频 gate 保留，失败及 NA 不改写为通过。
 
-标准候选 artifact `webvideo-craft-windows-test-installer` 只在剩余 gate 成功后产生，并附精确身份及 coverage 元数据；其中 `CI_BUILD_NATIVE_VERIFIED` 仅指 CI 构建和原生回归，真实编辑器宿主覆盖明确为 `NOT_RUN_IN_CI`，`releaseAccepted` 为 false。详细契约见 [CI 覆盖与退役宿主检查](tests/CI-HOST-SMOKE.md)。最终提交 CI、正式 EXE 哈希、公开下载与更新通道结果将独立记录，目前不声明已发布。官方 NSIS 跨版本注册升级继续保持未验收。
+标准候选 artifact `webvideo-craft-windows-test-installer` 只在剩余 gate 成功后产生，并附精确身份及 coverage 元数据；其中 `CI_BUILD_NATIVE_VERIFIED` 仅指 CI 构建和原生回归，真实编辑器宿主覆盖明确为 `NOT_RUN_IN_CI`，`releaseAccepted` 为 false。详细契约见 [CI 覆盖与退役宿主检查](tests/CI-HOST-SMOKE.md)。本段为发布前 CI artifact 契约，公开安装器见页首发行链接。官方 NSIS 跨版本注册升级继续保持未验收。
