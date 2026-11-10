@@ -1,8 +1,8 @@
 # 发行说明
 
-- [1.3.11 · 未发布通用修复候选](RELEASE_NOTES_1.3.11.md)
+- [1.3.11 · 未发布候选，含 1.3.10 改动](RELEASE_NOTES_1.3.11.md)
 
-- [1.3.10 · 改动与验证范围](RELEASE_NOTES_1.3.10.md)
+- [1.3.10 · 未发布中间候选，已纳入 1.3.11](RELEASE_NOTES_1.3.10.md)
 - [1.3.9](RELEASE_NOTES_1.3.9.md)
 - [1.3.8](RELEASE_NOTES_1.3.8.md)
 

@@ -1,12 +1,11 @@
 # 构建与发布
 
-本工作树当前仅构建本地候选 **1.3.11 / 1.3.11.0 / 内核 0.6.67**，内部版本 **0.8.17**。以下 1.3.10 发布流程说明保留作基线；本候选尚无远程 CI、正式发行或宿主完整验收。
 
-本发行线版本 **1.3.10**，产品内部开发标识 **0.9.8**，安装器 Win32 版本 **1.3.10.0**，导出内核 **0.6.66**。最终提交 CI、正式安装器与隔离宿主验收记录见[本版发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.10)；发布页公开前不表示已完成发行。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
+本发行线版本 **1.3.11**，产品内部开发标识 **0.8.17**，安装器 Win32 版本 **1.3.11.0**，导出内核 **0.6.67**。状态仍为未发布候选。`b322164aa37731aed532847fcb59501579e050a7` 的 [CI 42771529086](https://github.com/Stakataka-3030/WebVideo-Plus/actions/runs/42771529086) 已成功；本地包、CI 保留载荷及未验范围见[候选验收](verification/common-port-466-20261110.md)。公开发布需另行核验实际发行文件、下载与更新通道。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`scripts/manifest.mjs`、`build-product.ps1`、`scripts/configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
-更新检查读取 GitHub 正式 Release 列表。发布 1.3.10 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"product":"terre","webgal":["4.6.6"]} -->` 一并放进 Release 正文，并保持自动推荐通道隔离（4.6.4 / MyGO 3.2.1 使用 1.1.x 维护线；1.2.1 留在已 EOL 的 4.6.5；1.3.10 仅推荐给 4.6.6）；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
+更新检查读取 GitHub 正式 Release 列表。发布 1.3.11 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"product":"terre","webgal":["4.6.6"]} -->` 一并放进 Release 正文，并保持自动推荐通道隔离（4.6.4 / MyGO 3.2.1 使用 1.1.x 维护线；1.2.1 留在已 EOL 的 4.6.5；1.3.11 仅推荐给 4.6.6）；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
 
 ## 初次准备（不需要旧安装器）
 
@@ -41,7 +40,7 @@ Pop-Location
 
 `-Offline` 只适用于构建输入准备，不等同于 `npm ci` 离线；首次恢复 AI npm 依赖仍需要网络或已有 npm 缓存。缺失或损坏的离线输入会明确报错，不会绕过校验。
 
-输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正常构建的安装器为 `dist/WebVideo+-Setup-1.3.10.exe`，Win32 文件版本 `1.3.10.0`，不依赖 `.exe.config` sidecar。构建完成不等于通过发布验收；`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
+输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正常构建的安装器为 `dist/WebVideo+-Setup-1.3.11.exe`，Win32 文件版本 `1.3.11.0`，不依赖 `.exe.config` sidecar。构建完成不等于通过发布验收；`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
 
 ### 旧 bootstrap 的显式迁移入口
 
@@ -102,7 +101,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 .\build-product.ps1 -Fast -InternalBuild
 ```
 
-`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于产品版本 `1.3.10` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
+`-InternalBuild` 默认读取根目录 `version.json` 的 `productInternalVersion`。内部构建仍把 `productVersion` 作为安装/升级比较版本，因此不会把 `0.5.x` 误判成低于产品版本 `1.3.11` 的降级包。安装器界面、包内 `MANIFEST.json`、`product.json` 和安装后的 `webvideo-plus.json` 会额外记录内部版本。
 
 需要重现某个旧内部标识时，可直接覆盖：
 
@@ -110,7 +109,7 @@ Windows CI 从干净 checkout 直接准备上游输入，并测试离线重复�
 .\build-product.ps1 -Fast -InternalVersion 0.5.7
 ```
 
-指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；`productVersion` 仍保持 `1.3.10`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。是否可公开发布仍须通过下述发布前验收。
+指定 `-InternalVersion` 会自动启用内部构建模式。上面的命令输出 `dist/WebVideo+-Setup-0.5.7-dev.exe` 和 `dist/webvideo-plus-0.5.7-dev.zip`；`productVersion` 仍保持 `1.3.11`。不带 `-InternalBuild` / `-InternalVersion` 的正常构建为正式发布构建：包内 `version.json` 不写入 `productInternalVersion`，`product.json` 使用稳定版状态；内部版本信息仅保留在显式内部构建中。是否可公开发布仍须通过下述发布前验收。
 
 ## 安装恢复与存储目录
 

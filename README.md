@@ -1,6 +1,6 @@
 # WebVideo+
 
-当前本地候选：产品 1.3.11，安装器 1.3.11.0，内部标识 0.8.17，内核 0.6.67。尚未发布。
+当前版本为未发布候选；公开下载与更新通道仍以实际 Release 为准。
 
 面向 **WebGAL Terre 与 WebGAL Craft** 的视觉小说视频制作辅助工具：批量编辑、剧情导航、音乐配置、备份与检查、Anogo 故事导入，以及本机视频导出。Terre 与 Craft 使用各自的安装器，请先按宿主和引擎版本选择下载。
 
@@ -8,27 +8,27 @@
 
 ## 下载与版本选择
 
-本发行线 **1.3.10**（安装器 1.3.10.0，导出内核 0.6.66）包含 Live2D 表情安全、导出副本自动存档优化、五类弹窗的被动配置读取和保守 sceneOnly 裁尾。改动范围见[发行说明](docs/releases/RELEASE_NOTES_1.3.10.md)；本版安装包、校验值与最终验收见[对应发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.10)。发布页公开前无法下载安装包，本页链接不表示资产已经上线。
+本发行线 **1.3.11**（安装器 1.3.11.0，导出内核 0.6.67，内部标识 0.8.17）合并此前未发布 1.3.10 的表情安全、自动存档、弹窗与 sceneOnly 改动，并加入通用 ID、循环音频、首次保存及高级便携安装修复；不含 LoveLive 引擎。改动范围见[发行说明](docs/releases/RELEASE_NOTES_1.3.11.md)，已完成的 CI、实际安装包与验证边界见[候选验收](docs/verification/common-port-466-20261110.md)。下表链接为拟用的发布入口，公开前不表示资产已上线。
 
-本轮发行版本，按宿主和引擎选择；实际下载以对应发布页公开的资产为准：
+本轮未发布候选，按宿主和引擎选择；实际下载以对应发布页公开的资产为准：
 
-| 使用环境 | 推荐版本（导出内核） | Windows 安装器 | 发行说明与校验 |
+| 使用环境 | 候选版本（导出内核） | Windows 安装器 | 发行说明与校验 |
 | --- | --- | --- | --- |
-| Terre / WebGAL **4.6.4**，或 **MyGO 3.2.1** | **1.1.17**（0.6.66，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.17.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) | [v1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) |
-| Terre / WebGAL **4.6.6** | **1.3.10**（0.6.66） | [WebVideo+-Setup-1.3.10.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.10) | [v1.3.10](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.10) |
-| 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.2c**（安装器 1.2.2.0c，内核 0.6.66） | [WebVideoCraft-Setup-1.2.2.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c) | [craft-v1.2.2.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c) |
+| Terre / WebGAL **4.6.4**、**MyGO 3.2.1**，或本线支持的 **LoveLive** | **1.1.17**（0.6.66，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.17.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) | [v1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) |
+| Terre / WebGAL **4.6.6** | **1.3.11**（0.6.67） | [WebVideo+-Setup-1.3.11.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11) | [v1.3.11](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11) |
+| 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.3c**（安装器 1.2.3.0c，内核 0.6.67） | [WebVideoCraft-Setup-1.2.3.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c) | [craft-v1.2.3.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c) |
 
 请按上表的产品和引擎发行页下载，不把 GitHub 全局 Latest 当作所有产品的下载入口；Craft 使用独立 stable 通道。安装器的实际字节数、SHA-256、兼容范围和最终验收以对应发布页为准。可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对下载文件。
 
-此前版本：[Terre 1.1.16](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.16)、[Terre 1.3.9](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.9)、[Craft 1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c)，仅供历史记录与回退参考。
+当前已公开稳定版：[Terre 1.1.16](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.16)、[Terre 1.3.9](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.9)、[Craft 1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c)；新候选公开前仍可从这些发行页下载。
 
 已 EOL 的 Terre 4.6.5、Craft RC1 / beta.2 的下载与兼容范围收纳于[历史版本说明](docs/LEGACY-VERSIONS.md)。
 
-这些发布版的产品源码尚未合入 `main`；复现发布版时请检出对应标签，不要用 `main` 的开发基线代替。
+已公开发布版请检出对应标签；未发布候选的精确来源见各线验收记录，不要用 `main` 或其他维护线代替。
 
 ## 安装与开始使用
 
-### Terre / MyGO
+### Terre / MyGO / LoveLive
 
 已发布维护版修复前置场景恢复等待，并调整成功/失败时的诊断和工作缓存清理。本次候选另处理已请求 Live2D 表情的异步加载与模型销毁时序，并在导出任务副本中跳过游戏自动快速存档；正常游戏自动存档和手动存档保持原有行为。已有纯文本 SRT 对白导出、共享路径显示、工具菜单及安装页功能继续保留。字幕可选择是否包含说话人；媒体工具默认使用随包版本，已有手动配置继续保留。MyGO 3.2.1 的 JSONL / WMDL 模型读取保持兼容。
 
@@ -41,19 +41,20 @@
 
 更新时重新运行对应通道的安装器；编辑器内的更新提示按可确认的引擎版本推荐兼容发行页。
 
+LoveLive 接入仅在 1.1.17 / 4.6.4 维护线，按工程引擎清单识别；不将 LL 引擎、3D 模型或动作移植到 1.3.11 / 4.6.6 或 Craft，也不随安装器分发测试模型。实际双模型短片、输入修补与音频测试边界见 1.1.17 验收记录。Terre 便携安装仅在默认收起的高级设置中选择，默认关闭，已安装模式保持锁定。
+
 Terre 卸载默认清理缓存，删除配置和用户数据需要单独勾选；已导出的 MP4 和 WebGAL 游戏工程本身不会删除。重要工程仍建议保留自己的备份。
 
-FFmpeg 的对应源码与构建材料提供[独立下载](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/third-party-sources-ffmpeg-20260930-7zip-25.00/BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip)，两条 Terre 维护线使用同一份材料；许可与来源说明见[固定版本文档](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.10/docs/FFMPEG-DISTRIBUTION.md)。WebView2 仍优先使用系统运行时，缺失时由微软引导程序安装。
+FFmpeg 的对应源码与构建材料提供[独立下载](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/third-party-sources-ffmpeg-20260930-7zip-25.00/BtbN-FFmpeg-win64-gpl-9.0-20260930-source-materials.zip)，两条 Terre 维护线使用同一份材料；许可与来源说明见[固定版本文档](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.11/docs/FFMPEG-DISTRIBUTION.md)。WebView2 仍优先使用系统运行时，缺失时由微软引导程序安装。
 
 ### Craft
 
 1. 准备官方 Windows x64 **Craft 1.0.0**，保存工程并正常关闭 Craft。
-2. 运行上表中的 `WebVideoCraft-Setup-1.2.2.0c.exe`，选择 Craft 安装目录、原程序或快捷方式，执行“安装增强组件”或“更新 / 重新检查”。
+2. 运行上表中的 `WebVideoCraft-Setup-1.2.3.0c.exe`，选择 Craft 安装目录、原程序或快捷方式，执行“安装增强组件”或“更新 / 重新检查”。
 3. 安装器安全保存并校验原程序，统一覆盖 **原 `webgal-craft.exe` 入口**；完成后继续使用原快捷方式。旧独立增强安装可迁移，已取消单独的增强启动模式。
 4. 需要维护时重新运行安装器，可更新、修复或“卸载挂载”；卸载挂载保留组件、配置、日志和用户数据，不删除工程或视频。
 
 Craft 会核验宿主与工程引擎的精确构建，同版本的自定义包不自动视为兼容。
-
 
 新版本的更新面板分别处理两类更新：
 
@@ -81,19 +82,19 @@ Craft 会核验宿主与工程引擎的精确构建，同版本的自定义包�
 
 舞台的 **“包含背景”与“包含立绘”可以独立勾选**，支持四种组合。有背景输出 MP4，无背景输出带 Alpha 的 MOV / WebM；两者都取消时，其他舞台效果仍保留，其余区域透明。“包含立绘”只控制 `changeFigure` 创建的对象画面，剧本命令、动作、等待与时长继续保留，不改写原工程。
 
-兼容捕获格式按引擎区分：Terre 1.1.17 保留 JPEG；Terre 1.3.10 和 Craft 1.2.2c 提供 JPEG / PNG 选择，默认 JPEG。PNG 避免截图阶段的压缩，最终 H.264 仍为有损编码。4.6.6 的 animation v2 支持仅用于精确匹配的 4.6.6 运行时。
+兼容捕获格式按引擎区分：Terre 1.1.17 保留 JPEG；Terre 1.3.11 和 Craft 1.2.3c 提供 JPEG / PNG 选择，默认 JPEG。PNG 避免截图阶段的压缩，最终 H.264 仍为有损编码。4.6.6 的 animation v2 支持仅用于精确匹配的 4.6.6 运行时。
 
 ### 手动切点
 
 Terre 在 **高级设置 → 分段切点** 启用“按指定语句强制切段”，可从时间线临时选择语句，或在剧本中独立写一行区分大小写的 `;CutHere`。临时选择在所选语句开始前切段；注释标记在其后下一条实际执行语句开始前切段。
 
-手动模式合并两种来源，只在有效的指定位置切段，**不会自动补点**；有效切点为空时单段导出，并行数只限制同时执行的分片数。默认自动模式不使用这些标记。Craft 1.2.2c 的“高级导出设置”也支持语句选择、`;CutHere`，以及帧、秒或时间码切点。仅音轨导出不执行视频分段。手动切点不按自动安全策略移动，复杂动画、Live2D / Pixi 的接缝连续性仍需按工程检查。
+手动模式合并两种来源，只在有效的指定位置切段，**不会自动补点**；有效切点为空时单段导出，并行数只限制同时执行的分片数。默认自动模式不使用这些标记。Craft 1.2.3c 的“高级导出设置”也支持语句选择、`;CutHere`，以及帧、秒或时间码切点。仅音轨导出不执行视频分段。手动切点不按自动安全策略移动，复杂动画、Live2D / Pixi 的接缝连续性仍需按工程检查。
 
 ### 缓存与 Live2D 内存
 
 Terre 的工作缓存默认位于成片目录下的 `.webvideo-cache`；Craft 的快照和工作文件位于适配目录的 `state/sessions/<sessionId>/`，长期内核配置位于 `state/kernel/`。成功任务清理重型工作缓存，失败或取消任务保留必要的重试材料；清理失败会保留记录并提示处理。Craft 安装器的解压缓存与导出缓存分别管理。
 
-1.1.17、1.3.10 和 Craft 1.2.2c 的新配置默认给每个并行渲染进程设置 **128 MiB 的 Live2D Cubism Core 初始内存**；已有显式设置（包括 `0`）保留。`0` 表示使用引擎默认值，手动范围为 16–1024 MiB，仅在加载 Core 时生效。实际内存占用可能更高，贴图显存另计；这项设置与磁盘工作缓存分别管理。
+1.1.17、1.3.11 和 Craft 1.2.3c 的新配置默认给每个并行渲染进程设置 **128 MiB 的 Live2D Cubism Core 初始内存**；已有显式设置（包括 `0`）保留。`0` 表示使用引擎默认值，手动范围为 16–1024 MiB，仅在加载 Core 时生效。实际内存占用可能更高，贴图显存另计；这项设置与磁盘工作缓存分别管理。
 
 ### Terre 共享素材与导出设置
 
@@ -101,20 +102,24 @@ Terre 的工作缓存默认位于成片目录下的 `.webvideo-cache`；Craft �
 
 创建游戏可选空白项目，并共享所选引擎 `game` 文件夹内的素材；勾选空白项目时默认同时共享引擎素材，可手动取消；素材来源跟随创建流程，手动目录仅覆盖素材来源。视频导出收集依赖到快照，游戏打包只在临时副本中复制素材和转换引用，打包结果可独立运行。
 
-导出高级设置按用途整理，“精确文本框循环动画”默认关闭，需要精确呈现循环装饰时可开启。另新增渲染设备选择与诊断，改善模型选项、预览和可展开的错误提示，并可打开日志文件夹。Craft 1.2.2c 的正式版适配见对应发行说明。
+导出高级设置按用途整理，“精确文本框循环动画”默认关闭，需要精确呈现循环装饰时可开启。另新增渲染设备选择与诊断，改善模型选项、预览和可展开的错误提示，并可打开日志文件夹。Craft 1.2.3c 的适配见对应发行说明。
 
 ## 文档与开发
 
-本发行线：[1.3.10 发行说明](docs/releases/RELEASE_NOTES_1.3.10.md)。此前版本：[1.3.9 发行说明](docs/releases/RELEASE_NOTES_1.3.9.md)。
+本发行线：[1.3.11 发行说明](docs/releases/RELEASE_NOTES_1.3.11.md)。此前版本：[1.3.9 发行说明](docs/releases/RELEASE_NOTES_1.3.9.md)。
 
-- Terre 使用指南：[1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.17/docs/USER_GUIDE.md) / [1.3.10](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.10/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.10/docs/USER_GUIDE.md#按语句指定导出切点)
-- Craft：[安装与管理](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.2.0c/craft/README.md)、[功能范围](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.2.0c/craft/FEATURE-COVERAGE.md)、[导出说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.2.0c/craft/EXPORT-PARITY.md)和[本版验收](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.2.0c/craft/ACCEPTANCE-1.2.2c.md)
-- 构建与发布：Terre [1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.17/docs/BUILDING.md) / [1.3.10](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.10/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
+- Terre 使用指南：[1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.17/docs/USER_GUIDE.md) / [1.3.11](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.11/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.11/docs/USER_GUIDE.md#按语句指定导出切点)
+- Craft：[安装与管理](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.3.0c/craft/README.md)、[功能范围](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.3.0c/craft/FEATURE-COVERAGE.md)、[导出说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.3.0c/craft/EXPORT-PARITY.md)和[本版验收](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.3.0c/craft/RELEASE-1.2.3c.md)
+- 构建与发布：Terre [1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.17/docs/BUILDING.md) / [1.3.11](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.11/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
 - 当前分支的 [1.1.4 发行说明](docs/releases/RELEASE_NOTES_1.1.4.md)、[历史发行说明索引](docs/releases/README.md)、[变更记录](CHANGELOG.md)与[仓库结构](docs/REPOSITORY.md)
 
-当前维护分支源码版本为 **1.3.10**（内部标识 **0.9.8**、安装器 Win32 版本 **1.3.10.0**、导出内核 **0.6.66**），以 [`version.json`](version.json) 为准。本版的开发阶段、旧候选与最终发行包证据分别记录；版本标签中的文档保留部分开发、候选和历史测试记录，是否正式发布、当前更新策略及验证边界请以上表的发行页为准。
+当前维护分支源码版本为 **1.3.11**（内部标识 **0.8.17**、安装器 Win32 版本 **1.3.11.0**、导出内核 **0.6.67**），以 [`version.json`](version.json) 为准。本版的开发阶段、旧候选与最终发行包证据分别记录；版本标签中的文档保留部分开发、候选和历史测试记录，是否正式发布、当前更新策略及验证边界请以上表的发行页为准。
 
 从源码构建不需要先下载旧版安装器；第三方输入按官方来源及 SHA-256 锁定，支持缓存和离线重新准备。Terre 的常用构建入口是 `prepare-build.ps1`、`build.ps1`、`build-product.ps1`，Craft 另用 `craft/build-craft-package.ps1`。请先检出对应发布标签，再按该标签的构建说明操作；根 `version.json` 与 Craft 的 `craft/version.json` 分别记录相应版本。
+
+## 贡献者
+
+<a href="https://github.com/NijiharaTsubasa"><img src="https://avatars.githubusercontent.com/u/7794838?v=4" width="64" height="64" alt="NijiharaTsubasa"></a>
 
 ## 许可证与致谢
 
@@ -127,5 +132,3 @@ WebVideo+ 原创源代码、构建脚本和原创数据采用 **[MPL-2.0](LICENS
 感谢 WebGAL / Terre / Craft、FFmpeg、WebView2、DeepSeek Harness、pi-ai、Anogo、webgal-skill 及社区贡献者，特别感谢北风的猫5306 提供的工作流与演出资料。[完整引用与致谢](docs/USER_GUIDE.md#开源项目引用与致谢)保留了来源和用途说明。角色、Live2D、音乐等素材的权利仍归各自权利人。
 
 感谢 [NijiharaTsubasa](https://github.com/NijiharaTsubasa) 提供 planning 阶段自动存档性能热点的反馈及禁用后加速的验证线索。
-
-> 当前工作树为 **1.3.11 / 内核 0.6.67 未发布候选**。本轮通用移植与界面影响见[候选说明](docs/releases/RELEASE_NOTES_1.3.11.md)。下面的公开下载说明仍指上一轮版本，不表示本候选已上线。
