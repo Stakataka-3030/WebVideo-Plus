@@ -13,6 +13,7 @@ $OutputRoot=[IO.Path]::GetFullPath($OutputRoot)
 $PackageRoot=[IO.Path]::GetFullPath($PackageRoot)
 $RuntimeRoot=[IO.Path]::GetFullPath($RuntimeRoot)
 New-Item -ItemType Directory -Path $OutputRoot -Force | Out-Null
+if(Get-ChildItem -LiteralPath $OutputRoot -Filter '*.jsonl' -File){throw 'Choose a fresh observation output directory; never combine traces from separate runs'}
 $original=Join-Path $PackageRoot 'WebGAL.Video.exe'
 $fixtureRoot=Join-Path $repo '.build/figure-diff/native'
 $fixture=if(Test-Path -LiteralPath $fixtureRoot){Get-ChildItem -LiteralPath $fixtureRoot -Directory | Where-Object {$_.Name -match '^[a-f0-9]{32}$' -and (Test-Path -LiteralPath (Join-Path $_.FullName 'project/game/scene/start.txt'))} | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1}
@@ -29,7 +30,7 @@ $steps=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'fixtures/figure-diff/s
 $expected=(@($steps | ForEach-Object source) -join "`n")+"`n"
 if([IO.File]::ReadAllText((Join-Path $project 'game/scene/start.txt')).Replace("`r`n","`n") -cne $expected){throw 'Original native test did not leave the expected synthetic figure scene'}
 $allowed=@($manifest.files | ForEach-Object {'/'+$_.path.Replace('\','/')})+@('/index.html','/game/config.txt','/game/userStyleSheet.css','/game/animation/animationTable.json','/game/template/template.json','/game/scene/start.txt','/game/background/black.png','/game/figure/red.png','/game/figure/green.png')
-$private=Join-Path $repo '.build/navigation-diagnostic'
+$private=Join-Path $repo ('.build/navigation-diagnostic/'+[Guid]::NewGuid().ToString('N'))
 & (Join-Path $PSScriptRoot 'build-navigation-diagnostic.ps1') -PackageRoot $PackageRoot -OutputRoot $private -RecorderChecks | Out-Host
 $exe=& (Join-Path $PSScriptRoot 'build-navigation-diagnostic.ps1') -PackageRoot $PackageRoot -OutputRoot $private
 Copy-Item -LiteralPath (Join-Path $private 'build-manifest.json') -Destination $OutputRoot -Force

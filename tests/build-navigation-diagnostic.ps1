@@ -10,8 +10,11 @@ $OutputRoot=[IO.Path]::GetFullPath($OutputRoot)
 New-Item -ItemType Directory -Path $OutputRoot -Force | Out-Null
 $support=Join-Path $OutputRoot 'package'
 New-Item -ItemType Directory -Path $support -Force | Out-Null
-foreach($name in @('Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll')){Copy-Item -LiteralPath (Join-Path $PackageRoot $name) -Destination $support -Force}
-if(Test-Path -LiteralPath (Join-Path $PackageRoot 'browser')){Copy-Item -LiteralPath (Join-Path $PackageRoot 'browser') -Destination $support -Recurse -Force}
+$supportNames=@('Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll','product.json','process-guard.exe')
+if(Test-Path -LiteralPath (Join-Path $PackageRoot 'MANIFEST.json')){$supportNames+='MANIFEST.json'}
+foreach($name in $supportNames){Copy-Item -LiteralPath (Join-Path $PackageRoot $name) -Destination $support -Force}
+if(-not(Test-Path -LiteralPath (Join-Path $PackageRoot 'browser/clock-source.js'))){throw 'Prepared browser dependencies are missing'}
+Copy-Item -LiteralPath (Join-Path $PackageRoot 'browser') -Destination $support -Recurse -Force
 $releaseExe=Join-Path $PackageRoot 'WebGAL.Video.exe'
 $releaseHash=(Get-FileHash -LiteralPath $releaseExe -Algorithm SHA256).Hash
 $original=Join-Path $repo 'src/BrowserHost.cs'
@@ -47,6 +50,7 @@ $manifest=[ordered]@{
  compiler='{WINDIR}/Microsoft.NET/Framework64/v4.0.30319/csc.exe'
  compilerArguments=@($args | ForEach-Object {& $normalize $_})
  sources=@($sources | ForEach-Object {[ordered]@{path=(& $normalize $_);sha256=(Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant()}})
+ supportFiles=@(Get-ChildItem -LiteralPath $support -Recurse -File | Where-Object {$_.Extension -notin '.exe' -or $_.Name -eq 'process-guard.exe'} | ForEach-Object {[ordered]@{path=(& $normalize $_.FullName);sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}})
 }
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $OutputRoot $(if($RecorderChecks){'recorder-build-manifest.json'}else{'build-manifest.json'})) -Encoding utf8
 if($RecorderChecks){

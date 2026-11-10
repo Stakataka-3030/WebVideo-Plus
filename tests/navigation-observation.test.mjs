@@ -37,7 +37,7 @@ test('original graphics gate stays on the uninstrumented exporter and observatio
 
 test('navigation artifacts exclude work directories, raw stderr, profiles and model files',()=>{
  const workflow=read('.github/workflows/native-smoke.yml');
- const block=workflow.split('- name: Preserve bounded synthetic navigation observation')[1];
+ const block=workflow.split('- name: Preserve bounded synthetic navigation observation')[1]?.split(/\r?\n\s+- name: /)[0];
  assert.ok(block);
  const paths=block.split('path: |')[1].trim().split(/\r?\n/).map(s=>s.trim());
  assert.deepEqual(paths,[
@@ -51,4 +51,8 @@ test('navigation artifacts exclude work directories, raw stderr, profiles and mo
  assert.ok(observer.includes('MaxRecords=128,MaxRequests=256'));
  assert.ok(!observer.includes('Errors.Clear'));
  assert.ok(!observer.includes('Errors.Remove'));
+ const build=read('tests/build-navigation-diagnostic.ps1');
+ assert.ok(build.includes("'product.json','process-guard.exe'"));
+ assert.ok(build.includes('supportFiles='));
+ assert.ok(read('tests/SyntheticNavigationChecks.cs').includes('VersionInfo.Kernel'));
 });

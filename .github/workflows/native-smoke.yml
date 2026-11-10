@@ -168,6 +168,18 @@ jobs:
         shell: pwsh
         run: .\tests\observe-figure-navigation.ps1 -Repeats 10
 
+      - name: Preserve bounded synthetic navigation observation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-navigation-observation-not-release
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            .build/navigation-observation/build-manifest.json
+            .build/navigation-observation/result.json
+            .build/navigation-observation/planning-*.jsonl
+
       - name: Restore locked optional AI dependencies
         shell: pwsh
         working-directory: ai-runtime
@@ -422,15 +434,3 @@ jobs:
             .build/font-render/native/*/*.png
             .build/font-render/native/*/*.json
             .build/font-render/native/*/*.log
-
-      - name: Preserve bounded synthetic navigation observation
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: synthetic-navigation-observation-not-release
-          retention-days: 7
-          if-no-files-found: warn
-          path: |
-            .build/navigation-observation/build-manifest.json
-            .build/navigation-observation/result.json
-            .build/navigation-observation/planning-*.jsonl

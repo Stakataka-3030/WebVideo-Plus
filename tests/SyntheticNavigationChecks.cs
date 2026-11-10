@@ -7,6 +7,8 @@ public static class SyntheticNavigationChecks {
  static void Check(bool value,string message){if(!value)throw new Exception(message);}
  static object Request(string id,string url,string document){return J.O("requestId",id,"request",J.O("url",url),"documentURL",document,"loaderId","loader-1");}
  public static int Main(string[] args){try{
+  Check(!string.IsNullOrWhiteSpace(VersionInfo.Kernel)&&!string.IsNullOrWhiteSpace(VersionInfo.Product),"Isolated runtime version metadata was not readable");
+  foreach(string name in new[]{"process-guard.exe","Microsoft.Web.WebView2.Core.dll","Microsoft.Web.WebView2.WinForms.dll","WebView2Loader.dll","browser/clock-source.js","browser/settings.js","browser/workload.js","browser/timeline.js","browser/finish-timeline.js","browser/render.js","browser/audio.js","browser/media.js","browser/barrier.js"})Check(File.Exists(Path.Combine(Files.Root,name)),"Missing isolated runtime dependency: "+name);
   string file=Path.Combine(args[0],"recorder-checks.jsonl");if(File.Exists(file))File.Delete(file);
   var trace=new SyntheticNavigationRecorder(file,new[]{"/index.html","/game/config.txt"});
   trace.Starting("http://127.0.0.1:10001/index.html","1");
@@ -35,6 +37,6 @@ public static class SyntheticNavigationChecks {
   var bounded=File.ReadAllLines(file);
   Check(bounded.Length==SyntheticNavigationRecorder.MaxRecords+1,"Diagnostic line limit failed");
   Check(J.S(J.Parse(bounded.Last()),"kind")=="limit","Missing truncation marker");
-  Console.WriteLine("PASS synthetic navigation recorder: old/new origins, pending request correlation, privacy allowlist, completed request cleanup and record/memory bounds; no browser or GUI started.");return 0;
+  Console.WriteLine("PASS isolated runtime version/dependency preflight and synthetic navigation recorder: old/new origins, pending request correlation, privacy allowlist, completed request cleanup and record/memory bounds; no browser or GUI started.");return 0;
  }catch(Exception error){Console.Error.WriteLine(error);return 1;}}
 }
