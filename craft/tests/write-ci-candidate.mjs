@@ -28,9 +28,11 @@ export function candidateRecord({identity, versions, installer, sourceCommit, ru
   for (const key of ['installerSha256', 'manifestSha256', 'kernelSha256']) assert.match(identity[key], /^[a-f0-9]{64}$/);
   assert.ok(Buffer.isBuffer(installer) && installer.length > 0);
   assert.equal(sha256(installer), identity.installerSha256, 'Installer changed after payload verification');
-  return {schemaVersion: 1, status: 'HOST_UNACCEPTED', releaseAccepted: false,
-    purpose: 'Isolated CLI acceptance only; not a release-accepted artifact',
-    hostGate: 'NOT_RUN_AT_CAPTURE', independentGates: 'PASS_BEFORE_CAPTURE',
+  return {schemaVersion: 2, status: 'CI_BUILD_NATIVE_VERIFIED', releaseAccepted: false,
+    purpose: 'CI build/native candidate only; no remote editor host acceptance or release approval',
+    coverage: {buildAndNativeRegressions: 'PASS', officialHostStartupInjectionClose: 'NOT_RUN_IN_CI',
+      officialHostEditorPreviewExport: 'NOT_RUN_IN_CI', officialNsisUpgrade: 'NOT_RUN'},
+    independentGates: 'PASS_BEFORE_CAPTURE',
     sourceCommit, ciRunId: runId, productVersion: versions.productVersion,
     installerVersion: versions.installerVersion, kernelVersion: versions.kernelVersion,
     installer: {file: `WebVideoCraft-Setup-${versions.installerVersion}.exe`, bytes: installer.length, sha256: identity.installerSha256},
@@ -47,7 +49,7 @@ export function writeCandidate(env = process.env) {
   // The upload glob must contain exactly the one installer bound by this record.
   assertCandidateInstallerList(fs.readdirSync(path.join(root, 'dist')), path.basename(installer));
   const evidence = path.join(root, '.build/ci-native-tests/scene-tail/package-identity.json');
-  const output = path.join(root, '.build/ci-native-tests/craft-host-unaccepted/candidate.json');
+  const output = path.join(root, '.build/ci-native-tests/craft-candidate/candidate.json');
   for (const file of [installer, evidence, output]) assertNoLinks(file);
   const identity = JSON.parse(fs.readFileSync(evidence, 'utf8').replace(/^\uFEFF/, ''));
   assert.equal(path.resolve(identity.installer).toLowerCase(), installer.toLowerCase());

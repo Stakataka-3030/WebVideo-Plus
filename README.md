@@ -1,13 +1,13 @@
 # WebVideo+
 
-本地未发布开发候选：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。已离线生成本地候选安装器，未发布；实际宿主及安装器图形界面尚未验收。
+发布候选：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。尚未发布，已完成精确本地候选的真实宿主验收；最终提交 CI 与正式包身份另记。范围、哈希和未验边界见 [1.2.3c 候选记录](craft/RELEASE-1.2.3c.md)。
 
 
 面向 **WebGAL Craft** 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 为实验性功能，需要自行配置 API Key。
 
-[本版 1.2.2.0c 安装包与验收](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c) · [正式版适配](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
+[1.2.3c 候选改动与验收](craft/RELEASE-1.2.3c.md) · [正式版适配](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**本发行线：WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c；混合导出内核 0.6.66，产品基线 1.3.10）。** 本版安装包、校验值与最终验收见[对应发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c)；发布页公开前无法下载安装包，本页链接不表示资产已上线。改动与验证范围见[发行说明](craft/RELEASE-1.2.2c.md)和[验证范围](craft/ACCEPTANCE-1.2.2c.md)。此前 [1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) 单列为历史版本。
+**当前发行候选：WebVideo+ Craft 1.2.3c（安装器 1.2.3.0c；混合导出内核 0.6.67，产品基线 1.3.10）。** 合并此前未发布的 1.2.2c 改动与本轮通用优化。候选记录不表示资产已上线；精确本机验收与 CI 覆盖分别见[发行说明](craft/RELEASE-1.2.3c.md)。此前 [1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) 单列为历史版本。
 
 支持精确匹配的官方 Windows x64 **Craft 1.0.0 正式版**，工程引擎支持官方 WebGAL **4.6.4 / 4.6.5 / 4.6.6** 和 **MyGO 3.2.1**；自定义同版本包与未来版本需单独适配。Terre 安装请按[项目首页](https://github.com/Stakataka-3030/WebVideo-Plus#下载与版本选择)选择维护通道。
 
@@ -84,7 +84,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于适配目录的 `state/kern
 
 ### 本版维护修复
 
-本次范围包含 Live2D 表情安全、导出副本自动存档优化、保守 sceneOnly 裁尾和 Craft 监听兼容修复；配置弹窗保持原有被动行为，新增实际入口回归。正常游戏自动存档和手动存档保留。范围、保守回退和证据归属见[1.2.2c 发行说明](craft/RELEASE-1.2.2c.md)，旧候选和源码回归不能代替最终包宿主验收。
+本次范围包含 Live2D 表情安全、导出副本自动存档优化、保守 sceneOnly 裁尾和 Craft 监听兼容修复；配置弹窗保持原有被动行为，新增实际入口回归。正常游戏自动存档和手动存档保留。本轮还加入通用音频循环/样本时钟、后台静音与编辑安全改进。范围、保守回退和证据归属见[1.2.3c 发行说明](craft/RELEASE-1.2.3c.md)，旧候选和源码回归不能代替最终包验收。
 
 此前维护完善了迁移、卸载、备份恢复和失败回滚的目录归属与事务处理；制作标记可保存，音乐配置增加并发校验与恢复副本，批量编辑及 Anogo 文本/条件语句处理也已修正。队列请求、子进程收尾和捕获等待加入有界处理，AI 批次保存本地检查点；对白等待按实际舞台/DOM 输出和文本状态判断。具体范围见对应发行说明。Craft 另完善了快照重试保留、队列终态清理、守护进程超时和安装恢复；[此前维护验收边界](craft/ACCEPTANCE-1.1.15c.md)保留了具体覆盖。
 
@@ -99,6 +99,10 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于适配目录的 `state/kern
 - 安装解压缓存：安装器高级设置选择的目录
 
 当前 Craft 产品、安装器和内核版本以 [`craft/version.json`](craft/version.json) 为准，根 [`version.json`](version.json) 记录共享产品基线。宿主与工程运行时均按精确构建校验；自定义同版本包需单独适配。原 Terre 基线和历史发行说明继续作为来源与维护记录保留。
+
+## 贡献者
+
+<a href="https://github.com/NijiharaTsubasa"><img src="https://avatars.githubusercontent.com/u/7794838?v=4" width="64" height="64" alt="NijiharaTsubasa"></a>
 
 ## 许可证
 

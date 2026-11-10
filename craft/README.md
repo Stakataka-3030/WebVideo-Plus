@@ -1,17 +1,17 @@
 # WebVideo+ Craft 正式版适配
 
-本地未发布开发候选：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。已离线生成本地候选安装器，未发布；实际宿主及安装器图形界面尚未验收。
+发布候选：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。尚未发布，已完成精确本地候选的真实宿主验收；最终提交 CI 与正式包身份另记。范围、哈希和未验边界见 [1.2.3c 候选记录](RELEASE-1.2.3c.md)。
 
-以下 1.2.2c 的发布页与宿主验收均为历史基线，不代表当前候选已完成正式验收。
+下文保留的 1.2.2c 为此前未发布的开发基线，其改动已并入 1.2.3c；旧候选证据不代表当前最终包验收。
 
 
 此目录是基于 `craft/mvp`（bee5888）继续开发的完整 Craft 编辑器适配。当前保留官方 Craft 自动检查更新，功能入口通过当前启动会话的 WebView2/CDP 注入。未改官方更新源、公钥和签名校验。
 
-[本版 1.2.2.0c 安装包与验收](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c) · [正式版适配与验证](ADAPTATION-1.0.0.md) · [历史版本](../docs/LEGACY-VERSIONS.md)
+[1.2.3c 候选改动与验收](RELEASE-1.2.3c.md) · [正式版适配与验证](ADAPTATION-1.0.0.md) · [历史版本](../docs/LEGACY-VERSIONS.md)
 
 ## 当前边界
 
-- 本发行线 `1.2.2c` 适配官方 Windows x64 Craft `1.0.0`，EXE SHA-256 `0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c`。本版资产与最终验收见上方发布页；发布页公开前无法下载，不表示已上线。此前 [1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) 保留为历史记录。
+- 当前候选 `1.2.3c` 适配官方 Windows x64 Craft `1.0.0`，EXE SHA-256 `0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c`。本机精确候选结果见上方记录，正式资产尚未发布。此前 [1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) 保留为历史记录。
 - 精确官方来源与接口核对见 [正式版适配记录](ADAPTATION-1.0.0.md)，不以相同版本字符串代替构建校验。
 - 引擎匹配范围仍为官方 WebGAL 4.6.4 / 4.6.5 / 4.6.6、MyGO 3.2.1（基础 WebGAL 4.6.4）。历史验收记录不自动作为本次构建的结果。
 - 请以普通权限启动 Craft，不要选择“以管理员身份运行”。WebView2 150 及以后会限制提权应用的调试环境参数，可能导致增强界面无法接入。若已提权打开，请关闭自己启动的该窗口，再从原入口正常打开。管理员模式不在当前增强接入支持范围内。
@@ -19,7 +19,7 @@
 - 旧独立入口安装可事务迁移到原入口，保留安装身份、配置、日志及用户数据。旧增强快捷方式重定向到原入口。未知宿主哈希仍拒绝挂载
 - 完整功能状态见 [FEATURE-COVERAGE.md](FEATURE-COVERAGE.md)，云端单元测试与 Windows 实测分开记录
 - Craft 官方更新检查、下载源、公钥和签名校验保留。已实现保留官方密钥/签名验证的干净环境交接：确认后释放包装器和宿主，再由有界助手打开未经修改的官方安装器。运行策略 `officialAutoInstallEnabled` 已开放，三项历史验收记录仍为 false，真实注册安装的跨版本 NSIS 升级仍待验收。官方原生下载完成后直接提供安装确认，随后重新核验官方签名并请求正常关闭 Craft；新宿主不自动重新挂载增强功能。详情见 [官方更新与验收边界](update/README.md)
-- 原生编辑/撤销、重载注入、VFS、实际预览速度、音乐/字幕、提示计时及安装恢复的历史验收见 [FINAL-ACCEPTANCE.md](FINAL-ACCEPTANCE.md)，此前维护版的新增证据见 [1.1.15c](ACCEPTANCE-1.1.15c.md)和[1.2.1c](ACCEPTANCE-1.2.1c.md)；本轮验证见[1.2.2c 验证范围](ACCEPTANCE-1.2.2c.md)。
+- 原生编辑/撤销、重载注入、VFS、实际预览速度、音乐/字幕、提示计时及安装恢复的历史验收见 [FINAL-ACCEPTANCE.md](FINAL-ACCEPTANCE.md)，此前维护版的新增证据见 [1.1.15c](ACCEPTANCE-1.1.15c.md)和[1.2.1c](ACCEPTANCE-1.2.1c.md)；本轮验证见[1.2.3c 候选记录](RELEASE-1.2.3c.md)。
 
 ## 编辑与工程
 
@@ -29,7 +29,7 @@
 
 音乐时长来自实际探测，故事时间来自实际引擎运行。预览速度通过经过所属页面检查的独立 iframe/CDP session 读取。没有准确加载配置证据时，速度修改只影响本次预览，并明确说明；不会猜测 IndexedDB 存档键。
 
-## 本发行线 1.2.2.0c（Craft 1.0.0 正式版适配）
+## 1.2.2c 开发基线（已并入 1.2.3c）
 
 Craft 产品版本为 1.2.2c，安装器为 1.2.2.0c，Win32 文件版本为 1.2.2.0；功能基线为 Terre 1.3.10，内核为 0.6.66。本次汇总 Live2D 表情安全、导出副本自动存档优化、保守 sceneOnly 裁尾和监听兼容修复。配置入口保留原有被动读取，新增回归保护。开发阶段、旧候选与最终包验收分开，详见[发行说明](RELEASE-1.2.2c.md)。
 
@@ -98,3 +98,7 @@ Windows 原生回归：`tests/font-render-preflight.test.ps1` 验证普通项目
 隔离测试限制：WebView2 的独立 profile 只隔离网页数据；官方 Craft 原生日志仍写入同一 Windows 用户的固定应用日志目录，可能追加和轮转。现有测试验证正式宿主 EXE、生产 profile、项目及注册配置未变化，但不能声称所有生产文件均未变化。该发行版没有已确认的会话级日志目录开关；测试过程不删除或改写既有日志。
 
 原创文档、Logo 和品牌标识保留所有权利（ARR）；原创代码继续采用 MPL-2.0。具体边界见[许可范围](../LICENSES.md)。
+
+## 贡献者
+
+<a href="https://github.com/NijiharaTsubasa"><img src="https://avatars.githubusercontent.com/u/7794838?v=4" width="64" height="64" alt="NijiharaTsubasa"></a>

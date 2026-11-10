@@ -42,5 +42,6 @@ test('Craft scene-tail gate verifies exact current installer/package identity be
  assert.ok(step.indexOf('node tests/verify-scene-tail-craft-package.mjs')<step.indexOf('./tests/scene-only-tail-native.ps1'));
  assert.match(step,/verify-scene-tail-craft-package.mjs \$installer \$package \$identity/);
  assert.match(step,/\$payload.status -ne 'PASS'/);assert.match(step,/\$LASTEXITCODE -ne 0/);
- assert.match(workflow,/Verify real Craft host startup and normal-close lifecycle/);
+ assert.ok(workflow.indexOf('node craft/tests/write-ci-candidate.mjs')>workflow.indexOf('./tests/scene-only-tail-native.ps1'));
+ assert.doesNotMatch(workflow,/craft\/tests\/ci-host-smoke.mjs/);
 });

@@ -24,8 +24,8 @@ test('native scene-tail gate consumes this branch complete package and pinned me
   assert.match(nativeStep,/webvideo-craft-ci-tools\/ffmpeg\/ffmpeg-/);
   assert.match(nativeStep,/-essentials_build\/bin/);
   assert.match(lock.ffmpegTest.url,/github.com\/GyanD\/codexffmpeg\//);
-  assert.match(workflow,/Verify real Craft host startup and normal-close lifecycle/);
-  assert.match(workflow,/craft\/tests\/ci-host-smoke.mjs/);
+  assert.doesNotMatch(workflow,/WEBVIDEO_CRAFT_HOST_SMOKE|craft\/tests\/ci-host-smoke.mjs/);
+  assert.match(workflow,/craft\/tests\/write-ci-candidate.mjs/);
  }else{
   assert.match(nativeStep,/ffmpeg-test\/' \+ \$lock.ffmpegTest.archiveRoot \+ '\/bin/);
   assert.match(lock.ffmpegTest.url,/github.com\/BtbN\/FFmpeg-Builds\//);

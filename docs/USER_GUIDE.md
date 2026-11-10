@@ -1,16 +1,16 @@
 # WebVideo+ 使用指南
 
-本地未发布开发候选：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。已离线生成本地候选安装器，未发布；实际宿主及安装器图形界面尚未验收。
+发布候选：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。尚未发布，精确本地候选的真实宿主验收已完成，安装器 GUI 与官方 NSIS 跨版本升级仍未验收；CI 构建/原生回归不代表远端编辑器宿主验收。范围、哈希及正式发布边界见 [1.2.3c 候选记录](../craft/RELEASE-1.2.3c.md)。
 
 以下发布说明及验收记录仅为此前基线。
 
-本发行线为 WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c，内核 0.6.66）。本版安装包、校验值与最终验收见[对应发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c)，发布页公开前无法下载安装包。请先阅读 [Craft 说明](../craft/README.md)与[发行说明](../craft/RELEASE-1.2.2c.md)；下文保留基础 Terre 历史资料，不代表 Craft 的界面或安装步骤。
+此前 1.2.2c 为未发布的开发基线，已并入 1.2.3c。请按 [Craft 说明](../craft/README.md)使用与构建；下述 Terre 历史流程、版本和路径不能替代当前 Craft 说明。
 
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
 
-[下载安装器](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
+[当前候选说明](../craft/RELEASE-1.2.3c.md) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
 
-**以下 Terre 说明保留自 1.1.4（内部开发标识 0.8.8；安装器 Win32 版本 1.1.4.0，导出内核 0.6.48），不代表本分支当前源码版本。** Craft 本版安装包与最终验收以[本版发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c)为准，不使用全仓库 Latest。
+**以下 Terre 说明保留自 1.1.4（内部开发标识 0.8.8；安装器 Win32 版本 1.1.4.0，导出内核 0.6.48），不代表本分支当前源码版本。** Craft 1.2.3c 尚未发布，精确候选验收和正式包待补记录见[候选说明](../craft/RELEASE-1.2.3c.md)，不使用全仓库 Latest。
 
 本历史指南的适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
 

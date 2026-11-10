@@ -1,9 +1,9 @@
 # 构建与发布
 
-本地未发布开发候选：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。已离线生成本地候选安装器，未发布；实际宿主及安装器图形界面尚未验收。
+发布候选：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。尚未发布，精确本地候选的真实宿主验收已完成，安装器 GUI 与官方 NSIS 跨版本升级仍未验收；CI 构建/原生回归不代表远端编辑器宿主验收。范围、哈希及正式发布边界见 [1.2.3c 候选记录](craft/RELEASE-1.2.3c.md)。
 
 
-本发行线为 WebVideo+ Craft 1.2.2c（安装器 1.2.2.0c；内核 0.6.66），共享产品基线为 1.3.10，内部开发标识保留 0.9.8；版本以 `craft/version.json` 与根 `version.json` 为准。最终提交 CI、正式安装器与隔离宿主验收见[本版发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.2.0c)；发布页公开前不表示安装器已经上线。
+当前版本以 `craft/version.json` 与根 `version.json` 为准；1.2.3c 合并此前未发布的 1.2.2c 改动。最终提交 CI 和正式安装器身份独立记录，不以旧候选结果替代。
 
 当前 Craft 构建、打包步骤及验收边界以 [Craft 说明](craft/README.md) 为准。构建输入由 `prepare-build.ps1` 按 `build/dependencies.lock.json` 的固定来源和哈希准备；AI 运行模块使用 `scripts/build-ai.ps1`，独立安装包使用 `craft/build-craft-package.ps1`。
 

@@ -65,8 +65,8 @@ test('diagnostic keeps ownership, original SHA, hosted guard, serial variants an
   assert.match(prepare, /Get-PinnedBuildInput \$lock.host/); assert.match(prepare, /Get-PinnedBuildInput \$lock.extractor/);
   assert.match(prepare, /GetValue\(\$name,\$null/); assert.doesNotMatch(prepare, /Get-ChildItem.*HK|Set-ItemProperty|SetValue|New-LocalUser|icacls|Set-ExecutionPolicy/);
   assert.doesNotMatch(source + prepare, /--no-sandbox|remote-allow-origins|SwitchDesktop|SetThreadDesktop|SetEnvironmentVariable/);
-  const workflow = read('../../.github/workflows/craft-host-port-diagnostic.yml');
-  assert.match(workflow, /diag\/craft-debug-\*/); assert.doesNotMatch(workflow, /build\.ps1|npm ci|build-craft-package/);
+  // Diagnostic source is retained for historical evidence, with no executable workflow entry.
+  assert.equal(fs.existsSync(new URL('../../.github/workflows/craft-host-port-diagnostic.yml', import.meta.url)), false);
 });
 test('token helper is query-only and its actual own-process identity check works without a GUI', {skip: process.platform !== 'win32', timeout: 20000}, async () => {
   const source = read('./CiHostToken.cs');
