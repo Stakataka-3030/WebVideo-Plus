@@ -14,7 +14,7 @@
 | Terre / WebGAL **4.6.6** | **1.3.11**（0.6.67） | [WebVideo+-Setup-1.3.11.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.11/WebVideo%2B-Setup-1.3.11.exe) | [v1.3.11](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11) |
 | 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.3c**（安装器 1.2.3.0c，内核 0.6.67） | [WebVideoCraft-Setup-1.2.3.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.3.0c/WebVideoCraft-Setup-1.2.3.0c.exe) | [craft-v1.2.3.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c) |
 
-版本入口以对应 Release 的公开状态为准；尚未公开时，请从[现有发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases)选择已发布的兼容版本。请按宿主和引擎选择，不要仅依据 GitHub 全局 Latest；Craft 使用独立的 stable 通道。下载后可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对发行正文中的 SHA-256；发布状态、兼容范围与验证记录以对应发行页为准。
+上列三个版本已于 **2026-11-10** 发布。请按宿主和引擎选择，不要仅依据 GitHub 全局 Latest；Craft 使用独立的 stable 通道。下载后可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对 GitHub 发行资产的 SHA-256（digest）；兼容范围与完整说明入口见对应发行页。
 
 **LoveLive（LL）适配仅在 Terre 4.6.4 维护线提供，Terre 4.6.6 与 Craft 不包含 LL 适配。**
 
