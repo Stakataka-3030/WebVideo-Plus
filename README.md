@@ -6,19 +6,21 @@
 
 ## 下载与版本选择
 
-当前维护的正式版本：
+三条维护线的版本入口：
 
 | 使用环境 | 推荐版本（导出内核） | Windows 安装器 | 发行说明与校验 |
 | --- | --- | --- | --- |
-| Terre / WebGAL **4.6.4**，或 **MyGO 3.2.1** | **1.1.16**（0.6.65，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.16.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.1.16/WebVideo%2B-Setup-1.1.16.exe) | [v1.1.16](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.16) |
-| Terre / WebGAL **4.6.6** | **1.3.9**（0.6.65） | [WebVideo+-Setup-1.3.9.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.9/WebVideo%2B-Setup-1.3.9.exe) | [v1.3.9](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.9) |
-| 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.1c**（安装器 1.2.1.0c，内核 0.6.65） | [WebVideoCraft-Setup-1.2.1.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.1.0c/WebVideoCraft-Setup-1.2.1.0c.exe) | [craft-v1.2.1.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) |
+| Terre / WebGAL **4.6.4**、**MyGO 3.2.1** 或 **LoveLive（LL）** | **1.1.17**（0.6.66，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.17.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.1.17/WebVideo%2B-Setup-1.1.17.exe) | [v1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) |
+| Terre / WebGAL **4.6.6** | **1.3.11**（0.6.67） | [WebVideo+-Setup-1.3.11.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.11/WebVideo%2B-Setup-1.3.11.exe) | [v1.3.11](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11) |
+| 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.3c**（安装器 1.2.3.0c，内核 0.6.67） | [WebVideoCraft-Setup-1.2.3.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.3.0c/WebVideoCraft-Setup-1.2.3.0c.exe) | [craft-v1.2.3.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c) |
 
-GitHub 全局 **Latest 当前指向 1.3.9**，请按上表的宿主和引擎选择；Craft 使用独立的 stable 通道。1.1.16、1.3.9 和 Craft 1.2.1.0c 的 SHA-256 写在各自发行正文中。下载后可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对；发布状态、兼容范围与验证记录以对应发行页为准。
+版本入口以对应 Release 的公开状态为准；尚未公开时，请从[现有发行页](https://github.com/Stakataka-3030/WebVideo-Plus/releases)选择已发布的兼容版本。请按宿主和引擎选择，不要仅依据 GitHub 全局 Latest；Craft 使用独立的 stable 通道。下载后可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对发行正文中的 SHA-256；发布状态、兼容范围与验证记录以对应发行页为准。
+
+**LoveLive（LL）适配仅在 Terre 4.6.4 维护线提供，Terre 4.6.6 与 Craft 不包含 LL 适配。**
 
 已 EOL 的 Terre 4.6.5、Craft RC1 / beta.2 的下载与兼容范围收纳于[历史版本说明](docs/LEGACY-VERSIONS.md)。
 
-这些发布版的产品源码尚未合入 `main`；复现发布版时请检出对应标签，不要用 `main` 的开发基线代替。
+各维护线的产品源码尚未合入 `main`；复现发布版时请检出对应标签，不要用 `main` 的开发基线代替。
 
 ## 安装与开始使用
 
@@ -42,7 +44,7 @@ FFmpeg 的对应源码与构建材料提供[独立下载](https://github.com/Sta
 ### Craft
 
 1. 准备官方 Windows x64 **Craft 1.0.0**，保存工程并正常关闭 Craft。
-2. 运行上表中的 `WebVideoCraft-Setup-1.2.1.0c.exe`，选择 Craft 安装目录、原程序或快捷方式，执行“安装增强组件”或“更新 / 重新检查”。
+2. 运行对应版本的 `WebVideoCraft-Setup-*.exe`，选择 Craft 安装目录、原程序或快捷方式，执行“安装增强组件”或“更新 / 重新检查”。
 3. 安装器安全保存并校验原程序，统一覆盖 **原 `webgal-craft.exe` 入口**；完成后继续使用原快捷方式。旧独立增强安装可迁移，已取消单独的增强启动模式。
 4. 需要维护时重新运行安装器，可更新、修复或“卸载挂载”；卸载挂载保留组件、配置、日志和用户数据，不删除工程或视频。
 
@@ -107,6 +109,10 @@ Terre 的工作缓存默认位于成片目录下的 `.webvideo-cache`；Craft �
 当前 `main` 的开发基线仍是 **1.1.4**（内部标识 **0.8.8**、安装器 Win32 版本 **1.1.4.0**、导出内核 **0.6.48**），以 [`version.json`](version.json) 为准。版本标签中的文档保留部分开发、候选和历史测试记录；是否正式发布、当前更新策略及验证边界请以上表的发行页为准。
 
 从源码构建不需要先下载旧版安装器；第三方输入按官方来源及 SHA-256 锁定，支持缓存和离线重新准备。Terre 的常用构建入口是 `prepare-build.ps1`、`build.ps1`、`build-product.ps1`，Craft 另用 `craft/build-craft-package.ps1`。请先检出对应发布标签，再按该标签的构建说明操作；根 `version.json` 与 Craft 的 `craft/version.json` 分别记录相应版本。
+
+## 贡献者
+
+<a href="https://github.com/NijiharaTsubasa"><img src="https://avatars.githubusercontent.com/u/7794838?v=4" width="64" height="64" alt="NijiharaTsubasa" /></a>
 
 ## 许可证与致谢
 
