@@ -1,5 +1,7 @@
 # WebVideo+ 使用指南
 
+当前本地候选：产品 1.3.11，安装器 1.3.11.0，内部标识 0.8.17，内核 0.6.67。尚未发布。
+
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
 
 [本版安装包与验收](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.10) · [1.3.10 发行说明](releases/RELEASE_NOTES_1.3.10.md) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)

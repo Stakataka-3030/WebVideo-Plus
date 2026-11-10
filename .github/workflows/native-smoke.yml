@@ -197,6 +197,18 @@ jobs:
           # Repeat in the same host to catch locked outputs and stale staging.
           .\build-product.ps1 -Fast
 
+      - name: Verify common backports and portable storage without foreground UI
+        shell: pwsh
+        run: |
+          .\tests\common-port.test.ps1
+          .\tests\portable-paths.test.ps1
+          .\tests\installer-media-move.test.ps1
+          .\tests\portable-install.test.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Portable install production checks failed' }
+          $env:PATH = (Join-Path $PWD 'package/bin') + ';' + $env:PATH
+          node tests/audio-loop-ffmpeg.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Tagged audio loop PCM checks failed' }
+
       - name: Verify semantic worker segmentation and complete package
         shell: pwsh
         run: |

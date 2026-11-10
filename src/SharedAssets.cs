@@ -7,7 +7,20 @@ namespace NativeVideo {
   readonly Dictionary<string,object> completedCopies=new Dictionary<string,object>();
   public SharedAssets(string file,params string[] protectedRoots){registry=Files.Full(file);this.protectedRoots=protectedRoots.Where(p=>!string.IsNullOrWhiteSpace(p)).Select(Files.Full).ToArray();}
   public object Export(){lock(gate)return J.O("schemaVersion",2,"libraries",Current().ToArray(),"http",HttpState);}
-  List<object> Libraries(){var data=J.TryRead(registry);return J.A(J.Get(data,"libraries")).ToList();}
+  internal string PortableRoot {get;set;}
+  List<object> Libraries(){
+   var list=J.A(J.Get(J.TryRead(registry),"libraries")).ToList();
+   if(PortableRoot!=null)foreach(var item in list)J.D(item)["root"]=PortablePaths.Resolve(PortableRoot,J.S(item,"root"));
+   return list;
+  }
+  void SaveLibraries(IEnumerable<object> libraries){
+   var stored=PortableRoot==null?libraries:libraries.Select(item=>{
+    var copy=new Dictionary<string,object>(J.D(item));
+    copy["root"]=PortablePaths.Store(PortableRoot,J.S(item,"root"));
+    return (object)copy;
+   });
+   J.Write(registry,J.O("schemaVersion",1,"libraries",stored.ToArray()));
+  }
   public static SharedAssets FromSnapshot(object data){var store=new SharedAssets(Path.Combine(Path.GetTempPath(),"unused-shared-assets.json"));store.snapshot=J.A(J.Get(data,"libraries")).ToList();store.httpSnapshot=J.Get(data,"http");return store;}
   List<object> snapshot;
   IEnumerable<object> Current(){return snapshot??Libraries();}
@@ -18,9 +31,9 @@ namespace NativeVideo {
   object Library(string id,string kind=null){var value=Current().FirstOrDefault(l=>J.S(l,"id")==id&&(kind==null||J.S(l,"kind")==kind||J.S(l,"kind")=="all"));if(value==null)throw new IOException("共享素材来源未登记，请重新选择文件夹");return value;}
   public object Add(string root,string kind,string name){RegistrationKind(kind);root=Files.Full(root);if(!Directory.Exists(root))throw new IOException("共享素材文件夹不存在");if(protectedRoots.Any(p=>Files.Within(p,root,true)||Files.Within(root,p,true)))throw new IOException("请选择项目与安装目录之外的共享素材文件夹");NoLinks(Path.GetPathRoot(root),root);return AddLibrary(root,kind,name);}
   internal object AddEngineResources(string root,string name){root=Files.Full(root);if(!Directory.Exists(root))throw new IOException("引擎素材文件夹不存在");NoLinks(Path.GetPathRoot(root),root);return AddLibrary(root,"all",name);}
-  object AddLibrary(string root,string kind,string name){lock(gate){var list=Libraries();var existing=list.FirstOrDefault(l=>J.S(l,"kind")==kind&&TerreUserData.SamePath(J.S(l,"root"),root));if(existing!=null)return existing;var item=J.O("id",Guid.NewGuid().ToString("N"),"kind",kind,"name",string.IsNullOrWhiteSpace(name)?Path.GetFileName(root.TrimEnd('\\','/')):name.Trim(),"root",root);list.Add(item);J.Write(registry,J.O("schemaVersion",1,"libraries",list));return item;}}
-  public object Relocate(string id,string root){root=Files.Full(root);if(!Directory.Exists(root))throw new IOException("共享素材文件夹不存在");if(protectedRoots.Any(p=>Files.Within(p,root,true)||Files.Within(root,p,true)))throw new IOException("请选择项目与安装目录之外的共享素材文件夹");NoLinks(Path.GetPathRoot(root),root);lock(gate){var list=Libraries();var item=list.FirstOrDefault(l=>J.S(l,"id")==id);if(item==null)throw new IOException("共享素材来源未登记");J.D(item)["root"]=root;J.Write(registry,J.O("schemaVersion",1,"libraries",list));return item;}}
-  public void Remove(string id){lock(gate)J.Write(registry,J.O("schemaVersion",1,"libraries",Libraries().Where(l=>J.S(l,"id")!=id).ToArray()));}
+  object AddLibrary(string root,string kind,string name){lock(gate){var list=Libraries();var existing=list.FirstOrDefault(l=>J.S(l,"kind")==kind&&TerreUserData.SamePath(J.S(l,"root"),root));if(existing!=null)return existing;var item=J.O("id",Guid.NewGuid().ToString("N"),"kind",kind,"name",string.IsNullOrWhiteSpace(name)?Path.GetFileName(root.TrimEnd('\\','/')):name.Trim(),"root",root);list.Add(item);SaveLibraries(list);return item;}}
+  public object Relocate(string id,string root){root=Files.Full(root);if(!Directory.Exists(root))throw new IOException("共享素材文件夹不存在");if(protectedRoots.Any(p=>Files.Within(p,root,true)||Files.Within(root,p,true)))throw new IOException("请选择项目与安装目录之外的共享素材文件夹");NoLinks(Path.GetPathRoot(root),root);lock(gate){var list=Libraries();var item=list.FirstOrDefault(l=>J.S(l,"id")==id);if(item==null)throw new IOException("共享素材来源未登记");J.D(item)["root"]=root;SaveLibraries(list);return item;}}
+  public void Remove(string id){lock(gate)SaveLibraries(Libraries().Where(l=>J.S(l,"id")!=id));}
   public string KindForId(string id){var item=Current().FirstOrDefault(l=>J.S(l,"id")==id);return item==null?null:J.S(item,"kind");}
   public object Catalog(){return J.O("libraries",Current().Select(l=>J.O("id",J.S(l,"id"),"kind",J.S(l,"kind"),"name",J.S(l,"name"),"root",J.S(l,"root"),"missing",!Directory.Exists(J.S(l,"root")))).ToArray());}
   public string Resolve(string kind,string reference){Kind(kind);reference=Relative(reference);if(!reference.StartsWith(Prefix,StringComparison.Ordinal))return null;var parts=reference.Substring(Prefix.Length).Split(new[]{'/'},2);if(parts.Length!=2)throw new IOException("共享素材路径无效");var library=Library(parts[0],kind);string root=J.S(library,"root");if(!Directory.Exists(root))throw new IOException("共享素材来源不可用："+J.S(library,"name"));string file=Files.Under(root,parts[1]);NoLinks(root,file);if(!File.Exists(file))throw new IOException("找不到共享素材："+parts[1]);return file;}

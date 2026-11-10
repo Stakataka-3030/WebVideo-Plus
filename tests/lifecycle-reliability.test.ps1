@@ -7,6 +7,7 @@ New-Item -ItemType Directory -Path $testRoot -Force|Out-Null
 try {
  $compiler=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
  $exe=Join-Path $testRoot 'reliability-checks.exe'
+ Copy-Item -LiteralPath (Join-Path $repo 'build/templates/WebGAL.Video.exe.config') -Destination ($exe+'.config')
  $sources=@('src/Core.cs','src/ManualCuts.cs','src/Integration.cs','src/Lifecycle.cs','src/AutomaticBackups.cs','manager/ManagerMain.cs','manager/ProductIntegration.cs','manager/TerreHostCompatibility.cs','manager/ModuleCatalog.cs','tests/LifecycleReliabilityChecks.cs')|ForEach-Object{Join-Path $repo $_}
  & $compiler /nologo /target:exe /define:LIFECYCLE_TESTS /main:LifecycleReliabilityChecks ('/out:'+$exe) /r:System.Web.Extensions.dll /r:System.Net.Http.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll $sources
  if($LASTEXITCODE -ne 0){throw 'Lifecycle checks compilation failed'}

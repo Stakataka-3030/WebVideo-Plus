@@ -14,11 +14,24 @@ namespace NativeVideo {
    string main=module.Success?Regex.Split(module.Groups[1].Value,"[?#]")[0].TrimStart('.','/'):"";if(!main.StartsWith("assets/",StringComparison.Ordinal)||!File.Exists(Files.Under(root,main)))throw new IOException("引擎缺少可识别的 assets 脚本入口");
    return J.O("root",root,"name",J.S(meta,"name",Path.GetFileName(root)),"engineId",id,"version",version,"main",main,"descriptorHash",Files.Hash(descriptor));
   }
-  public object Register(string root){var info=J.D(Inspect(root));lock(gate){var rows=J.A(J.Get(J.TryRead(registry),"engines")).ToList();var found=rows.FirstOrDefault(r=>TerreUserData.SamePath(J.S(r,"root"),J.S(info,"root")));info["id"]=found==null?Guid.NewGuid().ToString("N"):J.S(found,"id");rows.RemoveAll(r=>J.S(r,"id")==J.S(info,"id"));rows.Add(info);J.Write(registry,J.O("schemaVersion",1,"engines",rows.ToArray()));return info;}}
-  public object ForProject(string project){var marker=J.TryRead(Path.Combine(project,".webvideo-engine.json"));if(marker==null)return null;string id=J.S(marker,"id");var found=J.A(J.Get(J.TryRead(registry),"engines")).FirstOrDefault(r=>J.S(r,"id")==id);if(found==null)throw new IOException("外部引擎来源未登记，请重新选择引擎文件夹");var info=J.D(Inspect(J.S(found,"root")));info["id"]=id;return info;}
+  List<object> ReadEngines(){
+   var rows=J.A(J.Get(J.TryRead(registry),"engines")).ToList();
+   if(resources.PortableRoot!=null)foreach(var row in rows)J.D(row)["root"]=PortablePaths.Resolve(resources.PortableRoot,J.S(row,"root"));
+   return rows;
+  }
+  void SaveEngines(List<object> rows){
+   if(resources.PortableRoot!=null)rows=rows.Select(row=>{
+    var copy=new Dictionary<string,object>(J.D(row));
+    copy["root"]=PortablePaths.Store(resources.PortableRoot,J.S(row,"root"));
+    return (object)copy;
+   }).ToList();
+   J.Write(registry,J.O("schemaVersion",1,"engines",rows.ToArray()));
+  }
+  public object Register(string root){var info=J.D(Inspect(root));lock(gate){var rows=ReadEngines();var found=rows.FirstOrDefault(r=>TerreUserData.SamePath(J.S(r,"root"),J.S(info,"root")));info["id"]=found==null?Guid.NewGuid().ToString("N"):J.S(found,"id");rows.RemoveAll(r=>J.S(r,"id")==J.S(info,"id"));rows.Add(info);SaveEngines(rows);return info;}}
+  public object ForProject(string project){var marker=J.TryRead(Path.Combine(project,".webvideo-engine.json"));if(marker==null)return null;string id=J.S(marker,"id");var found=ReadEngines().FirstOrDefault(r=>J.S(r,"id")==id);if(found==null)throw new IOException("外部引擎来源未登记，请重新选择引擎文件夹");var info=J.D(Inspect(J.S(found,"root")));info["id"]=id;return info;}
   public string FileFor(string path){
    if(Prefix==null||!path.StartsWith(new Uri(Prefix).AbsolutePath,StringComparison.Ordinal))return null;string relative=Uri.UnescapeDataString(path.Substring(new Uri(Prefix).AbsolutePath.Length));var pieces=relative.Split('/');if(pieces.Length<2||!Regex.IsMatch(pieces[0],"^[a-f0-9]{32}$")||relative.Contains("\\")||relative.Contains(":" )||pieces.Any(p=>p==".."||p=="."))throw new IOException("引擎资源路径无效");
-   var engine=J.A(J.Get(J.TryRead(registry),"engines")).FirstOrDefault(r=>J.S(r,"id")==pieces[0]);if(engine==null)throw new IOException("引擎来源未登记");string name=string.Join("/",pieces.Skip(1));if(!name.StartsWith("assets/",StringComparison.Ordinal)&&!name.StartsWith("icons/",StringComparison.Ordinal)&&!name.StartsWith("lib/",StringComparison.Ordinal)&&name!="manifest.json"&&name!="webgal-engine.json")throw new IOException("该文件不属于引擎运行资源");string root=Files.Full(J.S(engine,"root")),file=Files.Under(root,name);SharedAssets.NoLinks(root,file);return file;
+   var engine=ReadEngines().FirstOrDefault(r=>J.S(r,"id")==pieces[0]);if(engine==null)throw new IOException("引擎来源未登记");string name=string.Join("/",pieces.Skip(1));if(!name.StartsWith("assets/",StringComparison.Ordinal)&&!name.StartsWith("icons/",StringComparison.Ordinal)&&!name.StartsWith("lib/",StringComparison.Ordinal)&&name!="manifest.json"&&name!="webgal-engine.json")throw new IOException("该文件不属于引擎运行资源");string root=Files.Full(J.S(engine,"root")),file=Files.Under(root,name);SharedAssets.NoLinks(root,file);return file;
   }
   public string EntryHtml(object engine){string root=J.S(engine,"root"),baseUrl=Prefix+J.S(engine,"id")+"/",html=File.ReadAllText(Path.Combine(root,"index.html"));
    html=Regex.Replace(html,@"<(?<tag>[A-Za-z][A-Za-z0-9:-]*)\b[^>]*>",tag=>Regex.Replace(tag.Value,"(?<attribute>(?<name>src|href)\\s*=\\s*[\"'])(?<path>[^\"']+)(?<quote>[\"'])",m=>{if(m.Groups["name"].Value.Equals("href",StringComparison.OrdinalIgnoreCase)&&!tag.Groups["tag"].Value.Equals("link",StringComparison.OrdinalIgnoreCase))return m.Value;string value=m.Groups["path"].Value;if(Regex.IsMatch(value,@"^(?:https?:|//|file:)",RegexOptions.IgnoreCase))throw new IOException("引擎入口包含外部资源地址，请使用本机完整引擎");if(value.StartsWith("#")||value.StartsWith("data:"))return m.Value;string name=value.TrimStart('.','/');if(!new[]{"assets/","icons/","lib/","manifest.json","webgal-engine.json"}.Any(name.StartsWith))return m.Value;return m.Groups["attribute"].Value+baseUrl+name+m.Groups["quote"].Value;},RegexOptions.IgnoreCase),RegexOptions.IgnoreCase);

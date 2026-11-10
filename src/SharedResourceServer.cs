@@ -29,15 +29,18 @@ namespace NativeVideo {
   public SharedResourceServer(SharedAssets store,IEnumerable<string> origins,ExternalEngines engines=null){this.store=store;this.engines=engines;this.origins=new HashSet<string>(origins,StringComparer.OrdinalIgnoreCase);Start();}
   public void Start(){lock(startGate){if(server!=null)return;try{server=new HttpServer(Handle,store.ResourcePort);if(store.ResourcePort==0)store.SaveResourcePort(server.Port);Error=null;}catch(SocketException){Error="共享资源端口 "+store.ResourcePort+" 被占用，请关闭占用程序后重试";}catch(Exception e){if(server!=null){server.Dispose();server=null;}Error=e.Message;}}}
   bool Allowed(HttpRequest r){string host;if(!r.Headers.TryGetValue("Host",out host)||!(host=="127.0.0.1:"+store.ResourcePort||host=="localhost:"+store.ResourcePort))return false;string origin;if(r.Headers.TryGetValue("Origin",out origin))return origins.Contains(origin);string referer;if(r.Headers.TryGetValue("Referer",out referer)){Uri uri;return Uri.TryCreate(referer,UriKind.Absolute,out uri)&&origins.Contains(uri.GetLeftPart(UriPartial.Authority));}string site;return !r.Headers.TryGetValue("Sec-Fetch-Site",out site)||site!="cross-site";}
-  Task<HttpResponse> Handle(HttpRequest r){HttpResponse result;try{
+  Task<HttpResponse> Handle(HttpRequest r){
    if(!Allowed(r))return Task.FromResult(HttpResponse.Data(J.O("error","共享资源来源无效"),403));
    if(!new[]{"GET","HEAD","OPTIONS"}.Contains(r.Method))return Task.FromResult(HttpResponse.Data(J.O("error","共享素材为只读"),405));
+   HttpResponse result;try{
    string prefix=new Uri(store.HttpPrefix).AbsolutePath;bool engineResource=engines!=null&&r.Path.StartsWith(new Uri(engines.Prefix).AbsolutePath,StringComparison.Ordinal);if(!engineResource&&!r.Path.StartsWith(prefix,StringComparison.Ordinal))return Task.FromResult(HttpResponse.Data(null,404));
    if(r.Method=="OPTIONS")result=new HttpResponse{Status=204,Bytes=new byte[0]};
    else{string reference=store.ResourceReference("http://127.0.0.1:"+store.ResourcePort+r.Path),file=engineResource?engines.FileFor(r.Path):store.ResourceFile(reference);result=SnapshotServer.FileResponse(r,file);result.Headers["X-Content-Type-Options"]="nosniff";result.Headers["Content-Security-Policy"]="sandbox";var stamp=new FileInfo(file);string etag="\""+Files.HashText(file).Substring(0,16)+"-"+stamp.Length.ToString("x")+"-"+stamp.LastWriteTimeUtc.Ticks.ToString("x")+"\"",incoming;if(result.Status==200&&r.Headers.TryGetValue("If-None-Match",out incoming)&&incoming==etag)result=new HttpResponse{Status=304,Bytes=new byte[0]};result.Headers["ETag"]=etag;result.Headers["Cache-Control"]="private, no-cache";}
+   }catch(Exception e){result=HttpResponse.Data(J.O("error",e.Message),404);}
    string origin;if(r.Headers.TryGetValue("Origin",out origin))result.Headers["Access-Control-Allow-Origin"]=origin;
    result.Headers["Vary"]="Origin";result.Headers["Access-Control-Allow-Methods"]="GET, HEAD, OPTIONS";result.Headers["Access-Control-Allow-Headers"]="Range, If-None-Match";result.Headers["Access-Control-Expose-Headers"]="Content-Length, Content-Range, ETag, Accept-Ranges";
-  }catch(Exception e){result=HttpResponse.Data(J.O("error",e.Message),404);}return Task.FromResult(result);}
+   return Task.FromResult(result);
+  }
   public void Dispose(){lock(startGate){if(server!=null){server.Dispose();server=null;}}}
  }
 }

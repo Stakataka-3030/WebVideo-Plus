@@ -16,7 +16,7 @@
   const rawByLine=new Map((native.parse(model.source).sentenceList||[]).filter(s=>!s.isLineBreakHolder).map(s=>[s.startLine,s]));let speaker='';
   const items=model.statements.map(row=>{const raw=rawByLine.get(row.startLine-1),a=row.args,pos=positions.find(p=>a[p]===true)||'center';if(row.command==='say'){if(own(a,'speaker'))speaker=String(a.speaker??'');if(raw?.commandRaw===''||a.clear===true)speaker='';}const gone=row.command==='changeFigure'&&(!row.content||row.content==='none'||a.clear===true),existing=str(a.id),match=['changeFigure','changeFigureDiff'].includes(row.command)&&!gone?matchPath(row.content):null;return {row,pos,gone,existing,hasExisting:own(a,'id')&&a.id!==false&&a.id!=='',actor:match?.id||knownIds.get(fold(existing))||null,ambiguous:match?.ambiguous,speaker:row.command==='say'?speaker:'',sayActor:row.command==='say'?table.get(fold(speaker)):null};});
   const stage=new Map(),renamed=new Map();let order=0;const liveAt=pos=>[...stage.values()].filter(v=>v.pos===pos).sort((a,b)=>a.order-b.order),lookup=id=>stage.get(renamed.get(id)||id);
-  const expectedId=item=>inside(item.row)&&item.actor&&(!item.hasExisting||options.overwrite)?item.actor:item.existing||'fig-'+item.pos;
+  const expectedId=item=>inside(item.row)&&item.actor&&(!item.hasExisting||options.overwrite)&&!(!item.hasExisting&&stage.has(item.actor)&&stage.get(item.actor).pos!==item.pos)?item.actor:item.existing||'fig-'+item.pos;
   function write(row,variants){if(!inside(row)||!variants.length)return;const eol=model.source.includes('\r\n')?'\r\n':'\n';let text=variants.map((value,i)=>{const {__content,...args}=value;return norm(native.write(row,{...(typeof __content==='string'?{content:__content}:{}),args:{...args,...(i<variants.length-1?{next:true}:{})}})).trimEnd();}).join('\n');if(/\n$/.test(row.source))text+='\n';text=text.replace(/\n/g,eol);if(text!==model.source.slice(row.startOffset,row.endOffset))patches.push({startOffset:row.startOffset,endOffset:row.endOffset,before:row.source,after:text,line:row.startLine});}
   let uncertain=false;for(let index=0;index<items.length;index++){
    const item=items[index],{row,pos,existing}=item,a=row.args;if(root.WebVideoTimelineCore.stateBarrier(row))uncertain=true;if(uncertain){if(row.command!=='comment')warn(row,'条件或交互后的角色状态需确认，保持原样。');continue;}
@@ -41,6 +41,7 @@
     const actor=item.actor||previous?.actor||null;let output=existing||'fig-'+pos,custom=!!existing;
     if(inside(row)&&(!item.hasExisting||options.overwrite)){
      if(item.ambiguous){warn(row,'路径匹配到多个角色，未重新推断角色。');if(previous&&existing){output=previous.id;custom=previous.custom;write(row,[{id:output}]);}}
+     else if(actor&&stage.has(actor)&&stage.get(actor).pos!==pos&&!existing){warn(row,'同一角色已使用默认 ID 登场，请为这套立绘指定单独 ID。');}
      else if(actor){output=actor;custom=true;const replacements=[];if(previous&&existing&&previous.id!==output){replacements.push({__content:'none',id:previous.id,next:true});stats.exitRows++;}replacements.push({id:output});write(row,replacements);stats.figures++;}
      else warn(row,'立绘路径没有匹配到角色，保持原样。');
     }
@@ -52,7 +53,7 @@
     if(!inside(row)||!item.speaker)continue;const hasId=own(a,'figureId')&&a.figureId!==false&&a.figureId!=='';
     if(hasId&&!options.overwrite)continue;if(!item.sayActor){warn(row,'说话人名字没有匹配到角色，保持原样。');continue;}
     const matches=[...stage.values()].filter(v=>fold(v.actor)===fold(item.sayActor)),hasPosition=positions.some(p=>a[p]===true),preferred=hasPosition?matches.filter(v=>v.pos===pos):matches,candidates=(preferred.length?preferred:matches).sort((a,b)=>b.order-a.order);let id=item.sayActor;
-    if(!options.ignorePresence){if(!candidates.length){warn(row,'角色不在场，对话保持原样。');continue;}const present=candidates[0];if(!present.custom){warn(row,'在场立绘路径未能匹配角色 ID，对话保持原样。');continue;}id=present.id;}
+    if(!options.ignorePresence){if(!candidates.length){warn(row,'角色不在场，对话保持原样。');continue;}if(candidates.length>1){warn(row,'有多套在场立绘匹配该角色，请指定对话关联的立绘。');continue;}const present=candidates[0];if(!present.custom){warn(row,'在场立绘路径未能匹配角色 ID，对话保持原样。');continue;}id=present.id;}
     const args={figureId:id,id:true};for(const p of positions)args[p]=false;write(row,[args]);stats.dialogues++;continue;
    }
    if(!inside(row)||!str(a.target))continue;

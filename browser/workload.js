@@ -39,7 +39,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   if(cmd==='end')break;
   let snippet=raw,voiceMs=0;
   const kind={changeBg:'background',changeFigure:'figure',changeFigureDiff:'figure',miniAvatar:'figure',bgm:'bgm',playEffect:'vocal',playVideo:'video'}[cmd],name=kind?clean(kind,s.content):s.content;
-  if(cmd==='bgm'||cmd==='playEffect'){scheduleAudioCommand(audio,{command:cmd,name,file:name&&name!=='none'?local(kind,name):null,atMs:cursor,durationMs:info(kind,name).durationMs,params});continue;}
+  if(cmd==='bgm'||cmd==='playEffect'){scheduleAudioCommand(audio,{command:cmd,name,file:name&&name!=='none'?local(kind,name):null,atMs:cursor,durationMs:info(kind,name).durationMs,loopPoints:info(kind,name).loopPoints,params});continue;}
   if(cmd==='say'&&params.vocal){
    const voiceInfo=info('vocal',params.vocal);voiceMs=Number(voiceInfo.durationMs);
    if(!Number.isFinite(voiceMs)||voiceMs<=0||voiceInfo.hasAudio===false)throw Error('配音资源未取得有效音频时长（第'+(range.start+1)+'行）：'+params.vocal);

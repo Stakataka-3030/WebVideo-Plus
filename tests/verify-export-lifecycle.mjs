@@ -544,9 +544,9 @@ const holder=(line)=>({command:99,commandRaw:'comment',content:'',args:[],startL
   assert.ok(installerBase.includes('Path.Combine(directory,"webgal-"+"native-exporter")'),'legacy package cleanup must recognize the pre-WebVideo+ payload root without configure-time rewriting');
   assert.ok(installerBase.includes('File.Exists(marker)||File.Exists(registry)'),'custom cache roots must have WebVideo+ ownership evidence before historical GC');
   assert.equal((installerBase.match(/engine\.CleanupStalePayloadArtifacts\(\);SetBusy\(false\)/g)||[]).length,2,'base installer install and uninstall finalizers must run historical payload GC');
-  assert.ok(installerEnhancements.includes('void CleanupPayloadCaches()'),'enhanced installer must centralize current and historical payload cleanup');
-  assert.ok(installerEnhancements.includes('new SetupEngine(defaultRoot,Report).CleanupStalePayloadArtifacts()'),'custom install-cache users must also clean the legacy default cache');
-  assert.equal((installerEnhancements.match(/finally\{CleanupPayloadCaches\(\);SetBusy\(false\);\}/g)||[]).length,2,'enhanced install and uninstall finalizers must run payload cleanup');
+  assert.match(installerEnhancements,/void CleanupPayloadCaches\(bool portable\)\{engine\.CleanupPayloadArtifacts\(\);engine\.CleanupStalePayloadArtifacts\(\);if\(portable\)return;string defaultRoot=.*new SetupEngine\(defaultRoot,Report\)\.CleanupStalePayloadArtifacts\(\)/,'ordinary custom caches retain historical default cleanup, while portable cleanup stops after cleaning its local cache');
+  assert.equal((installerEnhancements.match(/finally\{CleanupPayloadCaches\(portable\);SetBusy\(false\);\}/g)||[]).length,2,'enhanced install and uninstall finalizers must run payload cleanup in the operation’s installation mode');
+  assert.match(installerEnhancements,/engine\.CleanupInstallCache\(deleteCache,deleteData\);string defaultInstallCache=.*if\(!portable&&.*new SetupEngine\(defaultInstallCache,Report\)/,'portable uninstall cannot invoke the ordinary default cache cleanup');
 }
 
 {

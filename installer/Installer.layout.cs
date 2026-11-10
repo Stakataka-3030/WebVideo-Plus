@@ -43,6 +43,7 @@ public partial class SetupForm {
   y=PlaceCheck(advancedToggle,pad,y,width,scale)+gap;advanced.Visible=advancedToggle.Checked;
   if(advancedToggle.Checked){
    int scrollY=0,innerWidth=Math.Max(150,width-SystemInformation.VerticalScrollBarWidth-2*gap),ay=gap+scrollY;
+   ay=PlaceCheck(portableInstall,gap,ay,innerWidth,scale)+gap;
    int columns=Math.Max(1,Math.Min(3,innerWidth/Pixels(scale,230))),columnWidth=(innerWidth-(columns-1)*gap)/columns;
    var boxes=ModuleCatalog.Advanced.Select(id=>moduleBoxes[id]).ToArray();
    for(int index=0;index<boxes.Length;index+=columns){int rowBottom=ay;for(int col=0;col<columns&&index+col<boxes.Length;col++)rowBottom=Math.Max(rowBottom,PlaceCheck(boxes[index+col],gap+col*(columnWidth+gap),ay,columnWidth,scale));ay=rowBottom+small;}

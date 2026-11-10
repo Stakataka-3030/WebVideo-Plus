@@ -88,8 +88,17 @@ namespace NativeVideo {
     await Task.Delay((int)Math.Min(25,remaining));
    }
   }
+  static void WriteRuntimeSession(Dictionary<string,object> config,string terre,string session){
+   if(J.B(config,"portable")){
+    string instanceFile=Path.Combine(terre,"public/assets/video-export-instance.json"),instanceId=Files.HashText(terre.ToLowerInvariant()).Substring(0,20);
+    config["instanceId"]=instanceId;
+    if(J.S(J.TryRead(instanceFile),"id")!=instanceId)J.Write(instanceFile,J.O("id",instanceId));
+   }
+   // Both installation modes start the service from this current session file.
+   J.Write(session,config);
+  }
   public static async Task Run(){
-   string configFile=Files.Full(App.Arg("--config")),backend=Files.Full(App.Arg("--backend"));var config=J.D(J.Read(configFile));string terre=Path.GetDirectoryName(backend),state=J.S(config,"stateDir");Directory.CreateDirectory(state);config["terreDir"]=terre;config["backendExe"]=backend;config["sourcePackageRoot"]=Files.Root;Commands.RuntimePath=J.S(config,"runtimePath");int wrapperPid;if(!int.TryParse(App.Arg("--wrapper-pid","0"),out wrapperPid))wrapperPid=0;
+   string configFile=Files.Full(App.Arg("--config")),backend=Files.Full(App.Arg("--backend"));string terre=Path.GetDirectoryName(backend);var config=J.D(PortablePaths.LoadConfig(J.Read(configFile),terre));string state=J.S(config,"stateDir");Directory.CreateDirectory(state);config["terreDir"]=terre;config["backendExe"]=backend;config["sourcePackageRoot"]=Files.Root;if(J.B(config,"portable"))config["instanceId"]=Files.HashText(terre.ToLowerInvariant()).Substring(0,20);Commands.RuntimePath=J.S(config,"runtimePath");int wrapperPid;if(!int.TryParse(App.Arg("--wrapper-pid","0"),out wrapperPid))wrapperPid=0;
    string environmentPort=Environment.GetEnvironmentVariable("WEBGAL_PORT");int portValue;if(int.TryParse(environmentPort,out portValue)){var address=new UriBuilder(J.S(config,"terreUrl")){Port=portValue+1};config["terreUrl"]=address.Uri.ToString();var alt=new UriBuilder(address.Uri){Host=address.Host=="localhost"?"127.0.0.1":"localhost"};config["allowedOrigins"]=new[]{address.Uri.GetLeftPart(UriPartial.Authority),alt.Uri.GetLeftPart(UriPartial.Authority)};}
    string lockFile=Path.Combine(state,"lifecycle.lock"),control=Path.Combine(state,"lifecycle-control.json"),logFile=Path.Combine(state,"lifecycle.log"),session=Path.Combine(state,"runtime-session.json");Action<object> log=o=>{try{Files.Append(logFile,o);}catch{}};
    FileStream lockHandle=null;
@@ -113,7 +122,8 @@ namespace NativeVideo {
    if(lockHandle==null)throw new IOException("无法取得 Terre 生命周期锁，请稍后重试。");
    object backendIdentity=null,wrapperIdentity=wrapperPid>0?ProcessIdentity.Capture(wrapperPid):null;Process backendProcess=null,service=null;int backendPid=0,restarts=0,servicePid=0;bool stopBackend=false;Stopwatch backendMissing=null;
    try{
-    if(File.Exists(control))File.Delete(control);await CleanupStaleServiceFiles(config,state);J.Write(session,config);
+    if(File.Exists(control))File.Delete(control);await CleanupStaleServiceFiles(config,state);
+    WriteRuntimeSession(config,terre,session);
     bool attach=false;try{var identity=await Integration.LocalGet(new Uri(new Uri(J.S(config,"terreUrl")),"/assets/video-export-instance.json").ToString());attach=J.S(identity,"id")==J.S(config,"instanceId");}catch{}
     if(attach){backendPid=await CurrentTerreListenerPid(config);if(backendPid==0)throw new IOException("无法确认这份 Terre 的监听进程");}
     else{int at=Array.IndexOf(App.Args,"--");var args=at<0?new string[0]:App.Args.Skip(at+1).ToArray();backendProcess=Process.Start(new ProcessStartInfo(backend,string.Join(" ",args.Select(Commands.Quote))){WorkingDirectory=terre,UseShellExecute=false,CreateNoWindow=J.B(config,"hideBackendWindow")});backendPid=backendProcess.Id;}

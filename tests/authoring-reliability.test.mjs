@@ -25,6 +25,22 @@ function terre(version){
 }
 const versions=['4.6.4','4.6.5','4.6.6'].filter(v=>fs.existsSync(path.join(root,'baseline/terre-'+v+'.js')));
 for(const version of versions){
+ test(version+' ID completion preserves explicit IDs and does not guess between duplicate onstage figures',()=>{const t=terre(version);try{
+  const mapping={nameToId:{alice:'alice'}},plan=source=>t.ctx.WebVideoIdConversion.plan(t.model(source),{overwrite:false,ignorePresence:false},mapping,{parse:t.ctx.nativeParse,write:t.ctx.WebVideoProject.writer});
+  const explicit='changeFigure:alice.png -id=custom -left;\nAlice:hello -id -figureId=custom;';
+  assert.equal(plan(explicit).after,explicit);
+  const duplicate='changeFigure:alice.png -id=first -left;\nchangeFigure:alice.png -id=second -right;\nAlice:hello;';
+  const ambiguous=plan(duplicate);assert.equal(ambiguous.after,duplicate);assert.ok(ambiguous.warnings.some(x=>x.includes('多套')));
+  const positioned=plan(duplicate.replace('Alice:hello;','Alice:hello -left;'));assert.equal(t.parse(positioned.after).at(-1).args.find(x=>x.key==='figureId')?.value,'first');
+  const plain='changeFigure:alice.png -left;\nchangeFigure:alice.png -right;';const guarded=plan(plain);assert.equal(t.parse(guarded.after)[0].args.find(x=>x.key==='id')?.value,'alice');assert.equal(t.parse(guarded.after)[1].args.find(x=>x.key==='id')?.value,undefined);assert.ok(guarded.warnings.some(x=>x.includes('单独 ID')));
+  const upcoming=plan('changeFigure:alice.png -left;\nsetTransform:{"alpha":0.5} -target=fig-right -next;\nchangeFigure:alice.png -right;');assert.equal(t.parse(upcoming.after)[1].args.find(x=>x.key==='target')?.value,'fig-right');
+  if(version!=='4.6.4'){
+   const diff=plan('changeFigure:alice.png -left;\nchangeFigureDiff:alice-smile.png -left;\nAlice:hello;');
+   assert.equal(t.parse(diff.after)[1].args.find(x=>x.key==='id')?.value,'alice');
+   assert.equal(t.parse(diff.after)[2].args.find(x=>x.key==='figureId')?.value,'alice');
+  }
+ }finally{t.close();}});
+
  test(version+' production writer preserves long rich text, suffixes, quotes and physical spans',()=>{const t=terre(version);try{
   const body='中文（括号）<span style="color:rgb(1, 2, 3)">末字</span>\u200b'.repeat(4),sources=[`Alice:${body} -vocal=line.wav -when=ok; inline`, 'changeFigure:a.png\n  -id=hero\n  -bounds=-500,-500,500,500"\n  -focus={"x":-1,"y":0}\n  -next; comment'];
   for(const source of sources){const row=t.model(source).statements[0],before=t.parse(source)[0],out=t.ctx.WebVideoProject.writer(row,{args:{id:row.command==='say'?true:'hero',next:true}}),after=t.parse(out)[0];assert.equal(after.content,before.content);assert.deepEqual(plain(after.args.filter(a=>!['id','next'].includes(a.key))),plain(before.args.filter(a=>!['id','next'].includes(a.key))));assert.equal(t.parse(out+'\n:AFTER;').at(-1).content,'AFTER');assert.ok(out.endsWith(source.endsWith('inline')?'inline':'comment'));}

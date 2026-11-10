@@ -77,6 +77,68 @@ namespace NativeVideo {
    return null;
   }
  }
+ public static class PortablePaths {
+  static readonly string[] ConfigPaths={"terreDir","stateDir","gamesRoot","outputDir","workDir","installCacheDir","runtimePath","ffmpegSourceDir","sourcePackageRoot","userDataRoot","backendExe"};
+
+  public static string Data(string terre){return Path.Combine(terre,"video-export-data");}
+  public static string State(string terre){return Path.Combine(Data(terre),"instance");}
+  public static string Output(string terre){return Path.Combine(terre,"WebGAL Exports");}
+  public static string Resolve(string terre,string path){
+   return string.IsNullOrWhiteSpace(path)?path:Files.Full(Path.Combine(terre,path));
+  }
+  public static string Store(string terre,string path){
+   if(string.IsNullOrWhiteSpace(path))return path;
+   string root=Files.Full(terre).TrimEnd('\\','/');
+   string full=Resolve(root,path);
+   if(TerreUserData.SamePath(root,full))return ".";
+   return Files.Within(root,full)?full.Substring(root.Length+1):full;
+  }
+  static object MapConfig(object config,string terre,Func<string,string,string> convert){
+   if(!J.B(config,"portable"))return config;
+   var result=new Dictionary<string,object>(J.D(config));
+   foreach(string key in ConfigPaths){var value=J.S(config,key);if(value!="")result[key]=convert(terre,value);}
+   return result;
+  }
+  public static object LoadConfig(object config,string terre){return MapConfig(config,terre,Resolve);}
+  public static object StoreConfig(object config,string terre){return MapConfig(config,terre,Store);}
+
+  static object Rebase(object value,string oldRoot,string terre){
+   var path=value as string;
+   if(path!=null){
+    string normalized=path.Replace('/','\\');
+    return normalized.StartsWith(oldRoot+"\\",StringComparison.OrdinalIgnoreCase)
+     ?Path.Combine(terre,normalized.Substring(oldRoot.Length+1)):value;
+   }
+   var dict=value as Dictionary<string,object>;
+   if(dict!=null)return dict.ToDictionary(item=>item.Key,item=>Rebase(item.Value,oldRoot,terre));
+   var list=value as System.Collections.IList;
+   if(list!=null)return list.Cast<object>().Select(item=>Rebase(item,oldRoot,terre)).ToArray();
+   return value;
+  }
+
+  public static void RebaseJobs(string terre,string state){
+   string jobs=Path.Combine(state,"jobs");
+   if(!Directory.Exists(jobs)||(File.GetAttributes(jobs)&FileAttributes.ReparsePoint)!=0)return;
+   foreach(string dir in Directory.GetDirectories(jobs)){
+    Guid id;
+    if(!Guid.TryParse(Path.GetFileName(dir),out id)||(File.GetAttributes(dir)&FileAttributes.ReparsePoint)!=0)continue;
+    string requestFile=Path.Combine(dir,"request.json"),preparingFile=Path.Combine(dir,"preparing.json");
+    var request=J.TryRead(requestFile);var preparing=J.TryRead(preparingFile);
+    string old=J.S(request??preparing,"recordDir").Replace('/','\\');
+    string suffix="\\"+Store(terre,dir);
+    if(!Path.IsPathRooted(old)||!old.EndsWith(suffix,StringComparison.OrdinalIgnoreCase))continue;
+    string previousRoot=old.Substring(0,old.Length-suffix.Length);
+    if(TerreUserData.SamePath(old,dir))continue;
+    if(request!=null){
+     var rebased=Rebase(request,previousRoot,terre);
+     string statusFile=Path.Combine(dir,"status.json");var status=J.TryRead(statusFile);
+     if(status!=null)J.Write(statusFile,Rebase(status,previousRoot,terre));
+     J.Write(requestFile,rebased);
+    }
+    if(preparing!=null)J.Write(preparingFile,Rebase(preparing,previousRoot,terre));
+   }
+  }
+ }
  public static class WorkCache {
   // WebView2 may release its profile locks shortly after its controller closes.
   // Retry only this owned cache deletion; never terminate external processes.

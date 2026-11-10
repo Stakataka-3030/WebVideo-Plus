@@ -17,6 +17,7 @@ class SettingsChecks {
  $exe=Join-Path $testRoot 'settings-checks.exe'
  & $compiler /nologo /target:exe /main:SettingsChecks ('/out:'+$exe) /r:System.Web.Extensions.dll (Join-Path $repo 'src/Core.cs') (Join-Path $repo 'src/ManualCuts.cs') $source
  if($LASTEXITCODE -ne 0){throw 'Settings checks compilation failed'}
+ Copy-Item -LiteralPath (Join-Path $repo 'build/templates/WebGAL.Video.exe.config') -Destination ($exe+'.config')
  & $exe $testRoot | Tee-Object -FilePath (Join-Path $testRoot 'settings-results.log')
  if($LASTEXITCODE -ne 0){throw 'Recoverable settings checks failed'}
 } finally {

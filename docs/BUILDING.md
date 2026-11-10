@@ -1,5 +1,7 @@
 # 构建与发布
 
+本工作树当前仅构建本地候选 **1.3.11 / 1.3.11.0 / 内核 0.6.67**，内部版本 **0.8.17**。以下 1.3.10 发布流程说明保留作基线；本候选尚无远程 CI、正式发行或宿主完整验收。
+
 本发行线版本 **1.3.10**，产品内部开发标识 **0.9.8**，安装器 Win32 版本 **1.3.10.0**，导出内核 **0.6.66**。最终提交 CI、正式安装器与隔离宿主验收记录见[本版发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.10)；发布页公开前不表示已完成发行。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认直接从上游归档重建，不要求旧 WebVideo+ 安装器。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`scripts/manifest.mjs`、`build-product.ps1`、`scripts/configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。

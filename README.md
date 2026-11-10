@@ -1,5 +1,7 @@
 # WebVideo+
 
+当前本地候选：产品 1.3.11，安装器 1.3.11.0，内部标识 0.8.17，内核 0.6.67。尚未发布。
+
 面向 **WebGAL Terre 与 WebGAL Craft** 的视觉小说视频制作辅助工具：批量编辑、剧情导航、音乐配置、备份与检查、Anogo 故事导入，以及本机视频导出。Terre 与 Craft 使用各自的安装器，请先按宿主和引擎版本选择下载。
 
 [选择安装器](#下载与版本选择) · [安装与开始使用](#安装与开始使用) · [功能与使用文档](#能做什么) · [构建说明](#文档与开发)
@@ -125,3 +127,5 @@ WebVideo+ 原创源代码、构建脚本和原创数据采用 **[MPL-2.0](LICENS
 感谢 WebGAL / Terre / Craft、FFmpeg、WebView2、DeepSeek Harness、pi-ai、Anogo、webgal-skill 及社区贡献者，特别感谢北风的猫5306 提供的工作流与演出资料。[完整引用与致谢](docs/USER_GUIDE.md#开源项目引用与致谢)保留了来源和用途说明。角色、Live2D、音乐等素材的权利仍归各自权利人。
 
 感谢 [NijiharaTsubasa](https://github.com/NijiharaTsubasa) 提供 planning 阶段自动存档性能热点的反馈及禁用后加速的验证线索。
+
+> 当前工作树为 **1.3.11 / 内核 0.6.67 未发布候选**。本轮通用移植与界面影响见[候选说明](docs/releases/RELEASE_NOTES_1.3.11.md)。下面的公开下载说明仍指上一轮版本，不表示本候选已上线。

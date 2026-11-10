@@ -55,7 +55,7 @@ public partial class SetupForm {
   updateReminder=new LinkLabel{Text="提醒设置",AutoSize=false,AccessibleName="更新提醒设置"};
   var reminderMenu=new ContextMenuStrip();
   foreach(var choice in new[]{Tuple.Create("next-release","下个版本前不要提醒我"),Tuple.Create("next-major","下个主要版本前不要提醒我"),Tuple.Create("never","不要提醒我"),Tuple.Create("on","恢复提醒")}){
-   var mode=choice.Item1;reminderMenu.Items.Add(choice.Item2,null,(s,e)=>{try{UpdatePreferences.Save(mode,updateLatest!=""?updateLatest:InstallerBuild.PackageVersion);updateStatus.Text=mode=="on"?"已恢复自动更新提醒；可点“重新检查”立即查询。":"更新提醒设置已保存，Terre 与安装器将共用此设置。";updateUrl="";updateAction.Visible=false;}catch(Exception error){MessageBox.Show(this,error.Message,"提醒设置未保存");}});
+   var mode=choice.Item1;reminderMenu.Items.Add(choice.Item2,null,(s,e)=>{try{UpdatePreferences.Save(mode,updateLatest!=""?updateLatest:InstallerBuild.PackageVersion,UpdatePreferenceFile());updateStatus.Text=mode=="on"?"已恢复自动更新提醒；可点“重新检查”立即查询。":"更新提醒设置已保存，Terre 与安装器将共用此设置。";updateUrl="";updateAction.Visible=false;}catch(Exception error){MessageBox.Show(this,error.Message,"提醒设置未保存");}});
   }
   updateReminder.LinkClicked+=(s,e)=>reminderMenu.Show(updateReminder,0,updateReminder.Height);
   Controls.Add(updateStatus);Controls.Add(updateAction);Controls.Add(updateRetry);Controls.Add(updateReminder);
@@ -83,12 +83,12 @@ public partial class SetupForm {
    finally{if(ticket==updateTicket&&!IsDisposed)updateRetry.Enabled=true;}
    return;
   }
-  var preference=UpdatePreferences.Read();if(!manual&&Convert.ToString(preference["mode"])=="never"){updateStatus.Text="已关闭自动更新检查；可点“重新检查”手动查询。";return;}
+  string preferenceFile=UpdatePreferenceFile();var preference=UpdatePreferences.Read(preferenceFile);if(!manual&&Convert.ToString(preference["mode"])=="never"){updateStatus.Text="已关闭自动更新检查；可点“重新检查”手动查询。";return;}
   if(!File.Exists(Path.Combine(terre.Text,"public/index.html"))){updateStatus.Text="选择有效的 Terre 目录后检查更新。";return;}
   string engine;try{engine=DefaultEngineVersion();}catch{engine="";}
   if(String.IsNullOrWhiteSpace(engine)){updateStatus.Text="无法确认 Terre 默认 WebGAL 引擎版本，检查更新失败；安装与启动不受影响。";return;}
   updateStatus.Text="正在检查 WebVideo+ 更新…";updateRetry.Enabled=false;
-  try{var result=await Task.Run(()=>ReleaseUpdateCheck.Fetch(engine,InstallerBuild.PackageVersion));if(ticket!=updateTicket||IsDisposed)return;updateLatest=result.LatestVersion;if(!manual&&UpdatePreferences.Suppressed(preference,updateLatest)){updateStatus.Text="更新提醒已暂停；可点“重新检查”手动查询。";return;}if(Convert.ToString(preference["mode"])!="on")try{UpdatePreferences.Save("on","");}catch{}updateStatus.Text=result.Message;updateUrl=result.Url;updateAction.Visible=updateUrl!="";}
+  try{var result=await Task.Run(()=>ReleaseUpdateCheck.Fetch(engine,InstallerBuild.PackageVersion));if(ticket!=updateTicket||IsDisposed)return;updateLatest=result.LatestVersion;if(!manual&&UpdatePreferences.Suppressed(preference,updateLatest)){updateStatus.Text="更新提醒已暂停；可点“重新检查”手动查询。";return;}if(Convert.ToString(preference["mode"])!="on")try{UpdatePreferences.Save("on","",preferenceFile);}catch{}updateStatus.Text=result.Message;updateUrl=result.Url;updateAction.Visible=updateUrl!="";}
   catch{if(ticket==updateTicket&&!IsDisposed)updateStatus.Text="检查更新失败。请检查网络或稍后重试；安装与启动不受影响。";}
   finally{if(ticket==updateTicket&&!IsDisposed)updateRetry.Enabled=true;}
  }
