@@ -5,7 +5,9 @@ function terre(version){
  const disk=fs.mkdtempSync(path.join(os.tmpdir(),'wvp-authoring-')),bundle=fs.readFileSync(path.join(root,'baseline/terre-'+version+'.js'),'utf8'),a=bundle.indexOf('var commandType$1;'),b=bundle.indexOf('function TabItem(',a),c=bundle.indexOf('function combineSubmitString('),d=bundle.indexOf('function Say(',c);
  const physical=relative=>{const file=path.resolve(disk,relative);if(!file.startsWith(disk+path.sep))throw Error('Fixture boundary');return file;};
  const put=(relative,text)=>{const file=physical(relative);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,text);},get=relative=>fs.existsSync(physical(relative))?fs.readFileSync(physical(relative),'utf8'):null;
- const ctx={URL,console,TextEncoder,AbortController,crypto:crypto.webcrypto,navigator:{},setTimeout,clearTimeout,WebVideoTools:{register(){}},WebVideoHostProfile:{terreVersion:version,transformFrom:version!=='4.6.4',animationV2:version==='4.6.6'},api:{assetsControllerEditTextFile:async()=>{},assetsControllerReadAssets:async p=>{if(!fs.existsSync(physical(p))){const e=Error('Missing');e.status=404;throw e;}return {data:{dirInfo:fs.readdirSync(physical(p),{withFileTypes:true}).map(entry=>({name:entry.name,isDirectory:entry.isDirectory()}))}};}},fetch:async(url,options)=>{
+ fs.mkdirSync(physical('games/fixture'),{recursive:true});
+ const requests={list:[],writes:[]};
+ const ctx={URL,console,TextEncoder,AbortController,crypto:crypto.webcrypto,navigator:{},setTimeout,clearTimeout,WebVideoTools:{register(){}},WebVideoHostProfile:{terreVersion:version,transformFrom:version!=='4.6.4',animationV2:version==='4.6.6'},api:{assetsControllerEditTextFile:async()=>{},assetsControllerReadAssets:async p=>{requests.list.push(p);if(!fs.existsSync(physical(p))){const e=Error('ENOENT');e.status=500;throw e;}return {data:{dirInfo:fs.readdirSync(physical(p),{withFileTypes:true}).map(entry=>({name:entry.name,isDir:entry.isDirectory()}))}};}},fetch:async(url,options)=>{
   const response=(value,status=200)=>({ok:status>=200&&status<300,status,text:async()=>JSON.stringify(value)});
   if(String(url)==='/assets/video-export-service.json')return response({baseUrl:'http://127.0.0.1:1234',token:'fixture'});
   if(String(url)==='http://127.0.0.1:1234/api/authoring/read'){const body=JSON.parse(options.body),text=get('games/'+body.project+'/'+body.path);return response({exists:text!==null,text});}
@@ -15,13 +17,13 @@ function terre(version){
    assert.equal(body.action,'save');if(body.expectedHash!==hash)return response({error:'音乐配置已被修改'},409);
    const id=crypto.randomUUID(),file='games/'+body.project+'/.webvideo-plus/backups/music-'+id+'.json',createdAt=new Date().toISOString();put(file,JSON.stringify({schemaVersion:1,kind:'music',id,path:relative,createdAt,before:raw??'{"schemaVersion":2,"tracks":[]}'}));put(relative,JSON.stringify(body.music));return response({music:body.music,hash:crypto.createHash('sha256').update(fs.readFileSync(physical(relative))).digest('hex'),id,file,createdAt});
   }
-  if(options?.method==='POST'){const body=JSON.parse(options.body);if(url.endsWith('/createNewFolder'))fs.mkdirSync(physical(body.source+'/'+body.name),{recursive:true});else if(url.endsWith('/createNewFile'))put(body.source+'/'+body.name,'');else if(url.endsWith('/editTextFile'))put(body.path,body.textFile);else throw Error('Unexpected endpoint');return {ok:true,status:200,text:async()=>'{}'};}
+  if(options?.method==='POST'){const body=JSON.parse(options.body);requests.writes.push({url,body});if(url.endsWith('/createNewFolder'))fs.mkdirSync(physical(body.source+'/'+body.name),{recursive:true});else if(url.endsWith('/createNewFile'))put(body.source+'/'+body.name,'');else if(url.endsWith('/editTextFile'))put(body.path,body.textFile);else throw Error('Unexpected endpoint');return {ok:true,status:200,text:async()=>'{}'};}
   const file=decodeURIComponent(String(url).replace(/^\//,'').split('?')[0]),value=get(file);return {ok:value!==null,status:value===null?404:200,text:async()=>value};
  }};ctx.window=ctx;vm.createContext(ctx);vm.runInContext('const bo=(o,k,v)=>(o[k]=v);'+bundle.slice(a,b)+';globalThis.nativeParse=parseScene;globalThis.types=commandType;',ctx);vm.runInContext(bundle.slice(c,d),ctx);
  for(const n of ['navigation-metadata','timeline-core','navigation-model','project-core','project-bridge','auto-exit','filter-helpers','expression-preparation','id-conversion','anogo-import-core','filter-edit'])vm.runInContext(fs.readFileSync(path.join(root,'browser/'+n+'.js'),'utf8'),ctx,{filename:n+'.js'});
  vm.runInContext('globalThis.A=WebVideoAutoExit;globalThis.E=webVideoExpressionPreparation;globalThis.EP=webVideoExpressionPlan;globalThis.Anogo=WebVideoAnogo;globalThis.FE=WebVideoFilterEdit;globalThis.F=WebVideoFilters;',ctx);
  const model=source=>ctx.WebVideoProject.model('games/fixture/game/scene/start.txt',source),parse=source=>ctx.nativeParse(source).sentenceList.filter(s=>!s.isLineBreakHolder&&s.commandRaw!=='comment');
- return {ctx,disk,put,get,model,parse,close:()=>fs.rmSync(disk,{recursive:true,force:true})};
+ return {ctx,disk,put,get,model,parse,requests,close:()=>fs.rmSync(disk,{recursive:true,force:true})};
 }
 const versions=['4.6.4','4.6.5','4.6.6'].filter(v=>fs.existsSync(path.join(root,'baseline/terre-'+v+'.js')));
 for(const version of versions){
@@ -95,3 +97,45 @@ for(const version of versions)test(version+' shared speaker aliases use a unique
  assert.equal(target(plan(first+'\n'+second+'\nShared:hello -id -figureId=second;')),'second');
  assert.equal(JSON.stringify(mapping),before,'user mapping is not modified');
 }finally{t.close();}});
+
+for(const version of versions){
+ test(version+' first metadata save lists the existing root despite missing child returning Nest 500',async()=>{const t=terre(version);try{
+  const P=t.ctx.WebVideoProject;await P.activate('fixture');
+  await assert.rejects(t.ctx.api.assetsControllerReadAssets('games/fixture/.webvideo-plus'),{status:500});t.requests.list.length=0;
+  await P.update(p=>{p.templates.push({id:'first',script:':hello;'});});
+  assert.deepEqual(t.requests.list,['games/fixture']);assert.equal(t.requests.writes.filter(r=>r.url.endsWith('/createNewFolder')).length,1);
+  assert.deepEqual(t.requests.writes[0].body,{source:'games/fixture',name:'.webvideo-plus'});
+  await P.activate(null);await P.activate('fixture');assert.equal(P.state().project.templates[0].id,'first');
+ }finally{t.close();}});
+ test(version+' first metadata save reuses an existing directory and refuses an ordinary file',async()=>{for(const isDir of [true,false]){const t=terre(version);try{
+  if(isDir)fs.mkdirSync(path.join(t.disk,'games/fixture/.webvideo-plus'));else t.put('games/fixture/.webvideo-plus','keep');
+  const P=t.ctx.WebVideoProject;await P.activate('fixture');
+  if(isDir)await P.update(p=>p);else{await assert.rejects(P.update(p=>p),/不是目录/);assert.equal(t.get('games/fixture/.webvideo-plus'),'keep');assert.equal(t.requests.writes.length,0);}
+  assert.equal(t.requests.writes.filter(r=>r.url.endsWith('/createNewFolder')).length,0);
+ }finally{t.close();}}});
+ test(version+' first metadata save fails closed on root read errors and malformed directory responses',async()=>{for(const listing of [null,{}, {dirInfo:null},{dirInfo:[null]},{dirInfo:[{name:'.webvideo-plus',isDirectory:true}]}]){const t=terre(version);try{
+  const P=t.ctx.WebVideoProject;await P.activate('fixture');t.ctx.api.assetsControllerReadAssets=async()=>{if(listing===null)throw Object.assign(Error('Root read failed'),{status:500});return {data:listing};};
+  await assert.rejects(P.update(p=>p),listing===null?/Root read failed/:/响应无效/);assert.equal(t.requests.writes.length,0);assert.equal(t.get('games/fixture/.webvideo-plus/authoring.json'),null);
+ }finally{t.close();}}});
+ test(version+' project switching while the root listing is pending cancels first metadata save',async()=>{const t=terre(version);try{
+  const P=t.ctx.WebVideoProject;await P.activate('fixture');t.ctx.api.assetsControllerReadAssets=async()=>{await P.activate(null);return {data:{dirInfo:[]}};};
+  await assert.rejects(P.update(p=>p),/项目已切换/);assert.equal(t.requests.writes.length,0);
+ }finally{t.close();}});
+}
+
+for(const version of versions){
+ test(version+' empty backup history proves absence from parent listings without missing-path requests',async()=>{const t=terre(version);try{
+  const P=t.ctx.WebVideoProject;await P.activate('fixture');assert.deepEqual(plain(await P.listBackups()),[]);assert.deepEqual(t.requests.list,['games/fixture']);
+  fs.mkdirSync(path.join(t.disk,'games/fixture/.webvideo-plus'));t.requests.list.length=0;assert.deepEqual(plain(await P.listBackups()),[]);assert.deepEqual(t.requests.list,['games/fixture','games/fixture/.webvideo-plus']);assert.equal(t.requests.writes.length,0);
+ }finally{t.close();}});
+ test(version+' backup listings reject failures, malformed replies and file collisions at each level',async()=>{for(const level of ['games/fixture','games/fixture/.webvideo-plus','games/fixture/.webvideo-plus/backups']){for(const invalid of [false,true]){const t=terre(version);try{
+  fs.mkdirSync(path.join(t.disk,'games/fixture/.webvideo-plus/backups'),{recursive:true});const P=t.ctx.WebVideoProject;await P.activate('fixture');const read=t.ctx.api.assetsControllerReadAssets;t.ctx.api.assetsControllerReadAssets=async p=>{if(p!==level)return read(p);if(invalid)return {data:{}};throw Object.assign(Error('Listing failed'),{status:500});};
+  await assert.rejects(P.listBackups(),invalid?/响应无效/:/Listing failed/);assert.equal(t.requests.writes.length,0);
+ }finally{t.close();}}}
+ for(const file of ['games/fixture/.webvideo-plus','games/fixture/.webvideo-plus/backups']){const t=terre(version);try{
+  t.put(file,'keep');const P=t.ctx.WebVideoProject;await P.activate('fixture');await assert.rejects(P.listBackups(),/不是目录/);assert.equal(t.get(file),'keep');assert.equal(t.requests.writes.length,0);
+ }finally{t.close();}}});
+ test(version+' project switching during backup listing is rejected even if the old project has no backups',async()=>{const t=terre(version);try{
+  const P=t.ctx.WebVideoProject;await P.activate('fixture');t.ctx.api.assetsControllerReadAssets=async()=>{await P.activate(null);return {data:{dirInfo:[]}};};await assert.rejects(P.listBackups(),/项目已切换/);
+ }finally{t.close();}});
+}

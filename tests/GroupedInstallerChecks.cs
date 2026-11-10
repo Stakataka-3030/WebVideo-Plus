@@ -3,7 +3,7 @@ public static class GroupedInstallerChecks {
  static Type engineType;static int passed;static readonly List<string> results=new List<string>();static Action<string> progress;
  public static void Report(object row){if(progress!=null)progress(Convert.ToString(row.GetType().GetField("Message").GetValue(row)));}
  static object Call(object engine,string name,params object[] args){try{return engineType.GetMethod(name,BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static).Invoke(engine,args);}catch(TargetInvocationException e){throw e.InnerException;}}
- static object New(string root){var constructor=engineType.GetConstructors().Single();var callback=Delegate.CreateDelegate(constructor.GetParameters()[1].ParameterType,typeof(GroupedInstallerChecks).GetMethod("Report"));return constructor.Invoke(new object[]{root,callback,false});}
+ static object New(string root){Directory.CreateDirectory(root);var constructor=engineType.GetConstructors().Single();var callback=Delegate.CreateDelegate(constructor.GetParameters()[1].ParameterType,typeof(GroupedInstallerChecks).GetMethod("Report"));return constructor.Invoke(new object[]{root,callback,false});}
  static void Check(bool ok,string name){if(!ok)throw new Exception(name);passed++;results.Add(name);Console.WriteLine("PASS "+name);}
  static void Fails(Action action,string name){bool rejected=false;try{action();}catch{rejected=true;}Check(rejected,name);}
  public static int Main(string[] args){try{
