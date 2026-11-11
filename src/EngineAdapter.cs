@@ -11,7 +11,6 @@ namespace NativeVideo {
  public sealed class EngineAdapter {
   public const string MygoHash = "0407b5a6326ebaa1608d16541b79b4ccc54a0432947ae7d3a6a855606a68866e";
   const string MygoExpressionPlugin="assets/index.es-Zih9sQ-u.js";
-  const string MygoExpressionPluginHash="c4c5e37616ba7e3aa30dccae74e6349c4f1a8fce62154478fd205a324c69b3dc";
   const string BundledWebgalBundle = "assets/index-R1tKotR6.js";
   public readonly string Id, Version, Source, Bundle, SourceKind, FallbackReason;
   readonly bool externalWebgal, strictMygoHash;
@@ -72,7 +71,7 @@ namespace NativeVideo {
     // is safe enough for offline export.
     // Validate before selection so unsupported project plugins retain the
     // existing visible fallback to a verified canonical MyGO runtime.
-    if(!SupportedMygoExpressionPlugin(root))throw new IOException("MyGO Live2D 表情插件缺失或字节不匹配");
+    if(!SupportedMygoExpressionPlugin(root))throw new IOException("MyGO Live2D 表情插件缺失或结构不兼容");
     adapter.Patch(File.ReadAllText(main));
     return adapter;
    } catch(Exception e) {
@@ -127,7 +126,9 @@ namespace NativeVideo {
   }
   static bool SupportedMygoExpressionPlugin(string root) {
    string plugin=Path.Combine(root,MygoExpressionPlugin);
-   return File.Exists(plugin)&&Files.Hash(plugin)==MygoExpressionPluginHash;
+   if(!File.Exists(plugin)||new FileInfo(plugin).Length>8L*1024*1024)return false;
+   try { PatchExpressionLifecycle(File.ReadAllText(plugin));return true; }
+   catch(IOException) { return false; }
   }
   public static bool SupportedMygo(string root) {
    try {
@@ -261,13 +262,16 @@ namespace NativeVideo {
      if(File.Exists(file)&&File.ReadAllText(file).Contains(" as ExpressionManager"))yield return file;
     }
    }
-   // Verify the pinned upstream modules before changing the job-local copy.
+   // MyGO uses the same structural contract at discovery and preparation.
+   // The bundled official module remains pinned.
   IEnumerable<string> FindExpressionPlugins(string root,string bundle,string text) {
    if(IsLoveLive)return FindImportedExpressionPlugins(bundle,text);
    string name=IsMygo?"index.es-Zih9sQ-u.js":"index.es-erQsk_Nn.js";
-   string expected=IsMygo?MygoExpressionPluginHash:"46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505";
+   string expected="46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505";
    string file=Path.Combine(root,"assets",name);
-   if(!File.Exists(file)||Files.Hash(file)!=expected)throw new IOException("Live2D 表情插件缺失或字节不匹配："+name);
+   if(IsMygo) {
+    if(!SupportedMygoExpressionPlugin(root))throw new IOException("MyGO Live2D 表情插件缺失或结构不兼容："+name);
+   } else if(!File.Exists(file)||Files.Hash(file)!=expected)throw new IOException("Live2D 表情插件缺失或字节不匹配："+name);
    return new[]{file};
   }
   void PrepareExpressionLifecycle(string root,string bundle,string text) {
@@ -280,6 +284,7 @@ namespace NativeVideo {
    }
    }
    static string PatchExpressionLifecycle(string text) {
+   if(text.Contains("__webvideoSetExpression"))throw new IOException("Live2D 表情插件已包含导出补丁");
    // A factory prefetch can cache an already handled failure. Remember it per
    // manager/index without failing unrelated export work; if setExpression
    // later requests that entry and still receives no expression, surface it
@@ -299,7 +304,7 @@ namespace NativeVideo {
    text=ReplaceOnce(text,".catch(o=>{C.warn(s.tag,`Failed to load expression:",".catch(o=>{if(s.destroyed)return;C.warn(s.tag,`Failed to load expression:");
    text=ReplaceOnce(text,"catch(r){C.warn(s.tag,`Failed to load expression at", "catch(r){if(s.destroyed)return Promise.resolve(void 0);C.warn(s.tag,`Failed to load expression at");
    string manager="Ot";
-   if(!text.Contains(manager+" as ExpressionManager"))throw new IOException("Live2D 表情导出接口不匹配");
+   ReplaceOnce(text,manager+" as ExpressionManager",manager+" as ExpressionManager");
    text+="\n;const __webvideoSetExpression="+manager+".prototype.setExpression;"+manager+".prototype.setExpression=function(index){const start=()=>__webvideoSetExpression.call(this,index);return globalThis.__exportTrackExpression?globalThis.__exportTrackExpression(this,index,start):start()};\n";
     return text;
    }
