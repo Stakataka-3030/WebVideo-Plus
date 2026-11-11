@@ -1,5 +1,6 @@
 # 发行说明
 
+- [1.1.18 · MyGO 自定义参数兼容修复](RELEASE_NOTES_1.1.18.md)
 - [1.1.17 · 2026-11-10 已发布，含 LoveLive 适配](RELEASE_NOTES_1.1.17.md)
 - [1.1.16](RELEASE_NOTES_1.1.16.md)
 - [1.1.15](RELEASE_NOTES_1.1.15.md)
