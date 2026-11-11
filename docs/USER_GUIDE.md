@@ -4,7 +4,7 @@
 
 [本版安装包与验收](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18) · [1.1.18 发行说明](releases/RELEASE_NOTES_1.1.18.md) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
 
-**当前源码版本：1.1.18（内部开发标识 0.8.18；安装器 Win32 版本 1.1.18.0，导出内核 0.6.68）。** 本版安装包及发行资产 SHA-256（digest）见[1.1.18 发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18)。待发布。此前 [1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) 作为历史记录保留。
+**当前源码版本：1.1.18（内部开发标识 0.8.18；安装器 Win32 版本 1.1.18.0，导出内核 0.6.68）。** 本版安装包及发行资产 SHA-256（digest）见[1.1.18 发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18)。此前 [1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) 作为历史记录保留。
 
 当前适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
 
@@ -119,7 +119,7 @@ B:下一段从这条语句开始;
 
 旧数字切点仅保留 **CLI / API / 已排队任务兼容**：例如 `--segment-cut-mode manual --manual-cut-points "300,12.5s,00:20"`。兼容输入可与标记合并，仍使用旧的输出相对帧规则及范围校验。新导出面板不再提供数字编辑框，也不会隐式带入已保存的旧数字切点；有旧值时会明确提示。只用剧本标记的 CLI 可传 `--segment-cut-mode manual`，不需要 `--manual-cut-points`。原有 `--mode manual` 是对白等待模式，与切点模式无关。
 
-本次 Live2D 表情安全与预演自动存档修复的范围见[发行说明](releases/RELEASE_NOTES_1.1.18.md)与[版本记录](../CHANGELOG.md)。最终发行状态和发行包验收记录以对应发布页为准；此前版本见[发行说明索引](releases/README.md)。
+本次 MyGO 引擎识别兼容修复的范围见[发行说明](releases/RELEASE_NOTES_1.1.18.md)与[版本记录](../CHANGELOG.md)。最终发行状态和发行包验收记录以对应发布页为准；此前版本见[发行说明索引](releases/README.md)。
 
 ## 两轮基础舞台
 

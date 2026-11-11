@@ -106,7 +106,7 @@ Terre 的工作缓存默认位于成片目录下的 `.webvideo-cache`；Craft �
 
 ## 文档与开发
 
-本发行线：[1.1.18 发行说明](docs/releases/RELEASE_NOTES_1.1.18.md)。此前版本：[1.1.16 发行说明](docs/releases/RELEASE_NOTES_1.1.16.md)。
+本发行线：[1.1.18 发行说明](docs/releases/RELEASE_NOTES_1.1.18.md)。此前版本：[1.1.17 发行说明](docs/releases/RELEASE_NOTES_1.1.17.md)。
 
 - Terre 使用指南：[1.1.18](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.18/docs/USER_GUIDE.md) / [1.3.11](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.11/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.11/docs/USER_GUIDE.md#按语句指定导出切点)
 - Craft：[安装与管理](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.3.0c/craft/README.md)、[功能范围](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.3.0c/craft/FEATURE-COVERAGE.md)、[导出说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.3.0c/craft/EXPORT-PARITY.md)和[本版验收](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.3.0c/craft/RELEASE-1.2.3c.md)
