@@ -9,7 +9,7 @@ test('limit is applied before shared resolution, scan, snapshot, preflight and n
  assert.ok(limit>source.indexOf('SceneChain.BuildTimeline('));
  for(const marker of ['assets.Scan(','assets.Snapshot()','__exportPreflightVideo(','__createNativeTimeline('])assert.ok(source.indexOf(marker)>limit,marker);
  if(source.includes('assets.Shared.ForHttpSource('))assert.ok(source.indexOf('assets.Shared.ForHttpSource(J.S(chain,"script"))')>limit);
- assert.match(read('src/JobRunner.cs'),/PipelineRevision="[^"]*expression-v1-scene-tail-v1"/);
+ assert.match(read('src/JobRunner.cs'),/PipelineRevision="[^"]*expression-v1-scene-tail-v1-audio-mix-v2"/);
  assert.match(read('src/SceneChain.cs'),/J\.S\(settings,"mode"\)=="bgm"/);
  assert.ok(source.indexOf('SceneChain.AlignPlanningTailDuration(result,chain)')<source.indexOf('__finishNativeTimeline('));
 });

@@ -116,12 +116,13 @@ namespace NativeVideo {
 
   public static async Task<object> ExportAudio(object timing,object bounds,string planning,string dir,string output){
    var mix=J.A(J.Read(Path.Combine(planning,"audio-args.json"))).Select(Convert.ToString).ToList();double fullDuration=J.N(timing,"durationSeconds"),start=J.N(bounds,"startSeconds"),duration=J.N(bounds,"durationSeconds");string full=Path.Combine(dir,"webgal-audio-full.wav");
-   if(mix.Count>0)await Commands.Run("ffmpeg",new[]{"-v","error","-y"}.Concat(mix).Concat(new[]{"-t",J.Num(fullDuration),full}),Path.Combine(dir,"mix.log"),600000);
-   Files.EnsureParent(output);string partial=Path.Combine(Path.GetDirectoryName(output),".webvideo-"+Guid.NewGuid().ToString("N")+".partial.wav");try{
+   string partial=Path.Combine(Path.GetDirectoryName(output),".webvideo-"+Guid.NewGuid().ToString("N")+".partial.wav");try{
+    if(mix.Count>0)await AudioMixer.Run(mix,fullDuration,full,dir);
+    Files.EnsureParent(output);
     if(mix.Count>0)await Commands.Run("ffmpeg",new[]{"-v","error","-y","-ss",J.Num(start),"-i",full,"-t",J.Num(duration),"-map","0:a:0","-c:a","pcm_s16le","-ar","48000",partial},Path.Combine(dir,"audio-export.log"),600000);
     else await Commands.Run("ffmpeg",new[]{"-v","error","-y","-f","lavfi","-i","anullsrc=r=48000:cl=stereo","-t",J.Num(duration),"-c:a","pcm_s16le",partial},Path.Combine(dir,"audio-export.log"),600000);
     var media=await Commands.Probe(partial,false);double actual=J.N(J.Get(media,"format"),"duration");if(Math.Abs(actual-duration)>.12)throw new IOException("WebGAL 音轨导出时长不符");File.Move(partial,output);return media;
-   }finally{if(File.Exists(partial))File.Delete(partial);}
+   }finally{if(File.Exists(partial))File.Delete(partial);if(File.Exists(full))File.Delete(full);}
   }
  }
 }

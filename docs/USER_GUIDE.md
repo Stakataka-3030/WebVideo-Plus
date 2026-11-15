@@ -4,7 +4,7 @@
 
 [本版安装包与验收](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18) · [1.1.18 发行说明](releases/RELEASE_NOTES_1.1.18.md) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
 
-**当前源码版本：1.1.18（内部开发标识 0.8.18；安装器 Win32 版本 1.1.18.0，导出内核 0.6.68）。** 本版安装包及发行资产 SHA-256（digest）见[1.1.18 发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18)。此前 [1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) 作为历史记录保留。
+**当前源码版本：1.1.18（内部开发标识 0.8.18；安装器 Win32 版本 1.1.18.0，导出内核 0.6.70）。** 本版安装包及发行资产 SHA-256（digest）见[1.1.18 发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18)。此前 [1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) 作为历史记录保留。
 
 当前适配基线为 **Terre 4.6.4**；对前端被重新打包但挂载语义未变化的 4.6.4 变体，会使用结构锚点检查而不是要求整份前端 bundle 哈希完全一致。
 

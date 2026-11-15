@@ -8,13 +8,13 @@
 
 ## 下载与版本选择
 
-本发行线 **1.1.18**（安装器 1.1.18.0，导出内核 0.6.68，内部标识 0.8.18）修复 MyGO 表情插件自定义参数导致引擎无法识别的问题，保留兼容的动作淡入淡出等设置。见[发行说明](docs/releases/RELEASE_NOTES_1.1.18.md)。
+本发行线 **1.1.18**（安装器 1.1.18.0，导出内核 0.6.70，内部标识 0.8.18）修复 MyGO 表情插件自定义参数导致引擎无法识别的问题，保留兼容的动作淡入淡出等设置。见[发行说明](docs/releases/RELEASE_NOTES_1.1.18.md)。
 
 按宿主和引擎选择已发布版本：
 
 | 使用环境 | 发布版本（导出内核） | Windows 安装器 | 发行说明与校验 |
 | --- | --- | --- | --- |
-| Terre / WebGAL **4.6.4**、**MyGO 3.2.1**，或本线支持的 **LoveLive** | **1.1.18**（0.6.68，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.18.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18) | [v1.1.18](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18) |
+| Terre / WebGAL **4.6.4**、**MyGO 3.2.1**，或本线支持的 **LoveLive** | **1.1.18**（0.6.70，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.18.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18) | [v1.1.18](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18) |
 | Terre / WebGAL **4.6.6** | **1.3.11**（0.6.67） | [WebVideo+-Setup-1.3.11.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11) | [v1.3.11](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11) |
 | 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.3c**（安装器 1.2.3.0c，内核 0.6.67） | [WebVideoCraft-Setup-1.2.3.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c) | [craft-v1.2.3.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c) |
 

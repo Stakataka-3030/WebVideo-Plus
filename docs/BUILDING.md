@@ -1,6 +1,6 @@
 # 构建与发布
 
-本发行线产品版本 **1.1.18**，产品内部开发标识 **0.8.18**，安装器 Win32 版本 **1.1.18.0**，导出内核 **0.6.68**。使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认从上游归档重建。
+本发行线产品版本 **1.1.18**，产品内部开发标识 **0.8.18**，安装器 Win32 版本 **1.1.18.0**，导出内核 **0.6.70**。使用系统 .NET Framework C# 编译器和 Node 22.20.0。构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256；默认从上游归档重建。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`scripts/manifest.mjs`、`build-product.ps1`、`scripts/configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
