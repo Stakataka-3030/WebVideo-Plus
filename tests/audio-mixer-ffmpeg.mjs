@@ -20,6 +20,8 @@ function source(name,layout,rate,expression) {
 }
 const mono=source('mono.wav','mono',44100,'0.15*sin(2*PI*731*t)'),stereo=source('stereo.wav','stereo',48000,'0.12*sin(2*PI*397*t)|0.08*sin(2*PI*997*t)'),surround=source('surround.wav','5.1',32000,'0.01|0.02|0.03|0.04|0.05|0.06');
 const positive=source('positive.wav','stereo',48000,'0.2|0.1'),negative=source('negative.wav','stereo',48000,'-0.19|-0.095');
+const opus=path.join(media,'loop-opus.ogg'),vorbis=path.join(media,'loop-vorbis.ogg');
+ff(['-i',stereo,'-c:a','libopus',opus]);ff(['-i',stereo,'-ar','44100','-c:a','libvorbis',vorbis]);
 const base=(file=stereo)=>({kind:'effect',path:file,atMs:0,endMs:1000,volume:1,loop:false});
 function samples(file) {return ff(['-i',file,'-map','0:a:0','-c:a','pcm_f64le','-f','f64le','-']);}
 function reference(args,duration,name) {
@@ -63,6 +65,7 @@ check('surround-first-32000',Array.from({length:35},(_,i)=>({...base([surround,s
 check('tagged-and-stream-loops',Array.from({length:40},(_,i)=>({...base(i%2?mono:stereo),kind:i%3?'bgm':'voice',loop:true,loopPoints:i%2?null:{start:.13,end:.43},sourceOffsetMs:700,atMs:i%3*21,endMs:950,volume:.014,fadeMs:60,fadeOutMs:100})),1,[{start:380,end:490}]);
 check('44100-master-with-tagged-loops',Array.from({length:40},(_,i)=>({...base(i%2?stereo:mono),kind:i%2?'bgm':'voice',loop:true,loopPoints:i%2?{start:.13,end:.43}:null,sourceOffsetMs:700,atMs:i%3*21,endMs:950,volume:.014,fadeMs:60,fadeOutMs:100})),1,[{start:380,end:490}]);
 check('late-tag-pins-all-batches',Array.from({length:40},(_,i)=>({...base(i===39?stereo:mono),kind:i===39?'bgm':'voice',loop:true,loopPoints:i===39?{start:.13,end:.43}:null,atMs:i%3*21,endMs:950,volume:.014,fadeMs:60})),1,[{start:380,end:490}]);
+check('opus-vorbis-tagged-loops',Array.from({length:40},(_,i)=>({...base(i%2?opus:vorbis),kind:'bgm',loop:true,loopPoints:{start:.13,end:.43},sourceOffsetMs:700,atMs:i%3*21,endMs:950,volume:.014,fadeMs:60,fadeOutMs:100})),1,[{start:380,end:490}]);
 check('global-limiter-after-cancellation',Array.from({length:64},(_,i)=>({...base(i<32?positive:negative),kind:i===63?'video-music':'effect',volume:1})),1);
 const unclipped=check('float-stages-without-limiter',Array.from({length:64},(_,i)=>({...base(i<32?positive:negative),volume:1})),1);
 assert.ok(samples(unclipped.output).readDoubleLE(100*8)>.3,'submixes exceeding full scale must survive until cancellation');
