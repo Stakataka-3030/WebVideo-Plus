@@ -8,14 +8,14 @@
 
 ## 下载与版本选择
 
-本发行线 **1.3.12**（安装器 1.3.12.0，导出内核 0.6.69，内部标识 0.8.19）修复 MyGO 定制表情插件被过严校验拒绝的问题。现有产品及引擎兼容范围保持不变。
+本发行线 **1.3.12**（安装器 1.3.12.0，导出内核 0.6.70，内部标识 0.8.19）修复 MyGO 定制表情插件被过严校验拒绝的问题。现有产品及引擎兼容范围保持不变。
 
 按宿主和引擎选择已发布版本：
 
 | 使用环境 | 发布版本（导出内核） | Windows 安装器 | 发行说明与校验 |
 | --- | --- | --- | --- |
 | Terre / WebGAL **4.6.4**、**MyGO 3.2.1**，或本线支持的 **LoveLive** | **1.1.17**（0.6.66，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.17.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) | [v1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) |
-| Terre / WebGAL **4.6.6** | **1.3.12**（0.6.69） | [WebVideo+-Setup-1.3.12.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.12) | [v1.3.12](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.12) |
+| Terre / WebGAL **4.6.6** | **1.3.12**（0.6.70） | [WebVideo+-Setup-1.3.12.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.12) | [v1.3.12](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.12) |
 | 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.3c**（安装器 1.2.3.0c，内核 0.6.69） | [WebVideoCraft-Setup-1.2.3.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c) | [craft-v1.2.3.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c) |
 
 请按上表的产品和引擎发行页下载，不把 GitHub 全局 Latest 当作所有产品的下载入口；Craft 使用独立 stable 通道。安装器字节数与 SHA-256（digest）见 GitHub 发行资产，兼容范围与完整说明入口见对应发布页。可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对下载文件。
