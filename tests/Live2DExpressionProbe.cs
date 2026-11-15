@@ -23,9 +23,47 @@ public static class Live2DExpressionProbe {
   Files.Atomic(Path.Combine(output,"native.mjs"),File.ReadAllText(Path.Combine(shell,plugin)));
   Files.Atomic(Path.Combine(output,"patched.mjs"),File.ReadAllText(Path.Combine(prepared,plugin)));
   J.Write(Path.Combine(output,"result.json"),J.O("engine",adapter.Describe(),"plugin",plugin,"sourceHash",pluginHash,"patchedHash",Files.Hash(Path.Combine(prepared,plugin))));
-  Files.Atomic(Path.Combine(shell,plugin),File.ReadAllText(Path.Combine(shell,plugin))+"\n// tampered fixture");
-  Reject(()=>adapter.Prepare(Path.Combine(output,"tampered-output")));
-  File.Delete(Path.Combine(shell,plugin));Reject(()=>adapter.Prepare(Path.Combine(output,"missing-output")));
+  Action verifyFallback=()=>{
+   Assert(!EngineAdapter.SupportedMygo(shell),"Unknown MyGO plugin was advertised as supported");
+   Reject(()=>EngineAdapter.Select(copied));
+   var fallback=EngineAdapter.Select(J.O("project",shell,"mygoRoot",source,"settings",J.O("engine","mygo")));
+   Assert(Files.Full(fallback.Source)==source&&fallback.SourceKind=="mygo-derivative-runtime"&&!string.IsNullOrEmpty(fallback.FallbackReason),"Unknown MyGO plugin lost its visible canonical fallback");
+  };
+  string originalPlugin=File.ReadAllText(Path.Combine(shell,plugin));
+  if(mygo){
+   // A user tuning an unrelated default must keep both installed-baseline and
+   // per-project selection, and the setting must survive job-local patching.
+   string tuned=originalPlugin.Replace("motionFadingDuration=500","motionFadingDuration=1500");
+   if(!originalPlugin.Contains("motionFadingDuration=1500"))Assert(tuned!=originalPlugin,"Fixture has no expected motion fading default");
+   Files.Atomic(Path.Combine(shell,plugin),tuned+"\n// compatible customization");
+   Assert(EngineAdapter.SupportedMygo(shell),"Compatible customized plugin lost baseline discovery");
+   var baseline=EngineAdapter.Select(J.O("project",Path.Combine(output,"legacy-project"),"mygoRoot",shell,"settings",J.O("engine","mygo")));
+   string tunedOutput=Path.Combine(output,"custom-baseline");baseline.Prepare(tunedOutput);
+   Assert(File.ReadAllText(Path.Combine(tunedOutput,plugin)).Contains("motionFadingDuration=1500"),"Preparation overwrote customized fading duration");
+   File.AppendAllText(Path.Combine(shell,adapter.Bundle),"\n// compatible legacy derivative",Files.Utf8);
+   var legacy=EngineAdapter.Select(J.O("project",shell,"mygoRoot",source,"settings",J.O("engine","mygo")));
+   Assert(Files.Full(legacy.Source)==Files.Full(shell)&&legacy.SourceKind=="mygo-project-runtime","Compatible legacy main lost project selection");
+   legacy.Prepare(Path.Combine(output,"legacy-known-plugin"));
+   Assert(File.ReadAllText(Path.Combine(output,"legacy-known-plugin",plugin)).Contains("motionFadingDuration=1500"),"Project preparation overwrote customization");
+   Files.CopyFile(Path.Combine(source,original.Bundle),Path.Combine(shell,adapter.Bundle));
+   string anchor="loadExpression(t){return I(this,null,function*(){if(!this.definitions[t])";
+   string[] invalid={
+    originalPlugin.Replace(anchor,"loadExpression(t){return incompatible("),
+    originalPlugin+anchor,
+    originalPlugin.Replace("Ot as ExpressionManager","Wrong as ExpressionManager"),
+    originalPlugin+";Ot as ExpressionManager",
+    originalPlugin+";const __webvideoSetExpression=Ot.prototype.setExpression;"
+   };
+   for(int i=0;i<invalid.Length;i++){
+    Files.Atomic(Path.Combine(shell,plugin),invalid[i]);verifyFallback();
+    Reject(()=>adapter.Prepare(Path.Combine(output,"incompatible-output-"+i)));
+    Assert(File.ReadAllText(Path.Combine(shell,plugin))==invalid[i],"Rejected source plugin changed");
+   }
+  }else{
+   Files.Atomic(Path.Combine(shell,plugin),originalPlugin+"\n// tampered fixture");
+   Reject(()=>adapter.Prepare(Path.Combine(output,"tampered-output")));
+  }
+  File.Delete(Path.Combine(shell,plugin));if(mygo)verifyFallback();Reject(()=>adapter.Prepare(Path.Combine(output,"missing-output")));
   Assert(Files.Hash(Path.Combine(source,original.Bundle))==mainHash&&Files.Hash(Path.Combine(source,plugin))==pluginHash,"Original engine changed");
   Console.WriteLine("PASS "+version+" exact plugin preparation, source preservation, compressed copies, changed/missing plugin rejection");return 0;
  }catch(Exception error){Console.Error.WriteLine(error);return 1;}}

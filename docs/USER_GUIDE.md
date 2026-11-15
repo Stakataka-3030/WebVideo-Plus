@@ -1,12 +1,12 @@
 # WebVideo+ 使用指南
 
-当前版本：产品 1.3.11，安装器 1.3.11.0，内部标识 0.8.17，内核 0.6.67。已于 2026-11-10 发布：[v1.3.11](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11)。
+当前版本：产品 1.3.12，安装器 1.3.12.0，内部标识 0.8.19，内核 0.6.69。待发布：[v1.3.12](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.12)。
 
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
 
-[本版安装包与验收](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11) · [1.3.11 发行说明](releases/RELEASE_NOTES_1.3.11.md) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
+[本版安装包与验收](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.12) · [1.3.12 发行说明](releases/RELEASE_NOTES_1.3.12.md) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
 
-**当前发行分支源码：1.3.11（内部开发标识 0.8.17；安装器 Win32 版本 1.3.11.0，导出内核 0.6.67）。** 本版安装包及发行资产 SHA-256（digest）见[1.3.11 发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11)。已于 2026-11-10 发布。此前 [1.3.9](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.9) 作为历史记录保留。
+**当前发行分支源码：1.3.12（内部开发标识 0.8.19；安装器 Win32 版本 1.3.12.0，导出内核 0.6.69）。** 本版安装包及发行资产 SHA-256（digest）见[1.3.12 发布页](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.12)。待发布。此前 [1.3.9](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.9) 作为历史记录保留。
 
 当前适配基线为 **Terre / WebGAL 4.6.6**。4.6.4 / MyGO 本轮发行线为 1.1.17；已 EOL 的 4.6.5 最终版仍为 1.2.1。请按[项目首页](../README.md#下载与版本选择)列出的对应产品发布页选择安装包。
 
@@ -137,7 +137,7 @@ Key 通过 Windows 当前用户 DPAPI 加密，存于所选 **WebVideo+ 数据�
 
 ## 安装与模块管理
 
-1. 从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11) 下载本版的 `WebVideo+-Setup-*.exe`。
+1. 从 [GitHub Releases](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.12) 下载本版的 `WebVideo+-Setup-*.exe`。
 2. 运行安装器并选择已有 **Terre / WebGAL 4.6.6** 安装目录（含受支持的 Steam 入口）。
 3. 默认安装常用模块；在高级选项中可单独增删功能，并可选择 WebVideo+ 数据目录、导出工作缓存、安装缓存以及是否保留长期 Terre 恢复备份。灰选项目表示其他已选模块所需依赖。
 4. 完成后照常启动 Terre。
