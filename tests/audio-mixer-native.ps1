@@ -2,6 +2,7 @@ param([string]$FfmpegDirectory='', [string]$OutputRoot=(Join-Path $PSScriptRoot 
 $ErrorActionPreference='Stop'
 $taskRoot=Split-Path $PSScriptRoot -Parent
 if(!$FfmpegDirectory){$FfmpegDirectory=Split-Path (Get-Command ffmpeg.exe).Source -Parent}
+foreach($taskTool in @('ffmpeg.exe','ffprobe.exe')){if(-not(Test-Path -LiteralPath (Join-Path $FfmpegDirectory $taskTool))){throw ('Missing audio regression tool: '+(Join-Path $FfmpegDirectory $taskTool))}}
 $taskRun=Join-Path ([IO.Path]::GetFullPath($OutputRoot)) ([Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $taskRun -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $taskRoot 'package/WebGAL.Video.exe'),(Join-Path $taskRoot 'package/process-guard.exe') -Destination $taskRun
