@@ -1,6 +1,7 @@
 using System;using System.IO;using System.Linq;using NativeVideo;
 class AudioMixerProbe {
  static int Main(string[] args) {
+  Console.OutputEncoding=new System.Text.UTF8Encoding(false);
   try {
    Commands.RuntimePath=args[0];
    var request=J.Read(args[1]);string dir=J.S(request,"dir"),output=J.S(request,"output");Directory.CreateDirectory(dir);
