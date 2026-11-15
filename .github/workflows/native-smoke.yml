@@ -114,7 +114,7 @@ jobs:
       - name: Verify bounded audio mixing with real Windows FFmpeg
         shell: pwsh
         run: |
-          ./tests/audio-mixer-native.ps1 -FfmpegDirectory (Join-Path $PWD 'package/bin') -OutputRoot .build/ci-native-tests/audio-mixer
+          ./tests/audio-mixer-native.ps1 -OutputRoot .build/ci-native-tests/audio-mixer
           if ($LASTEXITCODE -ne 0) { throw 'Windows long-command audio regression failed' }
 
       - name: Verify semantic worker segmentation
