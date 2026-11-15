@@ -10,11 +10,11 @@
 
 | 使用环境 | 推荐版本（导出内核） | Windows 安装器 | 发行说明与校验 |
 | --- | --- | --- | --- |
-| Terre / WebGAL **4.6.4**、**MyGO 3.2.1** 或 **LoveLive（LL）** | **1.1.17**（0.6.66，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.17.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.1.17/WebVideo%2B-Setup-1.1.17.exe) | [v1.1.17](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.17) |
-| Terre / WebGAL **4.6.6** | **1.3.11**（0.6.67） | [WebVideo+-Setup-1.3.11.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.11/WebVideo%2B-Setup-1.3.11.exe) | [v1.3.11](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.11) |
-| 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.3c**（安装器 1.2.3.0c，内核 0.6.67） | [WebVideoCraft-Setup-1.2.3.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.3.0c/WebVideoCraft-Setup-1.2.3.0c.exe) | [craft-v1.2.3.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c) |
+| Terre / WebGAL **4.6.4**、**MyGO 3.2.1** 或 **LoveLive（LL）** | **1.1.18**（0.6.70，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.18.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.1.18/WebVideo%2B-Setup-1.1.18.exe) | [v1.1.18](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18) |
+| Terre / WebGAL **4.6.6** | **1.3.12**（0.6.70） | [WebVideo+-Setup-1.3.12.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.12/WebVideo%2B-Setup-1.3.12.exe) | [v1.3.12](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.12) |
+| 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.4c**（安装器 1.2.4.0c，内核 0.6.70） | [WebVideoCraft-Setup-1.2.4.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.4.0c/WebVideoCraft-Setup-1.2.4.0c.exe) | [craft-v1.2.4.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.4.0c) |
 
-上列三个版本已于 **2026-11-10** 发布。请按宿主和引擎选择，不要仅依据 GitHub 全局 Latest；Craft 使用独立的 stable 通道。下载后可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对 GitHub 发行资产的 SHA-256（digest）；兼容范围与完整说明入口见对应发行页。
+上列三个版本已于 **2026-11-15** 发布。请按宿主和引擎选择，不要仅依据 GitHub 全局 Latest；Craft 使用独立的 stable 通道。下载后可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对 GitHub 发行资产的 SHA-256（digest）；兼容范围与完整说明入口见对应发行页。
 
 **LoveLive（LL）适配仅在 Terre 4.6.4 维护线提供，Terre 4.6.6 与 Craft 不包含 LL 适配。**
 
@@ -26,7 +26,7 @@
 
 ### Terre / MyGO
 
-本轮修复前置场景恢复查询过早超时，并调整成功/失败时的诊断与缓存清理。Craft 同步对白 SRT、DOM 动画缓存、低速估算和长路径处理；Terre 已有的 SRT、共享素材及手动媒体工具配置继续保留。MyGO 3.2.1 的 JSONL / WMDL 模型读取保持兼容。
+本轮修复大量音轨混合时 Windows 总命令行过长导致的导出失败，覆盖视频和纯音轨导出。同时修复 MyGO 自定义动作淡入淡出等兼容参数造成的识别失败，保留 1500 ms 等已有设置。三条维护线同步该修复，导出内核均为 0.6.70。
 
 1. 保存工程并关闭 Terre，确认已有安装使用 WebGAL 4.6.4 / MyGO 3.2.1，还是 WebGAL 4.6.6。
 2. 按上表下载对应的 `WebVideo+-Setup-*.exe`，运行并选择 Terre 安装目录。
@@ -48,7 +48,7 @@ FFmpeg 的对应源码与构建材料提供[独立下载](https://github.com/Sta
 3. 安装器安全保存并校验原程序，统一覆盖 **原 `webgal-craft.exe` 入口**；完成后继续使用原快捷方式。旧独立增强安装可迁移，已取消单独的增强启动模式。
 4. 需要维护时重新运行安装器，可更新、修复或“卸载挂载”；卸载挂载保留组件、配置、日志和用户数据，不删除工程或视频。
 
-Craft 会核验宿主与工程引擎的精确构建，同版本的自定义包不自动视为兼容。
+Craft 继续核验宿主与工程主程序的精确构建。MyGO 插件允许与导出补丁结构兼容的参数调整，其他未验证的自定义包仍不自动视为兼容。
 
 
 新版本的更新面板分别处理两类更新：
@@ -101,9 +101,9 @@ Terre 的工作缓存默认位于成片目录下的 `.webvideo-cache`；Craft �
 
 ## 文档与开发
 
-- Terre 使用指南：[1.1.16](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.16/docs/USER_GUIDE.md) / [1.3.9](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.9/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.9/docs/USER_GUIDE.md#按语句指定导出切点)
-- Craft：[安装与管理](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.1.0c/craft/README.md)、[功能范围](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.1.0c/craft/FEATURE-COVERAGE.md)、[导出说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.1.0c/craft/EXPORT-PARITY.md)和[本版验收](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.1.0c/craft/ACCEPTANCE-1.2.1c.md)
-- 构建与发布：Terre [1.1.16](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.16/docs/BUILDING.md) / [1.3.9](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.9/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
+- Terre 使用指南：[1.1.18](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.18/docs/USER_GUIDE.md) / [1.3.12](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.12/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.12/docs/USER_GUIDE.md#按语句指定导出切点)
+- Craft：[安装与管理](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.4.0c/craft/README.md)、[功能范围](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.4.0c/craft/FEATURE-COVERAGE.md)、[导出说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.4.0c/craft/EXPORT-PARITY.md)和[本版说明与验证范围](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.4.0c)
+- 构建与发布：Terre [1.1.18](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.18/docs/BUILDING.md) / [1.3.12](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.12/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
 - 当前分支的 [1.1.4 发行说明](docs/releases/RELEASE_NOTES_1.1.4.md)、[历史发行说明索引](docs/releases/README.md)、[变更记录](CHANGELOG.md)与[仓库结构](docs/REPOSITORY.md)
 
 当前 `main` 的开发基线仍是 **1.1.4**（内部标识 **0.8.8**、安装器 Win32 版本 **1.1.4.0**、导出内核 **0.6.48**），以 [`version.json`](version.json) 为准。版本标签中的文档保留部分开发、候选和历史测试记录；是否正式发布、当前更新策略及验证边界请以上表的发行页为准。
