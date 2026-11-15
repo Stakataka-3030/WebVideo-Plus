@@ -1,17 +1,17 @@
 # WebVideo+ Craft 正式版适配
 
-当前版本：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。已于 2026-11-10 发布：[craft-v1.2.3.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c)。发布前验收记录见 [1.2.3c 说明](RELEASE-1.2.3c.md)。
+当前版本：Craft 1.2.4c，安装器 1.2.4.0c，Win32 1.2.4.0，内核 0.6.69；共享产品基线 1.3.10。
 
 下文保留的 1.2.2c 为此前未发布的开发基线，其改动已并入 1.2.3c；旧候选证据不代表当前最终包验收。
 
 
 此目录是基于 `craft/mvp`（bee5888）继续开发的完整 Craft 编辑器适配。当前保留官方 Craft 自动检查更新，功能入口通过当前启动会话的 WebView2/CDP 注入。未改官方更新源、公钥和签名校验。
 
-[1.2.3c 发行说明与发布前验收](RELEASE-1.2.3c.md) · [正式版适配与验证](ADAPTATION-1.0.0.md) · [历史版本](../docs/LEGACY-VERSIONS.md)
+[1.2.4c 更新说明](RELEASE-1.2.4c.md) · [正式版适配与验证](ADAPTATION-1.0.0.md) · [历史版本](../docs/LEGACY-VERSIONS.md)
 
 ## 当前边界
 
-- 当前版本 `1.2.3c` 适配官方 Windows x64 Craft `1.0.0`，EXE SHA-256 `0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c`。本机精确候选结果见上方记录，正式安装器见页首发行链接。此前 [1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) 保留为历史记录。
+- 当前版本 `1.2.4c` 适配官方 Windows x64 Craft `1.0.0`，EXE SHA-256 `0de472c44f642c8f140e16bcc040a171519af59d245ae88b1b4a47987cf2756c`。本机精确候选结果见上方记录，正式安装器见页首发行链接。此前 [1.2.1c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.1.0c) 保留为历史记录。
 - 精确官方来源与接口核对见 [正式版适配记录](ADAPTATION-1.0.0.md)，不以相同版本字符串代替构建校验。
 - 引擎匹配范围仍为官方 WebGAL 4.6.4 / 4.6.5 / 4.6.6、MyGO 3.2.1（基础 WebGAL 4.6.4）。历史验收记录不自动作为本次构建的结果。
 - 请以普通权限启动 Craft，不要选择“以管理员身份运行”。WebView2 150 及以后会限制提权应用的调试环境参数，可能导致增强界面无法接入。若已提权打开，请关闭自己启动的该窗口，再从原入口正常打开。管理员模式不在当前增强接入支持范围内。

@@ -23,8 +23,26 @@ public static class Live2DExpressionProbe {
   Files.Atomic(Path.Combine(output,"native.mjs"),File.ReadAllText(Path.Combine(shell,plugin)));
   Files.Atomic(Path.Combine(output,"patched.mjs"),File.ReadAllText(Path.Combine(prepared,plugin)));
   J.Write(Path.Combine(output,"result.json"),J.O("engine",adapter.Describe(),"plugin",plugin,"sourceHash",pluginHash,"patchedHash",Files.Hash(Path.Combine(prepared,plugin))));
-  Files.Atomic(Path.Combine(shell,plugin),File.ReadAllText(Path.Combine(shell,plugin))+"\n// tampered fixture");
-  Reject(()=>adapter.Prepare(Path.Combine(output,"tampered-output")));
+  string originalPlugin=File.ReadAllText(Path.Combine(shell,plugin));
+  if(mygo){
+   string tuned=originalPlugin.Replace("motionFadingDuration=500","motionFadingDuration=1500");
+   Files.Atomic(Path.Combine(shell,plugin),tuned+"\n// compatible customization");
+   Assert(EngineAdapter.SupportedMygo(shell),"Customized MyGO baseline rejected");
+   var custom=EngineAdapter.Select(copied);custom.Prepare(Path.Combine(output,"custom-output"));
+   Assert(File.ReadAllText(Path.Combine(output,"custom-output",plugin)).Contains("motionFadingDuration=1500"),"Custom fading overwritten");
+   string anchor="loadExpression(t){return I(this,null,function*(){if(!this.definitions[t])";
+   string[] invalid={originalPlugin.Replace(anchor,"incompatible("),originalPlugin+anchor,originalPlugin.Replace("Ot as ExpressionManager","Wrong as ExpressionManager"),originalPlugin+";Ot as ExpressionManager",originalPlugin+";const __webvideoSetExpression=Ot.prototype.setExpression;"};
+   for(int i=0;i<invalid.Length;i++){
+    Files.Atomic(Path.Combine(shell,plugin),invalid[i]);
+    Assert(!EngineAdapter.SupportedMygo(shell),"Incompatible baseline accepted");
+    Reject(()=>EngineAdapter.Select(copied));
+    Reject(()=>adapter.Prepare(Path.Combine(output,"invalid-"+i)));
+    Assert(File.ReadAllText(Path.Combine(shell,plugin))==invalid[i],"Source changed");
+   }
+  }else{
+   Files.Atomic(Path.Combine(shell,plugin),originalPlugin+"\n// tampered fixture");
+   Reject(()=>adapter.Prepare(Path.Combine(output,"tampered-output")));
+  }
   File.Delete(Path.Combine(shell,plugin));Reject(()=>adapter.Prepare(Path.Combine(output,"missing-output")));
   Assert(Files.Hash(Path.Combine(source,original.Bundle))==mainHash&&Files.Hash(Path.Combine(source,plugin))==pluginHash,"Original engine changed");
   Console.WriteLine("PASS "+version+" exact plugin preparation, source preservation, compressed copies, changed/missing plugin rejection");return 0;

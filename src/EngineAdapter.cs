@@ -11,7 +11,6 @@ namespace NativeVideo {
  public sealed class EngineAdapter {
   public const string MygoHash = "0407b5a6326ebaa1608d16541b79b4ccc54a0432947ae7d3a6a855606a68866e";
   const string MygoExpressionPlugin="assets/index.es-Zih9sQ-u.js";
-  const string MygoExpressionPluginHash="c4c5e37616ba7e3aa30dccae74e6349c4f1a8fce62154478fd205a324c69b3dc";
   const string BundledWebgalBundle = "assets/index-R1tKotR6.js";
   public readonly string Id, Version, Source, Bundle, SourceKind, FallbackReason;
   readonly bool externalWebgal, strictMygoHash;
@@ -64,7 +63,7 @@ namespace NativeVideo {
     // The expression fix also needs the known plugin. Reject it here so a
     // nonstrict derivative keeps its existing visible canonical fallback,
     // rather than selecting it successfully and failing only during Prepare.
-    if(!SupportedMygoExpressionPlugin(root))throw new IOException("MyGO Live2D 表情插件缺失或字节不匹配");
+    if(!SupportedMygoExpressionPlugin(root))throw new IOException("MyGO Live2D 表情插件缺失或结构不兼容");
     adapter.Patch(File.ReadAllText(main));
     return adapter;
    } catch(Exception e) {
@@ -142,7 +141,9 @@ namespace NativeVideo {
   }
   static bool SupportedMygoExpressionPlugin(string root) {
    string plugin=Path.Combine(root,MygoExpressionPlugin);
-   return File.Exists(plugin)&&Files.Hash(plugin)==MygoExpressionPluginHash;
+   if(!File.Exists(plugin)||new FileInfo(plugin).Length>8L*1024*1024)return false;
+   try { PatchExpressionLifecycle(File.ReadAllText(plugin),"Ot");return true; }
+   catch(IOException) { return false; }
   }
   public static bool SupportedMygo(string root) {
    try {
@@ -297,14 +298,21 @@ namespace NativeVideo {
    foreach(string extension in new[]{".gz",".br"})if(File.Exists(file+extension))File.Delete(file+extension);
   }
   // The same ExpressionManager/factory contract is used by these four pinned
-  // plugins. Patch only the copied plugin, after validating its exact bytes
+  // plugins. MyGO validates the patch structure; official modules retain exact bytes
   // (4.6.5 has already received the separately checked texture backport).
   void PrepareExpressionLifecycle(string root) {
    string name=IsMygo?"index.es-Zih9sQ-u.js":Version=="4.6.6"?"index.es-DlwKruus.js":Version=="4.6.5"?"index.es-0XzJiDJZ.js":"index.es-erQsk_Nn.js";
-   string expected=IsMygo?MygoExpressionPluginHash:Version=="4.6.6"?"1ad45bac171ff15a79b52e20c727d6201dc1f1bc228d10d01cdd4d6cfc3d3e08":Version=="4.6.5"?Cubism2TexturePlugin465Patched:"46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505";
+   string expected=Version=="4.6.6"?"1ad45bac171ff15a79b52e20c727d6201dc1f1bc228d10d01cdd4d6cfc3d3e08":Version=="4.6.5"?Cubism2TexturePlugin465Patched:"46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505";
    string file=Path.Combine(root,"assets",name);
-   if(!File.Exists(file)||Files.Hash(file)!=expected)throw new IOException("Live2D 表情插件缺失或字节不匹配："+name);
-   string text=File.ReadAllText(file);
+   if(IsMygo) {
+    if(!SupportedMygoExpressionPlugin(root))throw new IOException("MyGO Live2D 表情插件缺失或结构不兼容："+name);
+   } else if(!File.Exists(file)||Files.Hash(file)!=expected)throw new IOException("Live2D 表情插件缺失或字节不匹配："+name);
+   string text=PatchExpressionLifecycle(File.ReadAllText(file),!IsMygo&&Version=="4.6.6"?"Vt":"Ot");
+   Files.Atomic(file,text);
+   foreach(string extension in new[]{".gz",".br"})if(File.Exists(file+extension))File.Delete(file+extension);
+  }
+  static string PatchExpressionLifecycle(string text,string manager) {
+   if(text.Contains("__webvideoSetExpression"))throw new IOException("Live2D 表情插件已包含导出补丁");
    // A factory prefetch can cache an already handled failure. Remember it per
    // manager/index without failing unrelated export work; if setExpression
    // later requests that entry and still receives no expression, surface it
@@ -323,11 +331,9 @@ namespace NativeVideo {
    text=ReplaceOnce(text,@"const l=L.expressionTasksMap.get(s);l&&delete l[t];const h=s.createExpression(o,r);return s.emit(""expressionLoaded"",t,h),h",@"const l=L.expressionTasksMap.get(s);l&&delete l[t];if(s.destroyed)return;const h=s.createExpression(o,r);if(s.destroyed)return;s.__webvideoExpressionErrors?.delete(t);return s.emit(""expressionLoaded"",t,h),h");
    text=ReplaceOnce(text,".catch(o=>{C.warn(s.tag,`Failed to load expression:",".catch(o=>{if(s.destroyed)return;C.warn(s.tag,`Failed to load expression:");
    text=ReplaceOnce(text,"catch(r){C.warn(s.tag,`Failed to load expression at", "catch(r){if(s.destroyed)return Promise.resolve(void 0);C.warn(s.tag,`Failed to load expression at");
-   string manager=!IsMygo&&Version=="4.6.6"?"Vt":"Ot";
-   if(!text.Contains(manager+" as ExpressionManager"))throw new IOException("Live2D 表情导出接口不匹配");
+   ReplaceOnce(text,manager+" as ExpressionManager",manager+" as ExpressionManager");
    text+="\n;const __webvideoSetExpression="+manager+".prototype.setExpression;"+manager+".prototype.setExpression=function(index){const start=()=>__webvideoSetExpression.call(this,index);return globalThis.__exportTrackExpression?globalThis.__exportTrackExpression(this,index,start):start()};\n";
-   Files.Atomic(file,text);
-   foreach(string extension in new[]{".gz",".br"})if(File.Exists(file+extension))File.Delete(file+extension);
+   return text;
   }
   static string ReplaceOnce(string text,string from,string to) {
    int at=text.IndexOf(from,StringComparison.Ordinal);

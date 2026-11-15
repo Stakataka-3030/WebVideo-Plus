@@ -1,3 +1,7 @@
+# Craft 1.2.4c
+
+MyGO 结构兼容修复回运自 `dde70d2b5ef17508e663b3f37a96c3b792909bc8`，保留 Craft 严格绑定与各官方运行时校验。当前验证另记，不沿用历史候选结论。
+
 # Development source provenance
 
 - Release line: product 1.2.2c / installer 1.2.2.0c / kernel 0.6.66,

@@ -1,6 +1,6 @@
 # WebVideo+ 使用指南
 
-当前版本：Craft 1.2.3c，安装器 1.2.3.0c，Win32 1.2.3.0，内核 0.6.67；共享产品基线 1.3.10。已于 2026-11-10 发布：[craft-v1.2.3.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.3.0c)。发布前验收记录见 [1.2.3c 说明](../craft/RELEASE-1.2.3c.md)。
+当前版本：Craft 1.2.4c，安装器 1.2.4.0c，Win32 1.2.4.0，内核 0.6.69；共享产品基线 1.3.10。
 
 以下发布说明及验收记录仅为此前基线。
 
@@ -8,7 +8,7 @@
 
 面向 WebGAL Terre 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 组件为可选 Beta，需要自行配置 API Key。
 
-[当前发行说明](../craft/RELEASE-1.2.3c.md) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
+[当前更新说明](../craft/RELEASE-1.2.4c.md) · [版本记录](../CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](../LICENSE) · [许可范围](../LICENSES.md) · [来源与许可](../NOTICE.md)
 
 **以下 Terre 说明保留自 1.1.4（内部开发标识 0.8.8；安装器 Win32 版本 1.1.4.0，导出内核 0.6.48），不代表本分支当前源码版本。** Craft 1.2.3c 已发布，发布前验收记录见[发行说明](../craft/RELEASE-1.2.3c.md)，不使用全仓库 Latest。
 
