@@ -226,6 +226,14 @@ globalThis.__exportWaitDialogueDom=async(options={})=>{
     queueMicrotask(check);
   });
 };
+globalThis.__exportWaitForRestoredDialogue=async()=>{
+  // LoveLive publishes its restored view only after character preparation.
+  // Keep resource loading outside the short DOM synchronization deadline.
+  if(globalThis.__wgProbe?.adapter?.id==='lovelive')await globalThis.__exportWaitForStageAssets();
+  globalThis.__exportSetDialogueTarget();
+  await globalThis.__exportWaitDialogueDom({allowStable:true});
+};
+
 globalThis.__exportRestoredDialogueReady=()=>globalThis.__exportDialogueDomReady(true);
 globalThis.__exportLive2DLifetimeAt=(lifetimes,target,timeMs)=>{
   const key=String(target??''),time=Number(timeMs);if(!Number.isFinite(time))return null;

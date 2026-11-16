@@ -14,7 +14,8 @@ function unrelatedStoryTimer(callback){return setTimeout(callback,30)}
 }
 $patched=[NativeVideo.LoveLiveResourceTimers]::Patch($original)
 if($patched.Replace('globalThis.__webgalOfflineExportHost.scheduleResourceTask(', 'setTimeout(')-cne $original){throw 'Patch changed non-timer bytes'}
-if(([regex]::Matches($patched,'globalThis\.__webgalOfflineExportHost\.scheduleResourceTask')).Count-ne 3){throw 'Expected exactly three resource timer calls'}
+$expectedTimers=if($original.Contains('.scheduleAssetMount;')){2}else{3}
+if(([regex]::Matches($patched,'globalThis\.__webgalOfflineExportHost\.scheduleResourceTask')).Count-ne $expectedTimers){throw 'Unexpected resource timer patch count'}
 foreach($invalid in @($patched,$original.Replace(',16)',',17)'),$original.Replace('KHR_parallel_shader_compile','UNKNOWN_shader_compile'),($original+$original))){
  $failed=$false;try{[void][NativeVideo.LoveLiveResourceTimers]::Patch($invalid)}catch{$failed=$true};if(!$failed){throw 'Unsupported or repeated resource shape accepted'}
 }
@@ -33,4 +34,13 @@ foreach($main in @('import("./other.js")','import("./offscreen-character-active.
 [IO.File]::WriteAllText((Join-Path $root 'patched.mjs'),$patched)
 & node --check (Join-Path $root 'patched.mjs');if($LASTEXITCODE-ne 0){throw 'Patched module syntax invalid'}
 & node (Join-Path $PSScriptRoot 'lovelive-resource-timers-contract.mjs') (Join-Path $root 'patched.mjs');if($LASTEXITCODE-ne 0){throw 'Resource timer runtime contract failed'}
-Write-Output 'PASS production patch: exact three-call scope, guards, actual import only, compressed stale copy removal, module syntax and runtime contract'
+if(-not $ResourceChunk){
+ $hostYield='resolve=>{var host;const schedule=(host=globalThis.__webgalOfflineExportHost)==null?void 0:host.scheduleAssetMount;schedule?schedule(resolve):setTimeout(resolve,16)}'
+ $hostOriginal=$original.Replace('resolve=>setTimeout(resolve,16)',$hostYield)
+ $hostPatched=[NativeVideo.LoveLiveResourceTimers]::Patch($hostOriginal)
+ if($hostPatched.Replace('globalThis.__webgalOfflineExportHost.scheduleResourceTask(', 'setTimeout(')-cne $hostOriginal){throw 'Host-yield patch changed unrelated bytes'}
+ if(([regex]::Matches($hostPatched,'globalThis\.__webgalOfflineExportHost\.scheduleResourceTask')).Count-ne 2){throw 'Already-hosted yield must be preserved'}
+ [IO.File]::WriteAllText((Join-Path $root 'host-patched.mjs'),$hostPatched)
+ & node (Join-Path $PSScriptRoot 'lovelive-resource-timers-contract.mjs') (Join-Path $root 'host-patched.mjs');if($LASTEXITCODE-ne 0){throw 'Existing host yield runtime contract failed'}
+}
+Write-Output 'PASS production patch: resource-only timers, existing host yield, guards, actual import selection and runtime contracts'

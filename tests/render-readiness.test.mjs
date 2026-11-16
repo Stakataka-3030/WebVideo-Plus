@@ -15,6 +15,33 @@ function fixture({hidden=false,gui=true,film='',required=true,text='test'}={}){
  context.__exportBeginDialogueTransition();Object.assign(calculation,{currentDialogKey:'next',showText:text});context.__exportSetDialogueTarget();
  return {context,view,calculation,commit(){Object.assign(view,calculation);},mount(count=text.length,value=text){nodes=Array.from({length:count},(_,i)=>span(value[i]||''));box={querySelectorAll:()=>nodes,textContent:value};},unmount(){box=null;},mutate(){context.__exportDialogueMutationSerial++;}};
 }
+
+test('LoveLive prefix restoration waits for characters before starting the DOM deadline',async()=>{
+ const f=fixture(),calls=[];let release;
+ const loading=new Promise(resolve=>{release=resolve;});
+ f.context.__wgProbe.adapter={id:'lovelive'};
+ f.context.__exportWaitForStageAssets=async()=>{calls.push('assets');await loading;f.commit();f.mount();calls.push('ready');};
+ const setTarget=f.context.__exportSetDialogueTarget,waitDom=f.context.__exportWaitDialogueDom;
+ f.context.__exportSetDialogueTarget=()=>{calls.push('target');setTarget();};
+ f.context.__exportWaitDialogueDom=options=>{calls.push('dom');assert.equal(f.context.__exportDialogueDomReady(true),true);return waitDom(options);};
+ const restored=f.context.__exportWaitForRestoredDialogue();
+ await Promise.resolve();assert.deepEqual(calls,['assets']);
+ release();await restored;assert.deepEqual(calls,['assets','ready','target','dom']);
+});
+
+for(const id of ['mygo','webgal'])test(id+' keeps its existing restored dialogue path',async()=>{
+ const f=fixture();f.commit();f.mount();f.context.__wgProbe.adapter={id};
+ f.context.__exportWaitForStageAssets=()=>{throw Error('Unexpected early resource wait');};
+ await f.context.__exportWaitForRestoredDialogue();
+ assert.equal(f.context.__exportDialogueDomReady(true),true);
+});
+
+test('LoveLive preparation failures propagate before certifying restored dialogue',async()=>{
+ const f=fixture();f.context.__wgProbe.adapter={id:'lovelive'};
+ f.context.__exportWaitForStageAssets=async()=>{throw Error('Character preparation failed');};
+ f.context.__exportSetDialogueTarget=()=>{throw Error('Target must not be captured after failed preparation');};
+ await assert.rejects(f.context.__exportWaitForRestoredDialogue(),/Character preparation failed/);
+});
 for(const state of [{name:'hidden normal',hidden:true},{name:'GUI hidden',gui:false},{name:'GUI hidden film',gui:false,film:'on'},{name:'stage only',required:false},{name:'empty dialogue',text:''}])test(state.name+' waits for commit, then accepts absent textbox',()=>{
  const f=fixture(state);f.unmount();assert.equal(f.context.__exportDialogueDomReady(),false);f.commit();assert.equal(f.context.__exportDialogueDomReady(),true);
 });
