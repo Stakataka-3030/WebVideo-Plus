@@ -3,7 +3,7 @@ namespace NativeVideo {
  public static class SegmentPlan {
   const double DomRefreshFrameCost=12d,MinSegmentSeconds=2.5d,MinReplayWarmupSeconds=1d,Live2DPhysicsWarmupSeconds=3d;
   public const double ReplayPenaltyWeight=.35d,MaxWeightedReplayOverheadRatio=1.50d;
-  static readonly HashSet<string> StatefulNoCutKinds=new HashSet<string>(new[]{"setTransform","setTempAnimation","setAnimation","setComplexAnimation","changeBg","changeFigure","playVideo","intro","stage-exit","changeBg-exit","changeFigure-exit"},StringComparer.Ordinal);
+  static readonly HashSet<string> StatefulNoCutKinds=new HashSet<string>(new[]{"setTransform","setTempAnimation","setAnimation","setComplexAnimation","changeBg","changeFigure","character","playVideo","intro","stage-exit","changeBg-exit","changeFigure-exit"},StringComparer.Ordinal);
   sealed class ReplayWindow {
    public int Start;public int End;public bool Root;public bool NoCut;public string Kind;
    public ReplayWindow(int start,int end,bool root=false,bool noCut=false,string kind="perform"){Start=start;End=end;Root=root;NoCut=noCut;Kind=kind??"perform";}

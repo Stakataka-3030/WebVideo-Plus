@@ -54,6 +54,7 @@ function installStageAssetBarrier() {
   const stage=__wgProbe.core.gameplay.pixiStage;
   const missing=()=>[...stage.backgroundObjects,...stage.figureObjects].filter(object=>{
    if(!object.sourceUrl)return false;
+   if(object.sourceType==='character')return object.characterRequestId!==object.__webvideoCharacterApplied;
    const children=object.pixiContainer?.children||[];
    if(!children.length)return true;
    const url=decodeURIComponent(new URL(object.sourceUrl,location.href).pathname);

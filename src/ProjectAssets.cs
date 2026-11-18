@@ -138,6 +138,58 @@ namespace NativeVideo {
    if(kind=="animation"&&resolved!=null&&!SupportsAnimationV2)try{var value=J.Read(resolved);if(value is Dictionary<string,object>&&J.Get(value,"keyframes")!=null)Add("unsupported",line,kind+"/"+name,"含 keyframes 的动画对象需要 WebGAL 4.6.6 或 4.6.7");}catch{} // Inspect reports malformed JSON.
    Inspect(resolved,line,kind+"/"+name,action,target,null,modelReference,name.StartsWith(SharedAssets.Prefix,StringComparison.Ordinal)?name.Substring(SharedAssets.Prefix.Length).Split('/')[0]:null);
   }
+  static string[] CharacterNames(IEnumerable<object> values){
+   return values.OfType<string>().Select(value=>value.Trim()).Where(value=>value!="").Distinct(StringComparer.Ordinal).ToArray();
+  }
+  void CollectCharacter(string target,Dictionary<string,object> args,int line){
+   target=target.Trim().Replace('\\','/');
+   if(target==""||target=="none"||J.B(args,"clear"))return;
+   int dot=target.LastIndexOf('.'),slash=target.LastIndexOf('/');
+   string name=(dot>slash?target.Substring(0,dot):target).Trim(),preset=dot>slash?target.Substring(dot+1).Trim():"";
+   if(target.StartsWith("/")||target.EndsWith("/")||target.IndexOfAny(new[]{':','%','?','#'})>=0||name.Split('/').Any(part=>part==""||part=="."||part=="..")){
+    Add("unsupported",line,target,"角色名称无法按 WebGAL 4.6.7 语法解析");return;
+   }
+   string relative=name+"/figure.json",source=LocalFile("figure",relative);
+   if(source==null){Add("missing",line,relative,"未找到角色模板；角色名最后一个点号后的内容会被解释为预设名");return;}
+   string output;
+   try{output=Files.Under(Path.Combine(Root,"game","figure"),relative);}
+   catch(IOException){Add("unsupported",line,relative,"角色路径超出立绘目录");return;}
+   object template;
+   try{template=J.Read(source);}
+   catch(Exception error){Add("syntax",line,relative,"角色模板无法读取："+error.Message);return;}
+   if(!(J.Get(template,"components") is object[])){Add("syntax",line,relative,"角色模板缺少 components 数组");return;}
+   copies[output]=source;
+   var components=new Dictionary<string,string>(StringComparer.Ordinal);
+   foreach(var component in J.A(J.Get(template,"components"))){
+    string key=J.S(component,"name").Trim();if(key!="")components[key]=J.S(component,"src").Trim();
+   }
+   var presets=J.D(J.Get(template,"presets"));
+   var explicitComponents=J.Get(args,"components");
+   var selected=explicitComponents==null||explicitComponents is bool?new string[0]:CharacterNames(J.S(args,"components").Split(','));
+   if(selected.Length==0&&preset!=""){
+    selected=CharacterNames(J.A(J.Get(presets,preset)));
+    if(selected.Length==0)AddWarning("character-preset-fallback",line,target,"原版引擎找不到该预设或预设为空，会回退到默认图层，可能与编辑器预览不同。");
+   }
+   if(selected.Length==0)selected=presets.Values.Select(item=>CharacterNames(J.A(item))).FirstOrDefault(names=>names.Length>0)??components.Keys.ToArray();
+   foreach(string key in selected){
+    string src;
+    if(!components.TryGetValue(key,out src)||src==""){AddWarning("character-layer-skipped",line,key,"原版引擎会跳过缺失或无效的角色部件。");continue;}
+    var absolute=new Uri("https://export.invalid/figure/"+Uri.EscapeDataString(name)+"/figure.json");
+    Uri layer;string decoded;
+    try{decoded=Uri.UnescapeDataString(src);}catch(UriFormatException){decoded="";}
+    if(decoded==""||Regex.IsMatch(src,@"^(?:[a-z][a-z\d+.-]*:|[\\/])",RegexOptions.IgnoreCase)||Regex.IsMatch(decoded,@"^(?:[a-z][a-z\d+.-]*:|[\\/])",RegexOptions.IgnoreCase)||decoded.Replace('\\','/').Split('/').Contains("..")||
+       !Uri.TryCreate(absolute,src,out layer)||layer.Host!=absolute.Host||!layer.AbsolutePath.StartsWith(new Uri(absolute,"./").AbsolutePath,StringComparison.Ordinal)){
+     Add("unsupported",line,src,"角色部件必须使用角色目录内的相对路径");continue;
+    }
+    string prefix=new Uri(absolute,"./").AbsolutePath,path=Uri.UnescapeDataString(layer.AbsolutePath.Substring(prefix.Length));
+    if(!Regex.IsMatch(path,@"\.(png|jpe?g|webp|gif|bmp|avif|svg)$",RegexOptions.IgnoreCase)){Add("unsupported",line,src,"角色部件并非受支持的图片路径；文件名中的 # 或 % 可能需要 URL 编码");continue;}
+    try{
+     string local=Files.Under(Path.GetDirectoryName(source),path),destination=Files.Under(Path.GetDirectoryName(output),path);
+     if(!File.Exists(local)){Add("missing",line,src,"未找到引擎实际请求的角色部件");continue;}
+     copies[destination]=local;
+    }catch(IOException){Add("unsupported",line,src,"角色部件路径超出模板目录");}
+   }
+  }
   public void CollectShared(string kind,string reference){if(!PhysicalName(Clean(kind,reference)).StartsWith(SharedAssets.Prefix,StringComparison.Ordinal))return;Ref(kind,reference,0,null);}
   public void CollectSharedConfig(string text){if(Shared!=null){Shared=Shared.ForHttpSource(text);text=Shared.LocalizeSource(text);}text=Regex.Replace(text??"",@"(?m)^\s*;[^\r\n]*","");foreach(Match match in Regex.Matches(text,@"(?:^|[;\r\n])\s*(Title_img|Title_bgm|Game_Logo)\s*:\s*([^;]*)",RegexOptions.IgnoreCase)){string kind=match.Groups[1].Value.Equals("Title_bgm",StringComparison.OrdinalIgnoreCase)?"bgm":"background",value=Regex.Split(match.Groups[2].Value,@"\s+-")[0].Trim();foreach(string reference in value.Split('|'))CollectShared(kind,reference.Trim());}}
   void CollectSharedLiteral(string value){string id=value.Substring(SharedAssets.Prefix.Length).Split('/')[0],registered=Shared==null?null:Shared.KindForId(id);if(registered!=null){if(registered!="all")CollectShared(registered,value);else{string file=Shared.Resolve("figure",value),extension=Path.GetExtension(file).ToLowerInvariant();string[] kinds=Regex.IsMatch(extension,@"^\.(jsonl|wmdl|json|moc3?|mtn)$")?new[]{"figure"}:Regex.IsMatch(extension,@"^\.(png|jpe?g|webp|gif|bmp|avif|svg)$")?new[]{"figure","background"}:Regex.IsMatch(extension,@"^\.(mp3|wav|ogg|opus|m4a|aac|flac)$")?new[]{"bgm","vocal"}:Regex.IsMatch(extension,@"^\.(mp4|webm|mov|mkv)$")?new[]{"background","video"}:SharedAssets.Kinds;foreach(string kind in kinds)CollectShared(kind,value);}return;}bool found=false;foreach(string kind in SharedAssets.Kinds){string name=PhysicalName(Clean(kind,value));if(!AmbiguousWindowsPath(name)&&LocalFile(kind,name)!=null){CollectShared(kind,value);found=true;}}if(!found)Add("missing",0,value,"共享素材来源未登记，请重新选择文件夹");}
@@ -157,7 +209,7 @@ namespace NativeVideo {
    var lines=Regex.Split(Script,"\r?\n");
    var sentences=J.A(J.Get(parsed,"sentenceList"));
    var forbidden=new HashSet<string>(new[]{"changeScene","callScene","return","choose","chooseLabel","jumpLabel","getUserInput","if","setVar","showVars"});
-   var known=new HashSet<string>(new[]{"say","changeBg","changeFigure","changeFigureDiff","bgm","playVideo","pixiPerform","pixiInit","intro","miniAvatar","changeScene","choose","end","setComplexAnimation","setFilter","label","jumpLabel","chooseLabel","setVar","if","callScene","showVars","unlockCg","unlockBgm","filmMode","setTextbox","setAnimation","playEffect","setTempAnimation","comment","__commment","setTransform","setTransition","getUserInput","applyStyle","wait","callSteam","return"});
+   var known=new HashSet<string>(new[]{"say","changeBg","changeFigure","changeFigureDiff","character","bgm","playVideo","pixiPerform","pixiInit","intro","miniAvatar","changeScene","choose","end","setComplexAnimation","setFilter","label","jumpLabel","chooseLabel","setVar","if","callScene","showVars","unlockCg","unlockBgm","filmMode","setTextbox","setAnimation","playEffect","setTempAnimation","comment","__commment","setTransform","setTransition","getUserInput","applyStyle","wait","callSteam","return"});
    var sideEffects=new HashSet<string>(new[]{"unlockCg","unlockBgm","callSteam"});
    var mapping=new Dictionary<string,string>{{"changeBg","background"},{"changeFigure","figure"},{"changeFigureDiff","figure"},{"miniAvatar","figure"},{"bgm","bgm"},{"playEffect","vocal"},{"playVideo","video"}};
    var args=new Dictionary<string,string>{{"vocal","vocal"},{"backgroundImage","background"},{"mouthOpen","figure"},{"mouthClose","figure"},{"mouthHalfOpen","figure"},{"eyesOpen","figure"},{"eyesClose","figure"}};
@@ -183,6 +235,7 @@ namespace NativeVideo {
     double wait;if(cmd=="wait"&&(!double.TryParse(J.S(s,"content"),out wait)||wait<0))Add("syntax",line,"wait","等待时长需要是非负毫秒数");
     if((cmd=="changeFigure"||cmd=="miniAvatar")&&J.S(s,"content")!="none"&&p.Keys.Any(key=>new[]{"motion","skin","expression","blink","focus","animationFlag"}.Contains(key)||Regex.IsMatch(key,"model|live2d|cubism",RegexOptions.IgnoreCase)||key=="type"&&!new[]{"image","img","video"}.Contains(J.S(p,key),StringComparer.OrdinalIgnoreCase)))RequireModelLibraries(J.S(s,"content"),null,true);
     if(mapping.ContainsKey(cmd)&&!(ignoreStageBackground&&cmd=="changeBg"))Ref(mapping[cmd],J.S(s,"content"),line,skip);
+    if(cmd=="character")CollectCharacter(J.S(s,"content"),p,line);
     if(cmd=="changeFigure"){
      var value=J.S(s,"content");
      if(Regex.IsMatch(value,@"\.(skel|mkv)([?#].*)?$",RegexOptions.IgnoreCase)||value.Contains("type=spine"))Add("unsupported",line,value,"当前不支持此立绘格式");

@@ -148,7 +148,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
    plannedDurationMs:Number.isFinite(Number(plannedPerform?.durationMs))?Number(plannedPerform.durationMs):null,
    voiceControlled:cmd==='say'&&!!params.vocal,
    mouthTarget:cmd==='say'?speakerTarget(params):null,
-   loads:['changeBg','changeFigure','changeFigureDiff','playVideo'].includes(cmd)
+   loads:['changeBg','changeFigure','changeFigureDiff','character','playVideo'].includes(cmd)
   });
   if(cmd==='playVideo')events.push({atMs:Math.round(cursor+videoDuration),line:range.start+1,sourceIndex:i,command:'__finishVideo',script:'',loads:false});
   if(hintMs){
@@ -188,7 +188,7 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   if(lifetime.endMs>lifetime.startMs)live2dLifetimes.push(lifetime);
  }
  live2dLifetimes.sort((a,b)=>a.startMs-b.startMs||String(a.target).localeCompare(String(b.target)));
- const dynamicCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','changeFigureDiff','playVideo','intro','pixiPerform']);
+ const dynamicCommands=new Set(['say','setTransform','setTempAnimation','setAnimation','setComplexAnimation','changeBg','changeFigure','changeFigureDiff','character','playVideo','intro','pixiPerform']);
  const dormantHoldCommands=new Set(['setTransform','setTempAnimation','setAnimation']);
  const decorativePixiNames=new Set(['rain','snow','heavySnow','cherryBlossoms']),relaxedDecorativePixi=[];
  for(const w of performWindows){

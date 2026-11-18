@@ -23,6 +23,7 @@ namespace NativeVideo {
    if(identity==null||identity.Version!=Version)throw new IOException("WebGAL bundle bytes do not match selected exact engine profile");
    if(Version=="4.6.7"){
     text=ReplaceOnce(text,"Ye={\"preview.command.sync-scene\"","Ye=globalThis.__probeCommands={\"preview.command.sync-scene\"");
+    text=ReplaceOnce(text,"ZRe(e,t.pixiContainer,o,r),e.assets.release(t.uuid)","ZRe(e,t.pixiContainer,o,r),t.__webvideoCharacterApplied=i,e.assets.release(t.uuid)");
     return text+"\n;globalThis.__wgProbe={core:R,store:Te,parseScene:To,stageManager:H,live2dCore:vc};\n";
    }
    if(Version=="4.6.6"){
