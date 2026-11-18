@@ -4,8 +4,13 @@
 
 | 适用环境 | 最终版本与状态 | 下载 | 发行与校验 |
 | --- | --- | --- | --- |
+| Terre / WebGAL 4.6.6 | 1.3.13，内核 0.6.71，EOL | [WebVideo+-Setup-1.3.13.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.13/WebVideo%2B-Setup-1.3.13.exe) | [v1.3.13](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.13) |
 | Terre / WebGAL 4.6.5 | 1.2.1，内核 0.6.54，EOL | [WebVideo+-Setup-1.2.1.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.2.1/WebVideo%2B-Setup-1.2.1.exe) | [v1.2.1](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.2.1) · [SHA256SUMS.txt](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.2.1/SHA256SUMS.txt) |
 | 官方 Windows x64 Craft 1.0.0-rc.1 / 1.0.0-beta.2 | Craft 1.1.17c，安装器 1.1.17.0c，内核 0.6.61，EOL | [WebVideoCraft-Setup-1.1.17.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.1.17.0c/WebVideoCraft-Setup-1.1.17.0c.exe) | [craft-v1.1.17.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.1.17.0c)，SHA-256 见发行正文 |
+
+## Terre / WebGAL 4.6.6
+
+1.3.13 是 4.6.6 的最终维护版本。此版本通过官方 Windows ZIP 验收，本次跳过 Steam 验收。安装器 SHA-256 为 `dda3ec314ef43d0eca03a9d8e0f76526727bf5d7e2f1580cdf5f361bdc832644`。
 
 ## Terre / WebGAL 4.6.5
 
