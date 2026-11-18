@@ -1,7 +1,7 @@
 # 构建与发布
 
 
-本发行线版本 **1.3.12**，产品内部开发标识 **0.8.19**，安装器 Win32 版本 **1.3.12.0**，导出内核 **0.6.70**。待发布。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0；构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256。
+本发行线版本 **1.3.13**，产品内部开发标识 **0.8.20**，安装器 Win32 版本 **1.3.13.0**，导出内核 **0.6.71**。待发布。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0；构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`scripts/manifest.mjs`、`build-product.ps1`、`scripts/configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
@@ -40,7 +40,7 @@ Pop-Location
 
 `-Offline` 只适用于构建输入准备，不等同于 `npm ci` 离线；首次恢复 AI npm 依赖仍需要网络或已有 npm 缓存。缺失或损坏的离线输入会明确报错，不会绕过校验。
 
-输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正常构建的安装器为 `dist/WebVideo+-Setup-1.3.12.exe`，Win32 文件版本 `1.3.12.0`，不依赖 `.exe.config` sidecar。构建完成不等于通过发布验收；`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
+输出位于 `dist/`。`package/`、`dist/`、`.build/` 和 `node_modules/` 都不提交。按当前 `version.json`，正常构建的安装器为 `dist/WebVideo+-Setup-1.3.13.exe`，Win32 文件版本 `1.3.13.0`，不依赖 `.exe.config` sidecar。构建完成不等于通过发布验收；`webvideo-plus.zip` 及 SHA-256 文件是构建中间产物。
 
 ### 旧 bootstrap 的显式迁移入口
 

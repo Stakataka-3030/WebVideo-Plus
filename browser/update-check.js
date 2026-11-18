@@ -21,9 +21,10 @@ const WebVideoUpdates=(()=>{
   if(!releases.length)throw Error('GitHub 没有可读取的正式发行版');
   const compatible=releases.find(row=>supports(row).includes(engine));
   const latest=releases[0],latestVersion=version(latest.tag_name);
+  const unclassified=releases.find(row=>!supports(row).length&&(!compatible||compare(row.tag_name,compatible.tag_name)>0));
+  if(unclassified)return {kind:'unknown',message:'WebVideo+ '+version(unclassified.tag_name)+' 的发行说明没有兼容范围，请在该发行页确认后再安装。',url:releaseUrl(unclassified.tag_name)};
   if(!compatible)return {kind:'unsupported',message:'WebGAL '+engine+' 暂无已发布的兼容 WebVideo+ 版本；请勿仅按版本号升级。',url:'https://github.com/Stakataka-3030/WebVideo-Plus/releases'};
   const target=version(compatible.tag_name),url=releaseUrl(compatible.tag_name);
-  if(releases.some(row=>compare(row.tag_name,compatible.tag_name)>0&&!supports(row).length))return {kind:'unknown',message:'发现较新的 WebVideo+，但其发行说明没有兼容范围；请在发行页确认后再安装。',url:releaseUrl(latest.tag_name)};
   if(compare(target,current)>0)return {kind:'update',message:'WebGAL '+engine+' 可更新至兼容的 WebVideo+ '+target+'。'+(compare(latestVersion,target)>0?'更新的 '+latestVersion+' 不适配当前引擎。':''),url};
   if(compare(latestVersion,target)>0)return {kind:'keep',message:'WebGAL '+engine+' 需要保留兼容的 WebVideo+ '+target+'；较新的 '+latestVersion+' 面向其他引擎版本。',url};
   return {kind:'current',message:'WebGAL '+engine+' 已使用当前可用的兼容版本（'+current+'）。',url:''};
@@ -48,13 +49,14 @@ const WebVideoUpdates=(()=>{
   return preference.mode==='next-release'?compare(latest,preference.baselineVersion)<=0:preference.mode==='next-major'?available[0]<=baseline[0]:false;
  }
  async function snooze(mode){
-  try{await preferences({mode,baselineVersion:latestSeen||String(WebVideoUpdateContext.productVersion||'')});emit({visible:false,preference:mode});}
-  catch{emit({phase:'failed',visible:true,message:'更新提醒设置未保存，请确认本机导出服务正在运行。'});}
+  const id=++serial;
+  try{await preferences({mode,baselineVersion:latestSeen||String(WebVideoUpdateContext.productVersion||'')});if(id===serial)emit({phase:'idle',visible:false,preference:mode});}
+  catch{if(id===serial)emit({phase:'failed',visible:true,message:'更新提醒设置未保存，请确认本机导出服务正在运行。'});}
  }
  async function check(manual=false){
   const id=++serial,engine=engineVersion(),current=String(WebVideoUpdateContext.productVersion||'');
   let preference={mode:'on'};
-  try{preference=await preferences();}catch{if(!manual){emit({phase:'failed',visible:false,message:'无法读取更新提醒设置'});return state;}}
+  try{preference=await preferences();}catch{if(!manual){if(id===serial)emit({phase:'failed',visible:false,message:'无法读取更新提醒设置'});return state;}}
   if(id!==serial)return state;
   if(!manual&&preference.mode==='never'){emit({phase:'suppressed',visible:false,preference:preference.mode});return state;}
   emit({phase:'checking',visible:manual,message:'正在检查 WebVideo+ 更新…',url:''});
@@ -67,15 +69,16 @@ const WebVideoUpdates=(()=>{
    const raw=await response.text();if(raw.length>2*1024*1024)throw Error('发行列表过大');
    const rows=JSON.parse(raw);if(!Array.isArray(rows))throw Error('发行列表格式错误');
    const latest=rows.filter(row=>row&&!row.draft&&!row.prerelease&&parts(row.tag_name)).sort((a,b)=>compare(b.tag_name,a.tag_name))[0];
+   if(id!==serial)return state;
    latestSeen=latest?version(latest.tag_name):current;
    if(!manual&&suppressed(preference,latestSeen)){if(id===serial)emit({phase:'suppressed',visible:false,preference:preference.mode});return state;}
-   if(preference.mode!=='on')try{await preferences({mode:'on',baselineVersion:''});}catch{}
-   const result=classify(rows,engine,current);if(id===serial)emit({...result,phase:'done',visible:manual||result.kind!=='current',preference:'on'});
+   if(!manual&&preference.mode!=='on')try{await preferences({mode:'on',baselineVersion:''});preference.mode='on';}catch{}
+   const result=classify(rows,engine,current);if(id===serial)emit({...result,phase:'done',visible:manual||result.kind!=='current',preference:preference.mode});
   }catch(error){if(id===serial)emit({phase:'failed',kind:'failed',visible:manual||preference.mode==='on',message:'检查更新失败。'+(error.name==='AbortError'?'连接超时，请稍后重试。':'请检查网络或稍后重试。')+'不会影响 Terre 启动。',url:''});}
   finally{clearTimeout(timer);}
   return state;
  }
- const api={check,classify,snooze,subscribe(listener){listeners.add(listener);return()=>listeners.delete(listener);},state(){return state;},start(){if(started)return;started=true;let retries=0;const run=async()=>{const result=await check(false);if(result.phase==='failed'&&result.message==='无法读取更新提醒设置'&&retries++<3)setTimeout(run,2000);};run();},dismiss(){emit({visible:false});}};
+ const api={check,classify,snooze,subscribe(listener){listeners.add(listener);return()=>listeners.delete(listener);},state(){return state;},start(){if(started)return;started=true;let retries=0;const run=async()=>{const result=await check(false);if(result.phase==='failed'&&result.message==='无法读取更新提醒设置'&&retries++<3)setTimeout(run,2000);};run();},dismiss(){++serial;emit({phase:'idle',visible:false});}};
  globalThis.WebVideoUpdates=api;
  return api;
 })();

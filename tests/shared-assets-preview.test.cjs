@@ -30,22 +30,24 @@ function harness(line, request, previewClient = {}, showPreview = () => {}) {
   const setState=change=>{const old=state;state={...state,...change};for(const fn of [...storeListeners])fn(state,old);};
   const store={getState:()=>state,subscribe:fn=>{storeListeners.add(fn);return()=>storeListeners.delete(fn);},use:{viewType:()=> 'grid',updateViewType:()=>()=>{},sortBy:()=> 'name',sortOrder:()=> 'asc'}};
   const mountFrame=(game='Audit')=>{frame={contentWindow:{location:{href:'http://audit/games/'+encodeURIComponent(game)}},contentDocument:{}};return frame;};
-  const cells = [], effects = [], pending = [];
+  const cells = [], effects = [], pending = [], layouts = [];
   let cursor = 0, dirty = true, tree, props;
   const R = {
     Fragment: 'Fragment',
+    createContext:defaultValue=>({defaultValue}),useContext:context=>context.defaultValue,
     createElement(type, p, ...children) {if(typeof type==='function'&&type.name==='WebVideoSharedFileList')return {type:'List',props:{},children:p.entries.map(file=>({type:'Button',props:{onClick:()=>p.onOpen(file)},children:[file.name]}))};return {type,props:p || {},children:children.flat(Infinity).filter(x=>x!==null && x!==undefined && x!==false)};},
     useMemo(fn){cursor++;return fn();},
     useState(initial) { const i=cursor++; if (!(i in cells)) cells[i]=typeof initial==='function'?initial():initial; return [cells[i],v=>{cells[i]=typeof v==='function'?v(cells[i]):v;dirty=true;}]; },
     useRef(initial) {const i=cursor++; if (!(i in cells)) cells[i]={current:initial}; return cells[i];},
-    useEffect(fn,deps) {const i=cursor++; const old=effects[i]; if (!old || !deps || deps.some((v,j)=>!Object.is(v,old.deps[j]))) {effects[i]={fn,deps,cleanup:old?.cleanup};pending.push(i);} }
+    useEffect(fn,deps,queue=pending) {const i=cursor++; const old=effects[i]; if (!old || !deps || deps.some((v,j)=>!Object.is(v,old.deps[j]))) {effects[i]={fn,deps,cleanup:old?.cleanup};queue.push(i);} }
   };
+  R.useLayoutEffect=(fn,deps)=>R.useEffect(fn,deps,layouts);
   const sandbox = {useSWRConfig:()=>({mutate:async key=>events.push({type:'local-assets-refresh',key})}),eventBus,useEditorStore:store,document:{getElementById:()=>frame},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),reactExports:R, Button:'Button', Input:'Input', WebVideoLocalAssets:'LocalAssets', crypto, AbortController, AbortSignal, URL, ArrowLeftIcon$1:'ArrowLeft',ArrowSyncIcon:'Refresh',FolderAddIcon:'AddFolder',GridIcon:'Grid',ListIcon:'List', CustomEvent:class {constructor(type,opts){this.type=type;this.detail=opts.detail;}}, navigator:{clipboard:{writeText:async()=>{}}}, window:{location:{origin:'http://audit'},addEventListener:(name,fn)=>{if(name==='message')messages.add(fn);},removeEventListener:(name,fn)=>messages.delete(fn),confirm:()=>{throw Error('Confirmation interaction intentionally excluded');},dispatchEvent:e=>events.push(e),WebVideoTools:{state:()=>({context:{game:state.subPage,showPreview(){setState({isShowPreview:true});showPreview();}}})}},EditorPreviewClient:previewClient,fetch:async(url,opts)=>{if(opts?.signal?.aborted)throw Object.assign(Error('aborted'),{name:'AbortError'});if(url==='/assets/video-export-service.json')return {ok:true,status:200,json:async()=>({baseUrl:'http://127.0.0.1:42313',token:'fixture'})};const result=await fixtureRequest(new URL(url).pathname,opts?.body?JSON.parse(opts.body):undefined,opts?.signal);return {ok:true,status:200,json:async()=>result,text:async()=>JSON.stringify(result)};}};
-  const events=[];sandbox.__WEBVIDEO_SHARED_ENABLED__=true;vm.createContext(sandbox);vm.runInContext(fs.readFileSync(path.join(base,'browser/service-errors.js'),'utf8'),sandbox);
+  const events=[];sandbox.__WEBVIDEO_SHARED_ENABLED__=true;vm.createContext(sandbox);for(const script of ['service-errors.js','resource-labels.js'])vm.runInContext(fs.readFileSync(path.join(base,'browser',script),'utf8'),sandbox,{filename:script});
   vm.runInContext(fs.readFileSync(component,'utf8')+'\nthis.api={Assets,WebVideoSharedAssets,WebVideoSharedMaterials};',sandbox);
   async function fixtureRequest(endpoint,...args){const value=await request(endpoint,...args);return endpoint==='/api/shared/libraries'?{...value,resourcePrefix:'http://audit/webvideo-shared/'+('b'.repeat(32))+'/'}:endpoint==='/api/shared/resolve'?{...value,url:'http://audit/webvideo-shared/'+('b'.repeat(32))+'/'+('a'.repeat(32))+'/a.png'}:value;}
   sandbox.api.WebVideoSharedMaterials.request=fixtureRequest;
-  function render() {cursor=0;dirty=false;tree=sandbox.api.WebVideoSharedAssets(props); for(const i of pending.splice(0)){effects[i].cleanup?.();effects[i].cleanup=effects[i].fn();}}
+  function render() {cursor=0;dirty=false;tree=sandbox.api.WebVideoSharedAssets(props); for(const i of [...layouts.splice(0),...pending.splice(0)]){effects[i].cleanup?.();effects[i].cleanup=effects[i].fn();}}
   function nodes(n=tree,out=[]) {if(n && typeof n==='object'){out.push(n);for(const c of n.children || [])nodes(c,out);}return out;}
   function text(n) {return typeof n==='object'?(n.children||[]).map(text).join(''):String(n ?? '');}
   return {nodes,cells,events,api:sandbox.api,setState,mountFrame,frame:()=>frame,ready(value=true){eventBus.emit('editor-preview:ready',{ready:value});},bootstrap(){for(const fn of messages)fn({source:frame?.contentWindow,data:{type:'webgal.preview.bootstrap.request'}});},expire(){for(const fn of [...timers.values()])fn();},subscriptionCount:()=>storeListeners.size,pending:()=>timers.size,timerCount:()=>timerId,waiters:()=>busListeners.get('editor-preview:ready')?.size,
@@ -61,7 +63,7 @@ const lib={id:'a'.repeat(32),kind:'figure',name:'Fixture',root:'X:/fixture'};
 const entry={name:'a.png',path:'a.png',extName:'.png',isDir:false,size:24};
 async function ready(line, options={}) {
   const calls=[];
-  const request=async(endpoint,data,signal)=>{calls.push({endpoint,data});if(options.request)return options.request(endpoint,data,calls,signal);if(endpoint==='/api/shared/libraries')return {libraries:[lib]};if(endpoint==='/api/shared/list')return {entries:[entry]};if(endpoint==='/api/shared/copy')return {reference:'a/a.png'};if(endpoint==='/api/shared/resolve')return {file:'X:/fixture/a.png'};if(endpoint==='/api/shared/dialog')return {canceled:true};throw Error('Unexpected '+endpoint);};
+  const request=async(endpoint,data,signal)=>{calls.push({endpoint,data});if(options.request)return options.request(endpoint,data,calls,signal);if(endpoint==='/api/shared/libraries')return {libraries:[lib]};if(endpoint==='/api/shared/list')return {entries:[entry]};if(endpoint==='/api/shared/copy')return {kind:data.kind,reference:'a/a.png'};if(endpoint==='/api/shared/resolve')return {file:'X:/fixture/a.png'};if(endpoint==='/api/shared/dialog')return {canceled:true};throw Error('Unexpected '+endpoint);};
   const h=harness(line,request,options.previewClient,()=>options.showPreview?.(h));h.mount({selectedFilePath:['figure','__shared',lib.id,'a.png'],...options.props});await h.flush();await h.click('a.png');return {h,calls};
 }
 

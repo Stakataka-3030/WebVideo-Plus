@@ -46,6 +46,7 @@ namespace NativeVideo {
    Check(J.B(J.A(J.Get(limited,"originMap")).Last(),"synthetic")&&J.S(J.A(J.Get(limited,"originMap")).Last(),"scene")=="after.txt","Sentinel must have a valid, explicitly synthetic boundary origin");
    Check(J.S(chain,"dependencyHash")==J.S(limited,"dependencyHash"),"Graph cache signature changed");
    Check(parses.Contains("after.txt"),"Graph text discovery must remain explicit and intact");
+   Check(parses.Distinct(StringComparer.OrdinalIgnoreCase).Count()==parses.Count,"Expanding a discovered chain must reuse each successful parse");
    Check(J.Text(J.Get(chain,"graphScenes"))==J.Text(J.Get(limited,"graphScenes")),"Graph metadata was discarded");
    Check(J.A(J.Get(limited,"flattened")).Count==2,"Target transfer marker removed");
    foreach(string mode in new[]{"auto","manual"})Check(J.Get(Limit(chain,null,mode),"planningTail")!=null,"Expected eligible mode: "+mode);

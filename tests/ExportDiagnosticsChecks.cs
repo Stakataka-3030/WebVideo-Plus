@@ -43,6 +43,18 @@ public static class ExportDiagnosticsChecks {
  static void Heavy(object request){string work=J.S(request,"jobDir");Put(Path.Combine(work,"parts/003/video.mp4"),"video");Put(Path.Combine(work,"parts/003/frame.png"),"frame");Put(Path.Combine(work,"parts/003/profile/Cookies"),"private");Put(Path.Combine(work,"planning/prepared/web/game/figure/model.model3.json"),"model");Put(Path.Combine(work,"planning/prepared/web/assets/runtime.js"),"runtime");Put(Path.Combine(work,"audio.wav"),"audio");}
  static void DiagnosticsChecks(){
   Put(Path.Combine(root,"formal.mp4"),"formal product");Put(Path.Combine(root,"original/scene.txt"),"original source");
+  var longRequest=Request("long diagnostics");string deep=J.S(longRequest,"recordDir");
+  while(deep.Length<205)deep=Path.Combine(deep,"nested-diagnostics");
+  Directory.CreateDirectory(deep);longRequest["recordDir"]=deep;ExportDiagnostics.Begin(longRequest);
+  var longRender=new Dictionary<string,object>(longRequest);
+  ExportDiagnostics.BeginAttempt(longRequest,longRender,Path.Combine(J.S(longRequest,"jobDir"),"parts/1000"),1);
+  string longAttempt=J.S(longRender,"diagnosticAttemptDir");Check(longAttempt.Length>=248,"diagnostic attempt can use an extended directory path");
+  ExportDiagnostics.Prefix(longRender,"export-prefix-1000.txt","deep prefix",new object[0],0,0,0);
+  Check(Files.Hash(Path.Combine(longAttempt,"export-prefix-1000.txt"))==Files.HashText("deep prefix"),"deep diagnostic prefix retains its source");
+  string invalidPart=Path.Combine(J.S(longRequest,"jobDir"),"parts/997");
+  Put(Path.Combine(RunFolder(longRequest),"parts/997/attempt-001"),"fixture occupying the attempt directory");
+  ExportDiagnostics.BeginAttempt(longRequest,longRender,invalidPart,1);
+  Check(J.S(longRender,"diagnosticAttemptDir")=="","failed diagnostic initialization forgets the previous attempt");
   var request=Request("failed then success");string work=J.S(request,"jobDir"),record=J.S(request,"recordDir"),part=Path.Combine(work,"parts/003");Heavy(request);
   Put(Path.Combine(record,"source-at-queue.txt"),"source");Put(Path.Combine(record,"scene-at-queue/start.txt"),"source");Put(Path.Combine(record,"cubism-memory/planning.json"),"{}");
   Put(Path.Combine(work,"segment-plan.json"),"{}");J.Write(Path.Combine(work,"planning/scene-chain.json"),J.O("originMap",new[]{J.O("scene","chapter.txt","line",82),J.O("scene","chapter.txt","line",83),J.O("scene","chapter.txt","line",84)}));
@@ -57,8 +69,14 @@ public static class ExportDiagnosticsChecks {
   Check(J.N(J.A(J.Get(J.Read(Path.Combine(run,"parts/003/attempt-001/prefix-map.json")),"rows"))[1],"prefixLine")==3,"multiline statements map following commands to physical prefix lines");
   ExportDiagnostics.BeginAttempt(request,render,part,3);ExportDiagnostics.EndAttempt(request,part,3,new IOException("process could not start"));
   Check(!File.Exists(Path.Combine(run,"parts/003/attempt-003/runner.log")),"failed process start cannot inherit a previous attempt log");
+  string latePart=Path.Combine(work,"parts/1000"),latePrefix="export-prefix-1000.txt";
+  Directory.CreateDirectory(latePart);ExportDiagnostics.BeginAttempt(request,render,latePart,1);
+  ExportDiagnostics.Prefix(render,latePrefix,"late;",new object[0],0,0,0);
+  Check(File.Exists(Path.Combine(run,"parts/1000/attempt-001",latePrefix)),"four-digit part preserves attempt prefix");
+  Put(Path.Combine(latePart,"runner.log"),"late part");Put(Path.Combine(work,"planning/prepared/web/game/scene",latePrefix),"late;");
   var archive=ExportDiagnostics.Failure(request,new TimeoutException("terminal original exception"));
   Check(J.S(archive,"status")=="complete"&&!Directory.Exists(work),"final failure archives text before deleting entire heavy cache");
+  Check(File.ReadAllText(Path.Combine(run,"final/parts/1000/runner.log"))=="late part"&&File.ReadAllText(Path.Combine(run,"final/prefix",latePrefix))=="late;","terminal archive retains four-digit part logs and prefix");
   Check(File.ReadAllText(Path.Combine(run,"exception.json")).Contains("terminal original exception"),"original terminal exception retained");
   Check(Directory.GetFiles(Path.Combine(record,"diagnostics"),"*",SearchOption.AllDirectories).All(p=>new[]{".txt",".log",".json",".jsonl"}.Contains(Path.GetExtension(p))),"failed archive excludes frames media models runtime and browser data");
   Heavy(request);ExportDiagnostics.Begin(request);Put(Path.Combine(record,"runner.log"),"success after retry");Put(Path.Combine(record,"error.log"),"old failure");J.Write(Path.Combine(record,"status.json"),J.O("state","completed","phase","completed"));ExportDiagnostics.Reconcile(request);
@@ -66,9 +84,11 @@ public static class ExportDiagnosticsChecks {
   Check(File.Exists(Path.Combine(record,"request.json"))&&File.Exists(Path.Combine(record,"status.json")),"minimal task history remains available");
   Check(File.ReadAllText(Path.Combine(root,"formal.mp4"))=="formal product"&&File.ReadAllText(Path.Combine(root,"original/scene.txt"))=="original source","formal product and original project remain untouched");
   var partial=Request("locked text");Heavy(partial);ExportDiagnostics.Begin(partial);string locked=Path.Combine(J.S(partial,"jobDir"),"parts/003/runner.log");Put(locked,"locked diagnostic");
+  string lateLog=Path.Combine(J.S(partial,"jobDir"),"parts/1001/runner.log"),fallbackPrefix=Path.Combine(J.S(partial,"jobDir"),"planning/prepared/web/game/scene/export-prefix-1001.txt");Put(lateLog,"fallback");Put(fallbackPrefix,"late;");
   using(var handle=new FileStream(locked,FileMode.Open,FileAccess.ReadWrite,FileShare.None)){
    var result=ExportDiagnostics.Failure(partial,new IOException("original failure despite collection error"));
    Check(J.S(result,"status")=="partial"&&J.B(result,"heavyCacheCleaned"),"collection failure is explicit partial without hiding original failure");
+   Check(File.Exists(lateLog)&&File.Exists(fallbackPrefix),"partial collection retains four-digit fallback records");
    Check(File.Exists(locked)&&!File.Exists(Path.Combine(J.S(partial,"jobDir"),"parts/003/video.mp4"))&&!File.Exists(Path.Combine(J.S(partial,"jobDir"),"planning/prepared/web/game/figure/model.model3.json")),"partial collection retains only selected fallback text not heavy cache");
   }
   var cli=Request("CLI same directory");cli["recordDir"]=cli["jobDir"];Heavy(cli);ExportDiagnostics.Begin(cli);string cliPlan=Path.Combine(J.S(cli,"jobDir"),"planning/prepared/plan.json");Put(cliPlan,"{}");

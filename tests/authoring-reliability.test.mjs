@@ -42,6 +42,15 @@ for(const version of versions){
    assert.equal(t.parse(diff.after)[2].args.find(x=>x.key==='figureId')?.value,'alice');
   }
  }finally{t.close();}});
+ test(version+' raw offsets match normalized prefixes at every UTF-16 boundary',()=>{
+  const t=terre(version);try{
+   const core=t.ctx.WebVideoProjectCore;
+   for(const text of ['', 'a\nb', '😀\r\n\r\nx\ry']){
+    const lookup=core.normalizedOffsetLookup(text);
+    for(let i=0;i<=text.length;i++)assert.equal(lookup(i),core.norm(text.slice(0,i)).length);
+   }
+  }finally{t.close();}
+ });
 
  test(version+' production writer preserves long rich text, suffixes, quotes and physical spans',()=>{const t=terre(version);try{
   const body='中文（括号）<span style="color:rgb(1, 2, 3)">末字</span>\u200b'.repeat(4),sources=[`Alice:${body} -vocal=line.wav -when=ok; inline`, 'changeFigure:a.png\n  -id=hero\n  -bounds=-500,-500,500,500"\n  -focus={"x":-1,"y":0}\n  -next; comment'];
@@ -99,6 +108,7 @@ for(const version of versions)test(version+' shared speaker aliases use a unique
 }finally{t.close();}});
 
 for(const version of versions){
+
  test(version+' first metadata save lists the existing root despite missing child returning Nest 500',async()=>{const t=terre(version);try{
   const P=t.ctx.WebVideoProject;await P.activate('fixture');
   await assert.rejects(t.ctx.api.assetsControllerReadAssets('games/fixture/.webvideo-plus'),{status:500});t.requests.list.length=0;
@@ -124,6 +134,15 @@ for(const version of versions){
 }
 
 for(const version of versions){
+ test(version+' raw offsets match normalized prefixes at every UTF-16 boundary',()=>{
+  const t=terre(version);try{
+   const core=t.ctx.WebVideoProjectCore;
+   for(const text of ['', 'a\nb', '😀\r\n\r\nx\ry']){
+    const lookup=core.normalizedOffsetLookup(text);
+    for(let i=0;i<=text.length;i++)assert.equal(lookup(i),core.norm(text.slice(0,i)).length);
+   }
+  }finally{t.close();}
+ });
  test(version+' empty backup history proves absence from parent listings without missing-path requests',async()=>{const t=terre(version);try{
   const P=t.ctx.WebVideoProject;await P.activate('fixture');assert.deepEqual(plain(await P.listBackups()),[]);assert.deepEqual(t.requests.list,['games/fixture']);
   fs.mkdirSync(path.join(t.disk,'games/fixture/.webvideo-plus'));t.requests.list.length=0;assert.deepEqual(plain(await P.listBackups()),[]);assert.deepEqual(t.requests.list,['games/fixture','games/fixture/.webvideo-plus']);assert.equal(t.requests.writes.length,0);

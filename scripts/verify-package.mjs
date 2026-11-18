@@ -1,7 +1,7 @@
-import {verifyPackageMaterials} from './verify-materials.mjs';
+import {hashFile,verifyPackageMaterials} from './verify-materials.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
+
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import {verifyRuntimeOutput} from './prepare-webgal-runtime.mjs';
@@ -36,9 +36,9 @@ for(const entry of manifest.files){
  inventory.add(entry.path);
  const target=path.resolve(pkg,entry.path);
  assert.ok(target.startsWith(pkg+path.sep),`Unsafe manifest path ${entry.path}`);
- const bytes=fs.readFileSync(target);
- assert.equal(bytes.length,entry.bytes,`Manifest size mismatch ${entry.path}`);
- assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),entry.sha256,`Manifest hash mismatch ${entry.path}`);
+ const {bytes,sha256}=hashFile(target);
+ assert.equal(bytes,entry.bytes,`Manifest size mismatch ${entry.path}`);
+ assert.equal(sha256,entry.sha256,`Manifest hash mismatch ${entry.path}`);
 }
 function walk(directory){return fs.readdirSync(directory,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?walk(path.join(directory,entry.name)):[path.relative(pkg,path.join(directory,entry.name)).replaceAll('\\','/')]);}
 assert.deepEqual(walk(pkg).filter(file=>file!=='MANIFEST.json').sort(),[...inventory].sort(),'Unlisted or missing package files');

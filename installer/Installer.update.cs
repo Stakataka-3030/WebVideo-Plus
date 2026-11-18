@@ -29,9 +29,10 @@ public static class ReleaseUpdateCheck {
   var releases=data.OfType<Dictionary<string,object>>().Where(row=>!Flag(row,"draft")&&!Flag(row,"prerelease")&&Version(Value(row,"tag_name"))!="").OrderByDescending(row=>new System.Version(Version(Value(row,"tag_name")))).ToArray();
   if(releases.Length==0)throw new IOException("GitHub 没有可读取的正式发行版");
   var compatible=releases.FirstOrDefault(row=>Supports(row).Contains(engine));var latest=releases[0];string latestVersion=Version(Value(latest,"tag_name"));
+  var unclassified=releases.FirstOrDefault(row=>Supports(row).Length==0&&(compatible==null||InstallationState.CompareVersions(Version(Value(row,"tag_name")),Version(Value(compatible,"tag_name")))>0));
+  if(unclassified!=null){string tag=Value(unclassified,"tag_name");return new ReleaseUpdateFinding("unknown","WebVideo+ "+Version(tag)+" 的发行说明没有兼容范围，请在该发行页确认后再安装。",Url(tag));}
   if(compatible==null)return new ReleaseUpdateFinding("unsupported","WebGAL "+engine+" 暂无已发布的兼容 WebVideo+ 版本；请勿仅按版本号升级。",Releases);
   string target=Version(Value(compatible,"tag_name")),url=Url(Value(compatible,"tag_name"));
-  if(releases.Any(row=>InstallationState.CompareVersions(Version(Value(row,"tag_name")),target)>0&&Supports(row).Length==0))return new ReleaseUpdateFinding("unknown","发现较新的 WebVideo+，但其发行说明没有兼容范围；请在发行页确认后再安装。",Url(Value(latest,"tag_name")));
   if(InstallationState.CompareVersions(target,current)>0)return new ReleaseUpdateFinding("update","WebGAL "+engine+" 可更新至兼容的 WebVideo+ "+target+"。"+(InstallationState.CompareVersions(latestVersion,target)>0?"更新的 "+latestVersion+" 不适配当前引擎。":""),url);
   if(InstallationState.CompareVersions(latestVersion,target)>0)return new ReleaseUpdateFinding("keep","WebGAL "+engine+" 需要保留兼容的 WebVideo+ "+target+"；较新的 "+latestVersion+" 面向其他引擎版本。",url);
   return new ReleaseUpdateFinding("current","WebGAL "+engine+" 暂无比 "+current+" 更新的兼容正式版。");
@@ -55,7 +56,7 @@ public partial class SetupForm {
   updateReminder=new LinkLabel{Text="提醒设置",AutoSize=false,AccessibleName="更新提醒设置"};
   var reminderMenu=new ContextMenuStrip();
   foreach(var choice in new[]{Tuple.Create("next-release","下个版本前不要提醒我"),Tuple.Create("next-major","下个主要版本前不要提醒我"),Tuple.Create("never","不要提醒我"),Tuple.Create("on","恢复提醒")}){
-   var mode=choice.Item1;reminderMenu.Items.Add(choice.Item2,null,(s,e)=>{try{UpdatePreferences.Save(mode,updateLatest!=""?updateLatest:InstallerBuild.PackageVersion,UpdatePreferenceFile());updateStatus.Text=mode=="on"?"已恢复自动更新提醒；可点“重新检查”立即查询。":"更新提醒设置已保存，Terre 与安装器将共用此设置。";updateUrl="";updateAction.Visible=false;}catch(Exception error){MessageBox.Show(this,error.Message,"提醒设置未保存");}});
+   var mode=choice.Item1;reminderMenu.Items.Add(choice.Item2,null,(s,e)=>{try{UpdatePreferences.Save(mode,updateLatest!=""?updateLatest:InstallerBuild.PackageVersion,UpdatePreferenceFile());++updateTicket;updateRetry.Enabled=true;updateStatus.Text=mode=="on"?"已恢复自动更新提醒；可点“重新检查”立即查询。":"更新提醒设置已保存，Terre 与安装器将共用此设置。";updateUrl="";updateAction.Visible=false;}catch(Exception error){MessageBox.Show(this,error.Message,"提醒设置未保存");}});
   }
   updateReminder.LinkClicked+=(s,e)=>reminderMenu.Show(updateReminder,0,updateReminder.Height);
   Controls.Add(updateStatus);Controls.Add(updateAction);Controls.Add(updateRetry);Controls.Add(updateReminder);
@@ -88,7 +89,7 @@ public partial class SetupForm {
   string engine;try{engine=DefaultEngineVersion();}catch{engine="";}
   if(String.IsNullOrWhiteSpace(engine)){updateStatus.Text="无法确认 Terre 默认 WebGAL 引擎版本，检查更新失败；安装与启动不受影响。";return;}
   updateStatus.Text="正在检查 WebVideo+ 更新…";updateRetry.Enabled=false;
-  try{var result=await Task.Run(()=>ReleaseUpdateCheck.Fetch(engine,InstallerBuild.PackageVersion));if(ticket!=updateTicket||IsDisposed)return;updateLatest=result.LatestVersion;if(!manual&&UpdatePreferences.Suppressed(preference,updateLatest)){updateStatus.Text="更新提醒已暂停；可点“重新检查”手动查询。";return;}if(Convert.ToString(preference["mode"])!="on")try{UpdatePreferences.Save("on","",preferenceFile);}catch{}updateStatus.Text=result.Message;updateUrl=result.Url;updateAction.Visible=updateUrl!="";}
+  try{var result=await Task.Run(()=>ReleaseUpdateCheck.Fetch(engine,InstallerBuild.PackageVersion));if(ticket!=updateTicket||IsDisposed)return;updateLatest=result.LatestVersion;if(!manual&&UpdatePreferences.Suppressed(preference,updateLatest)){updateStatus.Text="更新提醒已暂停；可点“重新检查”手动查询。";return;}if(!manual&&Convert.ToString(preference["mode"])!="on")try{UpdatePreferences.Save("on","",preferenceFile);}catch{}updateStatus.Text=result.Message;updateUrl=result.Url;updateAction.Visible=updateUrl!="";}
   catch{if(ticket==updateTicket&&!IsDisposed)updateStatus.Text="检查更新失败。请检查网络或稍后重试；安装与启动不受影响。";}
   finally{if(ticket==updateTicket&&!IsDisposed)updateRetry.Enabled=true;}
  }
