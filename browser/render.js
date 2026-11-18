@@ -110,7 +110,7 @@ globalThis.__exportDialogueNodes=(text,stage={})=>{
   const user=__wgProbe.store.getState().userData||{},size=Number(stage.showTextSize??-1)===-1?Number(user.optionData?.textSize??0):Number(stage.showTextSize),configured=Number(user.globalGameVar?.Max_line),lines=Number.isNaN(configured)?(size===0?3:2):configured;
   try{
     const compile=value=>__wgProbe.compileText(value,lines,true),version=__wgProbe.adapter?.version;
-    if(version!=='4.6.5'&&version!=='4.6.6')return __wgProbe.compileText(text,lines).flat().map(item=>__exportDialogueNodeText(item.reactNode??item));
+    if(version!=='4.6.5'&&version!=='4.6.6'&&version!=='4.6.7')return __wgProbe.compileText(text,lines).flat().map(item=>__exportDialogueNodeText(item.reactNode??item));
     const previous=String(stage.currentConcatDialogPrev??''),segments=stage.currentDialogSegments?.join('')===text?stage.currentDialogSegments:previous&&text.startsWith(previous)?[previous,text.slice(previous.length)]:[text];
     let rows=[];for(const segment of segments){const next=compile(segment);if(!rows.length){rows=next;continue;}const [first,...rest]=next;rows=[...rows.slice(0,-1),[...rows.at(-1),...first.slice(1)],...rest];}
     return rows.slice(0,lines).flat().map(item=>__exportDialogueNodeText(item.reactNode??item));

@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace NativeVideo {
  // Engine code is always copied into a job-local snapshot before patching.
- // Exact WebGAL 4.6.4 / 4.6.5 / 4.6.6 project/template runtimes are preferred so engine-level
+ // Exact WebGAL 4.6.4–4.6.7 project/template runtimes are preferred so engine-level
  // defaults, split chunks and CSS stay identical to the game being exported.
  public sealed class EngineAdapter {
   public const string MygoHash = "0407b5a6326ebaa1608d16541b79b4ccc54a0432947ae7d3a6a855606a68866e";
@@ -88,7 +88,7 @@ namespace NativeVideo {
      if(id=="open-webgal.webgal") {
       official=true;
       declaredVersion=J.S(metadata,"version");
-      if(WebgalEngineProfile.ForVersion(declaredVersion)==null||J.S(metadata,"webgalVersion")!=declaredVersion){error="WebGAL 描述版本必须一致且为受支持的 4.6.4、4.6.5 或 4.6.6";return null;}
+      if(WebgalEngineProfile.ForVersion(declaredVersion)==null||J.S(metadata,"webgalVersion")!=declaredVersion){error="WebGAL 描述版本必须一致且为受支持的 4.6.4–4.6.7";return null;}
      } else if(!string.IsNullOrWhiteSpace(id))return null;
     } catch(Exception e) {
      error="读取 WebGAL 引擎描述失败："+e.Message;
@@ -188,7 +188,7 @@ namespace NativeVideo {
    string baseVersion=J.S(request,"expectedWebgalVersion",expectedId=="open-webgal.webgal"?expected:"");
    bool official=expectedId=="open-webgal.webgal"&&selected=="webgal"&&WebgalEngineProfile.ForVersion(expected)!=null&&baseVersion==expected;
    bool mygo=expectedId=="webgal-mygo.mygo"&&selected=="mygo"&&expected=="3.2.1"&&baseVersion=="4.6.4";
-   if(!official&&!mygo)throw new IOException("严格绑定导出只允许匹配的 WebGAL 4.6.4 / 4.6.5 / 4.6.6 或 MyGO 3.2.1（基础 WebGAL 4.6.4）；禁止 MyGO 或其它引擎替代不匹配的绑定。当前："+expectedId+" "+expected+" / WebGAL "+baseVersion);
+   if(!official&&!mygo)throw new IOException("严格绑定导出只允许匹配的 WebGAL 4.6.4–4.6.7 或 MyGO 3.2.1（基础 WebGAL 4.6.4）；禁止 MyGO 或其它引擎替代不匹配的绑定。当前："+expectedId+" "+expected+" / WebGAL "+baseVersion);
   }
   public static void ValidateRuntimeContract(object request,object metadata) {
    if(!J.B(request,"requireRuntimeParity",false))return;
@@ -298,17 +298,17 @@ namespace NativeVideo {
    Files.Atomic(file,text);
    foreach(string extension in new[]{".gz",".br"})if(File.Exists(file+extension))File.Delete(file+extension);
   }
-  // The same ExpressionManager/factory contract is used by these four pinned
+  // The same ExpressionManager/factory contract is used by these pinned
   // plugins. Patch only the copied plugin, after validating its exact bytes
   // (4.6.5 has already received the separately checked texture backport).
   void PrepareExpressionLifecycle(string root) {
-   string name=IsMygo?"index.es-Zih9sQ-u.js":Version=="4.6.6"?"index.es-DlwKruus.js":Version=="4.6.5"?"index.es-0XzJiDJZ.js":"index.es-erQsk_Nn.js";
-   string expected=Version=="4.6.6"?"1ad45bac171ff15a79b52e20c727d6201dc1f1bc228d10d01cdd4d6cfc3d3e08":Version=="4.6.5"?Cubism2TexturePlugin465Patched:"46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505";
+   string name=IsMygo?"index.es-Zih9sQ-u.js":Version=="4.6.7"?"index.es-CJYZx7uN.js":Version=="4.6.6"?"index.es-DlwKruus.js":Version=="4.6.5"?"index.es-0XzJiDJZ.js":"index.es-erQsk_Nn.js";
+   string expected=Version=="4.6.7"?"b9769b7691597675f6cb318d3a3baf52f037ee35bd2e49eeedcb8e5e7be7363f":Version=="4.6.6"?"1ad45bac171ff15a79b52e20c727d6201dc1f1bc228d10d01cdd4d6cfc3d3e08":Version=="4.6.5"?Cubism2TexturePlugin465Patched:"46590e11b6fb9877524fbb27525734d5208b67b3d28b4afb226d849bc95d7505";
    string file=Path.Combine(root,"assets",name);
    if(IsMygo) {
     if(!SupportedMygoExpressionPlugin(root))throw new IOException("MyGO Live2D 表情插件缺失或结构不兼容："+name);
    } else if(!File.Exists(file)||Files.Hash(file)!=expected)throw new IOException("Live2D 表情插件缺失或字节不匹配："+name);
-   string text=PatchExpressionLifecycle(File.ReadAllText(file),!IsMygo&&Version=="4.6.6"?"Vt":"Ot");
+   string text=PatchExpressionLifecycle(File.ReadAllText(file),!IsMygo&&(Version=="4.6.6"||Version=="4.6.7")?"Vt":"Ot");
    Files.Atomic(file,text);
    foreach(string extension in new[]{".gz",".br"})if(File.Exists(file+extension))File.Delete(file+extension);
   }
@@ -371,7 +371,7 @@ namespace NativeVideo {
    // write, although export never resumes from this quick-save slot. Guard the
    // automatic entry point before it builds the save; manual saves and the
    // source game's runtime remain untouched. Patch() only runs on job copies.
-   string saveStore=IsMygo?"Ie":"Pe";
+   string saveStore=IsMygo?"Ie":Version=="4.6.7"?"Te":"Pe";
    string autoSaveStart="(){if("+saveStore+".getState().GUI.showTitle||"+core+".sceneManager.sceneData.currentSentenceId===0||"+core+".sceneManager.lockSceneWrite)return;";
    text=ReplaceOnce(text,autoSaveStart,"(){if(globalThis.__nativeAdapterInstalled===true)return;"+autoSaveStart.Substring(3));
    text=ReplaceOnce(text,observe+"=e=>{var n;",observe+"=e=>{globalThis.__nativeObserve?.(e);var n;");
@@ -397,7 +397,7 @@ namespace NativeVideo {
     text=Deferral(text,"addVideoFigure(","addWmdlFigure(");
     text+="\n;globalThis.__wgProbe={core:R,store:Ie,stageManager:Z,parseScene:Ao,nativeAuto:yP,nativeStopAuto:$_,nativeNext:vp,compileText:Ds,textDelay:CP,textAnimation:PP};\n";
    } else text+="\nObject.assign(globalThis.__wgProbe,{"+profile.Exports+"});\n";
-   text+="\nglobalThis.__wgProbe.addAnimation=(name,raw)=>"+(Version=="4.6.6"?core+".animationManager.addAnimation(name,raw)":core+".animationManager.addAnimation({name,effects:raw})")+";\n";
+   text+="\nglobalThis.__wgProbe.addAnimation=(name,raw)=>"+((Version=="4.6.6"||Version=="4.6.7")?core+".animationManager.addAnimation(name,raw)":core+".animationManager.addAnimation({name,effects:raw})")+";\n";
    text+="\nglobalThis.__wgProbe.adapter="+J.Text(J.O("id",Id,"version",Version))+ ";globalThis.__nativeAdapterInstalled=true;\n";
    return text;
   }
