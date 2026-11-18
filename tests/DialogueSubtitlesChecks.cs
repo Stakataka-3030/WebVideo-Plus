@@ -16,12 +16,39 @@ class DialogueSubtitlesChecks {
   s=S(T(E(0,"a","文字"),E(1000,"b",""),E(2000,"c","恢复"),E(3000,"c","恢复",false,"甲",false)));Check(s.Contains("00:00:00,000 --> 00:00:01,000")&&s.Contains("00:00:02,000 --> 00:00:03,000"),"empty say and textbox hide end cue");
   s=S(T(E(0,"a","首行\n次行 & <literal>")));Check(s.Contains("首行\r\n次行 &amp; &lt;literal&gt;"),"plain text escaping and newlines");
   s=S(T(E(0,"a","甲"),E(0,"a","甲乙",true)));Check(s.Contains("甲乙")&&!s.Contains("2\r\n"),"same timestamp append merges");
+  s=S(T(E(0,"a","old"),E(0,"b","new",true)));Check(s.Contains("\r\nnew\r\n")&&!s.Contains("old"),"same timestamp new key replaces old cue");
+  s=S(T(E(0,"a","old"),E(0,"a","new",true)));Check(s.Contains("\r\nnew\r\n")&&!s.Contains("old"),"same timestamp replacement text starts fresh cue");
   s=S(T(E(0,"a","Hello"),E(0,"a","Hello world",true)));Check(s.Contains("Hello world"),"same timestamp concat preserves separating space");
   s=S(T(E(0,"a","第一行\n\n\n末行")));Check(!s.Contains("第一行\r\n\r\n"),"blank text lines do not terminate SRT cue");
   s=S(T(E(0,"a","甲"),E(0,"b","乙")));Check(!s.Contains("\r\n甲\r\n")&&s.Contains("\r\n乙\r\n"),"zero duration cue skipped");
   s=S(T(E(0,"a","甲")),false,B(8,2));Check(s=="","no cue outside bounds");
   bool failed=false;try{S(J.O("durationSeconds",6));}catch(IOException){failed=true;}Check(failed,"old timing rejected without guessing");
   string folder=Path.GetFullPath(args[0]);Directory.CreateDirectory(folder);string file=Path.Combine(folder,"字幕 中文.srt");var request=J.O("exportKind","subtitles","includeSpeaker",true);DialogueSubtitles.Write(timeline,B(),request,file);byte[] bytes=File.ReadAllBytes(file);Check(bytes.Length>0&&!(bytes[0]==239&&bytes[1]==187&&bytes[2]==191),"UTF8 without BOM");
+  string stamp="00:00:01,000 --> 00:00:02,000",quotedRange="Reference: "+stamp;
+  string raw="1\r\n  "+stamp+" X1:20\r\n"+quotedRange+"\r\n2\n00:00:03.000 --> 00:00:04.000\nend";
+  string imported=Path.Combine(folder,"imported.srt");File.WriteAllText(imported,raw);
+  var shift=typeof(SubtitleWorkflow).GetMethod("ShiftForBurn",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic);
+  string shifted=File.ReadAllText((string)shift.Invoke(null,new object[]{imported,.5}));
+  Check(shifted=="1\r\n  00:00:01,500 --> 00:00:02,500 X1:20\r\n"+quotedRange+"\r\n2\n00:00:03.500 --> 00:00:04.500\nend","burn offset preserves literal timing ranges, cue settings and original line endings");
+  foreach(var ext in new[]{".ass",".ssa"}){
+   string subtitle=Path.Combine(folder,"imported"+ext),layer=ext==".ass"?"0":"Marked=0";
+   string entry="Dialogue: "+layer+",0:00:00.10,0:00:01.20,Default,,0,0,0,,{\\i1}hello, world";
+   string original="[Events]\r\n"+entry;
+   File.WriteAllText(subtitle,original);
+   string target=(string)shift.Invoke(null,new object[]{subtitle,.5});
+   Check(File.ReadAllText(target).Contains(entry.Replace("0:00:00.10,0:00:01.20","0:00:00.60,0:00:01.70")),"implicit event format shifts both timestamps and preserves styled text "+ext);
+   File.WriteAllText(subtitle,original+"\r\nDialogue: 0,broken");
+   string previous=File.ReadAllText(target);bool rejected=false;
+   try{shift.Invoke(null,new object[]{subtitle,.5});}catch(System.Reflection.TargetInvocationException error){rejected=error.InnerException is FormatException&&error.InnerException.Message.Contains("3");}
+   Check(rejected&&File.ReadAllText(target)==previous&&File.ReadAllText(subtitle)==original+"\r\nDialogue: 0,broken","malformed event reports its line without overwriting either file "+ext);
+  }
+  string ordered=Path.Combine(folder,"ordered.ass");
+  File.WriteAllText(ordered,"[Events]\nFormat: End, Start, Text\nDialogue: 0:00:02.00,0:00:01.00,{\\i1}hey, there");
+  string orderedTarget=(string)shift.Invoke(null,new object[]{ordered,.5});
+  Check(File.ReadAllText(orderedTarget).Contains("0:00:02.50,0:00:01.50,{\\i1}hey, there"),"explicit format overrides standard event column order");
+  var escape=typeof(SubtitleWorkflow).GetMethod("FilterPath",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic);
+  string escaped=(string)escape.Invoke(null,new object[]{Path.Combine(folder,"O'Brien [demo],test;","sub.srt")});
+  Check(escaped.EndsWith(@"O\\\'Brien \[demo\]\,test\;/sub.srt",StringComparison.Ordinal),"subtitle filename survives both FFmpeg escaping layers");
   failed=false;try{DialogueSubtitles.Write(timeline,B(),request,file);}catch(IOException){failed=true;}Check(failed,"existing output not replaced");Check(Directory.GetFiles(folder,"*.partial.srt").Length==0,"owned partial cleaned");
   Check(LayerExport.RequiredExtension("subtitles",true)==".srt"&&LayerExport.Kind(request)=="subtitles","queue output kind");
   var scoped=T(E(0,"a","前场景"),E(2500,"b","当前场景"));J.D(scoped)["storyTimeline"]=J.O("currentStartSeconds",2,"currentEndSeconds",4);J.D(scoped)["lineTimes"]=new object[]{0,2500,4000};

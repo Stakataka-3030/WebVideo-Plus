@@ -14,6 +14,12 @@ class Checks {
    System.Console.WriteLine("speed="+speed+" rate="+e.Rate+" updates="+updates);
    for(int t=81;t<=100;t++)e.Update(t,(int)(1+80*speed));Need(e.Rate==0,"stall not cleared");
   }
+  var gap=new NativeVideo.RenderEtaEstimator(5000,30);
+  for(int t=0;t<=10;t++)gap.Update(t,1+30*t);
+  Need(gap.Rate==30,"failed to establish initial speed");
+  Need(gap.Update(40,301)==null&&gap.Rate==0,"old rate survived a gap longer than the sample window");
+  for(int t=41;t<=45;t++)gap.Update(t,301+2*(t-40));
+  Need(System.Math.Abs(gap.Rate-2)<.001,"resumed speed mixed with stale history");
   var done=new NativeVideo.RenderEtaEstimator(10,60);Need((double)done.Update(1,10)==0,"completion");System.Console.WriteLine("PASS");
  }
 }

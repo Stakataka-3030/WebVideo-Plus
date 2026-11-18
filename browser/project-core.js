@@ -2,6 +2,16 @@
 (function(root){
  'use strict';
  const norm=s=>String(s??'').replace(/\r\n/g,'\n'),positions=['left','center','right','left13','right13','left14','right14'];
+ // Convert raw source offsets to the LF coordinates used by the editor model.
+ function normalizedOffsetLookup(text){
+  const pairs=[];
+  for(let at=text.indexOf('\r\n');at!==-1;at=text.indexOf('\r\n',at+2))pairs.push(at+2);
+  return offset=>{
+   let lo=0,hi=pairs.length;
+   while(lo<hi){const mid=lo+Math.floor((hi-lo)/2);if(pairs[mid]<=offset)lo=mid+1;else hi=mid;}
+   return offset-lo;
+  };
+ }
  const hash=s=>root.WebVideoTimelineCore.fingerprint(norm(s));
  const safeId=value=>{value=String(value||'').trim();if(!/^[\p{L}\p{N}_][\p{L}\p{N}_.-]{0,95}$/u.test(value))throw Error('ID 只能包含文字、数字、下划线、点和连字符');return value;};
  const safePath=value=>{value=String(value||'').replace(/\\/g,'/').trim();if(!value||/^(?:\/|[A-Za-z]:|https?:|data:)/i.test(value)||value.split('/').some(x=>!x||x==='.'||x==='..')||/[\x00-\x1f<>:"|?*%]/.test(value))throw Error('请填写项目内的相对文件路径');return value;};
@@ -94,12 +104,45 @@
   let after=model.source;for(const p of [...patches].reverse())after=after.slice(0,p.startOffset)+p.after+after.slice(p.endOffset);
   native.parse(after);return {schemaVersion:1,path:model.path,before:model.source,after,operation,patches,warnings,changed:patches.length,beforeHash:hash(model.source),afterHash:hash(after)};
  }
- function anchor(model,row,status='待调整',operationId=''){
-  const index=model.statements.findIndex(s=>s.id===row.id);
+ function anchor(model,row,status='待调整',operationId='',index=model.statements.findIndex(s=>s.id===row.id)){
+
   return {id:globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`,path:model.path,revision:model.revision,startLine:row.startLine,text:norm(row.source).trim(),previous:norm(model.statements[index-1]?.source||'').trim(),next:norm(model.statements[index+1]?.source||'').trim(),status,operationId};
  }
- function resolveAnchor(model,mark){if(mark.path!==model.path)return null;const candidates=model.statements.filter(s=>norm(s.source).trim()===mark.text);if(candidates.length===1)return candidates[0];if(mark.revision===model.revision){const exact=candidates.find(row=>row.startLine===mark.startLine);if(exact)return exact;}const matched=candidates.filter(s=>{const i=model.statements.indexOf(s);return norm(model.statements[i-1]?.source||'').trim()===mark.previous&&norm(model.statements[i+1]?.source||'').trim()===mark.next;});return matched.length===1?matched[0]:null;}
- function generatedMarkers(model,plan,operationId){let shift=0;const spans=plan.patches.map(p=>{const start=p.startOffset+shift;shift+=p.after.length-(p.endOffset-p.startOffset);return {start,end:start+p.after.length};});return model.statements.filter(s=>spans.some(p=>s.startOffset>=p.start&&s.startOffset<p.end)&&s.command!=='comment').map(s=>anchor(model,s,'待调整',operationId));}
+ function matchAnchor(model,mark,candidates){
+  if(candidates.length===1)return model.statements[candidates[0]];
+  let match=null,ambiguous=false;
+  for(const index of candidates){
+   const row=model.statements[index];
+   if(mark.revision===model.revision&&row.startLine===mark.startLine)return row;
+   if(norm(model.statements[index-1]?.source||'').trim()===mark.previous&&norm(model.statements[index+1]?.source||'').trim()===mark.next){
+    if(match)ambiguous=true;
+    match=row;
+   }
+  }
+  return ambiguous?null:match;
+ }
+ function resolveAnchor(model,mark){
+  if(mark.path!==model.path)return null;
+  const indices=[];
+  model.statements.forEach((row,index)=>{if(norm(row.source).trim()===mark.text)indices.push(index);});
+  return matchAnchor(model,mark,indices);
+ }
+ function generatedMarkers(model,plan,operationId){
+  let shift=0;
+  const spans=plan.patches.map(p=>{
+   const start=p.startOffset+shift;
+   shift+=p.after.length-(p.endOffset-p.startOffset);
+   return {start,end:start+p.after.length};
+  });
+  const markers=[];
+  let span=0;
+  for(const [index,row] of model.statements.entries()){
+   while(span<spans.length&&spans[span].end<=row.startOffset)span++;
+   if(span===spans.length)break;
+   if(row.startOffset>=spans[span].start&&row.command!=='comment')markers.push(anchor(model,row,'待调整',operationId,index));
+  }
+  return markers;
+ }
  function inspect(model,project){
   const issues=[],states=new Map(),declared=new Set(),runs=new Map(),rowDetails=new Map();
   const issue=(row,code,message)=>issues.push({line:row.startLine,rowId:row.id,code,message});
@@ -121,7 +164,10 @@
     const state=states.get(id);if(state){rowDetails.set(s.id,{...state});if(state.expression&&state.motion){const old=runs.get(id),n=old?.expression===state.expression&&old?.motion===state.motion?old.count+1:1;runs.set(id,{expression:state.expression,motion:state.motion,count:n});if(n===3)issue(s,'repeated-performance','连续 3 句的表情、动作均相同：'+state.expression+' / '+state.motion);}else runs.delete(id);}
    }
   }
-  const resolvedMarkers=project.markers.filter(mark=>mark.path===model.path).map(mark=>({mark,row:resolveAnchor(model,mark)}));
+  const marks=project.markers.filter(mark=>mark.path===model.path);
+  const candidates=new Map(marks.map(mark=>[mark.text,[]]));
+  if(candidates.size)model.statements.forEach((row,index)=>candidates.get(norm(row.source).trim())?.push(index));
+  const resolvedMarkers=marks.map(mark=>({mark,row:matchAnchor(model,mark,candidates.get(mark.text))}));
   return {issues,rowDetails,resolvedMarkers};
  }
  function parseAnogo(input){
@@ -160,5 +206,5 @@
   const legacyPlayers=version===1?Object.fromEntries(Object.entries(value.players||{}).filter(([key,count])=>typeof count==='number'&&Number.isInteger(count)&&count>=1&&count<=64)):{},players=version===2?Math.max(1,Math.min(64,Number.isInteger(value.players)?value.players:1)):Math.max(1,...Object.values(legacyPlayers),...tracks.map(t=>t.lane+1));
   return {schemaVersion:version,enabled:value.enabled!==false,replaceGameBgm:!!value.replaceGameBgm,players,tracks};
  }
- root.WebVideoProjectCore={norm,hash,safeId,safePath,escapeText,sourceWrite,metadata,expand,makePlan,anchor,resolveAnchor,generatedMarkers,inspect,parseAnogo,importAnogo,musicProject};
+ root.WebVideoProjectCore={norm,normalizedOffsetLookup,hash,safeId,safePath,escapeText,sourceWrite,metadata,expand,makePlan,anchor,resolveAnchor,generatedMarkers,inspect,parseAnogo,importAnogo,musicProject};
 })(typeof window==='undefined'?globalThis:window);

@@ -47,14 +47,30 @@ namespace NativeVideo {
    return result.Where(w=>w.End>w.Start).ToArray();
   }
 
-  static int ReplayAnchor(int cut,int minWarmupFrames,ReplayWindow[] windows){
-   int anchor=Math.Max(0,cut-minWarmupFrames);
-   if(windows.Any(w=>w.Root&&w.Start<=cut&&w.End>anchor))return 0;
+  static int ReplayAnchor(int cut,int minWarmupFrames,ReplayWindow[] windows,bool strict){
+   int anchor=Math.Max(0,cut-minWarmupFrames),initial=anchor;
+   // An active root window in the normal warmup always needs full driver history.
+   if(windows.Any(w=>w.Root&&w.Start<cut&&w.End>initial))return 0;
+
    for(int i=windows.Length-1;i>=0;i--){
     var w=windows[i];if(w.Start>=anchor)continue;
     if(w.End>anchor)anchor=w.Start;
    }
+   // An indirect overlap can pull a late cut back to the beginning. In normal
+   // mode, spend at most the existing warmup again on this extra precision.
+   if(anchor<initial&&(strict||anchor<=cut-anchor)&&windows.Any(w=>w.Root&&w.Start<cut&&w.End>anchor))return 0;
    return Math.Max(0,Math.Min(cut,anchor));
+  }
+
+  // Candidate frames are sorted. Sweep the half-open exclusion intervals once.
+  static HashSet<int> CoveredCuts(int[] candidates,IEnumerable<ReplayWindow> windows,Func<ReplayWindow,int> firstFrame){
+   var intervals=windows.Select(w=>new KeyValuePair<int,int>(firstFrame(w),w.End)).OrderBy(w=>w.Key).ToArray();
+   var covered=new HashSet<int>();int next=0,end=0;
+   foreach(int frame in candidates){
+    while(next<intervals.Length&&intervals[next].Key<=frame){end=Math.Max(end,intervals[next].Value);next++;}
+    if(frame<end)covered.Add(frame);
+   }
+   return covered;
   }
 
   static string ReductionReason(ReplayWindow[] noCutWindows,ReplayWindow[] protectedWindows,ReplayWindow[] strictLive2dWindows,bool replayRejected){
@@ -71,9 +87,10 @@ namespace NativeVideo {
    // Preserve existing best-effort warmup, without using it to judge or move a cut.
    var replay=ReplayWindows(plan,end,fps).Concat(DomAnimationWindows(plan,end,fps)).Concat(J.A(J.Get(plan,"singleLineHints")).Select(h=>new ReplayWindow(Math.Max(0,(int)Math.Floor(J.N(h,"startMs")*fps/1000)),Math.Min(end,(int)Math.Ceiling(J.N(h,"endMs")*fps/1000)),false,false,"single-line-hint"))).OrderBy(w=>w.Start).ToArray();
    var lifetimes=Live2DLifetimes(plan,end,fps);
+   bool strict=J.B(plan,"strictSegmentCuts");
    return frames.Take(frames.Count-1).Select((first,i)=>{
     bool live2d=lifetimes.Any(w=>first>w.Start&&first<w.End);
-    int anchor=first==0?0:ReplayAnchor(first,Math.Max(1,(int)Math.Ceiling(fps*(live2d?Live2DPhysicsWarmupSeconds:MinReplayWarmupSeconds))),replay);
+    int anchor=first==0?0:ReplayAnchor(first,Math.Max(1,(int)Math.Ceiling(fps*(live2d?Live2DPhysicsWarmupSeconds:MinReplayWarmupSeconds))),replay,strict);
     return J.O("index",i,"startFrame",first,"endFrame",frames[i+1],"replayFrame",anchor,"warmupFrames",first-anchor,"estimatedCost",(double)(frames[i+1]-anchor),"replayKinds",replay.Where(w=>first>0&&w.Start<first&&w.End>anchor).Select(w=>w.Kind).Concat(live2d?new[]{"live2d-physics"}:new string[0]).Distinct().ToArray(),"cutMode","manual");
    }).ToArray();
   }
@@ -114,11 +131,19 @@ namespace NativeVideo {
    diagnostics["live2dPhysicsWarmupSeconds"]=live2dPhysicsWarmupFrames/(double)fps;
    diagnostics["softCutWindows"]=softWindows.Select(w=>(object)J.O("startFrame",w.Start,"endFrame",w.End,"kind",w.Kind)).ToArray();
    diagnostics["relaxedDecorativePixi"]=J.Get(plan,"relaxedDecorativePixi")??new object[0];diagnostics["strictSegmentCuts"]=strictSegmentCuts;
-   Func<int,bool> safeCut=frame=>!cutProtected.Any(w=>(StatefulNoCutKinds.Contains(w.Kind)||strictSegmentCuts&&w.Kind!="say"?frame>=w.Start:frame>w.Start)&&frame<w.End)&&!softWindows.Any(w=>frame>=w.Start&&frame<w.End);
+
 
    var replayWindows=replayOnly.Concat(protectedWindows).OrderBy(w=>w.Start).ToArray();
    Func<int,bool> live2dActive=cut=>live2dLifetimes.Any(w=>cut>w.Start&&cut<w.End);
-   Func<int,int> replayFor=cut=>ReplayAnchor(cut,live2dActive(cut)?live2dPhysicsWarmupFrames:minReplayWarmupFrames,replayWindows);
+   var replayByCut=new Dictionary<int,int>();
+   Func<int,int> replayFor=cut=>{
+    int anchor;
+    if(!replayByCut.TryGetValue(cut,out anchor)){
+     anchor=ReplayAnchor(cut,live2dActive(cut)?live2dPhysicsWarmupFrames:minReplayWarmupFrames,replayWindows,strictSegmentCuts);
+     replayByCut.Add(cut,anchor);
+    }
+    return anchor;
+   };
 
    var allEvents=J.A(J.Get(plan,"events")).ToList();
    var events=allEvents.Where(e=>J.N(e,"line")>0&&!J.S(e,"command").StartsWith("__")).ToList();
@@ -136,6 +161,13 @@ namespace NativeVideo {
    var candidatePool=preferredCuts.Concat(sceneCuts).Distinct().OrderBy(frame=>frame).ToArray();
    diagnostics["semanticCutCount"]=eventCuts.Count;diagnostics["preferredDialogueCutCount"]=preferredCuts.Count;diagnostics["sceneCutCount"]=sceneCuts.Count;diagnostics["controlCutCount"]=controlCuts.Count;diagnostics["protectedBoundaryCutCount"]=protectedBoundaryCuts.Count;diagnostics["candidatePoolCount"]=candidatePool.Length;diagnostics["plannerMode"]="dialogue-first-safe-dp";
 
+   var blocked=CoveredCuts(candidatePool,cutProtected,w=>StatefulNoCutKinds.Contains(w.Kind)||strictSegmentCuts&&w.Kind!="say"?w.Start:w.Start+1);
+   var softBlocked=CoveredCuts(candidatePool,softWindows,w=>w.Start);
+   blocked.UnionWith(softBlocked);
+   var safeCandidates=candidatePool.Where(frame=>!blocked.Contains(frame)).ToArray();
+   var safeDialogueCandidates=safeCandidates.Where(preferredCutSet.Contains).ToArray();
+   int candidateCount=candidatePool.Length,safeCandidateCount=safeCandidates.Length,unsafeRejected=candidateCount-safeCandidateCount;
+   int softCandidateCount=softBlocked.Count;
    var workload=J.A(J.Get(plan,"domWorkload")).Select(x=>new{Frame=Math.Max(0,Math.Min(total,(int)Math.Ceiling(J.N(x,"atMs")*fps/1000))),Units=Math.Max(0,J.N(x,"units",1))}).OrderBy(x=>x.Frame).ToArray();
    var costPoints=new List<KeyValuePair<int,double>>();double cumulativeUnits=0;
    foreach(var w in workload){cumulativeUnits+=w.Units;costPoints.Add(new KeyValuePair<int,double>(w.Frame,cumulativeUnits));}
@@ -161,7 +193,7 @@ namespace NativeVideo {
    Func<int,int,List<int>,bool> planCuts=(parts,pass,outCuts)=>{
     outCuts.Clear();int need=parts-1;if(need<=0)return true;
     bool allowScene=pass>0;
-    var pool=candidatePool.Where(frame=>safeCut(frame)&&(allowScene||preferredCutSet.Contains(frame))).ToArray();
+    var pool=allowScene?safeCandidates:safeDialogueCandidates;
     if(pool.Length<need)return false;
     int m=pool.Length;var previous=new double[m];var current=new double[m];var back=new int[need,m];
     for(int i=0;i<m;i++){previous[i]=double.PositiveInfinity;current[i]=double.PositiveInfinity;for(int j=0;j<need;j++)back[j,i]=-1;}
@@ -193,7 +225,6 @@ namespace NativeVideo {
    for(int parts=workers;parts>=2;parts--){
     var cuts=new List<int>();bool valid=planCuts(parts,0,cuts);bool usedSceneCuts=false;
     if(!valid){cuts.Clear();valid=planCuts(parts,1,cuts);usedSceneCuts=valid&&cuts.Any(frame=>!preferredCutSet.Contains(frame));}
-    int candidateCount=candidatePool.Length,unsafeRejected=candidatePool.Count(candidate=>!safeCut(candidate)),safeCandidateCount=candidatePool.Count(safeCut),softCandidateCount=candidatePool.Count(candidate=>softWindows.Any(w=>candidate>=w.Start&&candidate<w.End));
     if(!valid){safeCutRejectedAny=true;attemptRows.Add(J.O("parts",parts,"outcome","no-safe-cut","candidateCount",candidateCount,"safeCandidateCount",safeCandidateCount,"unsafeRejected",unsafeRejected,"softCandidateCount",softCandidateCount,"usedSceneCuts",false));continue;}
     var ranges=buildRanges(cuts);
     long warmup=ranges.Sum(r=>(long)J.N(r,"warmupFrames"));

@@ -1,13 +1,15 @@
 # WebVideo+
 
-当前版本：Craft 1.2.4c，安装器 1.2.4.0c，Win32 1.2.4.0，内核 0.6.70；共享产品基线 1.3.10。
+源码候选 Craft 1.2.5c，安装器 1.2.5.0c，导出内核 0.6.71。见[发行说明](craft/RELEASE-1.2.5c.md)。
+
+当前正式发行：Craft 1.2.4c，安装器 1.2.4.0c，Win32 1.2.4.0，内核 0.6.70；共享产品基线 1.3.10。
 
 
 面向 **WebGAL Craft** 的视觉小说视频制作辅助工具。提供批量编辑、剧情导航、音乐配置、备份/检查、结构化故事导入与视频导出；生成式 AI 为实验性功能，需要自行配置 API Key。
 
 [1.2.4c 更新说明](craft/RELEASE-1.2.4c.md) · [正式版适配](craft/ADAPTATION-1.0.0.md) · [Craft 安装与功能](craft/README.md) · [版本记录](CHANGELOG.md) · [构建说明](BUILDING.md) · [MPL-2.0](LICENSE) · [许可范围](LICENSES.md) · [来源与许可](NOTICE.md)
 
-**当前版本：WebVideo+ Craft 1.2.4c（安装器 1.2.4.0c；内核 0.6.70，产品基线 1.3.10）。** 修复兼容的 MyGO 自定义插件被拒绝识别的问题。详见[更新说明](craft/RELEASE-1.2.4c.md)。
+**当前正式发行：WebVideo+ Craft 1.2.4c（安装器 1.2.4.0c；内核 0.6.70，产品基线 1.3.10）。** 修复兼容的 MyGO 自定义插件被拒绝识别的问题。详见[更新说明](craft/RELEASE-1.2.4c.md)。
 
 支持精确匹配的官方 Windows x64 **Craft 1.0.0 正式版**，工程引擎支持官方 WebGAL **4.6.4 / 4.6.5 / 4.6.6** 和 **MyGO 3.2.1**；自定义同版本包与未来版本需单独适配。Terre 安装请按[项目首页](https://github.com/Stakataka-3030/WebVideo-Plus#下载与版本选择)选择维护通道。
 

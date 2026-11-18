@@ -22,9 +22,15 @@ return result;
 const profiles=Object.fromEntries(['4.6.4','4.6.5','4.6.6'].map(version=>[version,metadata(version)]));
 const common=JSON.stringify(profiles['4.6.4']);
 const profileEntries=Object.entries(profiles).map(([version,data])=>JSON.stringify(version)+':'+(JSON.stringify(data)===common?'globalThis.WebVideoNavigationMetadata':JSON.stringify(data,null,2)));
+const target=path.join(root,'browser/navigation-metadata.js');
+const output='globalThis.WebVideoNavigationMetadata='+JSON.stringify(profiles['4.6.4'],null,2)+';\nglobalThis.WebVideoNavigationMetadataProfiles={'+profileEntries.join(',')+'};\nglobalThis.WebVideoNavigationMetadata=globalThis.WebVideoNavigationMetadataProfiles[globalThis.WebVideoHostProfile?.terreVersion]||globalThis.WebVideoNavigationMetadata;\n';
 export function writeNavigationMetadata(){
-fs.writeFileSync(path.join(root,'browser/navigation-metadata.js'),'globalThis.WebVideoNavigationMetadata='+JSON.stringify(profiles['4.6.4'],null,2)+';\nglobalThis.WebVideoNavigationMetadataProfiles={'+profileEntries.join(',')+'};\nglobalThis.WebVideoNavigationMetadata=globalThis.WebVideoNavigationMetadataProfiles[globalThis.WebVideoHostProfile?.terreVersion]||globalThis.WebVideoNavigationMetadata;\n');
+fs.writeFileSync(target,output);
 console.log('Navigation metadata extracted and verified for Terre '+Object.keys(profiles).join(' / ')+'.');
 
 }
-if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))writeNavigationMetadata();
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+ if(process.argv[2]==='--check'){
+  if(fs.readFileSync(target,'utf8').replace(/\r\n/g,'\n')!==output.replace(/\r\n/g,'\n'))throw Error('Generated navigation metadata differs; explicitly regenerate it before building');
+ }else writeNavigationMetadata();
+}
