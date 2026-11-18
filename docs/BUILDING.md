@@ -1,11 +1,11 @@
 # 构建与发布
 
 
-本发行线版本 **1.3.13**，产品内部开发标识 **0.8.20**，安装器 Win32 版本 **1.3.13.0**，导出内核 **0.6.71**。待发布。开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0；构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256。
+本分支用于 Terre / WebGAL 4.6.7。产品 1.4.0，内部标识 0.8.21，安装器 Win32 版本 1.4.0.0，导出内核 0.6.71。 开发于 Windows，使用系统 .NET Framework C# 编译器和 Node 22.20.0；构建输入由 `build/dependencies.lock.json` 固定版本、官方来源和 SHA-256。
 
 产品、安装器和内核版本的唯一源码真源是根目录 `version.json`。需要推进版本时只修改该文件；`scripts/manifest.mjs`、`build-product.ps1`、`scripts/configure-installer.mjs`、C# 安装/运行元数据和 staged AI runtime 会在构建或运行时读取该版本信息，不应再手工同步版本常量。
 
-更新检查读取 GitHub 正式 Release 列表。发布 1.3.12 或后续版本时，应把对应 `docs/releases/RELEASE_NOTES_*.md` 的首行 `<!-- webvideo-compat: {"product":"terre","webgal":["4.6.6"]} -->` 一并放进 Release 正文，并保持自动推荐通道隔离（4.6.4 / MyGO 3.2.1 使用 1.1.x 维护线；1.2.1 留在已 EOL 的 4.6.5；1.3.12 仅推荐给 4.6.6）；缺少兼容标记的新版本不会被自动推荐。现有 1.0.0、1.0.1、1.0.4、1.1.0 和 1.1.1 的 4.6.4 兼容关系在客户端保留，供旧发行版使用。检查失败只显示提示，不影响安装与启动。
+更新检查读取 GitHub 正式 Release 列表。正式发布 1.4.x 时，应保留发行说明首行的 Terre / WebGAL 4.6.7 兼容标记。历史维护线的发行文件保留各自的兼容标记。
 
 ## 初次准备（不需要旧安装器）
 

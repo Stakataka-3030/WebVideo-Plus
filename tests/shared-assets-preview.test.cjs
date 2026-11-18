@@ -82,6 +82,7 @@ async function audit() {
   const requestOwner=loadTs(upstream+'/packages/origine2/src/utils/editorPreviewRequestOwner.ts',{'@webgal/editor-preview-protocol':protocol});
   const {EditorPreviewClient:client}=loadTs(upstream+'/packages/origine2/src/utils/editorPreviewClient.ts',{
    '@webgal/editor-preview-protocol':protocol,'@/utils/editorPreviewRequestOwner':requestOwner,
+   '@/store/usePreviewRuntimeStore':{__esModule:true,default:{getState:()=>({updateVersion(){},updateTemplate(){},updateGameInfo(){}})}},
    '@/store/useEditorStore':{__esModule:true,default:{getState:()=>({debugVariables:[]})}},
    '@/utils/createId':{createId:()=>String(++sequence)},'@/utils/eventBus':{eventBus},
    '@/utils/getWsUrl':{getWsUrl:()=> 'ws://audit/api/webgalsync'},'@/utils/logger':{logger:{info(){},warn(){},error(){}}},

@@ -1,6 +1,6 @@
 # WebVideo+
 
-Terre / WebGAL 4.6.7 适配开发分支，版本线 1.4.x。正式下载见项目首页及发行页。
+Terre / WebGAL 4.6.7 适配开发分支。产品 1.4.0，内部标识 0.8.21，安装器 Win32 版本 1.4.0.0，导出内核 0.6.71。 [开发版说明](docs/releases/RELEASE_NOTES_1.4.0.md)
 
 面向 **WebGAL Terre 与 WebGAL Craft** 的视觉小说视频制作辅助工具：批量编辑、剧情导航、音乐配置、备份与检查、Anogo 故事导入，以及本机视频导出。Terre 与 Craft 使用各自的安装器，请先按宿主和引擎版本选择下载。
 
