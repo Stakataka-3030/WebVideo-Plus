@@ -254,6 +254,7 @@
       const text = cancelRequested ? '已请求取消导出；未提交的片段已停止' : `已加入 ${submitted} 个导出任务，可以关闭窗口继续编辑`;
       exportStatus.textContent = text; message(text);
     }, ['exportVideo', 'service', 'previewSettings'], false, true).className = 'wvc-primary';
+    let scanDetails = new Map();
     async function refreshJobs() {
       if (jobsRefreshing || !exportJobs.length) return;
       jobsRefreshing = true;
@@ -261,12 +262,32 @@
         const jobs = await bridge.service('/api/jobs'); if (disposed) return;
         const states = { queued: '排队中', running: '导出中', completed: '已完成', failed: '失败', canceled: '已取消', cancelled: '已取消', needs_attention: '需要处理', deleting: '正在清理' };
         const rows = (Array.isArray(jobs) ? jobs : jobs.jobs || []).filter(job => exportJobs.includes(job.id));
+        const previousDetails = scanDetails;
+        scanDetails = new Map();
         jobInfo.replaceChildren(...rows.map(job => {
           const entry = el('div', null, { className: 'wvc-export-job' });
           const stateText = job.phase === 'canceling' ? '取消中 · 正在停止所属进程' : job.phase === 'cleanup' ? '正在清理' : states[job.state] || job.state;
           entry.append(el('strong', (job.output || job.title || '导出任务').split(/[\\/]/).pop()), el('p', `${stateText}${Number.isFinite(job.progress) ? ' · ' + Math.round(job.progress * 100) + '%' : ''}${job.message ? ' · ' + job.message : ''}`, { className: 'wvc-help' }));
           if (['failed', 'needs_attention'].includes(job.state)) {
             const detail = el('details', null, { className: 'wvc-row-details' }); detail.append(el('summary', '技术详情'), el('pre', job.message || '未提供更多信息')); entry.append(detail);
+          }
+          const report = job.scanReport;
+          if (report?.issues?.length || report?.warnings?.length) {
+            const previous = previousDetails.get(job.id);
+            let detail = previous?.node;
+            if (!detail || !report.digest || previous.digest !== report.digest) {
+              detail = el('details', null, { className: 'wvc-row-details' });
+              detail.open = previous?.node.open || false;
+              detail.append(el('summary', '扫描报告'));
+              for (const [label, items] of [['问题', report.issues], ['兼容性提示', report.warnings]]) {
+                for (const item of items || []) {
+                  const locations = item.sceneLines?.length ? item.sceneLines.map(ref => ref.scene + ':' + ref.line) : item.lines;
+                  detail.append(el('p', [label, item.file, locations?.join('、'), item.message].filter(Boolean).join(' · ')));
+                }
+              }
+            }
+            scanDetails.set(job.id, { digest: report.digest, node: detail });
+            entry.append(detail);
           }
           return entry;
         }));

@@ -11,11 +11,34 @@ using NativeVideo;
 public static class ResourceUrlScanChecks {
  static void Assert(bool value,string message){if(!value)throw new Exception(message);}
  static void Put(string root,string relative){Files.Atomic(Path.Combine(root,"game/vocal",relative),"synthetic scanner resource");}
+ static EngineAdapter Adapter(string project){
+  var ctor=typeof(EngineAdapter).GetConstructors(BindingFlags.Instance|BindingFlags.NonPublic).Single();
+  return (EngineAdapter)ctor.Invoke(new object[]{"webgal","4.6.6",project,"unused.js","unit-test",false,false,null,null,false});
+ }
+ static int MixedReport(string home){
+  string project=Path.Combine(home,"mixed"),root=Path.Combine(home,"mixed-snapshot");
+  Directory.CreateDirectory(Path.Combine(project,"game/scene"));
+  Files.Atomic(Path.Combine(project,"game/userStyleSheet.css"),"@import 'https://example.invalid/theme.css';");
+  const string script=":dialogue -missing.wav;";
+  var assets=new ProjectAssets(project,root,project,script,null,Adapter(project));
+  var parsed=J.O("sentenceList",new object[]{J.O("command",0,"commandRaw","","content","dialogue","startLine",0,"endLine",0,"args",new object[]{J.O("key","vocal","value","./game/vocal/missing.wav")})});
+  var report=assets.Scan(parsed);
+  Assert(J.A(J.Get(report,"issues")).Count==1,"Missing vocal omitted from report");
+  Assert(J.A(J.Get(report,"warnings")).Count==1,"External stylesheet warning omitted from report");
+  Assert(J.B(report,"complete")&&J.B(report,"canContinue"),"Missing vocal with a warning should await approval");
+  var exception=new ScanException(report);
+  Assert(object.ReferenceEquals(exception.Report,report),"Scan exception lost its report");
+  Assert(exception.Message.Contains("1 项问题")&&exception.Message.Contains("1 项兼容性提示"),"Status must describe both findings: "+exception.Message);
+  Files.Atomic(Path.Combine(project,"game/animation/animationTable.json"),"invalid json");
+  var blocked=new ProjectAssets(project,root,project,script,null,Adapter(project)).Scan(parsed);
+  Assert(J.A(J.Get(blocked,"issues")).Count==2&&J.A(J.Get(blocked,"warnings")).Count==1,"Blocking scan lost its findings");
+  Assert(!J.B(blocked,"canContinue"),"Invalid animation data must prevent continuation");
+  return 7;
+ }
  static int Case(string home,string reference,string physical,bool rejected){
   string project=Path.Combine(home,"project-"+Guid.NewGuid().ToString("N")),snapshot=Path.Combine(home,"snapshot-"+Guid.NewGuid().ToString("N"));
   Directory.CreateDirectory(Path.Combine(project,"game/scene"));Put(project,physical);
-  var ctor=typeof(EngineAdapter).GetConstructors(BindingFlags.Instance|BindingFlags.NonPublic).Single();
-  var adapter=(EngineAdapter)ctor.Invoke(new object[]{"webgal","4.6.6",project,"unused.js","unit-test",false,false,null,null,false});
+  var adapter=Adapter(project);
   const string script=":synthetic dialogue -fixture.wav  -figureId=hero;";
   string vocal="./game/vocal/"+reference;
   var parsed=J.O("sentenceList",new object[]{J.O("command",0,"commandRaw","","content","synthetic dialogue","startLine",0,"endLine",0,"args",new object[]{J.O("key","vocal","value",vocal),J.O("key","figureId","value","hero")})});
@@ -43,7 +66,7 @@ public static class ResourceUrlScanChecks {
  public static int Run(){
   string home=Path.Combine(Path.GetTempPath(),"webvideo-resource-url-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(home);
   try {
-   int count=0;
+   int count=MixedReport(home);
    foreach(var suffix in new[]{""," ","  ","\t ","\r\n ","\0\u001f "})count+=Case(home,"speaker/one line.wav"+suffix,"speaker/one line.wav",false);
    count+=Case(home,"speaker/one  line.wav ","speaker/one  line.wav",false);
    count+=Case(home,"speaker/one\u3000line.wav ","speaker/one\u3000line.wav",false);

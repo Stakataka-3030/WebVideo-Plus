@@ -1,6 +1,14 @@
 using System;using System.IO;using System.Linq;using System.Collections.Generic;using System.Text.RegularExpressions;using System.Threading.Tasks;
 namespace NativeVideo {
- public sealed class ScanException:Exception {public object Report;public ScanException(object report):base("完整扫描发现 "+J.A(J.Get(report,"issues")).Count+" 项问题"){Report=report;}}
+ public sealed class ScanException:Exception {
+  public object Report;
+  public ScanException(object report):base(Summary(report)){Report=report;}
+  public static string Summary(object report){
+   int issues=J.A(J.Get(report,"issues")).Count,warnings=J.A(J.Get(report,"warnings")).Count;
+   if(issues==0)return "完整扫描发现 "+warnings+" 项兼容性提示";
+   return "完整扫描发现 "+issues+" 项问题"+(warnings>0?"，另有 "+warnings+" 项兼容性提示":"");
+  }
+ }
  public sealed class ProjectAssets {
   public readonly string Project,Root,Engine;public string Script;public object Parsed,Presentation;public readonly Dictionary<string,object> Media=new Dictionary<string,object>(),Animations=new Dictionary<string,object>();public Action<object> Log;public readonly EngineAdapter Adapter;public readonly Dictionary<string,object> AggregateCounts=new Dictionary<string,object>();readonly Dictionary<string,string> copies=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);readonly Dictionary<string,object> issues=new Dictionary<string,object>();readonly Dictionary<string,object> warnings=new Dictionary<string,object>();readonly List<object> actions=new List<object>();readonly HashSet<string> checkedFiles=new HashSet<string>(StringComparer.OrdinalIgnoreCase);readonly HashSet<string> visits=new HashSet<string>();sealed class ModelDependencies {public string[] Children,ModelChildren,Libraries;public bool Container;}readonly Dictionary<string,ModelDependencies> dependencyCache=new Dictionary<string,ModelDependencies>(StringComparer.OrdinalIgnoreCase);readonly HashSet<string> requiredLibraries=new HashSet<string>(StringComparer.OrdinalIgnoreCase);readonly List<object> libraries=new List<object>();
   static readonly Regex Resource=new Regex(@"\.(jsonl|wmdl|json|moc3?|mtn|png|jpe?g|webp|gif|mp3|wav|ogg|m4a|aac|flac|mp4|webm|mov|mkv|ttf|woff2?)([?#].*)?$",RegexOptions.IgnoreCase);

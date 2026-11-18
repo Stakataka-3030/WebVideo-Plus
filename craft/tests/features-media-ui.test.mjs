@@ -37,6 +37,26 @@ function setup(overrides={}){
 async function chooseDisjoint(f){f.snap.source='A;\nB;\nC;';await f.change('故事范围','selection');await f.click('读取当前场景');await f.change('导出第 1 行',true);await f.change('导出第 3 行',true);await f.click('锁定导出片段');}
 async function until(predicate,label){const end=Date.now()+3000;while(Date.now()<end){const value=predicate();if(value)return value;await new Promise(resolve=>setTimeout(resolve,5));}throw Error('Timed out waiting for '+label);}
 
+test('Craft shows both scan findings and keeps the report open through status refresh', async () => {
+ const f=setup(), service=f.bridge.service;
+ f.bridge.exportVideo=async()=>({id:'scan-job'});
+ let state='needs_attention';
+ const report={digest:'first',complete:true,canContinue:true,issues:[{file:'line.wav',message:'资源缺失',sceneLines:[{scene:'start.txt',line:7}]}],warnings:[{file:'theme.css',message:'外部样式表'}]};
+ f.bridge.service=async(endpoint,...args)=>endpoint==='/api/jobs'?[{id:'scan-job',state,scanReport:report}]:service(endpoint,...args);
+ try {
+  await f.click('加入导出队列');
+  await f.click('刷新导出状态');
+  const reportNode=f.nodes().find(node=>node.tag==='summary'&&node.textContent==='扫描报告').parent;
+  reportNode.open=true;
+  assert.ok(reportNode.children.some(node=>node.textContent.includes('line.wav · start.txt:7')));
+  assert.ok(reportNode.children.some(node=>node.textContent.includes('theme.css · 外部样式表')));
+  state='completed';
+  await f.click('刷新导出状态');
+  assert.ok(f.nodes().includes(reportNode)&&reportNode.open);
+  assert.equal(f.button('跳过缺失资源继续'),undefined);
+ } finally { f.mounted.dispose(); }
+});
+
 test('plain dialogue SRT uses the native shared form and ignores hidden video settings',async()=>{
  const f=setup();await f.change('分段切点','manual');f.field('手动切点（帧、秒或时间码）').value='invalid hidden cuts';f.field('并行数（1–32）').value='0';
  await f.change('导出内容','subtitles');await f.change('包含说话人名称',true);
