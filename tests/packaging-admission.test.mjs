@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
-import {verifyMaterialFiles, verifyPackageMaterials} from '../scripts/verify-materials.mjs';
+import {hashFile, verifyMaterialFiles, verifyPackageMaterials} from '../scripts/verify-materials.mjs';
 import {readEmbeddedZip} from '../scripts/verify-installer-materials.mjs';
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const put = (root, name, value = 'fixture') => {const file = path.join(root, name); fs.mkdirSync(path.dirname(file), {recursive: true}); fs.writeFileSync(file, value);};
@@ -72,3 +72,11 @@ test('static installer reader rejects duplicate and escaping paths and corrupted
   const bytes = fakeExe([['package/one', 'a']]); const marker = bytes.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02])); bytes.writeUInt32LE(0, marker + 16);
   assert.throws(() => readEmbeddedZip(bytes), /CRC/);
 });
+
+test('package hashes cover empty files, full chunks and final partial chunks',()=>fixture(root=>{
+  for(const size of [0,1,262143,262144,262145,1048593]){
+    const bytes=crypto.randomBytes(size);
+    put(root,'sample.bin',bytes);
+    assert.deepEqual(hashFile(path.join(root,'sample.bin')),{bytes:size,sha256:hash(bytes)});
+  }
+}));

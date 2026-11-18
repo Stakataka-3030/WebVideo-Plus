@@ -1,6 +1,8 @@
 # WebVideo+
 
-当前源码版本 1.1.18：[v1.1.18](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18)。
+源码候选 1.1.19，内部标识 0.8.19，安装器 Win32 版本 1.1.19.0，导出内核 0.6.71。 见[发行说明](docs/releases/RELEASE_NOTES_1.1.19.md)。
+
+当前正式发行 1.1.18：[v1.1.18](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18)。
 
 面向 **WebGAL Terre 与 WebGAL Craft** 的视觉小说视频制作辅助工具：批量编辑、剧情导航、音乐配置、备份与检查、Anogo 故事导入，以及本机视频导出。Terre 与 Craft 使用各自的安装器，请先按宿主和引擎版本选择下载。
 
@@ -113,7 +115,7 @@ Terre 的工作缓存默认位于成片目录下的 `.webvideo-cache`；Craft �
 - 构建与发布：Terre [1.1.18](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.18/docs/BUILDING.md) / [1.3.11](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.11/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
 - 当前分支的 [1.1.4 发行说明](docs/releases/RELEASE_NOTES_1.1.4.md)、[历史发行说明索引](docs/releases/README.md)、[变更记录](CHANGELOG.md)与[仓库结构](docs/REPOSITORY.md)
 
-当前维护分支源码版本为 **1.1.18**（内部标识 **0.8.18**、安装器 Win32 版本 **1.1.18.0**、导出内核 **0.6.68**），以 [`version.json`](version.json) 为准。本版的开发阶段、旧候选与最终发行包证据分别记录；版本标签中的文档保留部分开发、候选和历史测试记录，是否正式发布、当前更新策略及验证边界请以上表的发行页为准。
+版本以 [version.json](version.json) 为准。下载安装请参照上方已发布版本。
 
 从源码构建不需要先下载旧版安装器；第三方输入按官方来源及 SHA-256 锁定，支持缓存和离线重新准备。Terre 的常用构建入口是 `prepare-build.ps1`、`build.ps1`、`build-product.ps1`，Craft 另用 `craft/build-craft-package.ps1`。请先检出对应发布标签，再按该标签的构建说明操作；根 `version.json` 与 Craft 的 `craft/version.json` 分别记录相应版本。
 

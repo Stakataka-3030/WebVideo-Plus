@@ -7,7 +7,15 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  const local=(kind,name)=>root.replaceAll('\\','/')+'/game/'+kind+'/'+physical(clean(kind,name));
  const info=(kind,name)=>media['/game/'+kind+'/'+physical(clean(kind,name))]||{durationMs:0,hasAudio:false};
  const speakerTarget=params=>{if(params.figureId)return String(params.figureId);const position=['left','center','right','left13','right13','left14','right14'].find(key=>params[key]===true||params[key]==='true');return position?'fig-'+position:null;};
- const ensureAnimation=name=>{if(!name)return 0;const frames=animations[name];if(!Array.isArray(frames))throw Error('动画文件无效：'+name);extraAnimations.set(name,frames);return frames.reduce((sum,f)=>sum+Number(f.duration||0),0);};
+ const animationDurations=new Map();
+ const ensureAnimation=name=>{
+  if(!name)return 0;
+  if(animationDurations.has(name))return animationDurations.get(name);
+  const frames=animations[name];if(!Array.isArray(frames))throw Error('动画文件无效：'+name);
+  const duration=frames.reduce((sum,f)=>sum+Number(f.duration||0),0);
+  extraAnimations.set(name,frames);animationDurations.set(name,duration);
+  return duration;
+ };
  const statementRange=(s,index)=>{
   const start=Number.isInteger(s.startLine)?s.startLine:index,end=Number.isInteger(s.endLine)?s.endLine:start;
   return {start:Math.max(0,start),end:Math.max(Math.max(0,start),Math.min(sourceLines.length-1,end))};
@@ -16,7 +24,15 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
  const singleLineHintDuration=(cmd,params,content,raw='')=>{if(cmd!=='choose'||Number(params.defaultChoose)!==1||params.next===true)return 0;const options=String(content||'').split(/(?<!\\)\|/);if(options.length!==1)return 0;const nodes=options[0].split(/(?<!\\):/);if(nodes.length!==2||!/^__wvp_hint_[A-Za-z0-9_]+$/.test(nodes[1].trim()))return 0;const fromArgs=Number(params.wvpHint),match=String(raw||'').match(/(?:^|\s)-wvpHint=([0-9]+(?:\.[0-9]+)?)(?=\s|;|$)/),fromSource=match?Number(match[1]):NaN,ms=Number.isFinite(fromArgs)?fromArgs:fromSource;return Number.isFinite(ms)&&ms>=100&&ms<=60000?ms:1800;};
  const sourceEvents=Array.isArray(timing?.sourceEvents)?timing.sourceEvents:[],performWindows=Array.isArray(timing?.performWindows)?timing.performWindows:[],stageExitWindows=Array.isArray(timing?.stageExitWindows)?timing.stageExitWindows:[];
  const sourceEventByIndex=new Map();for(const e of sourceEvents)if(Number.isInteger(e.index)&&!sourceEventByIndex.has(e.index))sourceEventByIndex.set(e.index,e);
- const primaryPerform=(index,cmd)=>performWindows.find(w=>w.role!=='vocal'&&Number(w.line)===index&&w.command===cmd&&w.startMs!==null&&w.startMs!==undefined&&Number.isFinite(Number(w.startMs)));
+ const primaryByLine=new Map();
+ for(const window of performWindows){
+  if(window.role==='vocal'||window.startMs==null||!Number.isFinite(Number(window.startMs)))continue;
+  const line=Number(window.line);
+  let byCommand=primaryByLine.get(line);
+  if(!byCommand){byCommand=new Map();primaryByLine.set(line,byCommand);}
+  if(!byCommand.has(window.command))byCommand.set(window.command,window);
+ }
+ const primaryPerform=(index,cmd)=>primaryByLine.get(index)?.get(cmd);
  for(let i=0;i<parsed.sentenceList.length;i++){
   if(timing&&Number.isFinite(timing.lineTimes[i]))cursor=timing.lineTimes[i];
   const s=parsed.sentenceList[i];if(s.isLineBreakHolder)continue;
@@ -182,14 +198,30 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   if(Number.isFinite(end)&&end>start+.01)replayWindows.push({startMs:start,endMs:end,command:w.command,line:Number(w.line)+1,hold:!!w.hold,dormantRestorable:!!(w.hold&&dormantHoldCommands.has(w.command)),rootReplay:dormantHoldCommands.has(w.command),noCut:w.command==='pixiPerform'||w.command==='say'});
  }
  const resolvedExitReplay=[],usedStageExits=new Set();
+ // Only exits within two milliseconds can match. Keep the original array
+ // index so equal-time candidates still resolve in measurement order.
+ const exitsByTime=new Map();
+ if(exitReplay.length)stageExitWindows.forEach((actual,index)=>{
+  if(actual.startMs==null||!Number.isFinite(Number(actual.startMs)))return;
+  const bucket=Math.floor(Number(actual.startMs)/4);
+  if(!exitsByTime.has(bucket))exitsByTime.set(bucket,[]);
+  exitsByTime.get(bucket).push(index);
+ });
  for(const window of exitReplay){
-  const match=stageExitWindows.find((actual,index)=>{
-   if(usedStageExits.has(index)||actual.startMs===null||actual.startMs===undefined)return false;
-   const target=String(actual.target||''),expected=String(window.target||'');
-   return Math.abs(Number(actual.startMs)-Number(window.triggerMs??window.startMs))<=2&&(!expected||target.startsWith(expected));
-  });
-  if(match){
-   const index=stageExitWindows.indexOf(match);usedStageExits.add(index);
+  const time=Number(window.triggerMs??window.startMs),expected=String(window.target||'');
+  let index=Infinity;
+  if(Number.isFinite(time)){
+   const first=Math.floor((time-2)/4),last=Math.floor((time+2)/4);
+   for(const bucket of first===last?[first]:[first,last]){
+    for(const candidate of exitsByTime.get(bucket)||[]){
+     if(candidate>=index)break;
+     const actual=stageExitWindows[candidate];
+     if(!usedStageExits.has(candidate)&&Math.abs(Number(actual.startMs)-time)<=2&&(!expected||String(actual.target||'').startsWith(expected))){index=candidate;break;}
+    }
+   }
+  }
+  if(Number.isFinite(index)){
+   const match=stageExitWindows[index];usedStageExits.add(index);
    const end=match.stopMs!==null&&match.stopMs!==undefined&&Number.isFinite(Number(match.stopMs))?Number(match.stopMs):fullDurationMs;
    resolvedExitReplay.push({...window,endMs:end});
   }else resolvedExitReplay.push(window);
@@ -204,6 +236,12 @@ globalThis.__buildNativeWorkload=({script,parsed,media,animations,timing,root,pr
   if(end>start+.01)replayWindows.push({...window,startMs:start,endMs:end});
  }
  return {project,sceneName,sourceLines:sourceLines.length,parsedStatements:parsed.sentenceList.length,counts,fullDuration,duration:fullDuration,fps,events,audio,videoCues,muteWindows,singleLineHints,softCutWindows,live2dLifetimes,replayWindows,relaxedDecorativePixi,strictSegmentCuts:!!strictSegmentCuts,extraAnimations:[...extraAnimations]};
+};
+
+// Only these fields are consumed before the timed workload is built.
+globalThis.__previewNativeWorkload=input=>{
+ const {parsedStatements,videoCues}=globalThis.__buildNativeWorkload(input);
+ return {parsedStatements,videoPaths:[...new Set(videoCues.map(cue=>cue.path))]};
 };
 
 globalThis.__finishNativeTimeline=({result,pre,settings,playlist,range})=>{
@@ -221,7 +259,19 @@ globalThis.__finishNativeTimeline=({result,pre,settings,playlist,range})=>{
   if(selectedTarget+1<minimum)throw Error('音乐总长 '+(selectedTarget/1000).toFixed(1)+' 秒，保留选区文字、配音和必要演出至少需要 '+(minimum/1000).toFixed(1)+' 秒；请增加音乐或缩短内容。');
   const synthetic=stretch<=0&&target>durationMs+1;if(synthetic)windows=[{startMs:durationMs,endMs:durationMs+1,line:lineTimes.length-1}];
   const total=windows.reduce((n,w)=>n+w.endMs-w.startMs,0),delta=target-durationMs;
-  const map=t=>total>0?t+windows.reduce((n,w)=>n+Math.max(0,Math.min(t,w.endMs)-w.startMs)/total*delta,0):t;
+  // For ordered, disjoint windows only one interval can be partly elapsed.
+  // Accumulate complete intervals in the original order to preserve rounding.
+  const offsets=[0];
+  const indexed=total>0&&windows.every((w,i)=>Number.isFinite(w.startMs)&&Number.isFinite(w.endMs)&&w.endMs>=w.startMs&&(!i||w.startMs>=windows[i-1].endMs));
+  if(indexed)for(const w of windows)offsets.push(offsets[offsets.length-1]+(w.endMs-w.startMs)/total*delta);
+  const map=t=>{
+   if(!(total>0))return t;
+   if(!indexed||!Number.isFinite(t))return t+windows.reduce((n,w)=>n+Math.max(0,Math.min(t,w.endMs)-w.startMs)/total*delta,0);
+   let lo=0,hi=windows.length;
+   while(lo<hi){const mid=Math.floor((lo+hi)/2);if(windows[mid].endMs<=t)lo=mid+1;else hi=mid;}
+   const partial=lo<windows.length?Math.max(0,t-windows[lo].startMs)/total*delta:0;
+   return t+(offsets[lo]+partial);
+  };
   for(const event of result.controlEvents)event.atMs=Math.round(map(event.atMs));
   for(const event of sourceEvents)event.atMs=Math.round(map(event.atMs));
   for(const window of performWindows){

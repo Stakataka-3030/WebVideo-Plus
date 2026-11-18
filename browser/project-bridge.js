@@ -81,10 +81,10 @@ async function webVideoProjectRequest(url,options={},timeoutMs=30000,requests=nu
 
      let warning='';try{
       const p=C.metadata(JSON.parse(JSON.stringify(project)));p.backups.unshift({id,label,path:plan.path,file:backupPath,createdAt:backup.createdAt});p.backups=p.backups.slice(0,200);const afterModel=api.model(plan.path,C.norm(plan.after));
-      if(!['idize','restore','expressionPrep','batchFilter','batchNext','autoExit','filterEdit','presetEffect','novelImport','importAnogo','singleLineHint'].includes(plan.operation?.type))p.markers.push(...C.generatedMarkers(afterModel,{...plan,patches:plan.patches.map(p=>({...p,startOffset:C.norm(plan.before.slice(0,p.startOffset)).length,endOffset:C.norm(plan.before.slice(0,p.endOffset)).length,after:C.norm(p.after)}))},id));
-      const offsets=new Set((plan.reviewOffsets||[]).map(offset=>C.norm(plan.after.slice(0,offset)).length));for(const row of afterModel.statements)if(offsets.has(row.startOffset))p.markers.push({...C.anchor(afterModel,row,'待核对',id),kind:'review'});
+      if(!['idize','restore','expressionPrep','batchFilter','batchNext','autoExit','filterEdit','presetEffect','novelImport','importAnogo','singleLineHint'].includes(plan.operation?.type)){const offset=C.normalizedOffsetLookup(plan.before);for(const marker of C.generatedMarkers(afterModel,{...plan,patches:plan.patches.map(p=>({...p,startOffset:offset(p.startOffset),endOffset:offset(p.endOffset),after:C.norm(p.after)}))},id))p.markers.push(marker);}
+      const offsets=new Set(plan.reviewOffsets?.length?plan.reviewOffsets.map(C.normalizedOffsetLookup(plan.after)):[]);for(const row of afterModel.statements)if(offsets.has(row.startOffset))p.markers.push({...C.anchor(afterModel,row,'待核对',id),kind:'review'});
       await saveMetadata(p,at);if(scope===at)project=p;
-     }catch(error){warning='剧本已应用，备份已保存，但制作配置未保存：'+error.message;if(plan.reviewOffsets?.length)window.WebVideoPlus.markForReview?.(plan.path,C.norm(plan.after),plan.reviewOffsets.map(offset=>C.norm(plan.after.slice(0,offset)).length));}
+     }catch(error){warning='剧本已应用，备份已保存，但制作配置未保存：'+error.message;if(plan.reviewOffsets?.length)window.WebVideoPlus.markForReview?.(plan.path,C.norm(plan.after),plan.reviewOffsets.map(C.normalizedOffsetLookup(plan.after)));}
 
      changed();if(warning)window.WebVideoPlus.notify?.(warning);return {id,backupPath,warning,changed:plan.changed??plan.patches?.length??1};
     }finally{busy=false;changed();}

@@ -29,6 +29,11 @@ function Put([string]$file,[string]$text){
  if([IO.File]::Exists($file)){[IO.File]::Replace($temporary,$file,$null)}else{[IO.File]::Move($temporary,$file)}
 }
 function Json([string]$file,$value){Put $file ($value | ConvertTo-Json -Depth 30)}
+function SharedMountMatches([string]$text,[bool]$enabled){
+ $at=$text.IndexOf('const WebVideoSharedMaterials=(()=>{',[StringComparison]::Ordinal)
+ if(!$enabled){return $at -lt 0 -and !$text.Contains('const __wvpFigureMetadata=WebVideoSharedMaterials.')}
+ return $at -ge 0 -and $text.Substring($at,[Math]::Min(180,$text.Length-$at)).Contains('const enabled=true;')
+}
 function Plain([string]$file){
  Require (Test-Path -LiteralPath $file) "Missing input: $file"
  for($at=[IO.Path]::GetFullPath($file);$at;$at=[IO.Path]::GetDirectoryName($at)){
@@ -124,11 +129,11 @@ for(const {name,data} of entries.values()){
    & node --check $output 2> (Join-Path $folder 'syntax.log');$item.syntaxExitCode=$LASTEXITCODE
    if($LASTEXITCODE -eq 0){
     $enabled=$true
-    if($exe -eq $manager){$text=[IO.File]::ReadAllText($output);$at=$text.IndexOf('const WebVideoSharedMaterials=(()=>{');$enabled=$at -ge 0 -and $text.Substring($at,[Math]::Min(180,$text.Length-$at)).Contains('const enabled='+($shared -eq 'on').ToString().ToLowerInvariant()+';')}
+    if($exe -eq $manager){$enabled=SharedMountMatches ([IO.File]::ReadAllText($output)) ($shared -eq 'on')}
     $item.sharedFlagMatches=$enabled
     if($enabled){
      $item.status='PASS'
-     if($exe -eq $manager){& node (Join-Path $PSScriptRoot 'shared-model-wiring.test.cjs') $output $inputFile | Out-Host;$item.modelWiringExitCode=$LASTEXITCODE;if($LASTEXITCODE -ne 0){$item.status='FAIL'}}
+     if($exe -eq $manager -and $shared -eq 'on'){& node (Join-Path $PSScriptRoot 'shared-model-wiring.test.cjs') $output $inputFile | Out-Host;$item.modelWiringExitCode=$LASTEXITCODE;if($LASTEXITCODE -ne 0){$item.status='FAIL'}}
      if($name -eq 'mygo-fresh-shared-on'){& node (Join-Path $PSScriptRoot 'project-resources-ui.test.cjs') $output | Out-Host;$item.creationUiExitCode=$LASTEXITCODE;if($LASTEXITCODE -ne 0){$item.status='FAIL'}}
     }
    }
@@ -176,8 +181,8 @@ for(const {name,data} of entries.values()){
     $manifest=Get-Content -LiteralPath (Join-Path $folder 'state/install.json') -Raw | ConvertFrom-Json
     $bundle=Join-Path $hostRoot ('public/assets/'+$manifest.installedBundle)
     & node --check $bundle 2> (Join-Path $folder 'syntax.log');$item.syntaxExitCode=$LASTEXITCODE
-    $text=[IO.File]::ReadAllText($bundle);$at=$text.IndexOf('const WebVideoSharedMaterials=(()=>{')
-    $item.sharedFlagMatches=$at -ge 0 -and $text.Substring($at,[Math]::Min(180,$text.Length-$at)).Contains('const enabled='+($shared -eq 'on').ToString().ToLowerInvariant()+';')
+    $text=[IO.File]::ReadAllText($bundle)
+    $item.sharedFlagMatches=SharedMountMatches $text ($shared -eq 'on')
     if($record.version -eq $product.version -and (($record.modules -contains 'sharedAssets') -eq ($shared -eq 'on')) -and $LASTEXITCODE -eq 0 -and $item.sharedFlagMatches){$item.status='PASS'}
    }else{$item.failedInstallFilesUnchanged=Same $before (Snapshot $roots)}
    if($item.status -eq 'PASS' -and $shared -eq 'on'){
@@ -191,8 +196,8 @@ for(const {name,data} of entries.values()){
      if($toggle.exitCode -eq 0){
       $record=Get-Content -LiteralPath (Join-Path $hostRoot 'webvideo-plus.json') -Raw | ConvertFrom-Json
       $manifest=Get-Content -LiteralPath (Join-Path $folder 'state/install.json') -Raw | ConvertFrom-Json
-      $text=[IO.File]::ReadAllText((Join-Path $hostRoot ('public/assets/'+$manifest.installedBundle)));$at=$text.IndexOf('const WebVideoSharedMaterials=(()=>{')
-      $toggle.selectionMatches=(($record.modules -contains 'sharedAssets') -eq $enabled) -and $at -ge 0 -and $text.Substring($at,[Math]::Min(180,$text.Length-$at)).Contains('const enabled='+$enabled.ToString().ToLowerInvariant()+';')
+      $text=[IO.File]::ReadAllText((Join-Path $hostRoot ('public/assets/'+$manifest.installedBundle)))
+      $toggle.selectionMatches=(($record.modules -contains 'sharedAssets') -eq $enabled) -and (SharedMountMatches $text $enabled)
      }
      $toggle.sharedSourcePreserved=(Hash $sentinel) -eq $savedOriginal -and (Hash $registry) -eq $savedRegistry
      if($toggle.exitCode -ne 0 -or !$toggle.selectionMatches -or !$toggle.sharedSourcePreserved){$item.status='FAIL'}
@@ -209,7 +214,7 @@ for(const {name,data} of entries.values()){
       $record=Get-Content -LiteralPath (Join-Path $hostRoot 'webvideo-plus.json') -Raw | ConvertFrom-Json
       $manifest=Get-Content -LiteralPath (Join-Path $folder 'state/install.json') -Raw | ConvertFrom-Json
       $installedSource=Join-Path $hostRoot ('public/assets/'+$manifest.installedBundle)
-      & node (Join-Path $PSScriptRoot 'subtitle-frontend-wiring.test.cjs') $installedSource $(if($enabled){'on'}else{'off'}) 'on' | Out-Host
+      & node (Join-Path $PSScriptRoot 'subtitle-frontend-wiring.test.cjs') $installedSource $(if($enabled){'on'}else{'off'}) $shared | Out-Host
       $toggle.selectionMatches=(($record.modules -contains 'subtitles') -eq $enabled) -and $LASTEXITCODE -eq 0
      }
      if($toggle.exitCode -ne 0 -or !$toggle.selectionMatches){$item.status='FAIL'}

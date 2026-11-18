@@ -12,6 +12,12 @@ namespace NativeVideo {
   static readonly string[] partFiles={"request.json","runner.log","error.log","retry.jsonl","gpu-selection.json","processes.json","restore.json","restore-dialogue.json","progress.json","result.json"};
   static readonly string[] planningFiles={"timing-plan.json","scene-chain.json","native-version.json","gpu-selection.json","scan-report.json","video-preflight.json","audio-args.json","prepared/input.txt","prepared/plan.json"};
   static readonly string[] workFiles={"segment-plan.json","mix.log","merge.log","audio-export.log","subtitle.log","concat.txt"};
+  // Part folders use Int32.ToString("D3"): three digits minimum, never truncated.
+  const string partNumber=@"(?:[0-9]{3}|[1-9][0-9]{3,9})";
+  static readonly Regex partDirectory=new Regex(@"\A"+partNumber+@"\z");
+  static readonly Regex prefixFile=new Regex(@"\Aexport-prefix-"+partNumber+@"\.txt\z");
+  static readonly Regex partRecord=new Regex(@"\Aparts/"+partNumber+"/("+string.Join("|",partFiles.Select(Regex.Escape))+@")\z");
+  const string prefixDirectory="planning/prepared/web/game/scene/";
   static string Record(object request){return Files.Full(J.S(request,"recordDir",J.S(request,"jobDir")));}
   static string Root(object request){string record=Record(request);NoLinks(Path.GetPathRoot(record),record);string root=Files.Under(record,"diagnostics");NoLinks(record,root);return root;}
   static string RunFolder(object request){
@@ -22,25 +28,26 @@ namespace NativeVideo {
   static void NoLinks(string root,string file){
    if(!Files.Within(root,file))throw new IOException("诊断文件超出所属任务目录");
    for(string p=Files.Full(file);!string.IsNullOrEmpty(p)&&Files.Within(root,p);p=Path.GetDirectoryName(p))
-    if((File.Exists(p)||Directory.Exists(p))&&(File.GetAttributes(p)&FileAttributes.ReparsePoint)!=0)throw new IOException("诊断路径不能包含链接："+p);
-   if((File.GetAttributes(root)&FileAttributes.ReparsePoint)!=0)throw new IOException("任务目录不能是链接");
+    {string io=Files.IoPath(p);if((File.Exists(io)||Directory.Exists(io))&&(File.GetAttributes(io)&FileAttributes.ReparsePoint)!=0)throw new IOException("诊断路径不能包含链接："+p);}
+   if((File.GetAttributes(Files.IoPath(root))&FileAttributes.ReparsePoint)!=0)throw new IOException("任务目录不能是链接");
   }
   static void CopyText(string root,string source,string target){
    NoLinks(root,source);Files.AtomicBytes(target,File.ReadAllBytes(Files.IoPath(source)));
   }
   static void Note(object request,Exception error){try{Files.Append(Path.Combine(RunFolder(request),"collection-errors.jsonl"),J.O("at",DateTime.UtcNow.ToString("o"),"error",error.ToString()));}catch{}}
   public static void Begin(object request){
-   try{lock(gate){string root=Root(request);J.D(request).Remove("diagnosticInitError");J.D(request)["diagnosticPolicy"]=1;J.Write(Path.Combine(Record(request),"request.json"),request);string name="run-"+DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffZ")+"-"+Guid.NewGuid().ToString("N").Substring(0,8);Directory.CreateDirectory(Path.Combine(root,name));J.Write(Path.Combine(root,"current.json"),J.O("run",name));J.Write(Path.Combine(root,name,"environment.json"),J.O("kernelVersion",VersionInfo.Kernel,"processorCount",Environment.ProcessorCount,"osVersion",Environment.OSVersion.ToString(),"is64BitProcess",Environment.Is64BitProcess));}}
+   try{lock(gate){string root=Root(request);J.D(request).Remove("diagnosticInitError");J.D(request)["diagnosticPolicy"]=1;J.Write(Path.Combine(Record(request),"request.json"),request);string name="run-"+DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffZ")+"-"+Guid.NewGuid().ToString("N").Substring(0,8);Directory.CreateDirectory(Files.IoPath(Path.Combine(root,name)));J.Write(Path.Combine(root,"current.json"),J.O("run",name));J.Write(Path.Combine(root,name,"environment.json"),J.O("kernelVersion",VersionInfo.Kernel,"processorCount",Environment.ProcessorCount,"osVersion",Environment.OSVersion.ToString(),"is64BitProcess",Environment.Is64BitProcess));}}
    catch(Exception error){J.D(request)["diagnosticInitError"]=error.ToString();Note(request,error);}
   }
   public static void BeginAttempt(object request,object render,string part,int attempt){
-   try{string folder=Files.Under(RunFolder(request),"parts/"+Path.GetFileName(part)+"/attempt-"+attempt.ToString("D3"));Directory.CreateDirectory(folder);NoLinks(Root(request),folder);foreach(string name in partFiles.Where(n=>n!="retry.jsonl")){string file=Path.Combine(part,name);if(File.Exists(file)){NoLinks(J.S(request,"jobDir"),file);File.Delete(Files.IoPath(file));}}J.D(render)["diagnosticAttemptDir"]=folder;J.Write(Path.Combine(folder,"request.json"),render);}
-   catch(Exception error){Note(request,error);}
+   J.D(render).Remove("diagnosticAttemptDir");
+   try{string folder=Files.Under(RunFolder(request),"parts/"+Path.GetFileName(part)+"/attempt-"+attempt.ToString("D3"));NoLinks(Root(request),folder);Directory.CreateDirectory(Files.IoPath(folder));foreach(string name in partFiles.Where(n=>n!="retry.jsonl")){string file=Path.Combine(part,name);if(File.Exists(file)){NoLinks(J.S(request,"jobDir"),file);File.Delete(Files.IoPath(file));}}J.D(render)["diagnosticAttemptDir"]=folder;J.Write(Path.Combine(folder,"request.json"),render);}
+   catch(Exception error){J.D(render).Remove("diagnosticAttemptDir");Note(request,error);}
   }
   static string Attempt(object request){string folder=J.S(request,"diagnosticAttemptDir");if(!Files.Within(Root(request),folder))throw new IOException("恢复诊断目录不属于本次任务");NoLinks(Root(request),folder);return folder;}
   public static void Prefix(object request,string name,string source,object[] events,int target,int first,int start){
    try{
-    if(!Regex.IsMatch(name,"^export-prefix-[0-9]{3}\\.txt$"))throw new IOException("恢复脚本名称无效");string folder=Attempt(request);Files.Atomic(Path.Combine(folder,name),source);
+    if(!prefixFile.IsMatch(name))throw new IOException("恢复脚本名称无效");string folder=Attempt(request);Files.Atomic(Path.Combine(folder,name),source);
     var chain=J.TryRead(Path.Combine(J.S(request,"jobDir"),"planning/scene-chain.json"));var origins=J.A(J.Get(chain,"originMap"));
     int physical=1;var rows=new List<object>();foreach(var e in events){int line=(int)J.N(e,"line"),length=J.S(e,"script").Count(ch=>ch=='\n')+1;object origin=line>0&&line<=origins.Count?origins[line-1]:null,end=line>0&&line+length-1<=origins.Count?origins[line+length-2]:null;rows.Add(J.O("prefixLine",physical,"prefixEndLine",physical+length-1,"sourceIndex",J.Get(e,"sourceIndex"),"flattenedLine",line,"origin",origin,"originEnd",end,"command",J.Get(e,"command"),"atMs",J.Get(e,"atMs")));physical+=length;}
     J.Write(Path.Combine(folder,"prefix-map.json"),J.O("target",target,"firstSimulationFrame",first,"startFrame",start,"warmupFrames",start-first,"sourceHash",Files.HashText(source),"rows",rows.ToArray()));
@@ -60,14 +67,14 @@ namespace NativeVideo {
    foreach(string name in workFiles)files[name]=Path.Combine(work,name);
    foreach(string name in planningFiles)files["planning/"+name]=Path.Combine(work,"planning",name);
    string parts=Path.Combine(work,"parts");
-   if(Directory.Exists(parts)){NoLinks(work,parts);foreach(string part in Directory.GetDirectories(parts)){if(!Regex.IsMatch(Path.GetFileName(part),"^[0-9]{3}$"))continue;NoLinks(work,part);foreach(string name in partFiles)files["parts/"+Path.GetFileName(part)+"/"+name]=Path.Combine(part,name);}}
+   if(Directory.Exists(parts)){NoLinks(work,parts);foreach(string part in Directory.GetDirectories(parts)){if(!partDirectory.IsMatch(Path.GetFileName(part)))continue;NoLinks(work,part);foreach(string name in partFiles)files["parts/"+Path.GetFileName(part)+"/"+name]=Path.Combine(part,name);}}
    string scene=Path.Combine(work,"planning/prepared/web/game/scene");
-   if(Directory.Exists(scene)){NoLinks(work,scene);foreach(string file in Directory.GetFiles(scene,"export-prefix-*.txt"))if(Regex.IsMatch(Path.GetFileName(file),"^export-prefix-[0-9]{3}\\.txt$"))files["prefix/"+Path.GetFileName(file)]=file;}
+   if(Directory.Exists(scene)){NoLinks(work,scene);foreach(string file in Directory.GetFiles(scene,"export-prefix-*.txt"))if(prefixFile.IsMatch(Path.GetFileName(file)))files["prefix/"+Path.GetFileName(file)]=file;}
    return files;
   }
   static bool KeepText(string relative){
    relative=relative.Replace('\\','/');
-   return workFiles.Contains(relative)||planningFiles.Any(n=>relative=="planning/"+n)||Regex.IsMatch(relative,"^parts/[0-9]{3}/("+string.Join("|",partFiles.Select(Regex.Escape))+ ")$")||Regex.IsMatch(relative,"^planning/prepared/web/game/scene/export-prefix-[0-9]{3}\\.txt$");
+   return workFiles.Contains(relative)||planningFiles.Any(n=>relative=="planning/"+n)||partRecord.IsMatch(relative)||(relative.StartsWith(prefixDirectory,StringComparison.Ordinal)&&prefixFile.IsMatch(relative.Substring(prefixDirectory.Length)));
   }
   static void Prune(string work,string directory){
    if((File.GetAttributes(directory)&FileAttributes.ReparsePoint)!=0){Directory.Delete(directory);return;}

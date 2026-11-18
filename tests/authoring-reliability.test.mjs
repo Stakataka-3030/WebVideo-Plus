@@ -27,6 +27,15 @@ function terre(version){
 }
 const versions=['4.6.4','4.6.5','4.6.6'].filter(v=>fs.existsSync(path.join(root,'baseline/terre-'+v+'.js')));
 for(const version of versions){
+ test(version+' raw offsets match normalized prefixes at every UTF-16 boundary',()=>{
+  const t=terre(version);try{
+   const core=t.ctx.WebVideoProjectCore;
+   for(const text of ['', 'a\nb', '😀\r\n\r\nx\ry']){
+    const lookup=core.normalizedOffsetLookup(text);
+    for(let i=0;i<=text.length;i++)assert.equal(lookup(i),core.norm(text.slice(0,i)).length);
+   }
+  }finally{t.close();}
+ });
  test(version+' shared speaker aliases resolve to the onstage figure without guessing',()=>{
   const t=terre(version);try{
    const rows=JSON.parse(fs.readFileSync(path.join(root,'character-map.factory.json'),'utf8')).rows;
@@ -148,6 +157,7 @@ for(const version of versions){
 }
 
 for(const version of versions){
+
  test(version+' first metadata save lists the existing root despite missing child returning Nest 500',async()=>{const t=terre(version);try{
   const P=t.ctx.WebVideoProject;await P.activate('fixture');
   await assert.rejects(t.ctx.api.assetsControllerReadAssets('games/fixture/.webvideo-plus'),{status:500});t.requests.list.length=0;
@@ -173,6 +183,15 @@ for(const version of versions){
 }
 
 for(const version of versions){
+ test(version+' raw offsets match normalized prefixes at every UTF-16 boundary',()=>{
+  const t=terre(version);try{
+   const core=t.ctx.WebVideoProjectCore;
+   for(const text of ['', 'a\nb', '😀\r\n\r\nx\ry']){
+    const lookup=core.normalizedOffsetLookup(text);
+    for(let i=0;i<=text.length;i++)assert.equal(lookup(i),core.norm(text.slice(0,i)).length);
+   }
+  }finally{t.close();}
+ });
  test(version+' empty backup history proves absence from parent listings without missing-path requests',async()=>{const t=terre(version);try{
   const P=t.ctx.WebVideoProject;await P.activate('fixture');assert.deepEqual(plain(await P.listBackups()),[]);assert.deepEqual(t.requests.list,['games/fixture']);
   fs.mkdirSync(path.join(t.disk,'games/fixture/.webvideo-plus'));t.requests.list.length=0;assert.deepEqual(plain(await P.listBackups()),[]);assert.deepEqual(t.requests.list,['games/fixture','games/fixture/.webvideo-plus']);assert.equal(t.requests.writes.length,0);

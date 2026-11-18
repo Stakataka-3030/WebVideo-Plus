@@ -71,10 +71,12 @@ const unclipped=check('float-stages-without-limiter',Array.from({length:64},(_,i
 assert.ok(samples(unclipped.output).readDoubleLE(100*8)>.3,'submixes exceeding full scale must survive until cancellation');
 
 // Both the path list alone and the old complete argv exceed CreateProcessW.
-const longDir=path.join(media,"中文 ' & ! "+'long-'.repeat(9));fs.mkdirSync(longDir);const longFile=path.join(longDir,'v.wav');fs.copyFileSync(stereo,longFile);
+const prefix="中文 ' & ! ";
+const padding=Math.max(0,170-path.join(media,prefix,"v.wav").length);
+const longDir=path.join(media,prefix+"x".repeat(padding));fs.mkdirSync(longDir);const longFile=path.join(longDir,'v.wav');fs.copyFileSync(stereo,longFile);
 const longArgs=mix(Array.from({length:200},(_,i)=>({...base(longFile),kind:'voice',volume:.005,atMs:i%5*11,endMs:900})),1);
 const graphAt=longArgs.indexOf('-filter_complex'),oldLength=longArgs.map(x=>'"'+x+'"').join(' ').length,inputLength=longArgs.slice(0,graphAt).map(x=>'"'+x+'"').join(' ').length;
-assert.ok(inputLength>32767,{inputLength});const rejected=spawnSync(ffmpeg,longArgs,{windowsHide:true,timeout:30000});assert.ok(rejected.error,'old monolithic command must fail to start on Windows');
+assert.ok(inputLength>32767,`input arguments measure ${inputLength} UTF-16 units`);const rejected=spawnSync(ffmpeg,longArgs,{windowsHide:true,timeout:30000});assert.ok(rejected.error,'old monolithic command must fail to start on Windows');
 const longResult=invoke('200-long-paths',longArgs,1);results.push({name:'200-long-paths',oldLength,inputLength,oldSpawnError:rejected.error.code,...compare(reference(longArgs,1,'long'),samples(longResult.output),'long'),steps:longResult.steps.length,maxCommandLength:Math.max(...longResult.steps.map(x=>x.commandLength||0))});console.log('PASS',JSON.stringify(results.at(-1)));
 
 const windows=Array.from({length:1800},(_,i)=>({start:2000+i*2,end:2001+i*2}));check('filter-over-32k',[{...base(),kind:'voice'}],1,windows);

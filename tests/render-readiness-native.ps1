@@ -58,9 +58,12 @@ while(-not $process.WaitForExit(1000)){if($watch.Elapsed.TotalSeconds -gt 180){&
 $process.WaitForExit();$code=$process.ExitCode;$process.Dispose();$status=Get-Content (Join-Path $run 'full-work/status.json') -Raw|ConvertFrom-Json
 if($null -eq $code -or $code -ne 0 -or $status.state -ne 'completed'){throw "Native readiness export failed (exit=$code): $($status.message); $run"}
 $result=$status.result
+$observedFormat=$result.captureFormat
+if(-not $observedFormat){$observedFormat=$result.pipeline}
+if($observedFormat -ne $CaptureFormat){throw "Requested $CaptureFormat capture, but the exporter reported '$observedFormat'."}
 if($ExpectedMemoryMiB -ge 0){$request=Get-Content (Join-Path $run 'full-work/request.json') -Raw|ConvertFrom-Json;if([int]$request.settings.cubismCoreInitialMemoryMiB -ne $ExpectedMemoryMiB){throw 'Export request memory default/override mismatch'}}
 if(-not $result.engine.runtimeParity -or $result.engine.sourceKind -notin @('project-runtime','mygo-project-runtime')){throw 'The test must use its exact project runtime.'}
 $probe=& $ffprobe -v error -count_frames -show_streams -of json (Join-Path $run 'full.mp4')|ConvertFrom-Json
 $video=@($probe.streams|Where-Object codec_type -eq 'video')[0]
 if($video.width -ne 1280 -or $video.height -ne 720 -or [int]$video.nb_read_frames -ne [int]$result.totalFrames){throw 'Decoded dimensions or frame count disagree.'}
-Write-Output "PASS native readiness: engine=$($result.engine.version) capture=$($result.captureFormat) frames=$($video.nb_read_frames); evidence=$run"
+Write-Output "PASS native readiness: engine=$($result.engine.version) capture=$observedFormat frames=$($video.nb_read_frames); evidence=$run"

@@ -39,6 +39,12 @@ public static class OutputChecks {
   using(var p=Child("echo")){var error=p.StandardError.ReadToEndAsync();var stdout=p.StandardOutput.ReadToEndAsync();await Commands.WriteInput(p,error,Encoding.UTF8.GetBytes("frame"));var message=await Commands.FinishInput(p,stdout,error,2000,1000);Check(await stdout=="frame"&&message=="diagnostic"&&p.ExitCode==0,"successful real pipe write close and drain");}
   var result=await Commands.Run(Path.Combine(Files.Root,"output-checks.exe"),new[]{"exit"},null,2000);Check(result.Code==0,"Commands.Run successful child");
   await Timeout(Commands.Run(Path.Combine(Files.Root,"output-checks.exe"),new[]{"stall"},null,100),"Commands.Run real process deadline");
+  using(var stop=new CancellationTokenSource(100)){
+   try{await Commands.Run(Path.Combine(Files.Root,"output-checks.exe"),new[]{"stall"},null,5000,stop.Token);throw new Exception("Missing caller cancellation");}
+   catch(OperationCanceledException){Check(stop.IsCancellationRequested,"Commands.Run distinguishes caller cancellation from timeout");}
+  }
+  var completed=await Task.WhenAll(Enumerable.Range(0,8).Select(i=>Commands.Run(Path.Combine(Files.Root,"output-checks.exe"),new[]{"exit"},null,5000)));
+  Check(completed.All(item=>item.Code==0),"Concurrent short-lived children signal exit and drain output");
   Console.WriteLine("CHECKS="+checks);
  }
  public static int Main(string[] args){try{if(args.Length>0){if(args[0]=="stall"){Thread.Sleep(10000);return 0;}if(args[0]=="echo"){Console.Write(Console.In.ReadToEnd());Console.Error.Write("diagnostic");}return 0;}Run().GetAwaiter().GetResult();return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}}

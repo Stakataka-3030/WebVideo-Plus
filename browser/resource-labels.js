@@ -9,7 +9,7 @@ function WebVideoSharedReferenceParts(value){
  try{
   let source,path;const legacy=/^(?:(?:figure|background|bgm|vocal|video)\/)?__shared\/([a-f0-9]+)\/(.+)$/i.exec(value);
   if(legacy){source=legacy[1];path=legacy[2];}
-  else{const url=new URL(value);if(!['http:','https:'].includes(url.protocol)||!['127.0.0.1','localhost'].includes(url.hostname))return;const match=/^\/webvideo-shared\/([a-f0-9]{32})\/([a-f0-9]{32})\/(.+)$/i.exec(url.pathname);if(!match)return;source=match[2];path=match[3];}
+  else{if(!value.includes(':'))return;const url=new URL(value);if(!['http:','https:'].includes(url.protocol)||!['127.0.0.1','localhost'].includes(url.hostname))return;const match=/^\/webvideo-shared\/([a-f0-9]{32})\/([a-f0-9]{32})\/(.+)$/i.exec(url.pathname);if(!match)return;source=match[2];path=match[3];}
   return {source,parts:path.split('/').map(part=>{try{return decodeURIComponent(part);}catch{return part;}})};
  }catch{return;}
 }

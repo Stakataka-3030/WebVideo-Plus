@@ -58,25 +58,43 @@ namespace NativeVideo {
    return hours.ToString("00",CultureInfo.InvariantCulture)+":"+minutes.ToString("00",CultureInfo.InvariantCulture)+":"+seconds.ToString("00",CultureInfo.InvariantCulture)+separator+millis.ToString("000",CultureInfo.InvariantCulture);
   }
   static void ShiftSrt(string source,string target,double offset){
-   string text=File.ReadAllText(source),pattern=@"(?m)(?<a>\d+:\d{2}:\d{2}[,.]\d{3})(?<sep>[ \t]*-->[ \t]*)(?<b>\d+:\d{2}:\d{2}[,.]\d{3})";int count=0;
-   string shifted=Regex.Replace(text,pattern,m=>{count++;string a=m.Groups["a"].Value,b=m.Groups["b"].Value;return SrtTime(ParseSrtTime(a)+offset,a.Contains(",")?',':'.')+m.Groups["sep"].Value+SrtTime(ParseSrtTime(b)+offset,b.Contains(",")?',':'.');});
+   string text=File.ReadAllText(source),pattern=@"(?:\A|(?<=[\r\n]))(?<indent>[ \t]*)(?<a>\d+:\d{2}:\d{2}[,.]\d{3})(?<sep>[ \t]*-->[ \t]*)(?<b>\d+:\d{2}:\d{2}[,.]\d{3})";int count=0;
+   string shifted=Regex.Replace(text,pattern,m=>{count++;string a=m.Groups["a"].Value,b=m.Groups["b"].Value;return m.Groups["indent"].Value+SrtTime(ParseSrtTime(a)+offset,a.Contains(",")?',':'.')+m.Groups["sep"].Value+SrtTime(ParseSrtTime(b)+offset,b.Contains(",")?',':'.');});
    if(count==0)throw new ArgumentException("SRT 中没有可识别的时间轴");Files.Atomic(target,shifted);
   }
-  static double ParseAssTime(string value){
-   var p=value.Trim().Split(':');double seconds;if(p.Length!=3||!double.TryParse(p[2],NumberStyles.Float,CultureInfo.InvariantCulture,out seconds))throw new FormatException("ASS 时间格式无效");
-   return int.Parse(p[0],CultureInfo.InvariantCulture)*3600+int.Parse(p[1],CultureInfo.InvariantCulture)*60+seconds;
+  static double ParseAssTime(string value,int line){
+   var p=value.Trim().Split(':');int hours,minutes;double seconds;
+   if(p.Length!=3||!int.TryParse(p[0],NumberStyles.None,CultureInfo.InvariantCulture,out hours)||
+    !int.TryParse(p[1],NumberStyles.None,CultureInfo.InvariantCulture,out minutes)||
+    !double.TryParse(p[2],NumberStyles.AllowDecimalPoint,CultureInfo.InvariantCulture,out seconds)||
+    double.IsNaN(seconds)||double.IsInfinity(seconds)||seconds>=60||minutes>=60)
+    throw new FormatException("ASS/SSA 第 "+line+" 行的时间格式无效");
+   return hours*3600d+minutes*60+seconds;
   }
   static string AssTime(double value){
    long cs=(long)Math.Round(Math.Max(0,value)*100,MidpointRounding.AwayFromZero),hours=cs/360000;cs%=360000;long minutes=cs/6000;cs%=6000;long seconds=cs/100,centis=cs%100;
    return hours.ToString(CultureInfo.InvariantCulture)+":"+minutes.ToString("00",CultureInfo.InvariantCulture)+":"+seconds.ToString("00",CultureInfo.InvariantCulture)+"."+centis.ToString("00",CultureInfo.InvariantCulture);
   }
   static void ShiftAss(string source,string target,double offset){
-   var lines=File.ReadAllLines(source).ToList();bool events=false;string[] format=null;int start=-1,end=-1,count=0;
-   for(int i=0;i<lines.Count;i++){
-    string trimmed=lines[i].Trim();if(trimmed.StartsWith("[")&&trimmed.EndsWith("]")){events=trimmed.Equals("[Events]",StringComparison.OrdinalIgnoreCase);format=null;continue;}if(!events)continue;
-    if(trimmed.StartsWith("Format:",StringComparison.OrdinalIgnoreCase)){format=trimmed.Substring(trimmed.IndexOf(':')+1).Split(',').Select(x=>x.Trim()).ToArray();start=Array.FindIndex(format,x=>x.Equals("Start",StringComparison.OrdinalIgnoreCase));end=Array.FindIndex(format,x=>x.Equals("End",StringComparison.OrdinalIgnoreCase));continue;}
-    if(format==null||start<0||end<0||!trimmed.StartsWith("Dialogue:",StringComparison.OrdinalIgnoreCase))continue;int colon=lines[i].IndexOf(':');string prefix=lines[i].Substring(0,colon+1),payload=lines[i].Substring(colon+1).TrimStart();var fields=payload.Split(new[]{','},format.Length,StringSplitOptions.None);if(fields.Length!=format.Length)continue;
-    fields[start]=AssTime(ParseAssTime(fields[start])+offset);fields[end]=AssTime(ParseAssTime(fields[end])+offset);lines[i]=prefix+" "+string.Join(",",fields);count++;
+   var lines=File.ReadAllLines(source);bool events=false;int fieldsCount=10,start=1,end=2,count=0;
+   for(int i=0;i<lines.Length;i++){
+    string trimmed=lines[i].Trim();
+    if(trimmed.StartsWith("[")&&trimmed.EndsWith("]")){
+     events=trimmed.Equals("[Events]",StringComparison.OrdinalIgnoreCase);
+     // The standard ASS and SSA event layouts both start with Layer/Marked, Start, End.
+     fieldsCount=10;start=1;end=2;continue;
+    }
+    if(!events)continue;
+    if(trimmed.StartsWith("Format:",StringComparison.OrdinalIgnoreCase)){
+     var format=trimmed.Substring(trimmed.IndexOf(':')+1).Split(',').Select(x=>x.Trim()).ToArray();
+     fieldsCount=format.Length;start=Array.FindIndex(format,x=>x.Equals("Start",StringComparison.OrdinalIgnoreCase));end=Array.FindIndex(format,x=>x.Equals("End",StringComparison.OrdinalIgnoreCase));continue;
+    }
+    if(!trimmed.StartsWith("Dialogue:",StringComparison.OrdinalIgnoreCase))continue;
+    int colon=lines[i].IndexOf(':');string prefix=lines[i].Substring(0,colon+1),payload=lines[i].Substring(colon+1).TrimStart();
+    var fields=payload.Split(new[]{','},fieldsCount,StringSplitOptions.None);
+    if(start<0||end<0||fields.Length!=fieldsCount)throw new FormatException("ASS/SSA 第 "+(i+1)+" 行的对白字段与时间格式不符");
+    fields[start]=AssTime(ParseAssTime(fields[start],i+1)+offset);fields[end]=AssTime(ParseAssTime(fields[end],i+1)+offset);
+    lines[i]=prefix+" "+string.Join(",",fields);count++;
    }
    if(count==0)throw new ArgumentException("ASS/SSA 中没有可识别的 Dialogue 时间轴");Files.Atomic(target,string.Join(Environment.NewLine,lines));
   }
@@ -84,11 +102,14 @@ namespace NativeVideo {
    if(offset<=.0005)return source;string target=Path.Combine(Path.GetDirectoryName(source),"shifted"+Path.GetExtension(source).ToLowerInvariant());if(Path.GetExtension(source).Equals(".srt",StringComparison.OrdinalIgnoreCase))ShiftSrt(source,target,offset);else ShiftAss(source,target,offset);return target;
   }
   static string FilterPath(string value){
-   string p=Files.Full(value).Replace('\\','/');return p.Replace(":","\\:").Replace("'","\\'").Replace("[","\\[").Replace("]","\\]").Replace(",","\\,").Replace(";","\\;");
+   string path=Files.Full(value).Replace('\\','/');
+   // FFmpeg parses the filter graph first and the filename option second.
+   string option=Regex.Replace(path,@"[\\':]",m=>"\\"+m.Value);
+   return Regex.Replace(option,@"[\\'\[\],;]",m=>"\\"+m.Value);
   }
   static async Task<string> Burn(string input,string target,string subtitle,double duration,object request,string log){
    string codec=J.S(request,"gpuRawCodec");if(string.IsNullOrWhiteSpace(codec))codec="x264";string mode=J.S(request,"gpuRawMode",J.S(J.Get(request,"settings"),"gpuRawMode","recommended"));if(mode=="traditional")mode="recommended";
-   Func<string,Task> run=async selected=>{var args=new List<string>{"-v","error","-y","-i",input,"-vf","subtitles=filename='"+FilterPath(subtitle)+"'","-map","0:v:0","-map","0:a?"};GpuEncoding.AddEncoderArgs(args,selected,selected=="x264rgb"?"lossless":mode);args.AddRange(new[]{"-c:a","copy","-t",J.Num(duration),"-movflags","+faststart",target});await Commands.Run("ffmpeg",args,log,7200000);};
+   Func<string,Task> run=async selected=>{var args=new List<string>{"-v","error","-y","-i",input,"-vf","subtitles=filename="+FilterPath(subtitle),"-map","0:v:0","-map","0:a?"};GpuEncoding.AddEncoderArgs(args,selected,selected=="x264rgb"?"lossless":mode);args.AddRange(new[]{"-c:a","copy","-t",J.Num(duration),"-movflags","+faststart",target});await Commands.Run("ffmpeg",args,log,7200000);};
    try{await run(codec);return codec;}catch(Exception e){if(!GpuEncoding.IsHardware(codec)||!GpuEncoding.IsCompatibilityError(e.Message))throw;}if(File.Exists(target))File.Delete(target);await run("x264");return "x264";
   }
   public static async Task<object> Apply(string input,string target,object subtitle,object timing,object bounds,object musicTimeline,object request,string log){

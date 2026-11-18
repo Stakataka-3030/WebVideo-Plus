@@ -8,6 +8,30 @@ namespace NativeVideo {
   static void Cuts(string text,int fps,params int[] expected){Check(ManualCuts.Parse(text,fps).SequenceEqual(expected),"Unexpected normalized cuts: "+text+" @ "+fps);}
   public static int Run(){
    checks=0;
+   var chain=J.O("replayWindows",new[]{
+    J.O("startMs",2000,"endMs",5000,"rootReplay",true),
+    J.O("startMs",4000,"endMs",9500)
+   });
+   var chained=SegmentPlan.CreateManual(chain,0,360,30,new[]{300});
+   Check(J.N(chained[1],"replayFrame")==0,"A chained replay that reaches a root window must start at frame zero");
+   var late=J.O("replayWindows",new[]{
+    J.O("startMs",892000,"endMs",895000,"rootReplay",true),
+    J.O("startMs",894000,"endMs",899500)
+   });
+   Check(J.N(SegmentPlan.CreateManual(late,0,36000,30,new[]{27000})[1],"replayFrame")==26760,"A late indirect overlap must retain the bounded default warmup");
+   late["strictSegmentCuts"]=true;
+   Check(J.N(SegmentPlan.CreateManual(late,0,36000,30,new[]{27000})[1],"replayFrame")==0,"Strict mode must preserve full history for an indirect overlap");
+   late["strictSegmentCuts"]=false;
+   late["replayWindows"]=new[]{J.O("startMs",899100,"endMs",900100,"rootReplay",true)};
+   Check(J.N(SegmentPlan.CreateManual(late,0,36000,30,new[]{27000})[1],"replayFrame")==0,"A directly active root must still replay from the start");
+   foreach(int startMs in new[]{900000,900001}){
+    late["replayWindows"]=new[]{J.O("startMs",startMs,"endMs",901000,"rootReplay",true,"command","setTransform")};
+    var beforeAction=SegmentPlan.CreateManual(late,0,36000,30,new[]{27000})[1];
+    Check(J.N(beforeAction,"replayFrame")==26970&&J.N(beforeAction,"warmupFrames")==30&&J.A(J.Get(beforeAction,"replayKinds")).Count==0,"A root action at or after a cut cannot require pre-cut history");
+   }
+   late["events"]=new[]{J.O("line",1,"command","say","script","A:line;","atMs",900000)};
+   var beforeFutureAction=SegmentPlan.Create(late,36000,30,2);
+   Check(beforeFutureAction.Length==2&&J.N(beforeFutureAction[1],"startFrame")==27000&&J.N(beforeFutureAction[1],"replayFrame")==26970&&J.A(J.Get(beforeFutureAction[1],"replayKinds")).Count==0,"A future root action must not increase warmup at an earlier automatic cut");
    var livePlan=J.O("live2dLifetimes",new object[]{J.O("startMs",0,"endMs",600000,"target","actor","motionEvents",new object[]{J.O("atMs",0,"group","pose"),J.O("atMs",10000,"group","idle")})},"replayWindows",new object[0],"events",Enumerable.Range(1,3).Select(i=>(object)J.O("line",i,"command","say","script","A:a;","atMs",i*150000)).ToArray());
    var liveManual=SegmentPlan.CreateManual(livePlan,0,18000,30,new[]{4500,9000,13500});
    Check(liveManual.Skip(1).All(r=>J.N(r,"warmupFrames")==90&&J.N(r,"replayFrame")==J.N(r,"startFrame")-90),"Live2D manual cuts must retain three-second local warmup");

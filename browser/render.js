@@ -361,6 +361,46 @@ globalThis.__exportResolveCubism4Blink=(elapsedSeconds,options={},key='')=>{
   }
   return {state:1,value:1,cycle:100000,phase:'interval',phaseSeconds:0,userTimeSeconds:0,nextBlinkingTime:interval,intervalSeconds:interval};
 };
+globalThis.__exportPrefixSentenceTarget=(parsed,physicalLines)=>{
+ const sentences=Array.isArray(parsed?.sentenceList)?parsed.sentenceList:[];
+ let target=Math.min(physicalLines,sentences.length);
+ while(target>0){
+  const holder=sentences[target-1]?.isLineBreakHolder;
+  if(holder!==true&&holder!=='true')break;
+  target--;
+ }
+ return target;
+};
+
+// The renderer advances in frame order. Only overlapping clips can contribute
+// to a mouth sample, but inactive targets still need a zero to close the mouth.
+globalThis.__exportCreateLipSampler=envelopes=>{
+ const targets=new Map();
+ for(const clip of envelopes)if(clip.target&&!targets.has(clip.target))targets.set(clip.target,targets.size);
+ const clips=envelopes.filter(clip=>clip.target&&Number(clip.atMs)<Number(clip.endMs)).sort((a,b)=>a.atMs-b.atMs);
+ const active=[];
+ let next=0,previous=-Infinity;
+ return t=>{
+  if(t<previous){next=0;active.length=0;}
+  previous=t;
+  while(next<clips.length&&clips[next].atMs<=t){
+   const clip=clips[next++];
+   if(t<clip.endMs)active.push(clip);
+  }
+  const lips=Array.from(targets.keys(),target=>({target,active:false,value:0}));
+  let kept=0;
+  for(const clip of active){
+   if(t>=clip.endMs)continue;
+   active[kept++]=clip;
+   const lip=lips[targets.get(clip.target)];
+   lip.active=true;
+   lip.value=Math.max(lip.value,Math.min(1,(clip.values[Math.floor((t-clip.atMs)/20)]||0)/clip.peak));
+  }
+  active.length=kept;
+  return lips;
+ };
+};
+
 globalThis.__installNativeRendering=({events,envelopes,fps,firstSimulationFrame=0,timingMode='auto',textSpeed=50,live2dLifetimes=[],includeFigures=true,dialogueDomRequired=true})=>{
   globalThis.__exportDialogueDomRequired=dialogueDomRequired!==false;
   __exportInstallFigureOutputFilter(__wgProbe.core.gameplay.pixiStage,includeFigures);
@@ -948,4 +988,5 @@ globalThis.__gpuDomApplyAnimations=()=>{const state=globalThis.__gpuDomState,p=_
 globalThis.__gpuDomRenderOnly=()=>{const state=globalThis.__gpuDomState,p=__wgProbe.core.gameplay.pixiStage,app=p.currentApp,r=app.renderer;try{if(r.background){r.background.alpha=0;if('color' in r.background)r.background.color=0;}}catch{}try{if('backgroundAlpha' in r)r.backgroundAlpha=0;}catch{}try{r.gl.clearColor(0,0,0,0);}catch{}const target=state?.container||(globalThis.__gpuDomEmpty||(globalThis.__gpuDomEmpty=new PIXI.Container())),parent=target.parent,index=parent?.getChildIndex?.(target)??-1,sx=target.scale?.x??1,sy=target.scale?.y??1,px=target.position?.x??0,py=target.position?.y??0;try{if(parent)parent.removeChild(target);target.scale?.set?.(1,1);target.position?.set?.(0,0);r.render(target,{clear:true});}finally{target.scale?.set?.(sx,sy);target.position?.set?.(px,py);if(parent){const at=Math.max(0,Math.min(index,parent.children.length));parent.addChildAt(target,at);}}return {active:!!state?.container,children:state?.container?.children?.length||0,alpha:!!r.gl.getContextAttributes()?.alpha,premultipliedAlpha:!!r.gl.getContextAttributes()?.premultipliedAlpha};};
 globalThis.__gpuReadbackPrepare=(width,height)=>{const p=__wgProbe.core.gameplay.pixiStage,gl=p.currentApp.renderer.gl,srcWidth=gl.drawingBufferWidth,srcHeight=gl.drawingBufferHeight;if(globalThis.__gpuReadbackState?.gl===gl&&globalThis.__gpuReadbackState.srcWidth===srcWidth&&globalThis.__gpuReadbackState.srcHeight===srcHeight&&globalThis.__gpuReadbackState.width===width&&globalThis.__gpuReadbackState.height===height)return globalThis.__gpuReadbackState.info;const old=globalThis.__gpuReadbackState;if(old?.gl===gl){try{old.texture&&gl.deleteTexture(old.texture);old.framebuffer&&gl.deleteFramebuffer(old.framebuffer);}catch{}}if(width===srcWidth&&height===srcHeight){const info={mode:'direct',sourceWidth:srcWidth,sourceHeight:srcHeight,width,height,bytes:width*height*4,webgl2:typeof WebGL2RenderingContext!=='undefined'&&gl instanceof WebGL2RenderingContext,antialias:!!gl.getContextAttributes()?.antialias};globalThis.__gpuReadbackState={gl,srcWidth,srcHeight,width,height,texture:null,framebuffer:null,info};return info;}const webgl2=typeof WebGL2RenderingContext!=='undefined'&&gl instanceof WebGL2RenderingContext;if(!webgl2)throw new Error('Scaled GPU readback requires WebGL2');const oldFramebuffer=gl.getParameter(gl.FRAMEBUFFER_BINDING),oldTexture=gl.getParameter(gl.TEXTURE_BINDING_2D);const texture=gl.createTexture(),framebuffer=gl.createFramebuffer();gl.bindTexture(gl.TEXTURE_2D,texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,width,height,0,gl.RGBA,gl.UNSIGNED_BYTE,null);gl.bindFramebuffer(gl.FRAMEBUFFER,framebuffer);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,texture,0);const status=gl.checkFramebufferStatus(gl.FRAMEBUFFER);gl.bindFramebuffer(gl.FRAMEBUFFER,oldFramebuffer);gl.bindTexture(gl.TEXTURE_2D,oldTexture);if(status!==gl.FRAMEBUFFER_COMPLETE){gl.deleteFramebuffer(framebuffer);gl.deleteTexture(texture);throw new Error('GPU downscale framebuffer incomplete: 0x'+status.toString(16));}const info={mode:'webgl2-blit',sourceWidth:srcWidth,sourceHeight:srcHeight,width,height,bytes:width*height*4,webgl2:true,antialias:!!gl.getContextAttributes()?.antialias};globalThis.__gpuReadbackState={gl,srcWidth,srcHeight,width,height,texture,framebuffer,info};return info;};
 globalThis.__gpuReadbackShared=(width,height)=>{const p=__wgProbe.core.gameplay.pixiStage,gl=p.currentApp.renderer.gl,out=globalThis.__gpuSharedBytes;if(!out)throw new Error('GPU shared readback buffer is not ready');const info=globalThis.__gpuReadbackPrepare(width,height),bytes=info.bytes;if(out.byteLength<bytes)throw new Error('GPU shared readback buffer is too small');if(info.mode==='direct'){const fb=gl.getParameter(gl.FRAMEBUFFER_BINDING);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,out);gl.bindFramebuffer(gl.FRAMEBUFFER,fb);return info;}const state=globalThis.__gpuReadbackState,oldRead=gl.getParameter(gl.READ_FRAMEBUFFER_BINDING),oldDraw=gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING);gl.bindFramebuffer(gl.READ_FRAMEBUFFER,null);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,state.framebuffer);gl.blitFramebuffer(0,0,info.sourceWidth,info.sourceHeight,0,0,width,height,gl.COLOR_BUFFER_BIT,gl.LINEAR);const error=gl.getError();if(error!==gl.NO_ERROR){gl.bindFramebuffer(gl.READ_FRAMEBUFFER,oldRead);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,oldDraw);throw new Error('GPU downscale blit failed: 0x'+error.toString(16));}gl.bindFramebuffer(gl.READ_FRAMEBUFFER,state.framebuffer);gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,out);gl.bindFramebuffer(gl.READ_FRAMEBUFFER,oldRead);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,oldDraw);return info;};
-let pos=0,last=firstSimulationFrame>0?(firstSimulationFrame-1)*1000/fps:0;globalThis.__webviewStep=async frame=>{globalThis.__exportCurrentFrame=frame;const t=frame*1000/fps,elapsed=Math.round(t)-Math.round(last);last=t;const batch=[];while(pos<events.length&&events[pos].atMs<=t+.01)batch.push(events[pos++]);const lips=[...new Set(envelopes.map(a=>a.target).filter(Boolean))].map(target=>({target,active:envelopes.some(a=>a.target===target&&t>=a.atMs&&t<a.endMs),value:Math.max(0,...envelopes.filter(a=>a.target===target&&t>=a.atMs&&t<a.endMs).map(a=>Math.min(1,(a.values[Math.floor((t-a.atMs)/20)]||0)/a.peak)))}));await __stepExportFrame({t,elapsed,batch,lips});return pos;};globalThis.__webviewWarmupStep=async frame=>{const value=await globalThis.__webviewStep(frame);__wgProbe.core.gameplay.pixiStage.currentApp.render();return value;};};
+const lipsAt=__exportCreateLipSampler(envelopes);
+let pos=0,last=firstSimulationFrame>0?(firstSimulationFrame-1)*1000/fps:0;globalThis.__webviewStep=async frame=>{globalThis.__exportCurrentFrame=frame;const t=frame*1000/fps,elapsed=Math.round(t)-Math.round(last);last=t;const batch=[];while(pos<events.length&&events[pos].atMs<=t+.01)batch.push(events[pos++]);const lips=lipsAt(t);await __stepExportFrame({t,elapsed,batch,lips});return pos;};globalThis.__webviewWarmupStep=async frame=>{const value=await globalThis.__webviewStep(frame);__wgProbe.core.gameplay.pixiStage.currentApp.render();return value;};};

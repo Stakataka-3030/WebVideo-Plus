@@ -16,11 +16,12 @@ namespace NativeVideo {
     bool changed=text!=previousText||key!=previousKey||visible!=previousVisible||(includeSpeaker&&speaker!=previousSpeaker);
     if(!changed)continue;
     string body=text;
-    if(visible&&previousVisible&&key==previousKey&&(!includeSpeaker||speaker==previousSpeaker)&&J.B(d,"append")&&text.StartsWith(previousText,StringComparison.Ordinal))body=text.Substring(previousText.Length);
+    bool extendsPrevious=visible&&previousVisible&&key==previousKey&&(!includeSpeaker||speaker==previousSpeaker)&&J.B(d,"append")&&text.StartsWith(previousText,StringComparison.Ordinal);
+    if(extendsPrevious)body=text.Substring(previousText.Length);
     if(active!=null)active.End=at;
     if(visible&&!string.IsNullOrWhiteSpace(body)){
      // A synchronous -next chain has one visible state at this timestamp.
-     if(active!=null&&active.Start==at&&J.B(d,"append")&&active.Speaker==speaker){active.Text+=body;active.End=end;}
+     if(active!=null&&active.Start==at&&extendsPrevious){active.Text+=body;active.End=end;}
      else {active=new Cue{Start=at,End=end,Text=body,Speaker=speaker};cues.Add(active);}
     }else active=null;
     previousText=text;previousKey=key;previousSpeaker=speaker;previousVisible=visible;

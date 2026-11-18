@@ -6,6 +6,20 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 const digest = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+// Hash one file synchronously; only the bytes returned by readSync enter the hash.
+const hashBuffer=Buffer.allocUnsafe(256*1024);
+export function hashFile(file){
+  const handle=fs.openSync(file,'r');
+  try{
+    const hash=crypto.createHash('sha256');
+    let bytes=0,count;
+    while((count=fs.readSync(handle,hashBuffer,0,hashBuffer.length,null))>0){
+      hash.update(hashBuffer.subarray(0,count));
+      bytes+=count;
+    }
+    return {bytes,sha256:hash.digest('hex')};
+  }finally{fs.closeSync(handle);}
+}
 const readJson = file => JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
 const ownRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const media = /\.(?:png|jpe?g|webp|gif|svg|ico|mp3|wav|ogg|flac|mp4|webm|ttf|otf|woff2?)$/i;
@@ -45,7 +59,7 @@ export function verifyMaterialFiles(directory, policy, {source = false, files = 
     if (!source && /\.(?:exe|dll)$/i.test(name) && !binaryPaths.has(name)) throw Error(`Unapproved packaged binary: ${name}`);
     const full = path.join(directory, ...name.split('/'));
     if (media.test(name)) {
-      if (!registered.has(name) || digest(fs.readFileSync(full)) !== registered.get(name)) throw Error(`Unregistered or changed media: ${name}`);
+      if (!registered.has(name) || hashFile(full).sha256 !== registered.get(name)) throw Error(`Unregistered or changed media: ${name}`);
       mediaCount++;
     }
     // Review static embedded assets in our executable browser payloads. Dependency
@@ -109,7 +123,7 @@ export function verifyPackageMaterials(directory, root = ownRoot) {
   // External native inputs keep their independently pinned bytes.
   const pins = readJson(path.join(root, 'build/dependencies.lock.json'));
   for (const [name, expected] of Object.entries(pins.stagedFiles)) {
-    if (!fs.existsSync(path.join(directory, name)) || digest(fs.readFileSync(path.join(directory, name))) !== expected) throw Error(`Pinned packaged input changed: ${name}`);
+    if (!fs.existsSync(path.join(directory, name)) || hashFile(path.join(directory, name)).sha256 !== expected) throw Error(`Pinned packaged input changed: ${name}`);
   }
   return {...result, supplementalNotices: notices.files.length, dependenciesWithNotices};
 }
