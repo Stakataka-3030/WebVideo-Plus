@@ -2,7 +2,8 @@ function WebVideoDialogueSubtitles({game,target}){
  const R=reactExports,h=R.createElement;
  const [open,setOpen]=R.useState(false),[ready,setReady]=R.useState(false),[busy,setBusy]=R.useState(false),[message,setMessage]=R.useState(''),[problem,setProblem]=R.useState(null);
  const [includeSpeaker,setIncludeSpeaker]=R.useState(false),[scope,setScope]=R.useState('full'),[selection,setSelection]=R.useState(null),[directory,setDirectory]=R.useState(''),[name,setName]=R.useState(''),[job,setJob]=R.useState(null);
- const requests=R.useRef(new Set()),connection=R.useRef(null),settings=R.useRef(null),submission=R.useRef(null),inFlight=R.useRef(false),generation=R.useRef(0),picking=R.useRef(false);
+ const requests=R.useRef(new Set()),connection=R.useRef(null),settings=R.useRef(null),submission=R.useRef(null),inFlight=R.useRef(false),generation=R.useRef(0);
+ const [picking,setPicking]=R.useState(false);
  const base=['games',game,'game','scene'].join('/')+'/',raw=String(target?.path||'').replaceAll('\\','/'),scene=raw.startsWith(base)?raw.slice(base.length):raw.replace(/^scene\//,'');
  const fail=error=>{const p=WebVideoServiceErrors.describe(error);setMessage(p.summary);setProblem(p);};
  async function call(endpoint,body){
@@ -13,7 +14,7 @@ function WebVideoDialogueSubtitles({game,target}){
  const close=()=>{generation.current++;for(const c of requests.current)c.abort();setOpen(false);};
  R.useEffect(()=>{const show=()=>{setSelection(null);setScope('full');setJob(null);setProblem(null);setOpen(true);};window.addEventListener('webvideo:open-subtitle-export',show);return()=>{window.removeEventListener('webvideo:open-subtitle-export',show);generation.current++;for(const c of requests.current)c.abort();};},[]);
  R.useEffect(()=>{
-  if(!open||picking.current)return;const token=++generation.current;setBusy(false);setReady(false);setMessage('正在读取导出设置…');setProblem(null);
+  if(!open)return;const token=++generation.current;setPicking(false);setSelection(null);setBusy(false);setReady(false);setMessage('正在读取导出设置…');setProblem(null);
   (async()=>{try{
    const conn=await WebVideoServiceErrors.readDiscovery((url,options)=>webVideoExportRequest(url,options,15000,requests.current));if(token!==generation.current)return;connection.current=conn;
    const cfg=await call('/api/config',{project:game,scene});if(token!==generation.current)return;const speed=WebVideoRuntime.peekGameSettings(game);
@@ -25,7 +26,15 @@ function WebVideoDialogueSubtitles({game,target}){
   if(!open||!job?.id||['completed','failed','canceled','needs_attention'].includes(job.state))return;
   let live=true,timer;const poll=async()=>{try{const rows=await call('/api/jobs');if(!live)return;const row=rows.find(row=>row.id===job.id);if(row){setJob(row);setMessage(row.message||'正在生成字幕…');}}catch(error){if(live)fail(error);}if(live)timer=setTimeout(poll,1000);};poll();return()=>{live=false;clearTimeout(timer);};
  },[open,job?.id,job?.state]);
- async function pickRange(){picking.current=true;setOpen(false);try{const next=await window.WebVideoPlus.requestSelection({mode:'range'});if(next)setSelection(next);}catch(error){fail(error);}finally{setOpen(true);picking.current=false;}}
+ async function pickRange(){
+  const token=generation.current;
+  setPicking(true);
+  try{
+   const next=await window.WebVideoPlus.requestSelection({mode:'range'});
+   if(token===generation.current&&next)setSelection(next);
+  }catch(error){if(token===generation.current)fail(error);}
+  finally{if(token===generation.current)setPicking(false);}
+ }
  async function chooseFolder(){const token=generation.current;try{const value=await call('/api/dialog/folder',{initial:directory});if(token===generation.current&&!value.canceled&&value.path)setDirectory(value.path);}catch(error){if(token===generation.current)fail(error);}}
  async function start(){
   if(inFlight.current||!ready)return;inFlight.current=true;setBusy(true);setProblem(null);const token=generation.current;
@@ -46,7 +55,7 @@ function WebVideoDialogueSubtitles({game,target}){
  const field=(title,control)=>h('label',{style:{display:'grid',gap:6}},title,control);
  const inputStyle={width:'100%',boxSizing:'border-box',minHeight:32,padding:'5px 8px',font:'inherit',color:'var(--colorNeutralForeground1)',background:'var(--colorNeutralBackground1)',border:'1px solid var(--colorNeutralStroke1)',borderRadius:4};
  const running=job&&!['completed','failed','canceled','needs_attention'].includes(job.state);
- return h(Dialog,{open,onOpenChange:(_,d)=>{if(!d.open)close();}},h(DialogSurface,{'aria-label':'导出字幕（SRT）',style:{width:520,maxWidth:'calc(100vw - 48px)'}},h(DialogBody,null,
+ return h(Dialog,{open:open&&!picking,onOpenChange:(_,d)=>{if(!d.open)close();}},h(DialogSurface,{'aria-label':'导出字幕（SRT）',style:{width:520,maxWidth:'calc(100vw - 48px)'}},h(DialogBody,null,
   h(DialogTitle,null,'导出字幕（SRT）'),h(DialogContent,{style:{display:'grid',gap:16}},
    h('p',{style:{margin:0,fontSize:13}},'当前场景：'+(target?.name||'请先打开场景文本')),
    h('label',null,h('input',{type:'checkbox',checked:includeSpeaker,disabled:busy||running,onChange:e=>setIncludeSpeaker(e.target.checked)}),' 包含说话人'),

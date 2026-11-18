@@ -12,7 +12,7 @@ function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve
 function harness(target={name:'start.txt',path:'games/fixture/game/scene/start.txt'}){
  const timers=new Map(),writes=[],requests=new Set();let id=0,cleanup,ready=false,attempts=0,pending=null,jobRequest=null,configRequest=null,notice=null,speedRequest=null;const calls=[],configBodies=[];
  const record=name=>value=>writes.push({name,value});
- const box={AbortController,console,opened:true,game:'fixture',exportKind:'full',readOnOpen:{current:true},settingsGame:{current:'fixture'},target,requestControllers:{current:requests},outputExtension:kind=>kind==='audio'?'.wav':'.mp4',connectionFailure:error=>error,
+ const box={configPending:{current:false},AbortController,console,opened:true,game:'fixture',exportKind:'full',readOnOpen:{current:true},settingsGame:{current:'fixture'},target,requestControllers:{current:requests},outputExtension:kind=>kind==='audio'?'.wav':'.mp4',connectionFailure:error=>error,
   setTimeout(fn,ms){const token=++id;timers.set(token,{fn,ms});return token;},clearTimeout(token){timers.delete(token);},R:{useEffect(fn){cleanup=fn();}},
   WebVideoServiceErrors:{async readDiscovery(fetch){attempts++;return fetch('/discovery',{});}},
   async webVideoExportRequest(url,options,timeout,controllers=requests){const controller=new AbortController();controllers.add(controller);try{if(pending){const current=pending;pending=null;return await new Promise((resolve,reject)=>{controller.signal.addEventListener('abort',()=>reject(Object.assign(Error('canceled'),{name:'AbortError'})));current.promise.then(resolve,reject);});}if(!ready)throw Error('fixture offline');return {baseUrl:'http://127.0.0.1:1234',token:'fixture'};}finally{controllers.delete(controller);}},

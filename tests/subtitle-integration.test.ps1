@@ -5,7 +5,7 @@ New-Item -ItemType Directory -Path $taskRun -Force | Out-Null
 $taskProbe=Join-Path $taskRun 'SubtitleFrontendProbe.exe'
 & (Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe') /nologo /target:exe ('/out:'+$taskProbe) (Join-Path $PSScriptRoot 'SubtitleFrontendProbe.cs')
 if($LASTEXITCODE-ne 0){throw 'Subtitle frontend probe compilation failed'}
-$taskCases=@(@('all','on','on'),@('exporter','off','on'),@('subtitles','on','on'),@('timelineNavigator','off','off'))
+$taskCases=@(@('all','on','on'),@('exporter','off','off'),@('subtitles','on','off'),@('subtitles,sharedAssets','on','on'),@('timelineNavigator','off','off'))
 foreach($taskCase in $taskCases){
  $taskPatched=Join-Path $taskRun ($taskCase[0]+'.js')
  & $taskProbe (Join-Path $PackageRoot 'WebVideoPlus.Manager.exe') $PackageRoot $SourceBundle $taskCase[0] $taskPatched

@@ -21,3 +21,46 @@ test('range picker cancellation retains dialog and speaker selection',async()=>{
 test('cancelled queue status terminates polling; close removes timers',async()=>{const h=setup();await h.open();h.jobRows([{id:'job1',state:'canceled',message:'已取消'}]);await h.button('导出字幕').props.onClick();await h.flush();assert.equal(h.timers.size,0);h.close();await h.flush();assert.equal(h.tree.props.open,false);h.unmount();assert.equal(h.timers.size,0);});
 
 test('closed preview is not opened during subtitle lifecycle; submit reads fresh speed',async()=>{const h=setup();let reads=0;h.box.WebVideoRuntime.readGameSettings=async()=>{reads++;return {textSpeed:19,autoSpeed:23};};await h.open();assert.equal(reads,0);assert.ok(h.nodes().some(n=>n.type==='p'&&n.children.some(t=>typeof t==='string'&&t.includes('开始导出字幕时'))));await h.button('导出字幕').props.onClick();await h.flush();assert.equal(reads,1);assert.equal(h.calls.find(c=>c.body?.exportKind==='subtitles').body.settings.textSpeed,19);h.unmount();});
+
+for (const confirmed of [false, true]) test('subtitle destination survives an asynchronous picker, confirmed=' + confirmed, async () => {
+ const h = setup(), pending = deferred();
+ await h.open();
+ const edit = (previous, value) => h.nodes().find(n => n.type === 'input' && n.props.value === previous).props.onChange({target:{value}});
+ edit('output', 'custom-output');
+ edit('start.srt', 'dialogue.srt');
+ await h.flush();
+ h.box.window.WebVideoPlus.requestSelection = () => pending.promise;
+ const picking = h.button('选择剧情范围').props.onClick();
+ await h.flush();
+ assert.equal(h.tree.props.open, false);
+ pending.resolve(confirmed ? {source:':selected;', ranges:[{startLine:2,endLine:2}]} : null);
+ await picking;
+ await h.flush();
+ assert.equal(h.tree.props.open, true);
+ await h.button('导出字幕').props.onClick();
+ const job = h.calls.find(c => c.body?.exportKind === 'subtitles').body;
+ assert.equal(job.outputDir, 'custom-output');
+ assert.equal(job.fileName, 'dialogue.srt');
+ assert.equal(job.range?.startLine, confirmed ? 2 : undefined);
+ assert.equal(h.calls.filter(c => c.url.endsWith('/api/config')).length, 1);
+ h.unmount();
+});
+
+test('finishing an old range picker cannot reopen or change a fresh subtitle dialog', async () => {
+ const h=setup(), pending=deferred();
+ await h.open();
+ h.box.window.WebVideoPlus.requestSelection=()=>pending.promise;
+ const picking=h.button('选择剧情范围').props.onClick();
+ await h.flush();
+ h.close();
+ await h.flush();
+ await h.open();
+ pending.resolve({source:':old;',ranges:[{startLine:7,endLine:7}]});
+ await picking;
+ await h.flush();
+ await h.button('导出字幕').props.onClick();
+ const job=h.calls.find(c=>c.body?.exportKind==='subtitles').body;
+ assert.equal(job.range,undefined);
+ assert.equal(job.sourceText,':正文;');
+ h.unmount();
+});
