@@ -222,7 +222,7 @@ namespace NativeVideo {
     string cmd=J.N(s,"command",-1)==0?"say":J.S(s,"commandRaw");
     var p=Params(s);
     // Older parsers retain the reserved raw token but decode the new command as dialogue.
-    if(cmd!="changeFigureDiff"&&J.S(s,"commandRaw")=="changeFigureDiff")Add("unsupported",line,"changeFigureDiff","当前引擎将 changeFigureDiff 解析为对话；请使用已验证的 WebGAL 4.6.5 / 4.6.6 引擎");
+    if(cmd!="changeFigureDiff"&&J.S(s,"commandRaw")=="changeFigureDiff")Add("unsupported",line,"changeFigureDiff","当前引擎将 changeFigureDiff 解析为对话；请使用已验证的 WebGAL 4.6.5–4.6.7 引擎");
     if(!known.Contains(cmd)){RequireModelLibraries(J.S(s,"content"),null,true);AddWarning("custom-command",line,cmd,"检测到非标准或深度定制引擎指令；WebVideo+ 会按当前运行时执行，但不保证其隐藏状态能够跨 Worker 恢复。");}
     if(RuntimeVariable(J.S(s,"content"))||p.Values.OfType<string>().Any(RuntimeVariable))AddWarning("runtime-variable",line,cmd,"检测到运行时变量插值。导出使用独立临时运行环境，不保证继承玩家存档中的变量值。");
     bool singleLineHint=SingleLineHint(cmd,s,p),convertibleSingleChoose=ConvertibleSingleChoose(cmd,s,p);
@@ -242,7 +242,7 @@ namespace NativeVideo {
      else if(!Adapter.IsMygo&&(Regex.IsMatch(value,@"\.(webm|mp4|mov|jsonl|wmdl)([?#].*)?$",RegexOptions.IgnoreCase)||value.Contains("type=video")))Add("unsupported",line,value,"此立绘需要选择已安装的 MyGO 3.2.1 引擎");
     }
     if(cmd=="changeFigureDiff"||p.ContainsKey("transformFrom")){
-     if(Adapter.IsMygo||(Adapter.Version!="4.6.5"&&Adapter.Version!="4.6.6"))Add("unsupported",line,cmd,"changeFigureDiff / transformFrom 需要已验证的 WebGAL 4.6.5 / 4.6.6 引擎");
+     if(Adapter.IsMygo||(Adapter.Version!="4.6.5"&&Adapter.Version!="4.6.6"&&Adapter.Version!="4.6.7"))Add("unsupported",line,cmd,"changeFigureDiff / transformFrom 需要已验证的 WebGAL 4.6.5–4.6.7 引擎");
      if(cmd=="changeFigureDiff"){
       var value=J.S(s,"content");
       if(!string.IsNullOrEmpty(value)&&value!="none"&&(DiffUsesSpine(value)||!Regex.IsMatch(value,@"\.(png|jpe?g|webp|gif|bmp|avif|svg)([?#].*)?$",RegexOptions.IgnoreCase)))Add("unsupported",line,value,"立绘差分只支持图片，不适用于 Live2D、Spine 或视频");
