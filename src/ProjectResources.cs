@@ -9,7 +9,7 @@ namespace NativeVideo {
    root=Files.Full(root);SharedAssets.NoLinks(Path.GetPathRoot(root),root);
    if(!File.Exists(Path.Combine(root,"index.html"))||!File.Exists(Path.Combine(root,"webgal-engine.json"))||!Directory.Exists(Path.Combine(root,"assets")))throw new IOException("请选择包含 index.html、webgal-engine.json 和 assets 的引擎文件夹");
    string descriptor=Path.Combine(root,"webgal-engine.json");if(new FileInfo(descriptor).Length>65536)throw new IOException("引擎信息文件过大");var meta=J.Read(descriptor);string id=J.S(meta,"id"),version=J.S(meta,"version");
-   if(!(id=="open-webgal.webgal"&&new[]{"4.6.4","4.6.5","4.6.6"}.Contains(version)||id=="webgal-mygo.mygo"&&version=="3.2.1"))throw new IOException("请选择受支持的 WebGAL 4.6.4–4.6.6 或 MyGO 3.2.1 引擎");
+   if(!(id=="open-webgal.webgal"&&new[]{"4.6.4","4.6.5","4.6.6","4.6.7"}.Contains(version)||id=="webgal-mygo.mygo"&&version=="3.2.1"))throw new IOException("请选择受支持的 WebGAL 4.6.4–4.6.7 或 MyGO 3.2.1 引擎");
    string html=File.ReadAllText(Path.Combine(root,"index.html"));var module=Regex.Match(html,"<script[^>]*type=[\"']module[\"'][^>]*src=[\"']([^\"']+)",RegexOptions.IgnoreCase);if(!module.Success)module=Regex.Match(html,"<script[^>]*src=[\"']([^\"']+)[\"'][^>]*type=[\"']module",RegexOptions.IgnoreCase);
    string main=module.Success?Regex.Split(module.Groups[1].Value,"[?#]")[0].TrimStart('.','/'):"";if(!main.StartsWith("assets/",StringComparison.Ordinal)||!File.Exists(Files.Under(root,main)))throw new IOException("引擎缺少可识别的 assets 脚本入口");
    return J.O("root",root,"name",J.S(meta,"name",Path.GetFileName(root)),"engineId",id,"version",version,"main",main,"descriptorHash",Files.Hash(descriptor));

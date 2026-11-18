@@ -2,8 +2,8 @@
   {
     "scopeStart": "function WebVideoLocalAssets({",
     "scopeEnd": "function FileUploader(",
-    "find": "allowedExtNames:nt}){var",
-    "replace": "allowedExtNames:nt,webVideoPathChanged:__wvpPathChanged}){var"
+    "regex": "(?<props>allowedExtNames:nt(?:,customCreateAction:[A-Za-z_$][A-Za-z0-9_$]*)?)\\}\\)\\{var",
+    "replace": "${props},webVideoPathChanged:__wvpPathChanged}){var"
   },
   {
     "scopeStart": "function WebVideoLocalAssets({",

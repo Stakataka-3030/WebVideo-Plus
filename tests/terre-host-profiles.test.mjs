@@ -8,7 +8,7 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
-const versions=['4.6.4','4.6.5','4.6.6'];
+const versions=['4.6.4','4.6.5','4.6.6','4.6.7'];
 const built=spawnSync(process.execPath,['scripts/build-timeline.mjs'],{cwd:root,encoding:'utf8'});
 assert.equal(built.status,0,built.stdout+built.stderr);
 function once(source,find,replace){assert.equal(source.split(find).length,2,'Exact integration anchor must be unique: '+find.slice(0,100));return source.replace(find,()=>replace);}
@@ -65,7 +65,7 @@ test('product declares all host profiles without changing the legacy primary ide
 
 test('package integrity gates require all generated host profiles',()=>{
  const verifier=read('scripts/verify-package.mjs');
- assert.match(verifier,/supportedTerreVersions,\['4\.6\.4','4\.6\.5','4\.6\.6'\]/);
+ assert.match(verifier,/supportedTerreVersions,\['4\.6\.4','4\.6\.5','4\.6\.6','4\.6\.7'\]/);
  for(const file of ['product-ui/menu-patches.json','product-ui/character-map-patches.json','product-ui/game-patches.json','timeline/patches.json'])assert.ok(verifier.includes(file));
 });
 

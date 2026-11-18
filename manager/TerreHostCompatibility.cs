@@ -11,6 +11,7 @@ namespace NativeVideo {
   static int Count(string source,string pattern){return Regex.Matches(source,pattern,RegexOptions.CultureInvariant).Count;}
   public static TerreHostMatch Inspect(string source,IDictionary<string,string> known){
    string hash=SourceHash(source);foreach(var pair in known)if(pair.Value==hash)return new TerreHostMatch{Profile=pair.Key,SourceHash=hash,ExactBaseline=true,Evidence="known-source-hash"};
+   if(Count(source,@"function\s+CharacterEditor\s*\(")>0)throw new IOException("Terre 角色编辑器宿主需要已验证的精确前端版本");
    foreach(string name in new[]{"AddSentenceTab","ChangeFigure","GraphicalEditor"})if(Count(source,@"\bfunction\s+"+name+@"\s*\(")!=1)throw new IOException("Terre 接入函数不唯一或缺失："+name);
    int inheritName=Count(source,@"\bfunction\s+isInherit\s*\("),relativeName=Count(source,@"\bfunction\s+getDefaultRelativeCalc\s*\("),diff=Count(source,@"\bfunction\s+ChangeFigureDiff\s*\(");
    bool inherit=Count(source,@"\bfunction\s+isInherit\s*\(\s*(?<arg>"+Id+@")\s*\)\s*\{\s*return\s+\k<arg>\s*\.\s*inherit\s*!==\s*(?:!\s*1|false)\s*;?\s*\}")==1;

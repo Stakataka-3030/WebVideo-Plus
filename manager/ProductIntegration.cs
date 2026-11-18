@@ -4,7 +4,8 @@ namespace NativeVideo {
   static readonly Dictionary<string,string> TerreBaselines=new Dictionary<string,string>{
    {"4.6.4","3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133"},
    {"4.6.5","1c4911a397ad887cba6a13eba4e16b58faea72c6595a6b4a14f146f200232cd4"},
-   {"4.6.6","7f448b16c4c44cf8438afa3cc114c1072d2cd66604d07e2b7fc2d332159d8577"}
+   {"4.6.6","7f448b16c4c44cf8438afa3cc114c1072d2cd66604d07e2b7fc2d332159d8577"},
+   {"4.6.7","831744cc246a035397ee8e9b1ef531ee68974048afdbfcaa3b0f0991d2ffed71"}
   };
   static string HostProfile(string source){return TerreHostCompatibility.Inspect(source,TerreBaselines).Profile;}
   static string HostAsset(string profile,string file){return Path.Combine(Files.Root,"hosts",profile,file);}
@@ -24,7 +25,7 @@ namespace NativeVideo {
    if(source.Contains("function CodexVideoExport()")||source.Contains("const WebVideoPlus ="))throw new IOException("检测到未匹配记录的挂载，请先恢复 Terre 原版入口");
    string profile=HostProfile(source);
    source=TerreHostCompatibility.SingleLineReturn(source);
-   string prefix="globalThis.WebVideoHostProfile="+J.Text(J.O("terreVersion",profile,"supportsFigureDiff",profile!="4.6.4","transformFrom",profile!="4.6.4","animationV2",profile=="4.6.6"))+";\n",marker="return jsxRuntimeExports.jsxs(TopbarTab,{children:[";int begin=source.IndexOf("function AddSentenceTab(){"),at=begin<0?-1:source.IndexOf(marker,begin);if(at<0||at-begin>16000)throw new IOException("Terre 工具栏结构不匹配");
+   string prefix="globalThis.WebVideoHostProfile="+J.Text(J.O("terreVersion",profile,"supportsFigureDiff",profile!="4.6.4","transformFrom",profile!="4.6.4","animationV2",profile=="4.6.6"||profile=="4.6.7"))+";\n",marker="return jsxRuntimeExports.jsxs(TopbarTab,{children:[";int begin=source.IndexOf("function AddSentenceTab(){"),at=begin<0?-1:source.IndexOf(marker,begin);if(at<0||at-begin>16000)throw new IOException("Terre 工具栏结构不匹配");
    foreach(var patch in J.A(J.Read(HostAsset(profile,"product-ui/menu-patches.json"))))source=Once(source,J.S(patch,"find"),J.S(patch,"replace"));
    prefix+=File.ReadAllText(Path.Combine(Files.Root,"product-ui/editor-runtime.js")).Replace("__WEBVIDEO_CHARACTER_MAP_ENABLED__",ModuleCatalog.NeedsKernel(modules)?"true":"false").Replace("__WEBVIDEO_MODULES__",J.Text(modules))+"\n";
    prefix+="const WebVideoUpdateContext="+J.Text(updateContext??J.O("productVersion",ProductVersion,"engineId","","engineVersion",""))+";\n"+File.ReadAllText(Path.Combine(Files.Root,"product-ui/update-check.js"))+"\n";
@@ -349,7 +350,7 @@ namespace NativeVideo {
     byte[] originalEntry=ResolveOriginalIndex(terre,index,manifest,sourceState,mounted,force);string html=Files.Utf8.GetString(originalEntry),source=null,bundleName=Path.GetFileName(J.S(manifest,"originalBundle"));if(bundleName=="")bundleName=Path.GetFileName(J.S(J.TryRead(RecoveryMeta(sourceState)),"originalBundle"));string recoveryBundle="";if(bundleName!=""&&!File.Exists(Path.Combine(assets,bundleName))){var recoveryMeta=J.TryRead(RecoveryMeta(sourceState));string candidate=Path.Combine(RecoveryDir(sourceState),"original-bundle.js");if(File.Exists(candidate)&&J.S(recoveryMeta,"originalBundleHash")!=""&&Files.Hash(candidate)==J.S(recoveryMeta,"originalBundleHash"))recoveryBundle=candidate;}
     if(modules.Length>0){
      if(recoveryBundle!=""){source=File.ReadAllText(recoveryBundle);}else if(!TryCleanBundle(terre,html,bundleName,force,out source,out bundleName)){if(!force)throw ForceRequired("无法从记录的 Terre 原版入口找到可安装的前端文件。");throw new IOException("强制修复仍无法识别 Terre 原版前端文件，未更改安装。");}
-     string sourceHash=Files.HashText(source);bool exactBaseline=TerreBaselines.ContainsValue(sourceHash);if(!exactBaseline)Console.WriteLine("前端哈希与已知 Terre 4.6.4 / 4.6.5 / 4.6.6 基线不同；正在使用结构锚点兼容性校验。");try{source=Patch(source,modules,UpdateContext(terre));}catch(IOException e){if(!exactBaseline&&!force)throw new IOException("前端结构接入位置不匹配，安装未更改："+e.Message);throw;}
+     string sourceHash=Files.HashText(source);bool exactBaseline=TerreBaselines.ContainsValue(sourceHash);if(!exactBaseline)Console.WriteLine("前端哈希与已知 Terre 4.6.4–4.6.7 基线不同；正在使用结构锚点兼容性校验。");try{source=Patch(source,modules,UpdateContext(terre));}catch(IOException e){if(!exactBaseline&&!force)throw new IOException("前端结构接入位置不匹配，安装未更改："+e.Message);throw;}
     }else if(string.IsNullOrWhiteSpace(bundleName)){string ignored;if(!TryCleanBundle(terre,html,"",true,out ignored,out bundleName))bundleName="";}
     string exeName=J.S(product,"exeName",J.S(life,"exeName",""));if(exeName==""){foreach(var name in new[]{"WebGAL_Terre.exe","WebGAL Terre.exe"})if(File.Exists(Path.Combine(terre,name))){exeName=name;break;}if(exeName==""){var matches=Directory.GetFiles(terre,"*.exe").Where(f=>Regex.Replace(Path.GetFileNameWithoutExtension(f),@"[\s_-]+","").Equals("WebGALTerre",StringComparison.OrdinalIgnoreCase)).ToArray();if(matches.Length==1)exeName=Path.GetFileName(matches[0]);}if(exeName=="")throw new IOException("未找到 Terre 主程序（支持 WebGAL_Terre.exe / WebGAL Terre.exe）");}
     string exe=Files.Under(terre,exeName),originalName=J.S(life,"originalName",Path.GetFileNameWithoutExtension(exeName)+".video-original.exe"),original=Files.Under(terre,originalName),recordedOriginalHash=J.S(life,"originalHash"),recordedWrapperHash=J.S(life,"wrapperHash");

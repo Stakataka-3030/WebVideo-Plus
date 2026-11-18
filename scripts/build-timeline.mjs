@@ -20,11 +20,11 @@ const commonPatches=[
   {...graphicalScope,regex:`(?=function GraphicalEditor\\()(?=[\\s\\S]*?,(?<update>${id})=reactExports\\.useCallback\\((?<newItems>${id})=>\\{${id}\\.current=\\k<newItems>,${id}\\(\\k<newItems>\\)\\},\\[\\]\\))(?=[\\s\\S]*?,(?<factory>${id})=reactExports\\.useCallback\\((?<content>${id})=>\\(\\{id:createId\\(\\),content:\\k<content>,show:!0\\}\\),\\[\\]\\))(?=[\\s\\S]*?const (?<text>${id})=reactExports\\.useMemo\\(\\(\\)=>mergeToString\\()(?=[\\s\\S]*?,(?<rows>${id})=reactExports\\.useMemo\\(\\(\\)=>${id}\\.sentenceList\\.filter\\()(?<prefix>function GraphicalEditor\\([\\s\\S]*?)(?<items>${id})=(?<virtualizer>${id})\\.getVirtualItems\\(\\);reactExports\\.useEffect\\(\\(\\)=>\\{const (?<line>${id})=editorLineHolder\\.getSceneLine\\((?<props>${id})\\.targetPath\\)`,replace:'${prefix}${items}=${virtualizer}.getVirtualItems();reactExports.useEffect(()=>WebVideoPlus.attachGraphical(${props}.targetPath,${text},${rows},${virtualizer},wvpLoaded.current,text=>${update}(splitToArray(text).map(${factory}))),[${props}.targetPath,${text},${rows},${virtualizer},wvpLoaded.current]);reactExports.useEffect(()=>{const ${line}=editorLineHolder.getSceneLine(${props}.targetPath)'},
   {...graphicalScope,regex:`(?<rows>${id})=reactExports\\.useMemo\\(\\(\\)=>(?<parsed>${id})\\.sentenceList\\.filter\\((?<sentence>${id})=>!\\k<sentence>\\.isLineBreakHolder\\),\\[\\k<parsed>\\]\\)`,replace:'${rows}=reactExports.useMemo(()=>WebVideoSingleLineHint.graphicalSentences(${parsed}.sentenceList.filter(${sentence}=>!${sentence}.isLineBreakHolder)),[${parsed}])'},
 ];
-const profiles=['4.6.4','4.6.5','4.6.6'];
+const profiles=['4.6.4','4.6.5','4.6.6','4.6.7'];
 for(const version of profiles){
 const base=read('baseline/terre-'+version+'.js'),profileRoot=path.join(root,'package/hosts',version);
 const patches=commonPatches.map(p=>({...p}));
-if(version==='4.6.6'){
+if(version==='4.6.6'||version==='4.6.7'){
  for(const p of patches)if(p.scopeStart===textScope.scopeStart)p.scopeEnd='function EditorToolbar(';
  patches[4].regex=`(?<ready>${id})\\.value=!0,eventBus\\.emit\\("editor:update-scene",\\{scene:(?<loaded>${id})\\}\\);const (?<position>${id})=editorLineHolder\\.getScenePosition\\((?<props>${id})\\.targetPath\\);`;
  patches[4].replace='${ready}.value=!0,eventBus.emit("editor:update-scene",{scene:${loaded}});WebVideoPlus.monacoReady(${props}.targetPath);const ${position}=editorLineHolder.getScenePosition(${props}.targetPath);';
@@ -39,6 +39,10 @@ for(const p of patches){
   if(matches.length!==1)throw Error('Timeline scoped anchor expected 1 match, got '+matches.length+': '+p.regex);
 }
 const gamePatches=[{find:'children:[jsxRuntimeExports.jsx("div",{children:_e}),jsxRuntimeExports.jsx("div",{children:d})]',replace:'children:[jsxRuntimeExports.jsx("div",{children:_e}),jsxRuntimeExports.jsxs("div",{children:[d,jsxRuntimeExports.jsx(WebVideoPresetRibbonButton,{})]})]'},{find:'onChoose:Tt,onOpenChange:Ot=>!Ot&&ot(null)',replace:'onChoose:Tt,insertLine:nt?.insertLine,onOpenChange:Ot=>!Ot&&ot(null)'},{find:'pickSentenceType([commandType.bgm,commandType.video,commandType.playEffect])',replace:'pickSentenceType([commandType.video,commandType.playEffect])'},{find:'pickSentenceType([commandType.setTempAnimation,commandType.setTransition])',replace:'[...pickSentenceType([commandType.setTempAnimation,commandType.setTransition]),jsxRuntimeExports.jsx(WebVideoSingleLineHintTopbarButton,{key:"wvp-single-line-hint"})]'}];
+if(version==='4.6.7'){
+  gamePatches[1].find=gamePatches[1].find.replaceAll('Ot','$t');
+  gamePatches[1].replace=gamePatches[1].replace.replaceAll('Ot','$t');
+}
 const gameStart=base.indexOf('jsxRuntimeExports.jsxs(TabItem,{title:i18n._({id:"Wh0Wxu"})'),gameEnd=base.indexOf(']})}const backButton=',gameStart);
 if(gameStart<0||gameEnd<0)throw Error('Game group boundaries changed');
 gamePatches.push({find:base.slice(gameStart,gameEnd),replace:'jsxRuntimeExports.jsx(WebVideoGameTools,{})'});
@@ -46,8 +50,9 @@ const addDialogStart=base.indexOf('function AddSentenceDialog(_e){'),addDialogEn
 if(addDialogStart<0||addDialogEnd-addDialogStart>8000)throw Error('Add dialog structure changed');
 gamePatches.push({find:base.slice(addDialogStart,addDialogEnd),replace:'function AddSentenceDialog(_e){return reactExports.createElement(WebVideoAddSentenceDialog,_e);}' });
 for(const patch of gamePatches)if(base.split(patch.find).length!==2)throw Error('Game-tool anchor must be unique: '+patch.find);
-const mapStart=base.indexOf('gt(i18n._({id:"YjDE9d"})'),mapEnd=base.indexOf(',gt(',mapStart);if(mapStart<0||mapEnd<0)throw Error('Appreciation menu anchor missing');
-const oldAppreciation=base.slice(mapStart,mapEnd),mapPatches=[{find:oldAppreciation,replace:'(_e==="appreciation"?'+oldAppreciation+':gt("角色 ID",jsxRuntimeExports.jsx(WebVideoCharacterMapButton,{})))'},{find:'const gt=(pt,mt,vt=!1)=>_e==="quick"?',replace:'const gt=(pt,mt,vt=!1)=>(_e==="appreciation"&&pt!==i18n._({id:"YjDE9d"}))?null:_e==="quick"?'}];
+const configItem=version==='4.6.7'?'ft':'gt';
+const mapStart=base.indexOf(configItem+'(i18n._({id:"YjDE9d"})'),mapEnd=base.indexOf(','+configItem+'(',mapStart);if(mapStart<0||mapEnd<0)throw Error('Appreciation menu anchor missing');
+const oldAppreciation=base.slice(mapStart,mapEnd),mapPatches=[{find:oldAppreciation,replace:'(_e==="appreciation"?'+oldAppreciation+':'+configItem+'("角色 ID",jsxRuntimeExports.jsx(WebVideoCharacterMapButton,{})))'},{find:'const '+configItem+'=(pt,mt,vt=!1)=>_e==="quick"?',replace:'const '+configItem+'=(pt,mt,vt=!1)=>(_e==="appreciation"&&pt!==i18n._({id:"YjDE9d"}))?null:_e==="quick"?'}];
 for(const patch of mapPatches)if(base.split(patch.find).length!==2)throw Error('Character mapping menu anchor not unique');
 fs.mkdirSync(path.join(root,'package/product-ui'),{recursive:true});
 for(const patch of gamePatches)patch.scope=patch.find.includes('onChoose:Tt')||patch.find.startsWith('children:')||patch.find.startsWith('function AddSentenceDialog(')||patch.replace.includes('WebVideoSingleLineHintTopbarButton')?'presets':'compact';
@@ -56,10 +61,10 @@ const menuPatches=[
  {find:'jsxRuntimeExports.jsx(Tab,{value:"help",children:i18n._({id:"tBIZt9"})}),',replace:''},
  {find:'tt==="help"&&jsxRuntimeExports.jsx(HelpTab,{}),',replace:''},
  {find:'jsxRuntimeExports.jsx(GameConfig,{mode:"quick"}),',replace:'jsxRuntimeExports.jsx(GameConfig,{mode:"quick"}),jsxRuntimeExports.jsx(WebVideoPresetConfigEntry,{}),jsxRuntimeExports.jsx(WebVideoAiKeyEntry,{}),jsxRuntimeExports.jsx(WebVideoHelpEntry,{}),'},
- {find:'function nt(gt){it(gt)}const ot=gt=>{nt(gt)};',replace:'reactExports.useEffect(()=>{if(tt==="help")it("config")},[tt]);function nt(gt){it(gt)}const ot=gt=>{nt(gt)};'},
+ {find:'function nt(gt){it(gt)}const ot=gt=>{nt(gt)};'.replaceAll('gt',configItem),replace:'reactExports.useEffect(()=>{if(tt==="help")it("config")},[tt]);function nt(gt){it(gt)}const ot=gt=>{nt(gt)};'.replaceAll('gt',configItem)},
  {find:'text:i18n._({id:"KyQ6e8"})})]})}),jsxRuntimeExports.jsx(Toaster,{toasterId:j})',replace:'text:i18n._({id:"KyQ6e8"})}),jsxRuntimeExports.jsx(WebVideoExportMenuActions,{})]})}),jsxRuntimeExports.jsx(Toaster,{toasterId:j})'}
 ];
-function configEntry(id){const start=base.indexOf('gt(i18n._({id:"'+id+'"})');if(start<0)throw Error('Config entry missing: '+id);let depth=0,quote='',escape=false;for(let i=start+2;i<base.length;i++){const c=base[i];if(escape){escape=false;continue;}if(quote){if(c==='\\')escape=true;else if(c===quote)quote='';continue;}if(c==='"'||c==="'"||c==='`'){quote=c;continue;}if(c==='(')depth++;else if(c===')'&&--depth===0)return base.slice(start,i+1);}throw Error('Config entry unclosed');}
+function configEntry(id){const start=base.indexOf(configItem+'(i18n._({id:"'+id+'"})');if(start<0)throw Error('Config entry missing: '+id);let depth=0,quote='',escape=false;for(let i=start+2;i<base.length;i++){const c=base[i];if(escape){escape=false;continue;}if(quote){if(c==='\\')escape=true;else if(c===quote)quote='';continue;}if(c==='"'||c==="'"||c==='`'){quote=c;continue;}if(c==='(')depth++;else if(c===')'&&--depth===0)return base.slice(start,i+1);}throw Error('Config entry unclosed');}
 for(const id of ['QFGCRR','GUjz+8','iLuKDS']){const entry=configEntry(id);menuPatches.push({find:entry,replace:'(_e==="quick"?null:'+entry+')'});}
 for(const patch of menuPatches)if(base.split(patch.find).length!==2)throw Error('Menu patch anchor must be unique: '+patch.find.slice(0,80));
 fs.writeFileSync(path.join(profileRoot,'product-ui/menu-patches.json'),JSON.stringify(menuPatches,null,2));
@@ -88,4 +93,4 @@ fs.writeFileSync(path.join(root,'package/timeline/selector-launcher.js'),host.sl
 fs.writeFileSync(path.join(root,'package/timeline/timeline-host.js'),read('browser/selection-controls.js')+'\n'+read('browser/navigation-view.js')+'\n'+host.slice(0,launcherStart));
 fs.copyFileSync(path.join(root,'package/hosts/4.6.4/timeline/patches.json'),path.join(root,'package/timeline/patches.json'));
 fs.writeFileSync(path.join(root,'package/product.json'),JSON.stringify({name:'WebVideo+',version:versions.productVersion,kernelVersion:versions.kernelVersion,terreVersion:'4.6.4',supportedTerreVersions:profiles,hostProfiles:Object.fromEntries(profiles.map(version=>[version,{baseHash:JSON.parse(read(version==='4.6.4'?'baseline/local-baseline.json':'baseline/terre-'+version+'.json')).baseHash,patchRoot:'hosts/'+version}])),modules:{timelineNavigator:{dependencies:['timelineCore'],files:['timeline/navigator.js']},timelineSelector:{dependencies:['timelineCore'],files:['timeline/selector.js','timeline/selector-launcher.js']},exporter:{dependencies:['exportKernel','WebView2','FFmpeg']}},supportedOriginalBundleSha256:JSON.parse(read('baseline/local-baseline.json')).baseHash},null,2));
-console.log('Timeline assets and Terre 4.6.4 / 4.6.5 / 4.6.6 integration anchors verified.');
+console.log('Timeline assets and Terre 4.6.4–4.6.7 integration anchors verified.');
