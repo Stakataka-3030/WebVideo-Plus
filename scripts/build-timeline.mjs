@@ -21,10 +21,11 @@ const commonPatches=[
   {...graphicalScope,regex:`(?<rows>${id})=reactExports\\.useMemo\\(\\(\\)=>(?<parsed>${id})\\.sentenceList\\.filter\\((?<sentence>${id})=>!\\k<sentence>\\.isLineBreakHolder\\),\\[\\k<parsed>\\]\\)`,replace:'${rows}=reactExports.useMemo(()=>WebVideoSingleLineHint.graphicalSentences(${parsed}.sentenceList.filter(${sentence}=>!${sentence}.isLineBreakHolder)),[${parsed}])'},
 ];
 const profiles=['4.6.4','4.6.5','4.6.6','4.6.7'];
-for(const version of profiles){
+const hostProfiles=[...profiles,'4.6.7-zip'];
+for(const version of hostProfiles){
 const base=read('baseline/terre-'+version+'.js'),profileRoot=path.join(root,'package/hosts',version);
 const patches=commonPatches.map(p=>({...p}));
-if(version==='4.6.6'||version==='4.6.7'){
+if(version==='4.6.6'||version.startsWith('4.6.7')){
  for(const p of patches)if(p.scopeStart===textScope.scopeStart)p.scopeEnd='function EditorToolbar(';
  patches[4].regex=`(?<ready>${id})\\.value=!0,eventBus\\.emit\\("editor:update-scene",\\{scene:(?<loaded>${id})\\}\\);const (?<position>${id})=editorLineHolder\\.getScenePosition\\((?<props>${id})\\.targetPath\\);`;
  patches[4].replace='${ready}.value=!0,eventBus.emit("editor:update-scene",{scene:${loaded}});WebVideoPlus.monacoReady(${props}.targetPath);const ${position}=editorLineHolder.getScenePosition(${props}.targetPath);';
@@ -39,7 +40,7 @@ for(const p of patches){
   if(matches.length!==1)throw Error('Timeline scoped anchor expected 1 match, got '+matches.length+': '+p.regex);
 }
 const gamePatches=[{find:'children:[jsxRuntimeExports.jsx("div",{children:_e}),jsxRuntimeExports.jsx("div",{children:d})]',replace:'children:[jsxRuntimeExports.jsx("div",{children:_e}),jsxRuntimeExports.jsxs("div",{children:[d,jsxRuntimeExports.jsx(WebVideoPresetRibbonButton,{})]})]'},{find:'onChoose:Tt,onOpenChange:Ot=>!Ot&&ot(null)',replace:'onChoose:Tt,insertLine:nt?.insertLine,onOpenChange:Ot=>!Ot&&ot(null)'},{find:'pickSentenceType([commandType.bgm,commandType.video,commandType.playEffect])',replace:'pickSentenceType([commandType.video,commandType.playEffect])'},{find:'pickSentenceType([commandType.setTempAnimation,commandType.setTransition])',replace:'[...pickSentenceType([commandType.setTempAnimation,commandType.setTransition]),jsxRuntimeExports.jsx(WebVideoSingleLineHintTopbarButton,{key:"wvp-single-line-hint"})]'}];
-if(version==='4.6.7'){
+if(version.startsWith('4.6.7')){
   gamePatches[1].find=gamePatches[1].find.replaceAll('Ot','$t');
   gamePatches[1].replace=gamePatches[1].replace.replaceAll('Ot','$t');
 }
@@ -92,5 +93,5 @@ const launcherStart=host.indexOf('function WebVideoSelectionButton(){');if(launc
 fs.writeFileSync(path.join(root,'package/timeline/selector-launcher.js'),host.slice(launcherStart));
 fs.writeFileSync(path.join(root,'package/timeline/timeline-host.js'),read('browser/selection-controls.js')+'\n'+read('browser/navigation-view.js')+'\n'+host.slice(0,launcherStart));
 fs.copyFileSync(path.join(root,'package/hosts/4.6.4/timeline/patches.json'),path.join(root,'package/timeline/patches.json'));
-fs.writeFileSync(path.join(root,'package/product.json'),JSON.stringify({name:'WebVideo+',version:versions.productVersion,kernelVersion:versions.kernelVersion,terreVersion:'4.6.4',supportedTerreVersions:profiles,hostProfiles:Object.fromEntries(profiles.map(version=>[version,{baseHash:JSON.parse(read(version==='4.6.4'?'baseline/local-baseline.json':'baseline/terre-'+version+'.json')).baseHash,patchRoot:'hosts/'+version}])),modules:{timelineNavigator:{dependencies:['timelineCore'],files:['timeline/navigator.js']},timelineSelector:{dependencies:['timelineCore'],files:['timeline/selector.js','timeline/selector-launcher.js']},exporter:{dependencies:['exportKernel','WebView2','FFmpeg']}},supportedOriginalBundleSha256:JSON.parse(read('baseline/local-baseline.json')).baseHash},null,2));
+fs.writeFileSync(path.join(root,'package/product.json'),JSON.stringify({name:'WebVideo+',version:versions.productVersion,kernelVersion:versions.kernelVersion,terreVersion:'4.6.4',supportedTerreVersions:profiles,hostProfiles:Object.fromEntries(hostProfiles.map(version=>[version,{baseHash:JSON.parse(read(version==='4.6.4'?'baseline/local-baseline.json':'baseline/terre-'+version+'.json')).baseHash,patchRoot:'hosts/'+version}])),modules:{timelineNavigator:{dependencies:['timelineCore'],files:['timeline/navigator.js']},timelineSelector:{dependencies:['timelineCore'],files:['timeline/selector.js','timeline/selector-launcher.js']},exporter:{dependencies:['exportKernel','WebView2','FFmpeg']}},supportedOriginalBundleSha256:JSON.parse(read('baseline/local-baseline.json')).baseHash},null,2));
 console.log('Timeline assets and Terre 4.6.4–4.6.7 integration anchors verified.');

@@ -1,6 +1,6 @@
 param(
  [Parameter(Mandatory=$true)][string]$TerreSource,
- [Parameter(Mandatory=$true)][ValidateSet("4.6.4","4.6.5","4.6.6","4.6.7")][string]$HostVersion,
+ [Parameter(Mandatory=$true)][ValidateSet("4.6.4","4.6.5","4.6.6","4.6.7","4.6.7-zip")][string]$HostVersion,
  [string]$PackageRoot=(Join-Path $PSScriptRoot '../package'),
  [string]$OutputRoot=(Join-Path $PSScriptRoot '../.build/terre-install')
 )

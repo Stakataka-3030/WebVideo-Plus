@@ -28,7 +28,7 @@ function parser(version){
  vm.runInContext('globalThis.batchNext=WebVideoBatchNext;',context);
  return {context,derive:source=>context.WebVideoTimelineCore.derive('games/demo/game/scene/start.txt',source,context.parse(source),context.types)};
 }
-for(const version of versions){
+for(const version of [...versions,'4.6.7-zip']){
  test('Terre '+version+' baseline hash and all generated host anchors remain verified',()=>{
   const source=read('baseline/terre-'+version+'.js'),meta=JSON.parse(read(version==='4.6.4'?'baseline/local-baseline.json':'baseline/terre-'+version+'.json'));
   assert.equal(crypto.createHash('sha256').update(source).digest('hex'),meta.baseHash);
@@ -42,6 +42,7 @@ for(const version of versions){
   assert.ok(result.includes('WebVideoStorySelector')===false,'Host views are injected separately');
   assert.ok(result.includes('WebVideoTimelineHost'));assert.ok(result.includes('WebVideoAddSentenceDialog'));
  });
+ if(version==='4.6.7-zip')continue;
  test('Terre '+version+' native parser and batch authoring use its own command enum',()=>{
   const {context,derive}=parser(version),model=derive('changeFigure:hero.png -id=hero;\nchangeFigureDiff:hero2.png -id=hero;\nHero:Hello -figureId=hero;');
   assert.equal(model.statements[1].command,version!=='4.6.4'?'changeFigureDiff':'say');
@@ -59,7 +60,7 @@ for(const version of versions){
 test('product declares all host profiles without changing the legacy primary identity',()=>{
  const product=JSON.parse(read('package/product.json'));
  assert.deepEqual(product.supportedTerreVersions,versions);assert.equal(product.terreVersion,'4.6.4');
- for(const version of versions){assert.equal(product.hostProfiles[version].patchRoot,'hosts/'+version);assert.match(product.hostProfiles[version].baseHash,/^[a-f0-9]{64}$/);}
+ for(const version of [...versions,'4.6.7-zip']){assert.equal(product.hostProfiles[version].patchRoot,'hosts/'+version);assert.match(product.hostProfiles[version].baseHash,/^[a-f0-9]{64}$/);}
  for(const file of ['product-ui/menu-patches.json','product-ui/character-map-patches.json','timeline/patches.json','product-ui/game-patches.json'])assert.equal(read('package/'+file),read('package/hosts/4.6.4/'+file));
 });
 

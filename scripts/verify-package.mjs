@@ -16,7 +16,8 @@ assert.equal(manifest.kernelVersion,versions.kernelVersion);
 assert.equal(product.version,manifest.version);
 assert.equal(product.kernelVersion,manifest.kernelVersion);
 assert.deepEqual(product.supportedTerreVersions,['4.6.4','4.6.5','4.6.6','4.6.7'],'All supported Terre host profiles must be packaged');
-for(const version of product.supportedTerreVersions){
+assert.deepEqual(Object.keys(product.hostProfiles),[...product.supportedTerreVersions,'4.6.7-zip']);
+for(const version of Object.keys(product.hostProfiles)){
  const baseline=JSON.parse(fs.readFileSync(path.join(root,version==='4.6.4'?'baseline/local-baseline.json':'baseline/terre-'+version+'.json'),'utf8'));
  assert.equal(product.hostProfiles[version].baseHash,baseline.baseHash);
  assert.equal(product.hostProfiles[version].patchRoot,'hosts/'+version);

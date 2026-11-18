@@ -5,7 +5,8 @@ namespace NativeVideo {
    {"4.6.4","3b40aa7bccf427178c6580d9ed1686d3b50cc6617fa95c34632026002a9e7133"},
    {"4.6.5","1c4911a397ad887cba6a13eba4e16b58faea72c6595a6b4a14f146f200232cd4"},
    {"4.6.6","7f448b16c4c44cf8438afa3cc114c1072d2cd66604d07e2b7fc2d332159d8577"},
-   {"4.6.7","831744cc246a035397ee8e9b1ef531ee68974048afdbfcaa3b0f0991d2ffed71"}
+   {"4.6.7","831744cc246a035397ee8e9b1ef531ee68974048afdbfcaa3b0f0991d2ffed71"},
+   {"4.6.7-zip","adb3480aaaef9f320ac58118d64d4fb49368807c58ee9a4c57ec4c263b3bce35"}
   };
   static string HostProfile(string source){return TerreHostCompatibility.Inspect(source,TerreBaselines).Profile;}
   static string HostAsset(string profile,string file){return Path.Combine(Files.Root,"hosts",profile,file);}
@@ -25,7 +26,7 @@ namespace NativeVideo {
    if(source.Contains("function CodexVideoExport()")||source.Contains("const WebVideoPlus ="))throw new IOException("检测到未匹配记录的挂载，请先恢复 Terre 原版入口");
    string profile=HostProfile(source);
    source=TerreHostCompatibility.SingleLineReturn(source);
-   string prefix="globalThis.WebVideoHostProfile="+J.Text(J.O("terreVersion",profile,"supportsFigureDiff",profile!="4.6.4","transformFrom",profile!="4.6.4","animationV2",profile=="4.6.6"||profile=="4.6.7"))+";\n",marker="return jsxRuntimeExports.jsxs(TopbarTab,{children:[";int begin=source.IndexOf("function AddSentenceTab(){"),at=begin<0?-1:source.IndexOf(marker,begin);if(at<0||at-begin>16000)throw new IOException("Terre 工具栏结构不匹配");
+   string prefix="globalThis.WebVideoHostProfile="+J.Text(J.O("terreVersion",profile=="4.6.7-zip"?"4.6.7":profile,"supportsFigureDiff",profile!="4.6.4","transformFrom",profile!="4.6.4","animationV2",profile=="4.6.6"||profile.StartsWith("4.6.7",StringComparison.Ordinal)))+";\n",marker="return jsxRuntimeExports.jsxs(TopbarTab,{children:[";int begin=source.IndexOf("function AddSentenceTab(){"),at=begin<0?-1:source.IndexOf(marker,begin);if(at<0||at-begin>16000)throw new IOException("Terre 工具栏结构不匹配");
    foreach(var patch in J.A(J.Read(HostAsset(profile,"product-ui/menu-patches.json"))))source=Once(source,J.S(patch,"find"),J.S(patch,"replace"));
    prefix+=File.ReadAllText(Path.Combine(Files.Root,"product-ui/editor-runtime.js")).Replace("__WEBVIDEO_CHARACTER_MAP_ENABLED__",ModuleCatalog.NeedsKernel(modules)?"true":"false").Replace("__WEBVIDEO_MODULES__",J.Text(modules))+"\n";
    prefix+="const WebVideoUpdateContext="+J.Text(updateContext??J.O("productVersion",ProductVersion,"engineId","","engineVersion",""))+";\n"+File.ReadAllText(Path.Combine(Files.Root,"product-ui/update-check.js"))+"\n";
