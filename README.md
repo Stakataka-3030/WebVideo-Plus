@@ -10,12 +10,13 @@
 
 | 使用环境 | 推荐版本（导出内核） | Windows 安装器 | 发行说明与校验 |
 | --- | --- | --- | --- |
+| Terre / WebGAL **4.6.7**（官方 Windows ZIP / Steam） | **1.4.0**（0.6.71） | [WebVideo+-Setup-1.4.0.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.4.0/WebVideo%2B-Setup-1.4.0.exe) | [v1.4.0](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.4.0) |
 | Terre / WebGAL **4.6.4**、**MyGO 3.2.1** 或 **LoveLive（LL）** | **1.1.19**（0.6.71，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.19.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.1.19/WebVideo%2B-Setup-1.1.19.exe) | [v1.1.19](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.19) |
 | 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.5c**（安装器 1.2.5.0c，内核 0.6.71） | [WebVideoCraft-Setup-1.2.5.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.5.0c/WebVideoCraft-Setup-1.2.5.0c.exe) | [craft-v1.2.5.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.5.0c) |
 
 上列版本已于 **2026-11-18** 发布。请按宿主和引擎选择，不要仅依据 GitHub 全局 Latest；Craft 使用独立的 stable 通道。下载后可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对 GitHub 发行资产的 SHA-256（digest）；兼容范围与完整说明入口见对应发行页。
 
-**LoveLive（LL）适配仅在 Terre 4.6.4 维护线提供，Terre 4.6.6 与 Craft 不包含 LL 适配。**
+**LoveLive（LL）适配仅在 Terre 4.6.4 维护线提供。**
 
 已 EOL 的 Terre 4.6.5、4.6.6、Craft RC1 / beta.2 的下载与兼容范围收纳于[历史版本说明](docs/LEGACY-VERSIONS.md)。
 
@@ -27,7 +28,7 @@
 
 本轮修复大量音轨混合时 Windows 总命令行过长导致的导出失败，覆盖视频和纯音轨导出。同时修复 MyGO 自定义动作淡入淡出等兼容参数造成的识别失败，保留 1500 ms 等已有设置。三条维护线同步该修复，导出内核均为 0.6.71。
 
-1. 保存工程并关闭 Terre，确认已有安装使用 WebGAL 4.6.4 / MyGO 3.2.1，还是 WebGAL 4.6.6。
+1. 保存工程并关闭 Terre，确认当前 Terre / WebGAL 版本及所用引擎。
 2. 按上表或历史版本说明下载对应的 `WebVideo+-Setup-*.exe`，运行并选择 Terre 安装目录。
 3. 默认安装常用模块；高级选项可单独增删功能、设置数据与缓存目录。灰选模块是其他已选功能的依赖。
 4. 安装完成后照常启动 Terre，在编辑器中使用 WebVideo+ 工具。
@@ -74,7 +75,7 @@ Craft 继续核验宿主与工程主程序的精确构建。MyGO 插件允许与
 
 舞台的 **“包含背景”与“包含立绘”可以独立勾选**，支持四种组合。有背景输出 MP4，无背景输出带 Alpha 的 MOV / WebM；两者都取消时，其他舞台效果仍保留，其余区域透明。“包含立绘”只控制 `changeFigure` 创建的对象画面，剧本命令、动作、等待与时长继续保留，不改写原工程。
 
-兼容捕获格式按引擎区分：Terre 1.1.16 保留 JPEG；Terre 1.3.9 和 Craft 1.2.1c 提供 JPEG / PNG 选择，默认 JPEG。PNG 避免截图阶段的压缩，最终 H.264 仍为有损编码。4.6.6 的 animation v2 支持仅用于精确匹配的 4.6.6 运行时。
+兼容捕获格式按引擎区分：Terre 1.1.16 保留 JPEG；Terre 1.3.9 和 Craft 1.2.1c 提供 JPEG / PNG 选择，默认 JPEG。PNG 避免截图阶段的压缩，最终 H.264 仍为有损编码。animation v2 支持精确匹配的 4.6.6 和 4.6.7 运行时。
 
 ### 手动切点
 
@@ -100,9 +101,9 @@ Terre 的工作缓存默认位于成片目录下的 `.webvideo-cache`；Craft �
 
 ## 文档与开发
 
-- Terre 使用指南：[1.1.19](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.19/docs/USER_GUIDE.md) / [1.3.13](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.13/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.13/docs/USER_GUIDE.md#按语句指定导出切点)
+- Terre 使用指南：[1.1.19](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.19/docs/USER_GUIDE.md) / [1.4.0](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.4.0/docs/USER_GUIDE.md) / [1.3.13](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.13/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.4.0/docs/USER_GUIDE.md#按语句指定导出切点)
 - Craft：[安装与管理](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.5.0c/craft/README.md)、[功能范围](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.5.0c/craft/FEATURE-COVERAGE.md)、[导出说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.5.0c/craft/EXPORT-PARITY.md)和[本版说明与验证范围](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.5.0c)
-- 构建与发布：Terre [1.1.19](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.19/docs/BUILDING.md) / [1.3.13](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.13/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
+- 构建与发布：Terre [1.1.19](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.19/docs/BUILDING.md) / [1.4.0](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.4.0/docs/BUILDING.md) / [1.3.13](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.13/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
 - 当前分支的 [1.1.4 发行说明](docs/releases/RELEASE_NOTES_1.1.4.md)、[历史发行说明索引](docs/releases/README.md)、[变更记录](CHANGELOG.md)与[仓库结构](docs/REPOSITORY.md)
 
 当前 `main` 的开发基线仍是 **1.1.4**（内部标识 **0.8.8**、安装器 Win32 版本 **1.1.4.0**、导出内核 **0.6.48**），以 [`version.json`](version.json) 为准。版本标签中的文档保留部分开发、候选和历史测试记录；是否正式发布、当前更新策略及验证边界请以上表的发行页为准。
