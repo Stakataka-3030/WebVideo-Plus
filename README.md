@@ -6,19 +6,18 @@
 
 ## 下载与版本选择
 
-三条维护线的版本入口：
+当前维护版本：
 
 | 使用环境 | 推荐版本（导出内核） | Windows 安装器 | 发行说明与校验 |
 | --- | --- | --- | --- |
-| Terre / WebGAL **4.6.4**、**MyGO 3.2.1** 或 **LoveLive（LL）** | **1.1.18**（0.6.70，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.18.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.1.18/WebVideo%2B-Setup-1.1.18.exe) | [v1.1.18](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.18) |
-| Terre / WebGAL **4.6.6** | **1.3.12**（0.6.70） | [WebVideo+-Setup-1.3.12.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.3.12/WebVideo%2B-Setup-1.3.12.exe) | [v1.3.12](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.3.12) |
-| 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.4c**（安装器 1.2.4.0c，内核 0.6.70） | [WebVideoCraft-Setup-1.2.4.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.4.0c/WebVideoCraft-Setup-1.2.4.0c.exe) | [craft-v1.2.4.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.4.0c) |
+| Terre / WebGAL **4.6.4**、**MyGO 3.2.1** 或 **LoveLive（LL）** | **1.1.19**（0.6.71，4.6.4 稳定维护通道） | [WebVideo+-Setup-1.1.19.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/v1.1.19/WebVideo%2B-Setup-1.1.19.exe) | [v1.1.19](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/v1.1.19) |
+| 官方 Windows x64 **Craft 1.0.0** | **Craft 1.2.5c**（安装器 1.2.5.0c，内核 0.6.71） | [WebVideoCraft-Setup-1.2.5.0c.exe](https://github.com/Stakataka-3030/WebVideo-Plus/releases/download/craft-v1.2.5.0c/WebVideoCraft-Setup-1.2.5.0c.exe) | [craft-v1.2.5.0c](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.5.0c) |
 
-上列三个版本已于 **2026-11-15** 发布。请按宿主和引擎选择，不要仅依据 GitHub 全局 Latest；Craft 使用独立的 stable 通道。下载后可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对 GitHub 发行资产的 SHA-256（digest）；兼容范围与完整说明入口见对应发行页。
+上列版本已于 **2026-11-18** 发布。请按宿主和引擎选择，不要仅依据 GitHub 全局 Latest；Craft 使用独立的 stable 通道。下载后可用 PowerShell 的 `Get-FileHash -Algorithm SHA256 -LiteralPath <安装器路径>` 核对 GitHub 发行资产的 SHA-256（digest）；兼容范围与完整说明入口见对应发行页。
 
 **LoveLive（LL）适配仅在 Terre 4.6.4 维护线提供，Terre 4.6.6 与 Craft 不包含 LL 适配。**
 
-已 EOL 的 Terre 4.6.5、Craft RC1 / beta.2 的下载与兼容范围收纳于[历史版本说明](docs/LEGACY-VERSIONS.md)。
+已 EOL 的 Terre 4.6.5、4.6.6、Craft RC1 / beta.2 的下载与兼容范围收纳于[历史版本说明](docs/LEGACY-VERSIONS.md)。
 
 各维护线的产品源码尚未合入 `main`；复现发布版时请检出对应标签，不要用 `main` 的开发基线代替。
 
@@ -29,7 +28,7 @@
 本轮修复大量音轨混合时 Windows 总命令行过长导致的导出失败，覆盖视频和纯音轨导出。同时修复 MyGO 自定义动作淡入淡出等兼容参数造成的识别失败，保留 1500 ms 等已有设置。三条维护线同步该修复，导出内核均为 0.6.70。
 
 1. 保存工程并关闭 Terre，确认已有安装使用 WebGAL 4.6.4 / MyGO 3.2.1，还是 WebGAL 4.6.6。
-2. 按上表下载对应的 `WebVideo+-Setup-*.exe`，运行并选择 Terre 安装目录。
+2. 按上表或历史版本说明下载对应的 `WebVideo+-Setup-*.exe`，运行并选择 Terre 安装目录。
 3. 默认安装常用模块；高级选项可单独增删功能、设置数据与缓存目录。灰选模块是其他已选功能的依赖。
 4. 安装完成后照常启动 Terre，在编辑器中使用 WebVideo+ 工具。
 
