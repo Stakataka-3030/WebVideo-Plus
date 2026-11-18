@@ -25,7 +25,7 @@
 
 ### Terre / MyGO
 
-本轮修复大量音轨混合时 Windows 总命令行过长导致的导出失败，覆盖视频和纯音轨导出。同时修复 MyGO 自定义动作淡入淡出等兼容参数造成的识别失败，保留 1500 ms 等已有设置。三条维护线同步该修复，导出内核均为 0.6.70。
+本轮修复大量音轨混合时 Windows 总命令行过长导致的导出失败，覆盖视频和纯音轨导出。同时修复 MyGO 自定义动作淡入淡出等兼容参数造成的识别失败，保留 1500 ms 等已有设置。三条维护线同步该修复，导出内核均为 0.6.71。
 
 1. 保存工程并关闭 Terre，确认已有安装使用 WebGAL 4.6.4 / MyGO 3.2.1，还是 WebGAL 4.6.6。
 2. 按上表或历史版本说明下载对应的 `WebVideo+-Setup-*.exe`，运行并选择 Terre 安装目录。
@@ -100,9 +100,9 @@ Terre 的工作缓存默认位于成片目录下的 `.webvideo-cache`；Craft �
 
 ## 文档与开发
 
-- Terre 使用指南：[1.1.18](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.18/docs/USER_GUIDE.md) / [1.3.12](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.12/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.12/docs/USER_GUIDE.md#按语句指定导出切点)
-- Craft：[安装与管理](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.4.0c/craft/README.md)、[功能范围](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.4.0c/craft/FEATURE-COVERAGE.md)、[导出说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.4.0c/craft/EXPORT-PARITY.md)和[本版说明与验证范围](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.4.0c)
-- 构建与发布：Terre [1.1.18](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.18/docs/BUILDING.md) / [1.3.12](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.12/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
+- Terre 使用指南：[1.1.19](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.19/docs/USER_GUIDE.md) / [1.3.13](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.13/docs/USER_GUIDE.md)，含详细功能、数据目录、AI 配置及[手动切点说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.13/docs/USER_GUIDE.md#按语句指定导出切点)
+- Craft：[安装与管理](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.5.0c/craft/README.md)、[功能范围](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.5.0c/craft/FEATURE-COVERAGE.md)、[导出说明](https://github.com/Stakataka-3030/WebVideo-Plus/blob/craft-v1.2.5.0c/craft/EXPORT-PARITY.md)和[本版说明与验证范围](https://github.com/Stakataka-3030/WebVideo-Plus/releases/tag/craft-v1.2.5.0c)
+- 构建与发布：Terre [1.1.19](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.1.19/docs/BUILDING.md) / [1.3.13](https://github.com/Stakataka-3030/WebVideo-Plus/blob/v1.3.13/docs/BUILDING.md)；Craft 见其安装与管理文档中的构建章节
 - 当前分支的 [1.1.4 发行说明](docs/releases/RELEASE_NOTES_1.1.4.md)、[历史发行说明索引](docs/releases/README.md)、[变更记录](CHANGELOG.md)与[仓库结构](docs/REPOSITORY.md)
 
 当前 `main` 的开发基线仍是 **1.1.4**（内部标识 **0.8.8**、安装器 Win32 版本 **1.1.4.0**、导出内核 **0.6.48**），以 [`version.json`](version.json) 为准。版本标签中的文档保留部分开发、候选和历史测试记录；是否正式发布、当前更新策略及验证边界请以上表的发行页为准。
